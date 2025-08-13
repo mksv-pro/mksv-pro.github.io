@@ -101,13 +101,7 @@ defaults:
     values:
       layout: single
       author_profile: true
-sass:
-  style: compressed
 
-include:
-  - assets/css/custom.scss
-  
-@import "custom";
   
 category_archive:
   type: liquid
@@ -115,3 +109,10 @@ category_archive:
 tag_archive:
   type: liquid
   path: /tags/
+  
+sass:
+  style: compressed
+
+include:
+  - _pages
+  - assets/css/custom.scss
