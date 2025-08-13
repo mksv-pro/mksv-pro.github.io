@@ -101,13 +101,11 @@ defaults:
     values:
       layout: single
       author_profile: true
-font:
-  heading: "Merriweather"
-  body:    "Open Sans"
+sass:
+  style: compressed
 
-# Custom CSS
-custom_css:
-  - /assets/css/justify.css
+include:
+  - assets/css/custom.scss
   
 category_archive:
   type: liquid
