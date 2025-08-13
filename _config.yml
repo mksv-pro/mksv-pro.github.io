@@ -58,7 +58,7 @@ plugins:
   - jekyll-include-cache
 
 author:
-  name   : "First Lastname"
+  name   : "Mike Silva"
   avatar : "/assets/images/gitpfp.png"
   bio    : "Graduate Student in mathematics, physics & finance."
   links:
