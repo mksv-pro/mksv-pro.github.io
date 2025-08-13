@@ -6,7 +6,7 @@
 layout: single
 author_profile: true
 ---
-<p style="text-align: justify;"
+<p style="text-align: justify;">
 </style>
   I am a <strong>research master</strong> student in mathematics and physics at <a href="https://www.sorbonne-universite.fr/" target="_blank" rel="noopener noreferrer">Sorbonne Université</a> 
   and in finance at <a href="https://dauphine.psl.eu/" target="_blank" rel="noopener noreferrer">Université Paris Dauphine-PSL</a>.
