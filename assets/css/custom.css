@@ -1,0 +1,4 @@
+/* Justifier le corps de texte */
+.page__content p {
+  text-align: justify;
+}
