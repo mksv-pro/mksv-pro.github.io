@@ -12,5 +12,12 @@ author_profile: true
 # Test
 
 Texte markdown.
-
+<style>
+body { background: pink !important; }
+.page__content p {
+  color: red !important;
+  font-size: 2em !important;
+  background: yellow !important;
+}
+</style>
 <p>Paragraphe HTML influencé par le CSS personnalisé.</p>
