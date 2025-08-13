@@ -1,3 +1,10 @@
+<style>
+@import url('https://fontlibrary.org//face/computer-modern');
+
+body, html, p, h1, h2, h3, h4, h5, h6 {
+  font-family: 'Computer Modern Serif', serif !important;
+}
+</style>
 ---
 # You don't need to edit this file, it's empty on purpose.
 # Edit theme's home layout instead if you wanna make some changes
