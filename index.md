@@ -16,13 +16,6 @@ author_profile: true
 Projects in progress : 
 - Project 1
 - Project 2
+<blockquote class="twitter-tweet" data-theme="dark"><p lang="en" dir="ltr">👤2dl p1p6 s&amp;shs -&gt; ⁉️</p>&mdash; кашееды 🌐 (@alterstochastic) <a href="https://twitter.com/alterstochastic/status/1777760861836202119?ref_src=twsrc%5Etfw">April 9, 2024</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
 
-<blockquote class="twitter-tweet" data-theme="dark">
-  <p lang="zxx" dir="ltr">
-    <a href="https://t.co/XWr9AcFfVa">pic.twitter.com/XWr9AcFfVa</a>
-  </p>
-  &mdash; кашееды 🌐 (@alterstochastic) 
-  <a href="https://twitter.com/alterstochastic/status/1953486469051392108?ref_src=twsrc%5Etfw">August 7, 2025</a>
-</blockquote>
-<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
 
