@@ -2,6 +2,6 @@ main:
   - title: "About"
     url: /
   - title: "Works"
-    url: ../_pages/Works.md
+    url: "/works/"
   - title: "Course materials"
     url: /Courses/
