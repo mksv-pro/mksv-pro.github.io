@@ -21,7 +21,6 @@ description: >- # this means to ignore newlines until "baseurl:"
   Google search results) and in your feed.xml site description.
 twitter_username: username
 github_username: username
-minimal_mistakes_skin: dark
 search: false
 # Chemin vers la feuille CSS personnalisée
 custom_css: /assets/css/custom.css
