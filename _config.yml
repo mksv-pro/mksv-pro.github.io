@@ -22,9 +22,7 @@ description: >- # this means to ignore newlines until "baseurl:"
 twitter_username: username
 github_username: username
 search: false
-# Chemin vers la feuille CSS personnalisée
-custom_css: /assets/css/custom.css
-minimal_mistakes_skin: dark
+minimal_mistakes_skin: air
 
 # Build settings
 markdown: kramdown
