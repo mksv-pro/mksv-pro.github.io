@@ -8,63 +8,82 @@ author_profile: true
 <head>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300&display=swap" rel="stylesheet">
   <style>
-    body {
+    /* Style uniquement pour le contenu principal */
+    .content {
       font-family: 'Roboto', sans-serif;
       font-weight: 300;
       color: #fff;
+      background-color: #333;
       font-size: 14px;
     }
-    h1, h2, h3 { color: #fff; font-weight: 400; font-size: 18px; }
-    a { color: #007BFF; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    table, ul { font-size: 14px; color: #fff; }
-    th, td { padding: 8px; border: 1px solid #444; }
+    .content h1, .content h2, .content h3 { 
+      color: #fff; 
+      font-weight: 400; 
+      font-size: 18px; 
+    }
+    .content a { 
+      color: #007BFF; 
+      text-decoration: none; 
+    }
+    .content a:hover { 
+      text-decoration: underline; 
+    }
+    .content table, .content ul { 
+      font-size: 14px; 
+      color: #fff; 
+    }
+    .content th, .content td { 
+      padding: 8px; 
+      border: 1px solid #444; 
+    }
   </style>
 </head>
 
-Here you'll find a selection of my academic work, research projects, and creative explorations.
+<div class="content">
+  Here you'll find a selection of my academic work, research projects, and creative explorations.
 
-## 📘 Research Projects
+  ## 📘 Research Projects
 
-- **Stochastic Modeling in Finance**  
-  Description of the project...  
-  <a href="link">View paper</a>
+  - **Stochastic Modeling in Finance**  
+    Description of the project...  
+    <a href="link">View paper</a>
 
-- **Machine Learning for Physical Systems**  
-  Short summary...  
-  <a href="link">GitHub repo</a>
+  - **Machine Learning for Physical Systems**  
+    Short summary...  
+    <a href="link">GitHub repo</a>
 
-## 🎨 Creative Work
+  ## 🎨 Creative Work
 
-- **Data Visualizations**  
-  <a href="link">Gallery</a>
+  - **Data Visualizations**  
+    <a href="link">Gallery</a>
 
----
+  ---
 
-### 🖼️ Example Image
-<p><img src="path/to/image.jpg" alt="Sample Image" width="400"></p>
+  ### 🖼️ Example Image
+  <p><img src="path/to/image.jpg" alt="Sample Image" width="400"></p>
 
----
+  ---
 
-### 🧑‍💻 Technologies Used
+  ### 🧑‍💻 Technologies Used
 
-<table>
-  <thead>
-    <tr><th>Technology</th><th>Usage</th></tr>
-  </thead>
-  <tbody>
-    <tr><td>Python</td><td>Data analysis, machine learning</td></tr>
-    <tr><td>JavaScript</td><td>Frontend development</td></tr>
-    <tr><td>TensorFlow</td><td>AI</td></tr>
-  </tbody>
-</table>
+  <table>
+    <thead>
+      <tr><th>Technology</th><th>Usage</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Python</td><td>Data analysis, machine learning</td></tr>
+      <tr><td>JavaScript</td><td>Frontend development</td></tr>
+      <tr><td>TensorFlow</td><td>AI</td></tr>
+    </tbody>
+  </table>
 
----
+  ---
 
-### 🚀 Key Highlights
+  ### 🚀 Key Highlights
 
-<ul>
-  <li><strong>Research Excellence:</strong> Stochastic models and machine learning.</li>
-  <li><strong>Creative Portfolio:</strong> Data visualizations and interactive graphics.</li>
-  <li><strong>Open Source:</strong> Open-source repositories shared with the community.</li>
-</ul>
+  <ul>
+    <li><strong>Research Excellence:</strong> Stochastic models and machine learning.</li>
+    <li><strong>Creative Portfolio:</strong> Data visualizations and interactive graphics.</li>
+    <li><strong>Open Source:</strong> Open-source repositories shared with the community.</li>
+  </ul>
+</div>
