@@ -13,11 +13,10 @@ author_profile: true
 
 Texte markdown.
 <style>
-body { background: pink !important; }
+body { background: black !important; }
 .page__content p {
   color: red !important;
-  font-size: 2em !important;
-  background: yellow !important;
+  font-size: 0.5em !important;
 }
 </style>
 <p>Paragraphe HTML influencé par le CSS personnalisé.</p>
