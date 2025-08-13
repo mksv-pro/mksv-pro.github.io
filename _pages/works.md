@@ -5,6 +5,31 @@ layout: single
 author_profile: true
 ---
 
+<style>
+  /* Utilisation de la police Roboto depuis Google Fonts */
+  body {
+    font-family: 'Roboto', sans-serif;
+    font-weight: 300; /* Utilisation d'un poids plus léger */
+    line-height: 1.6;
+    color: #333;
+  }
+  h1, h2, h3 {
+    font-weight: 400; /* Titre un peu plus épais */
+  }
+  p {
+    margin-bottom: 1.5em;
+  }
+  a {
+    text-decoration: none;
+    color: #007BFF;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+</style>
+
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300&display=swap" rel="stylesheet">
+
 Here you'll find a selection of my academic work, research projects, and creative explorations.
 
 ## 📘 Research Projects
