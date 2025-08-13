@@ -24,6 +24,7 @@ github_username: username
 search: false
 # Chemin vers la feuille CSS personnalisée
 custom_css: /assets/css/custom.css
+minimal_mistakes_skin: dark
 
 # Build settings
 markdown: kramdown
