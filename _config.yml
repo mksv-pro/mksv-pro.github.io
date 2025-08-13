@@ -107,6 +107,8 @@ sass:
 include:
   - assets/css/custom.scss
   
+@import "custom";
+  
 category_archive:
   type: liquid
   path: /categories/
