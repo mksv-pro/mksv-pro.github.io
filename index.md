@@ -5,7 +5,7 @@
 layout: single
 author_profile: true
 ---
-I am a **research master** student in mathematics and physics at the [Sorbonne University](https://www.sorbonne-universite.fr/) and in finance at [Dauphine PSL](https://dauphine.psl.eu/). My areas of interest are statistical physics, machine learning, stochastic processes, quantitative finance, theoretical macroeconomics and computational science. You can view my CV [here](/assets/CV.pdf).
+I am a **research master** student in mathematics and physics at the [Sorbonne University](https://www.sorbonne-universite.fr/) and in finance at [University Paris Dauphine-PSL](https://dauphine.psl.eu/). My areas of interest are statistical physics, machine learning, stochastic processes, quantitative finance, theoretical macroeconomics and computational science. You can view my CV [here](/assets/CV.pdf).
 
 
 - Project 1
