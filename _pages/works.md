@@ -9,22 +9,48 @@ author_profile: true
   /* Utilisation de la police Roboto depuis Google Fonts */
   body {
     font-family: 'Roboto', sans-serif;
-    font-weight: 300; /* Utilisation d'un poids plus léger */
+    font-weight: 300; /* Poids fin de la police */
     line-height: 1.6;
-    color: #333;
+    color: #fff; /* Texte en blanc */
+    font-size: 14px; /* Taille de la police réduite */
+    background-color: #333; /* Fond sombre pour un meilleur contraste */
+    margin: 0;
+    padding: 0;
   }
+
   h1, h2, h3 {
     font-weight: 400; /* Titre un peu plus épais */
+    color: #fff; /* Titres en blanc */
+    font-size: 18px; /* Taille réduite des titres */
   }
+
   p {
     margin-bottom: 1.5em;
+    font-size: 14px; /* Taille réduite du texte dans les paragraphes */
   }
+
   a {
     text-decoration: none;
-    color: #007BFF;
+    color: #007BFF; /* Liens en bleu */
   }
+
   a:hover {
     text-decoration: underline;
+  }
+
+  table {
+    width: 100%;
+    color: #fff; /* Texte des tableaux en blanc */
+    font-size: 14px; /* Réduire la taille des polices dans les tableaux */
+  }
+
+  th, td {
+    padding: 8px;
+    border: 1px solid #444; /* Bordure subtile pour les tableaux */
+  }
+
+  ul {
+    font-size: 14px; /* Taille réduite pour les éléments de liste */
   }
 </style>
 
