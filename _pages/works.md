@@ -8,38 +8,38 @@ author_profile: true
 <head>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300&display=swap" rel="stylesheet">
   <style>
-    /* Style uniquement pour le contenu principal */
-    .content {
+    /* Cibler uniquement le contenu principal */
+    main {
       font-family: 'Roboto', sans-serif;
       font-weight: 300;
       color: #fff;
       background-color: #333;
       font-size: 14px;
     }
-    .content h1, .content h2, .content h3 { 
+    main h1, main h2, main h3 { 
       color: #fff; 
       font-weight: 400; 
       font-size: 18px; 
     }
-    .content a { 
+    main a { 
       color: #007BFF; 
       text-decoration: none; 
     }
-    .content a:hover { 
+    main a:hover { 
       text-decoration: underline; 
     }
-    .content table, .content ul { 
+    main table, main ul { 
       font-size: 14px; 
       color: #fff; 
     }
-    .content th, .content td { 
+    main th, main td { 
       padding: 8px; 
       border: 1px solid #444; 
     }
   </style>
 </head>
 
-<div class="content">
+<main>
   Here you'll find a selection of my academic work, research projects, and creative explorations.
 
   ## 📘 Research Projects
@@ -86,4 +86,4 @@ author_profile: true
     <li><strong>Creative Portfolio:</strong> Data visualizations and interactive graphics.</li>
     <li><strong>Open Source:</strong> Open-source repositories shared with the community.</li>
   </ul>
-</div>
+</main>
