@@ -6,6 +6,17 @@ layout: single
 author_profile: true
 ---
 
+<!-- Intégrer directement le CSS dans le Markdown -->
+<style>
+  /* Charger la police Inter depuis Google Fonts */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap');
+
+  /* Appliquer la police Inter à tout le texte */
+  body {
+    font-family: 'Inter', sans-serif;
+  }
+</style>
+
 <p style="text-align: justify;">
   I am a <strong>research master</strong> student in mathematics and physics at <a href="https://www.sorbonne-universite.fr/" target="_blank" rel="noopener noreferrer">Sorbonne Université</a> 
   and in finance at <a href="https://dauphine.psl.eu/" target="_blank" rel="noopener noreferrer">Université Paris Dauphine-PSL</a>.
@@ -14,10 +25,5 @@ author_profile: true
   You can view my CV <a href="/assets/CV.pdf" target="_blank" rel="noopener noreferrer">here</a>.
 </p>
 
-
-
-
-
-<blockquote class="twitter-tweet" data-theme="dark"><p lang="en" dir="ltr">👤2dl p1p6 s&amp;shs -&gt; ⁉️</p>&mdash; кашееды 🌐 (@alterstochastic) <a href="https://twitter.com/alterstochastic/status/1777760861836202119?ref_src=twsrc%5Etfw">April 9, 2024</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
 
 
