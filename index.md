@@ -11,24 +11,14 @@ author_profile: true
   /* Charger la police Inter depuis Google Fonts */
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap');
 
-  /* Appliquer la police Inter et réduire la taille de la police */
+  /* Appliquer la police Inter à tout le texte */
   body {
     font-family: 'Inter', sans-serif;
-    font-size: 14px; /* Taille de police globale réduite */
   }
 
-  /* Réduire la taille des titres */
-  h1 {
-    font-size: 22px; /* Réduire la taille du titre principal */
-  }
-
-  h2 {
-    font-size: 18px; /* Réduire la taille du titre secondaire */
-  }
-
-  /* Réduire la taille des paragraphes */
+  /* Réduire la taille uniquement des paragraphes */
   p {
-    font-size: 14px; /* Réduire la taille des paragraphes */
+    font-size: 14px; /* Réduire la taille du texte des paragraphes à 14px */
   }
 </style>
 
@@ -39,5 +29,3 @@ author_profile: true
   quantitative finance, theoretical macroeconomics and computational science.
   You can view my CV <a href="/assets/CV.pdf" target="_blank" rel="noopener noreferrer">here</a>.
 </p>
-
-
