@@ -105,6 +105,10 @@ font:
   heading: "Merriweather"
   body:    "Open Sans"
 
+# Custom CSS
+custom_css:
+  - /assets/css/justify.css
+  
 category_archive:
   type: liquid
   path: /categories/
