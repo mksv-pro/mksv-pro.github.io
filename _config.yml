@@ -116,3 +116,5 @@ sass:
 include:
   - _pages
   - assets/css/custom.scss
+custom_css:
+  - "/assets/css/custom.css"
