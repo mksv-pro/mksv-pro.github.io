@@ -23,6 +23,8 @@ twitter_username: username
 github_username: username
 minimal_mistakes_skin: dark
 search: false
+# Chemin vers la feuille CSS personnalisée
+custom_css: /assets/css/custom.css
 
 # Build settings
 markdown: kramdown
