@@ -14,3 +14,15 @@ $header-font-family : $serif;        // titres
 @import "minimal-mistakes";
 
 /* ====== règles additionnelles APRES imports (facultatif) ====== */
+
+/* Exemple : texte un peu plus grand */
+$type-size-4 : 1.3125em;  // ~21px
+$type-size-5 : 1.0625em;  // ~17px (base du corps)
+$type-size-6 : 0.8125em;  // ~13px
+
+/* Couleurs principales */
+$body-color          : #0a0a0a;  // couleur du texte
+$background-color    : #ffffff;  // fond global
+$text-color          : #222222;  // alternative au body-color selon contextes
+$link-color          : #0d6efd;  // liens
+$masthead-link-color : #0d6efd;  // liens dans l'entête
