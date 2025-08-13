@@ -1,10 +1,4 @@
-<style>
-@import url('https://fontlibrary.org//face/computer-modern');
 
-body, html, p, h1, h2, h3, h4, h5, h6 {
-  font-family: 'Computer Modern Serif', serif !important;
-}
-</style>
 ---
 # You don't need to edit this file, it's empty on purpose.
 # Edit theme's home layout instead if you wanna make some changes
@@ -12,6 +6,13 @@ body, html, p, h1, h2, h3, h4, h5, h6 {
 layout: single
 author_profile: true
 ---
+<style>
+@import url('https://fontlibrary.org//face/computer-modern');
+
+body, html, p, h1, h2, h3, h4, h5, h6 {
+  font-family: 'Computer Modern Serif', serif !important;
+}
+</style>
 <p style="text-align: justify;">
   I am a <strong>research master</strong> student in mathematics and physics at <a href="https://www.sorbonne-universite.fr/" target="_blank" rel="noopener noreferrer">Sorbonne Université</a> 
   and in finance at <a href="https://dauphine.psl.eu/" target="_blank" rel="noopener noreferrer">Université Paris Dauphine-PSL</a>.
