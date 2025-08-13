@@ -101,6 +101,9 @@ defaults:
     values:
       layout: single
       author_profile: true
+font:
+  heading: "Merriweather"
+  body:    "Open Sans"
 
 category_archive:
   type: liquid
