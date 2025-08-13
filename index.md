@@ -9,14 +9,11 @@ author_profile: true
   My areas of interest are statistical physics, machine learning, stochastic processes, quantitative finance, theoretical macroeconomics and computational science. You can view my CV <a href="/assets/CV.pdf" target="_blank" rel="noopener noreferrer">here</a>. </p>
 
 
-# Test
 
-Texte markdown.
+
 <style>
-body { background: black !important; }
 .page__content p {
-  color: red !important;
-  font-size: 0.5em !important;
+  color: white !important;
+  font-size: 0.8em !important;
 }
 </style>
-<p>Paragraphe HTML influencé par le CSS personnalisé.</p>
