@@ -3,3 +3,7 @@
 body {
   font-family: 'Open Sans', Arial, sans-serif;
 }
+
+.page__content p {
+  font-size: 0.85em; /* Réduit la taille à 85% de la taille normale, adapte selon tes besoins */
+}
