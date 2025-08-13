@@ -110,11 +110,5 @@ tag_archive:
   type: liquid
   path: /tags/
   
-sass:
-  style: compressed
-
-include:
-  - _pages
-  - assets/css/custom.scss
 custom_css:
-  - "/assets/css/custom.css"
+  - "assets/css/custom.css"
