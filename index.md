@@ -13,9 +13,9 @@ author_profile: true
   You can view my CV <a href="/assets/CV.pdf" target="_blank" rel="noopener noreferrer">here</a>.
 </p>
 
-Projects in progress : 
-- Project 1
-- Project 2
+
+
+
 <blockquote class="twitter-tweet" data-theme="dark"><p lang="en" dir="ltr">👤2dl p1p6 s&amp;shs -&gt; ⁉️</p>&mdash; кашееды 🌐 (@alterstochastic) <a href="https://twitter.com/alterstochastic/status/1777760861836202119?ref_src=twsrc%5Etfw">April 9, 2024</a></blockquote> <script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
 
 
