@@ -5,5 +5,5 @@ body {
 }
 
 .page__content p {
-  font-size: 0.85em; /* Réduit la taille à 85% de la taille normale, adapte selon tes besoins */
+  font-size: 0.25em; /* Réduit la taille à 85% de la taille normale, adapte selon tes besoins */
 }
