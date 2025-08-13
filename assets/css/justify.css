@@ -1,4 +1,4 @@
-/* Justifier le corps de texte */
-.page__content p {
+/* Justifier les paragraphes dans le contenu principal */
+.markdown-body p {
   text-align: justify;
 }
