@@ -5,21 +5,14 @@ layout: single
 author_profile: true
 ---
 
-<head>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300&display=swap" rel="stylesheet">
-  <style>
-    body {
-      font-family: 'Roboto', sans-serif;
-      font-weight: 300;
-      color: #fff;
-    }
-    h1, h2, h3, h4, h5 { color: #fff; font-weight: 400; font-size: 18px; }
-    a { color: #007BFF; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    table, ul { font-size: 14px; color: #fff; }
-    th, td { padding: 14px; border: 1px solid #444; }
-  </style>
-</head>
+<style>
+.page__content p {
+  color: white !important;
+  font-size: 0.8em !important;
+}
+</style>
+
+
 
 Here you'll find a selection of my academic work, research projects, and creative explorations.
 
