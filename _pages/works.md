@@ -13,11 +13,11 @@ author_profile: true
       font-weight: 300;
       color: #fff;
     }
-    h1, h2, h3 { color: #fff; font-weight: 400; font-size: 18px; }
+    h1, h2, h3, h4, h5 { color: #fff; font-weight: 400; font-size: 18px; }
     a { color: #007BFF; text-decoration: none; }
     a:hover { text-decoration: underline; }
     table, ul { font-size: 14px; color: #fff; }
-    th, td { padding: 12px; border: 1px solid #444; }
+    th, td { padding: 14px; border: 1px solid #444; }
   </style>
 </head>
 
