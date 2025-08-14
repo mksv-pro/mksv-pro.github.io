@@ -12,7 +12,7 @@ author_profile: true
       font-family: 'Roboto', sans-serif;
       font-weight: 300;
       color: #fff;
-      font-size: 14px;
+      font-size: 4px;
     }
     h1, h2, h3 { color: #fff; font-weight: 400; font-size: 18px; }
     a { color: #007BFF; text-decoration: none; }
