@@ -12,13 +12,12 @@ author_profile: true
       font-family: 'Roboto', sans-serif;
       font-weight: 300;
       color: #fff;
-      font-size: 4px;
     }
     h1, h2, h3 { color: #fff; font-weight: 400; font-size: 18px; }
     a { color: #007BFF; text-decoration: none; }
     a:hover { text-decoration: underline; }
     table, ul { font-size: 14px; color: #fff; }
-    th, td { padding: 8px; border: 1px solid #444; }
+    th, td { padding: 12px; border: 1px solid #444; }
   </style>
 </head>
 
