@@ -5,16 +5,16 @@ import Layout from '@/components/Layout';
 
 const About = () => {
   const skills = [
+    'Statistical Physics',
     'Machine Learning',
-    'Data Science',
+    'Stochastic Processes',
+    'Quantitative Finance',
+    'Theoretical Macroeconomics',
+    'Computational Science',
+    'Mathematics',
+    'Physics',
     'Python',
-    'JavaScript',
-    'React',
-    'TensorFlow',
-    'PyTorch',
-    'Computer Vision',
-    'Natural Language Processing',
-    'Statistical Analysis'
+    'R'
   ];
 
   return (
@@ -76,18 +76,18 @@ const About = () => {
                   </h2>
                   <div className="prose prose-invert max-w-none space-y-4">
                     <p className="text-muted-foreground leading-relaxed">
-                      I am a passionate data scientist and machine learning engineer with a strong background 
-                      in developing innovative solutions that bridge the gap between complex data and actionable insights. 
-                      My work focuses on applying cutting-edge artificial intelligence techniques to solve real-world problems.
+                      I am a <strong>research master</strong> student in mathematics and physics at 
+                      <a href="https://www.sorbonne-universite.fr/" className="text-primary hover:text-primary/80 transition-colors"> Sorbonne Université</a> 
+                      and in finance at 
+                      <a href="https://dauphine.psl.eu/" className="text-primary hover:text-primary/80 transition-colors"> Dauphine PSL</a>.
                     </p>
                     <p className="text-muted-foreground leading-relaxed">
-                      With expertise spanning from statistical analysis to deep learning, I specialize in creating 
-                      robust machine learning pipelines, computer vision systems, and natural language processing 
-                      applications. I'm particularly interested in the intersection of AI and scientific research.
+                      My areas of interest are <strong>statistical physics</strong>, <strong>machine learning</strong>, 
+                      <strong>stochastic processes</strong>, <strong>quantitative finance</strong>, 
+                      <strong>theoretical macroeconomics</strong> and <strong>computational science</strong>.
                     </p>
                     <p className="text-muted-foreground leading-relaxed">
-                      When I'm not coding or analyzing data, I enjoy exploring new technologies, contributing to 
-                      open-source projects, and sharing knowledge through writing and speaking at conferences.
+                      You can view my CV <a href="/cv" className="text-primary hover:text-primary/80 transition-colors">here</a>.
                     </p>
                   </div>
                 </CardContent>
@@ -122,15 +122,15 @@ const About = () => {
                   </h3>
                   <div className="space-y-4">
                     <div className="border-l-2 border-primary/30 pl-4">
-                      <h4 className="font-semibold text-foreground">Research & Development</h4>
+                      <h4 className="font-semibold text-foreground">Research Master - Mathematics & Physics</h4>
                       <p className="text-sm text-muted-foreground">
-                        Focused on advancing machine learning methodologies and their practical applications
+                        Sorbonne Université - Focus on statistical physics and computational methods
                       </p>
                     </div>
                     <div className="border-l-2 border-primary/30 pl-4">
-                      <h4 className="font-semibold text-foreground">Open Source Contributor</h4>
+                      <h4 className="font-semibold text-foreground">Research Master - Finance</h4>
                       <p className="text-sm text-muted-foreground">
-                        Active contributor to various ML and data science projects
+                        Dauphine PSL - Specialization in quantitative finance and macroeconomics
                       </p>
                     </div>
                   </div>

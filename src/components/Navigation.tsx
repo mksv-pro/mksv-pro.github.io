@@ -8,11 +8,10 @@ const Navigation = () => {
   const location = useLocation();
   
   const navItems = [
-    { href: '/', label: 'Home', icon: Code },
-    { href: '/about', label: 'About', icon: User },
+    { href: '/', label: 'About', icon: User },
     { href: '/works', label: 'Works', icon: Briefcase },
-    { href: '/cv', label: 'CV', icon: BookOpen },
     { href: '/calendar', label: 'Calendar', icon: Calendar },
+    { href: '/cv', label: 'CV', icon: BookOpen },
     { href: '/blog', label: 'Blog', icon: BookOpen },
   ];
 
