@@ -92,9 +92,6 @@ const Blog = () => {
     <Layout>
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-6xl mx-auto">
-          <h1 className="text-4xl md:text-5xl font-display font-bold text-gradient mb-4 animate-fade-in">
-            Blog
-          </h1>
           <p className="text-xl text-muted-foreground mb-12 animate-fade-in" style={{ animationDelay: '0.1s' }}>
             Insights, tutorials, and thoughts on machine learning, data science, and technology.
           </p>

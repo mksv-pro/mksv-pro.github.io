@@ -20,14 +20,17 @@ const Navigation = () => {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
       <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
+        <div className="flex items-center justify-end h-16">
+          
+          {/*
+          <!-- Logo -->
           <Link to="/" className="flex items-center space-x-2 group">
             <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center glow-effect group-hover:animate-pulse-glow transition-all duration-300">
               <Code className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="font-display font-bold text-xl text-gradient">MKSV</span>
+            <span className="font-display font-bold text-xl text-gradient">MS</span>
           </Link>
+          */}
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-1">

@@ -117,10 +117,16 @@ const CV = () => {
             <p className="text-xl text-muted-foreground mb-6">
               Machine Learning Engineer & Data Scientist
             </p>
-            <Button className="glow-effect bg-primary hover:bg-primary/90 text-primary-foreground">
+
+            {/* Download Button for static PDF */}
+            <a
+              href="\public\cv_modern.pdf"   // Place ton PDF ici : public/MS_CV.pdf
+              download
+              className="inline-flex items-center glow-effect bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+            >
               <Download className="w-4 h-4 mr-2" />
               Download PDF
-            </Button>
+            </a>
           </div>
 
           <div className="grid lg:grid-cols-3 gap-8">
@@ -134,15 +140,15 @@ const CV = () => {
                 <CardContent className="space-y-3">
                   <div className="flex items-center space-x-2 text-sm">
                     <Mail className="w-4 h-4 text-primary" />
-                    <span>mksv@example.com</span>
+                    <span>pro.mikesilva@gmail.com</span>
                   </div>
                   <div className="flex items-center space-x-2 text-sm">
                     <Phone className="w-4 h-4 text-primary" />
-                    <span>+1 (555) 123-4567</span>
+                    <span>+33 XXX </span>
                   </div>
                   <div className="flex items-center space-x-2 text-sm">
                     <MapPin className="w-4 h-4 text-primary" />
-                    <span>San Francisco, CA</span>
+                    <span>Paris, Ile de France</span>
                   </div>
                   <div className="flex items-center space-x-2 text-sm">
                     <Globe className="w-4 h-4 text-primary" />
