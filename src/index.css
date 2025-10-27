@@ -10,7 +10,7 @@ All colors MUST be HSL.
 @layer base {
   :root {
     /* Base colors - Dark scientific theme */
-    --background: 0 0% 3%;
+    --background: 0 0% 0%;
     --foreground: 0 0% 98%;
 
     /* Card components */

@@ -10,8 +10,6 @@ const Navigation = () => {
   const navItems = [
     { href: '/', label: 'About', icon: User },
     { href: '/works', label: 'Works', icon: Briefcase },
-    { href: '/cv', label: 'CV', icon: BookOpen },
-
   ];
 
   const isActive = (path: string) => location.pathname === path;

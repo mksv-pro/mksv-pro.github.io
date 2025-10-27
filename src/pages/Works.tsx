@@ -10,76 +10,29 @@ import Layout from "@/components/Layout";
 const initialProjects = [
   {
     id: 1,
-    title: "Neural Network Optimizer",
-    abstract: "Advanced optimization algorithms for deep neural networks using adaptive learning rate scheduling and momentum techniques.",
-    description: "This project implements state-of-the-art optimization methods including AdamW, RMSprop variants, and custom adaptive algorithms. The optimizer dynamically adjusts learning rates based on gradient statistics and loss landscape analysis.",
-    technologies: ["Python", "PyTorch", "NumPy", "Matplotlib"],
-    githubUrl: "https://github.com/mksv-pro/neural-optimizer",
-    pdfUrl: "/pdfs/neural-optimizer.pdf",
+    title: "Urban Morphogenesis Model",
+    abstract: "A generative model for urban growth and form using diffusion-limited aggregation, stochastic cellular automata, and network growth.",
+    description: "This project presents a generative model for urban morphogenesis that combines diffusion-limited aggregation, stochastic cellular automata, and network growth. The model simulates the evolution of urban forms based on simple local rules and interactions, capturing key features of real-world cities.",
+    technologies: ["Python", "NumPy", "Matplotlib", "NetworkX"],
+    githubUrl: "https://github.com/mksv-pro/urban-morphogenesis",
+    pdfUrl: "/pdfs/urban-morphogenesis.pdf",
     context: "Research",
     status: "In Progress",
     featured: true
   },
   {
     id: 2,
-    title: "Computer Vision Pipeline",
-    abstract: "End-to-end computer vision system for real-time object detection and classification in industrial environments.",
-    description: "A robust computer vision pipeline built with YOLOv8 and custom CNN architectures. Features real-time processing, edge deployment capabilities, and automated model retraining with active learning.",
-    technologies: ["Python", "OpenCV", "TensorFlow", "FastAPI", "Docker"],
-    githubUrl: "https://github.com/mksv-pro/cv-pipeline",
-    pdfUrl: "/pdfs/cv-pipeline.pdf",
-    context: "Professional",
-    status: "Production",
-    featured: true
-  },
-  {
-    id: 3,
-    title: "Data Analysis Toolkit",
-    abstract: "Comprehensive statistical analysis and visualization toolkit for scientific research and data exploration.",
-    description: "A Python package providing advanced statistical methods, interactive visualizations, and automated report generation for scientific data analysis. Includes hypothesis testing, regression analysis, and time series forecasting.",
-    technologies: ["Python", "Pandas", "Plotly", "SciPy", "Jupyter"],
-    githubUrl: "https://github.com/mksv-pro/data-toolkit",
-    pdfUrl: "/pdfs/data-toolkit.pdf",
+    title: "N-body Simulation",
+    abstract: "High-performance simulation of N-body gravitational interactions using GPU acceleration.",
+    description: "This project implements a fast N-body simulation using CUDA for GPU acceleration. It models gravitational interactions between a large number of particles and provides real-time visualization of the simulation.",
+    technologies: ["Python", "CUDA", "NumPy", "Matplotlib"],
+    githubUrl: "https://github.com/mksv-pro/n-body-simulation",
+    pdfUrl: "/pdfs/n-body-simulation.pdf",
     context: "Academic",
-    status: "In Progress",
-    featured: false
-  },
-  {
-    id: 4,
-    title: "NLP Sentiment Analyzer",
-    abstract: "Multi-language sentiment analysis system with transformer-based models and real-time processing capabilities.",
-    description: "Advanced sentiment analysis using BERT variants and custom transformer architectures. Supports multiple languages, handles complex sentiment nuances, and provides confidence scores with attention visualization.",
-    technologies: ["Python", "Transformers", "FastAPI", "Redis", "Docker"],
-    githubUrl: "https://github.com/mksv-pro/nlp-sentiment",
-    pdfUrl: "/pdfs/nlp-sentiment.pdf",
-    context: "Research",
     status: "Complete",
-    featured: false
-  },
-  {
-    id: 5,
-    title: "Time Series Forecasting",
-    abstract: "Ensemble forecasting models for financial and scientific time series prediction with uncertainty quantification.",
-    description: "Hybrid forecasting system combining LSTM networks, ARIMA models, and Prophet for robust time series prediction. Features automatic model selection, confidence intervals, and anomaly detection.",
-    technologies: ["Python", "TensorFlow", "Prophet", "Streamlit", "PostgreSQL"],
-    githubUrl: "https://github.com/mksv-pro/ts-forecasting",
-    pdfUrl: "/pdfs/ts-forecasting.pdf",
-    context: "Research",
-    status: "In Progress",
     featured: true
   },
-  {
-    id: 6,
-    title: "Scientific Computing Library",
-    abstract: "High-performance numerical computing library optimized for scientific simulations and mathematical modeling.",
-    description: "GPU-accelerated numerical computing library with custom CUDA kernels for scientific simulations. Includes linear algebra operations, differential equation solvers, and optimization algorithms.",
-    technologies: ["Python", "CUDA", "CuPy", "Numba", "C++"],
-    githubUrl: "https://github.com/mksv-pro/sci-compute",
-    pdfUrl: "/pdfs/sci-compute.pdf",
-    context: "Open Source",
-    status: "Idea",
-    featured: false
-  }
+
 ];
 
 const Works = () => {
