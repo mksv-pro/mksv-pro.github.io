@@ -1,0 +1,36 @@
+SITE — MIKE SILVA (mksv-pro.github.io)
+========================================
+
+1) PREMIÈRE FOIS (créer le repo et publier)
+--------------------------------------------
+cd "/home/sm/Bureau/Bureau Cachy/EnvS/site"
+git init -b main
+git add -A
+git commit -m "feat: initial academic site"
+gh repo create mksv-pro.github.io --public --source=. --remote=origin --push
+
+Puis vérifier sur GitHub : Settings -> Pages -> Source = "Deploy from a branch",
+branche "main", dossier "/ (root)".
+Le site sera en ligne sur https://mksv-pro.github.io (1-2 min après activation).
+
+
+2) À CHAQUE MODIFICATION SUIVANTE
+----------------------------------
+cd "/home/sm/Bureau/Bureau Cachy/EnvS/site"
+git add -A
+git commit --amend --no-edit
+git push -f
+
+Pas de message à taper, pas d'historique qui s'accumule : chaque mise à jour
+remplace l'unique commit existant (un seul commit "site" en permanence).
+Le site se met à jour automatiquement sur https://mksv-pro.github.io
+quelques dizaines de secondes après le push.
+
+
+3) POUR VOIR LE SITE EN LOCAL AVANT DE PUBLIER
+------------------------------------------------
+cd "/home/sm/Bureau/Bureau Cachy/EnvS/site"
+python3 -m http.server 8000
+
+Puis ouvrir http://localhost:8000 dans le navigateur.
+Arrêter le serveur avec Ctrl+C.
