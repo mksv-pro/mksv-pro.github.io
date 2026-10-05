@@ -5,27 +5,13 @@ const SITE = new URL('.', document.currentScript.src); // the site root: script.
 const DUNGEON_SRC = document.currentScript.dataset.dungeon; // loaded on the first descent
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/* ---- the world: one map for the exits, the map (m) and the descent (>) ---
-   Grid of 3x3 chambers, column c, row r. Every link here is an exit printed in the page's
-   "Obvious exits"; keep both in step. */
+/* ---- the world: one grid for the exits, the map (m) and the descent (>) ---
+   From _src/site.toml, via the JSON that build.py writes into every page. Column c, row r;
+   `page` rooms are project pages, the others sections of the index. */
 
-const WORLD = {
-  research: { c: 0, r: 0, name: 'Research', label: 'research' },
-  publications: { c: 1, r: 0, name: 'Publications', label: 'publications' },
-  'urban-morphogenesis': { c: 2, r: 0, name: 'Urban morphogenesis', label: 'city', page: 'projects/urban-morphogenesis.html', img: 'illum-dla.png' },
-  about: { c: 0, r: 1, name: 'The Scriptorium', label: 'about', img: 'flammarion-dark.png' },
-  projects: { c: 1, r: 1, name: 'Projects', label: 'projects' },
-  'nuclear-emulators': { c: 2, r: 1, name: 'Nuclear emulation', label: 'nuclear', page: 'projects/nuclear-emulators.html', img: 'illum-nuclear.png' },
-  contact: { c: 0, r: 2, name: 'Contact', label: 'contact' },
-  news: { c: 1, r: 2, name: 'News', label: 'news' },
-  'n-body': { c: 2, r: 2, name: 'N-body systems', label: 'orrery', page: 'projects/n-body.html', img: 'illum-nbody.png' },
-};
-const LINKS = [
-  ['research', 'publications'], ['research', 'about'], ['publications', 'projects'],
-  ['about', 'projects'], ['about', 'contact'], ['projects', 'news'], ['contact', 'news'],
-  ['projects', 'nuclear-emulators'], ['nuclear-emulators', 'urban-morphogenesis'],
-  ['nuclear-emulators', 'n-body'],
-];
+const DATA = JSON.parse(document.getElementById('site-data').textContent);
+const WORLD = DATA.world;
+const LINKS = DATA.links;
 const ROOM_IDS = Object.keys(WORLD);
 
 /** URL of a room: a section of the index, or a project page. */
@@ -68,9 +54,9 @@ const T = {
   rumour: (r) => `You hear a rumour: ${r}`,
   close: '[close]',
   helpTitle: 'Keys and commands',
-  help: `<h3>Keys</h3>
+  help: (nTabs) => `<h3>Keys</h3>
 <dl class="keys">
-  <div><dt>1&ndash;6</dt><dd>open a section</dd></div>
+  <div><dt>1&ndash;${nTabs}</dt><dd>open a section</dd></div>
   <div><dt>m</dt><dd>map of the place</dd></div>
   <div><dt>i &middot; ,</dt><dd>inventory &middot; pick up what lies here</dd></div>
   <div><dt>&gt;</dt><dd>descend: walk the site in first person</dd></div>
@@ -176,15 +162,6 @@ function tokenRGB(prop) {
   return [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 }
 
-/* ---- status-line counters, read from the page itself ------------------- */
-
-document.querySelectorAll('[data-stat]').forEach((el) => {
-  const list = document.querySelector(`[data-count="${el.dataset.stat}"]`);
-  // other pages keep the count written in the template
-  if (list) el.textContent = list.querySelectorAll(':scope > li').length;
-  el.parentElement.hidden = el.textContent === '0'; // a "Pubs:0" reads as a deficit, not a fact
-});
-
 /* ---- the 404 tombstone names the missing path ------------------------- */
 
 if ($('rip-path')) {
@@ -198,9 +175,9 @@ const cvHref = () => document.querySelector('.links a[href*="CV"]').href;
 
 const ITEMS = {
   about: { name: 'a scroll labelled CURRICULUM VITAE', verb: 'read', use: () => { location.href = cvHref(); } },
-  publications: { name: 'a scroll labelled BIBTEX', verb: 'copy', use: () => copyFrom(new URL('assets/bib/silva2026emulation.bib', SITE).href) },
-  contact: { name: 'a raven quill', verb: 'write', use: () => { location.href = 'mailto:pro.mikesilva@gmail.com'; } },
-  projects: { name: 'a lodestone that points to github', verb: 'follow', use: () => { location.href = 'https://github.com/mksv-pro'; } },
+  publications: { name: 'a scroll labelled BIBTEX', verb: 'copy', use: () => copyFrom(new URL(DATA.bib, SITE).href) },
+  contact: { name: 'a raven quill', verb: 'write', use: () => { location.href = `mailto:${DATA.email}`; } },
+  projects: { name: 'a lodestone that points to github', verb: 'follow', use: () => { location.href = DATA.github; } },
 };
 const LETTERS = 'abcdefgh';
 
@@ -308,6 +285,12 @@ function openWindow(hash, { userAction }) {
   heading.focus({ preventScroll: true });
 }
 
+// the tab bar wraps on narrow screens: anchors must clear its real height (scroll-padding-top)
+const tabBar = document.querySelector('.tabs');
+new ResizeObserver(() => {
+  root.style.setProperty('--tabs-h', `${tabBar.getBoundingClientRect().height}px`);
+}).observe(tabBar);
+
 root.classList.add('windowed');
 openWindow(location.hash, { userAction: false });
 // The browser's own jump to the fragment happened before the other windows closed:
@@ -352,7 +335,7 @@ function showDialog(titleHtml, bodyHtml) {
   dialog.showModal();
 }
 
-const showHelp = () => showDialog(T.helpTitle, T.help);
+const showHelp = () => showDialog(T.helpTitle, T.help(document.querySelectorAll('.tabs a').length));
 const showInventory = () => showDialog(T.invTitle, lootHtml() || `<p>${T.packEmpty}</p>`);
 
 function showEnd() {
@@ -363,7 +346,7 @@ function showEnd() {
   );
 }
 
-/** ASCII map of the 3x3 grid. Visited rooms are named, their neighbours shown as '?', the
+/** ASCII map of the grid. Visited rooms are named, their neighbours shown as '?', the
  *  rest left dark; '@' marks the reader. Named rooms are links. */
 function mapHtml(at) {
   const seen = visited();
@@ -383,8 +366,10 @@ function mapHtml(at) {
     return [' '.repeat(l), ' '.repeat(BOX - s.length - l)];
   };
   let out = '';
-  for (let r = 0; r < 3; r += 1) {
-    const ids = [0, 1, 2].map((c) => cell[`${c},${r}`]);
+  const cols = 1 + Math.max(...ROOM_IDS.map((id) => WORLD[id].c));
+  const rows = 1 + Math.max(...ROOM_IDS.map((id) => WORLD[id].r));
+  for (let r = 0; r < rows; r += 1) {
+    const ids = Array.from({ length: cols }, (_, c) => cell[`${c},${r}`]);
     const edge = ids.map((id) => (known.has(id) ? `+${'-'.repeat(BOX)}+` : ' '.repeat(BOX + 2))).join('   ');
     let mid = '';
     ids.forEach((id, c) => {
@@ -394,10 +379,10 @@ function mapHtml(at) {
         const [a, b] = pad(label);
         mid += `|${a}<a href="${esc(roomHref(id))}">${esc(label)}</a>${b}|`;
       }
-      if (c < 2) mid += linked(id, ids[c + 1]) ? '---' : '   ';
+      if (c < cols - 1) mid += linked(id, ids[c + 1]) ? '---' : '   ';
     });
     out += `${edge}\n${mid}\n${edge}\n`;
-    if (r < 2) {
+    if (r < rows - 1) {
       out += ids.map((id, c) => {
         const half = ' '.repeat(Math.floor((BOX + 2) / 2));
         return `${half}${linked(id, cell[`${c},${r + 1}`]) ? '|' : ' '}${half}`;
@@ -555,10 +540,10 @@ function run(line) {
       location.href = cvHref();
       return undefined;
     case 'mail': case 'email':
-      location.href = 'mailto:pro.mikesilva@gmail.com';
+      location.href = `mailto:${DATA.email}`;
       return undefined;
     case 'github': case 'code':
-      location.href = 'https://github.com/mksv-pro';
+      location.href = DATA.github;
       return undefined;
     case 'theme': {
       const want = { dark: 'dark', terminal: 'dark', light: 'light', folio: 'light' }[arg]

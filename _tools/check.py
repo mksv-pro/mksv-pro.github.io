@@ -59,7 +59,7 @@ def pages():
 
 def check_fresh():
     built = {p.relative_to(ROOT).as_posix(): p for p in pages()}
-    newest_src = max(p.stat().st_mtime for p in (ROOT / "_src").rglob("*.html"))
+    newest_src = max(p.stat().st_mtime for p in (ROOT / "_src").rglob("*") if p.is_file())
     stale = [r for r, p in built.items() if p.stat().st_mtime < newest_src]
     if stale:
         fail(f"pages older than _src/, run _tools/build.py: {', '.join(stale)}")

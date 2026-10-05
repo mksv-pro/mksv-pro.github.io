@@ -13,13 +13,11 @@
 
   <footer class="status" aria-label="Status line">
     <p class="st-left">
-      <span class="st-name">Mike Silva</span>
+      <span class="st-name">{{name}}</span>
       <button class="dlvl" id="descend" type="button" title="Descend: walk the site in first person (&gt;)">Dlvl:<b id="st-dlvl">MSc</b></button>
       <span>Align:<b id="st-align">stochastic</b></span>
-      <span>Quests:<b data-stat="quests">3</b></span>
-      <span hidden>Pubs:<b data-stat="pubs">1</b></span>
-      <span hidden>Talks:<b data-stat="talks">0</b></span>
-      <span hidden id="st-explored">Explored:<b>0/6</b></span>
+{{stats}}
+      <span hidden id="st-explored">Explored:<b>0/{{n_rooms}}</b></span>
     </p>
     <p class="st-right" aria-hidden="true">
       <span id="st-hour"></span>
@@ -35,4 +33,5 @@
             title="Single-key shortcuts (1-6, :, ?)">keys:<b>on</b></button>
   </footer>
 
+  <script type="application/json" id="site-data">{{site_json}}</script>
   <script src="{{root}}script.js?v={{v_js}}" data-dungeon="{{root}}assets/js/dungeon.js?v={{v_dungeon}}"></script>{{scripts}}

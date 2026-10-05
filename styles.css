@@ -4,9 +4,37 @@
    Palette contrast against --bg and --panel is >= 5:1 for every text token
    (checked by _tools/check.py; image colours in _tools/make_assets.py must match). */
 
+/* Self-hosted, no third-party requests. Plex and Unifraktur have a Reserved Font Name (OFL):
+   shipped whole, only re-encoded; EB Garamond is subset (latin, greek, punctuation, U+2766). */
 @font-face {
   font-family: "Departure Mono";
   src: url("assets/fonts/DepartureMono-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("assets/fonts/IBMPlexMono-Regular.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("assets/fonts/IBMPlexMono-Italic.woff2") format("woff2");
+  font-weight: 400; font-style: italic; font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("assets/fonts/IBMPlexMono-SemiBold.woff2") format("woff2");
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+@font-face {
+  /* italic only, as before: the folio's upright captions use this face too */
+  font-family: "EB Garamond";
+  src: url("assets/fonts/EBGaramond-Italic.woff2") format("woff2");
+  font-style: italic; font-display: swap;
+}
+@font-face {
+  font-family: "UnifrakturMaguntia";
+  src: url("assets/fonts/UnifrakturMaguntia-Regular.woff2") format("woff2");
   font-display: swap;
 }
 
@@ -57,7 +85,8 @@
 
 html {
   scroll-behavior: smooth;
-  scroll-padding-top: calc(var(--msg-h) + 4rem);
+  /* --tabs-h: the sticky tab bar's real height, kept by script.js (it wraps on narrow screens) */
+  scroll-padding-top: calc(var(--msg-h) + var(--tabs-h, 3rem) + 1rem);
   scroll-padding-bottom: calc(var(--status-h) + 1rem);
 }
 
@@ -526,6 +555,20 @@ dialog.dungeon canvas {
 .wizard .plate-img { filter: invert(1); }
 .wizard #st-dlvl, .wizard #st-align { color: var(--red); }
 
+/* ---- between pages: the frame stays, the pane changes (View Transitions; ignored where
+   unsupported). steps() keeps the terminal's jerky redraw. */
+
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+}
+.plate { view-transition-name: plate; }
+.msgline { view-transition-name: msgline; }
+.status { view-transition-name: status; }
+::view-transition-old(root), ::view-transition-new(root) {
+  animation-duration: .18s;
+  animation-timing-function: steps(3, end);
+}
+
 /* ---- one window at a time (JS only; without it the page is one long scroll) */
 
 .windowed main > section.is-off { display: none; }
@@ -617,6 +660,11 @@ dialog.dungeon canvas {
   .cap-arm { display: none; }
   .term { padding-top: 2rem; }
   .st-right #st-moon { display: none; }
+}
+
+/* touch screens have no number keys: without the "1:" prefixes the tabs take two rows, not three */
+@media (pointer: coarse) {
+  .tabs a .k { display: none; }
 }
 
 @media (max-width: 36rem) {

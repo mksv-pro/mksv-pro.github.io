@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Mike Silva: news</title>
+  <link href="https://mksv-pro.github.io/"/>
+  <link rel="self" href="https://mksv-pro.github.io/feed.xml"/>
+  <id>https://mksv-pro.github.io/</id>
+  <updated>2026-09-01T00:00:00Z</updated>
+  <author><name>Mike Silva</name></author>
+  <entry>
+    <title>Started three master&#x27;s programmes in parallel: Physics of Complex Systems (Paris-Saclay), Quantum Information (Sorbonne Université) and Economics &amp;amp; Finance (Paris Dauphine-PSL).</title>
+    <link href="https://mksv-pro.github.io/#news"/>
+    <id>https://mksv-pro.github.io/#news-2</id>
+    <updated>2026-09-01T00:00:00Z</updated>
+    <content type="html">Started three master&#x27;s programmes in parallel: Physics of Complex Systems (Paris-Saclay), Quantum Information (Sorbonne Université) and Economics &amp;amp; Finance (Paris Dauphine-PSL).</content>
+  </entry>
+  <entry>
+    <title>Finished the M1 internship at IJCLab and obtained the M1 in Fundamental Physics (Université Paris Cité) with honours (mention bien); the internship thesis was graded 18/20.</title>
+    <link href="https://mksv-pro.github.io/#news"/>
+    <id>https://mksv-pro.github.io/#news-1</id>
+    <updated>2026-07-01T00:00:00Z</updated>
+    <content type="html">Finished the M1 internship at IJCLab and obtained the M1 in Fundamental Physics (Université Paris Cité) with honours (&lt;i&gt;mention bien&lt;/i&gt;); the internship thesis was graded 18/20. The &lt;a href=&quot;https://github.com/mksv-pro/Mike-M1-Internship-IJCLab-2026/blob/main/docs/memoire_M1.pdf&quot;&gt;report&lt;/a&gt; and the &lt;a href=&quot;https://github.com/mksv-pro/Mike-M1-Internship-IJCLab-2026&quot;&gt;code&lt;/a&gt; are public.</content>
+  </entry>
+</feed>

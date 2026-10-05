@@ -20,6 +20,7 @@
   <meta property="og:image:alt" content="Mike Silva, over a one-bit dithering of Flammarion's 1888 wood engraving of a pilgrim at the edge of the sky.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" content="#12100c">
+  <link rel="alternate" type="application/atom+xml" title="Mike Silva: news" href="/feed.xml">
   <link rel="icon" href="/assets/img/monogram.svg" type="image/svg+xml">
 
   <script>
@@ -36,10 +37,8 @@
   </script>
 
   <link rel="preload" href="/assets/fonts/DepartureMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,600;1,400&family=EB+Garamond:ital@1&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/styles.css?v=01c86d3f">
+  <link rel="preload" href="/assets/fonts/IBMPlexMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/styles.css?v=26c0856e">
   <meta name="robots" content="noindex">
 </head>
 <body>
@@ -89,7 +88,7 @@
           <ul class="links" aria-label="Contact and CV">
             <li><a href="mailto:pro.mikesilva@gmail.com">email</a></li>
             <li><a href="https://github.com/mksv-pro">github</a></li>
-            <li><a href="/assets/Mike_Silva_CV.pdf?v=8d386de3">cv <span class="meta">(PDF)</span></a></li>
+            <li><a href="/assets/Mike_Silva_CV.pdf?v=57a3fd2b">cv <span class="meta">(PDF)</span></a></li>
           </ul>
         </div>
 
@@ -108,9 +107,10 @@
           <li><a href="/#research"><span class="k" aria-hidden="true">2:</span>research</a></li>
           <li><a href="/#projects"><span class="k" aria-hidden="true">3:</span>projects</a></li>
           <li><a href="/#publications"><span class="k" aria-hidden="true">4:</span>publications</a></li>
-          <li><a href="/#news"><span class="k" aria-hidden="true">5:</span>news</a></li>
-          <li><a href="/#contact"><span class="k" aria-hidden="true">6:</span>contact</a></li>
-          <!-- Add a tab here when #talks or #teaching is unhidden. -->
+          <li><a href="/#talks"><span class="k" aria-hidden="true">5:</span>talks</a></li>
+          <li><a href="/#teaching"><span class="k" aria-hidden="true">6:</span>teaching</a></li>
+          <li><a href="/#news"><span class="k" aria-hidden="true">7:</span>news</a></li>
+          <li><a href="/#contact"><span class="k" aria-hidden="true">8:</span>contact</a></li>
         </ul>
       </nav>
 
@@ -160,10 +160,9 @@
       <span class="st-name">Mike Silva</span>
       <button class="dlvl" id="descend" type="button" title="Descend: walk the site in first person (&gt;)">Dlvl:<b id="st-dlvl">MSc</b></button>
       <span>Align:<b id="st-align">stochastic</b></span>
-      <span>Quests:<b data-stat="quests">3</b></span>
-      <span hidden>Pubs:<b data-stat="pubs">1</b></span>
-      <span hidden>Talks:<b data-stat="talks">0</b></span>
-      <span hidden id="st-explored">Explored:<b>0/6</b></span>
+      <span>Quests:<b>3</b></span>
+      <span>Pubs:<b>1</b></span>
+      <span hidden id="st-explored">Explored:<b>0/11</b></span>
     </p>
     <p class="st-right" aria-hidden="true">
       <span id="st-hour"></span>
@@ -179,6 +178,7 @@
             title="Single-key shortcuts (1-6, :, ?)">keys:<b>on</b></button>
   </footer>
 
-  <script src="/script.js?v=e5168544" data-dungeon="/assets/js/dungeon.js?v=76f41b74"></script>
+  <script type="application/json" id="site-data">{"world":{"research":{"c":0,"r":0,"name":"Research","label":"research"},"publications":{"c":1,"r":0,"name":"Publications","label":"publications"},"urban-morphogenesis":{"c":2,"r":0,"name":"Urban morphogenesis","label":"city","exit":"urban morphogenesis","page":"projects/urban-morphogenesis.html","img":"illum-dla.png"},"about":{"c":0,"r":1,"name":"The Scriptorium","label":"about","img":"flammarion-dark.png"},"projects":{"c":1,"r":1,"name":"Projects","label":"projects"},"nuclear-emulators":{"c":2,"r":1,"name":"Nuclear emulation","label":"nuclear","exit":"nuclear emulation","page":"projects/nuclear-emulators.html","img":"illum-nuclear.png"},"contact":{"c":0,"r":2,"name":"Contact","label":"contact"},"news":{"c":1,"r":2,"name":"News","label":"news"},"n-body":{"c":2,"r":2,"name":"N-body systems","label":"orrery","exit":"N-body systems","page":"projects/n-body.html","img":"illum-nbody.png"},"talks":{"c":0,"r":3,"name":"Talks","label":"talks"},"teaching":{"c":1,"r":3,"name":"Teaching","label":"teaching"}},"links":[["research","publications"],["research","about"],["publications","projects"],["about","projects"],["about","contact"],["projects","news"],["contact","news"],["projects","nuclear-emulators"],["nuclear-emulators","urban-morphogenesis"],["nuclear-emulators","n-body"],["contact","talks"],["news","teaching"],["talks","teaching"]],"email":"pro.mikesilva@gmail.com","github":"https://github.com/mksv-pro","bib":"assets/bib/silva2026emulation.bib"}</script>
+  <script src="/script.js?v=7e10d6d8" data-dungeon="/assets/js/dungeon.js?v=76f41b74"></script>
 </body>
 </html>
