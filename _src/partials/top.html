@@ -1,0 +1,70 @@
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <p class="msgline">
+    <span class="msg-text">{{msg}}</span>
+    <a class="more" href="{{hash}}#news">--More--</a>
+  </p>
+
+  <div class="shell">
+    <figure class="plate">
+      <div class="plate-img" role="img"
+           aria-label="Wood engraving: a pilgrim kneels at the edge of the world and pushes his head through the vault of the sky to see the machinery beyond."></div>
+      <button class="armillary" id="armillary" type="button" aria-pressed="false"
+              title="fig. 1: the sky over Paris, now. Click to stop or start it turning.">
+        <canvas width="96" height="96"></canvas>
+        <span class="sr-only">Armillary sphere showing the sky over Paris now: stop or start its rotation</span>
+      </button>
+      <figcaption class="plate-caption">
+        <span class="cap-dark">fig. 0 &middot; Flammarion, <i>L'atmosph&egrave;re</i>, 1888<span class="cap-arm"> &middot; fig. 1 &middot; the sky over Paris, now</span></span>
+        <span class="cap-light">This wood engraving from Camille Flammarion's <i>L'atmosph&egrave;re</i> (1888) shows a
+          pilgrim who has walked to the edge of the world and put his head through the vault of the
+          sky, to see the wheels that turn it.<span class="cap-arm"> The armillary sphere above it shows the
+          sky over Paris as it stands now, sun and moon in place.</span></span>
+      </figcaption>
+    </figure>
+
+    <div class="term">
+      <header class="host">
+        <div class="host-main">
+          <div class="id">
+            <svg class="monogram" viewBox="0 0 23 13" shape-rendering="crispEdges" aria-hidden="true">
+              <g fill="currentColor"><rect x="3" y="1" width="3" height="1"/><rect x="9" y="1" width="3" height="1"/><rect x="17" y="1" width="4" height="1"/><rect x="2" y="2" width="5" height="1"/><rect x="8" y="2" width="5" height="1"/><rect x="16" y="2" width="2" height="1"/><rect x="20" y="2" width="2" height="1"/><rect x="1" y="3" width="2" height="1"/><rect x="5" y="3" width="4" height="1"/><rect x="11" y="3" width="2" height="1"/><rect x="15" y="3" width="2" height="1"/><rect x="21" y="3" width="1" height="1"/><rect x="1" y="4" width="2" height="1"/><rect x="6" y="4" width="2" height="1"/><rect x="11" y="4" width="2" height="1"/><rect x="15" y="4" width="2" height="1"/><rect x="1" y="5" width="2" height="1"/><rect x="6" y="5" width="2" height="1"/><rect x="11" y="5" width="2" height="1"/><rect x="16" y="5" width="3" height="1"/><rect x="1" y="6" width="2" height="1"/><rect x="6" y="6" width="2" height="1"/><rect x="11" y="6" width="2" height="1"/><rect x="17" y="6" width="4" height="1"/><rect x="1" y="7" width="2" height="1"/><rect x="6" y="7" width="2" height="1"/><rect x="11" y="7" width="2" height="1"/><rect x="19" y="7" width="3" height="1"/><rect x="1" y="8" width="2" height="1"/><rect x="6" y="8" width="2" height="1"/><rect x="11" y="8" width="2" height="1"/><rect x="20" y="8" width="2" height="1"/><rect x="2" y="9" width="2" height="1"/><rect x="6" y="9" width="2" height="1"/><rect x="11" y="9" width="2" height="1"/><rect x="15" y="9" width="1" height="1"/><rect x="20" y="9" width="2" height="1"/><rect x="3" y="10" width="1" height="1"/><rect x="6" y="10" width="2" height="1"/><rect x="10" y="10" width="3" height="1"/><rect x="15" y="10" width="2" height="1"/><rect x="19" y="10" width="2" height="1"/><rect x="6" y="11" width="1" height="1"/><rect x="10" y="11" width="1" height="1"/><rect x="16" y="11" width="4" height="1"/></g>
+            </svg>
+            <div>
+              <{{name_tag}} class="name">Mike Silva</{{name_tag}}>
+              <p class="role">Graduate student in physics<span class="role-sep"> &middot; </span><span class="role-place">Paris</span></p>
+            </div>
+          </div>
+
+          <p class="statement">
+            I work where models meet computation: complex systems, stochastic processes and
+            numerical simulation, from nuclear reactions to economies of interacting agents.
+          </p>
+
+          <ul class="links" aria-label="Contact and CV">
+            <li><a href="mailto:pro.mikesilva@gmail.com">email</a></li>
+            <li><a href="https://github.com/mksv-pro">github</a></li>
+            <li><a href="{{root}}assets/Mike_Silva_CV.pdf?v={{v_cv}}">cv <span class="meta">(PDF)</span></a></li>
+          </ul>
+        </div>
+
+        <div class="almanac" aria-hidden="true">
+          <div class="clock" id="clock">--:--</div>
+          <p class="alm-date" id="alm-date">&nbsp;</p>
+          <p class="alm-hour" id="alm-hour">&nbsp;</p>
+          <p class="alm-moon" id="alm-moon">&nbsp;</p>
+        </div>
+      </header>
+
+      <nav class="tabs" aria-label="Sections">
+        <span class="tabs-session" aria-hidden="true">[mike]</span>
+        <ul>
+          <li><a href="{{hash}}#about"{{cur:about}}><span class="k" aria-hidden="true">1:</span>about</a></li>
+          <li><a href="{{hash}}#research"{{cur:research}}><span class="k" aria-hidden="true">2:</span>research</a></li>
+          <li><a href="{{hash}}#projects"{{cur:projects}}><span class="k" aria-hidden="true">3:</span>projects</a></li>
+          <li><a href="{{hash}}#publications"{{cur:publications}}><span class="k" aria-hidden="true">4:</span>publications</a></li>
+          <li><a href="{{hash}}#news"{{cur:news}}><span class="k" aria-hidden="true">5:</span>news</a></li>
+          <li><a href="{{hash}}#contact"{{cur:contact}}><span class="k" aria-hidden="true">6:</span>contact</a></li>
+          <!-- Add a tab here when #talks or #teaching is unhidden. -->
+        </ul>
+      </nav>

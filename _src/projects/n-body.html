@@ -1,0 +1,69 @@
+<!--page
+path: projects/n-body.html
+tab: projects
+title: Self-gravitating N-body systems · Mike Silva
+description: Direct-integration simulation of self-gravitating bodies, with the figure-eight three-body orbit and a cold collapse running live in the browser.
+msg: You step through the third plate. Three lights chase each other along a figure eight.
+scripts: assets/js/nbody.js
+-->
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+{{> head}}
+</head>
+<body>
+{{> top}}
+
+      <main id="main" tabindex="-1">
+        <section id="n-body" class="pane project-page" aria-labelledby="page-h"
+                 data-look="An orrery with no fixed centre. Every body pulls on every other.">
+          <span class="pane-tab" aria-hidden="true">workbench/orrery</span>
+          <h1 id="page-h" class="room"><span class="tilde" aria-hidden="true">~ </span>Self-gravitating N-body systems<span class="tilde" aria-hidden="true"> ~</span></h1>
+
+          <p class="role-line">Research project &middot; Sorbonne Universit&eacute; &middot; February 2024 &middot;
+            supervised by Lionel Foret</p>
+
+          <p>
+            Direct-integration simulation of gravitational N-body dynamics: every pair interaction
+            is computed, with no tree or mesh approximation, to follow the collective effects that
+            long-range forces produce.
+          </p>
+
+          <h2 class="sub">Two systems, live</h2>
+          <p>
+            Both run on a kick&ndash;drift&ndash;kick leapfrog, a symplectic integrator, in units
+            where <i>G</i> = 1. The <b>figure eight</b> is the periodic three-body orbit of equal masses
+            found by Moore (1993) and proved to exist by Chenciner and Montgomery (2000); its initial
+            conditions are Sim&oacute;'s. The <b>cold collapse</b> starts 200 bodies at rest, uniform in
+            a sphere (shown in projection), with a softened force; the cloud falls in, rebounds and
+            settles into a bound, roughly stationary state, the violent relaxation of Lynden-Bell
+            (1967). The readout is the relative drift of the total energy, the integrator's own
+            error bar.
+          </p>
+
+          <figure class="demo" data-demo="nbody"
+                  data-run="[run]" data-pause="[pause]">
+            <canvas width="241" height="241" role="img"
+                    aria-label="Live N-body simulation: three bodies tracing a figure-eight orbit, or a collapsing cloud of 200 bodies."></canvas>
+            <figcaption>
+              <span class="demo-ctl">
+                <button type="button" data-act="run">[run]</button>
+                <button type="button" data-act="preset" data-preset="eight" aria-pressed="true">[figure eight]</button>
+                <button type="button" data-act="preset" data-preset="collapse" aria-pressed="false">[cold collapse]</button>
+              </span>
+              <output class="demo-read">t = 0</output>
+            </figcaption>
+          </figure>
+          <noscript><p class="empty">The live simulation needs JavaScript.</p></noscript>
+
+          <div class="exits">
+            <span class="exits-label">Obvious exits:</span>
+            <ul>
+              <li data-dir="n"><span class="dir" aria-hidden="true">north</span> <a href="nuclear-emulators.html">nuclear emulation</a></li>
+            </ul>
+          </div>
+        </section>
+      </main>
+{{> bottom}}
+</body>
+</html>

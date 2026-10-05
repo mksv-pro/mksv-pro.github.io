@@ -1,0 +1,38 @@
+    </div>
+  </div>
+
+  <form class="cmdline" id="cmdline" hidden autocomplete="off">
+    <p class="cmd-out" id="cmd-out" aria-live="polite"></p>
+    <p class="cmd-row">
+      <label for="cmd-in">:</label>
+      <input id="cmd-in" name="cmd" type="text" spellcheck="false" autocapitalize="off"
+             enterkeyhint="go" aria-describedby="cmd-hint">
+      <span class="cmd-hint" id="cmd-hint">help &middot; Esc to close</span>
+    </p>
+  </form>
+
+  <footer class="status" aria-label="Status line">
+    <p class="st-left">
+      <span class="st-name">Mike Silva</span>
+      <button class="dlvl" id="descend" type="button" title="Descend: walk the site in first person (&gt;)">Dlvl:<b id="st-dlvl">MSc</b></button>
+      <span>Align:<b id="st-align">stochastic</b></span>
+      <span>Quests:<b data-stat="quests">3</b></span>
+      <span hidden>Pubs:<b data-stat="pubs">1</b></span>
+      <span hidden>Talks:<b data-stat="talks">0</b></span>
+      <span hidden id="st-explored">Explored:<b>0/6</b></span>
+    </p>
+    <p class="st-right" aria-hidden="true">
+      <span id="st-hour"></span>
+      <span id="st-moon"></span>
+    </p>
+    <button class="cmd-toggle" id="cmd-toggle" type="button" aria-controls="cmdline" aria-expanded="false"
+            title="Command line (:)">[:]<span class="sr-only">Command line</span></button>
+    <button class="theme-toggle" id="theme-toggle" type="button" aria-pressed="false">
+      <span class="when-dark">[folio]</span><span class="when-light">[terminal]</span>
+      <span class="sr-only">Light theme</span>
+    </button>
+    <button class="keys-toggle" id="keys-toggle" type="button" aria-pressed="true"
+            title="Single-key shortcuts (1-6, :, ?)">keys:<b>on</b></button>
+  </footer>
+
+  <script src="{{root}}script.js?v={{v_js}}" data-dungeon="{{root}}assets/js/dungeon.js?v={{v_dungeon}}"></script>{{scripts}}

@@ -1,0 +1,67 @@
+<!--page
+path: projects/urban-morphogenesis.html
+tab: projects
+title: Urban morphogenesis · Mike Silva
+description: An agent-based city grown from Schelling segregation and diffusion-limited aggregation, with a live DLA cluster and its fractal dimension measured in the browser.
+msg: You step through the second plate. Something is growing, one random walker at a time.
+scripts: assets/js/dla.js
+-->
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+{{> head}}
+</head>
+<body>
+{{> top}}
+
+      <main id="main" tabindex="-1">
+        <section id="urban-morphogenesis" class="pane project-page" aria-labelledby="page-h"
+                 data-look="A sandbox of a city. Walkers drift in from the edge and stop where they touch.">
+          <span class="pane-tab" aria-hidden="true">workbench/city</span>
+          <h1 id="page-h" class="room"><span class="tilde" aria-hidden="true">~ </span>Urban morphogenesis<span class="tilde" aria-hidden="true"> ~</span></h1>
+
+          <p class="role-line">Research project &middot; Universit&eacute; Paris Cit&eacute; &middot; January 2026 &middot;
+            supervised by Raphael Raynaud</p>
+
+          <p>
+            An agent-based model that couples Schelling's segregation dynamics with
+            diffusion-limited aggregation (DLA), and studies the morphologies that emerge and their
+            fractal dimension. An extension with reinforcement learning is under way.
+          </p>
+
+          <h2 class="sub">The aggregation ingredient, live</h2>
+          <p>
+            Below, DLA alone (Witten and Sander, 1981). Each walker starts on a circle just outside
+            the cluster, steps at random on a square lattice, and freezes at its first contact with
+            the cluster; one that strays too far is released again. The fractal dimension
+            <i>D</i> is read from the mass&ndash;radius law <i>N</i>(<i>r</i>) &prop; <i>r</i><sup><i>D</i></sup>,
+            fitted over the inner part of the cluster; in two dimensions it should settle near
+            1.71.
+          </p>
+
+          <figure class="demo" data-demo="dla"
+                  data-run="[run]" data-pause="[pause]"
+                  data-done="cluster complete">
+            <canvas width="241" height="241" role="img"
+                    aria-label="Live diffusion-limited aggregation cluster, growing from a single seed at the centre."></canvas>
+            <figcaption>
+              <span class="demo-ctl">
+                <button type="button" data-act="run">[run]</button>
+                <button type="button" data-act="reset">[reset]</button>
+              </span>
+              <output class="demo-read">N = 1</output>
+            </figcaption>
+          </figure>
+          <noscript><p class="empty">The live cluster needs JavaScript.</p></noscript>
+
+          <div class="exits">
+            <span class="exits-label">Obvious exits:</span>
+            <ul>
+              <li data-dir="s"><span class="dir" aria-hidden="true">south</span> <a href="nuclear-emulators.html">nuclear emulation</a></li>
+            </ul>
+          </div>
+        </section>
+      </main>
+{{> bottom}}
+</body>
+</html>

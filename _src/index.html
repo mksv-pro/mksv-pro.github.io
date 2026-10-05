@@ -1,0 +1,319 @@
+<!--page
+path: index.html
+tab: none
+title: Mike Silva
+description: Mike Silva, graduate student in physics in Paris: complex systems, stochastic processes and numerical simulation, from nuclear reactions to economies of interacting agents.
+msg: A raven arrives: the IJCLab internship report and its code are out.
+-->
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+{{> head}}
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Mike Silva",
+    "url": "https://mksv-pro.github.io/",
+    "image": "https://mksv-pro.github.io/assets/img/og.png",
+    "email": "mailto:pro.mikesilva@gmail.com",
+    "jobTitle": "Graduate student in physics",
+    "homeLocation": { "@type": "Place", "name": "Paris, France" },
+    "affiliation": [
+      { "@type": "CollegeOrUniversity", "name": "Université Paris-Saclay" },
+      { "@type": "CollegeOrUniversity", "name": "Sorbonne Université" },
+      { "@type": "CollegeOrUniversity", "name": "Université Paris Dauphine-PSL" }
+    ],
+    "alumniOf": [
+      { "@type": "CollegeOrUniversity", "name": "Université Paris Cité" },
+      { "@type": "CollegeOrUniversity", "name": "Sorbonne Université" },
+      { "@type": "CollegeOrUniversity", "name": "Université Paris 1 Panthéon-Sorbonne" }
+    ],
+    "knowsAbout": ["Computational physics", "Nuclear reactions", "Reduced-order models", "Complex systems", "Stochastic processes", "Mean-field games"],
+    "knowsLanguage": ["en", "fr"],
+    "sameAs": ["https://github.com/mksv-pro"]
+  }
+  </script>
+</head>
+<body>
+{{> top}}
+
+      <main id="main" tabindex="-1">
+
+        <!-- ABOUT ---------------------------------------------------------->
+        <section id="about" class="pane" aria-labelledby="about-h"
+                 data-look="Lamplight pools on a desk buried in solvers and half-finished notebooks.">
+          <span class="pane-tab" aria-hidden="true">zsh</span>
+          <h2 id="about-h" class="room"><span class="tilde" aria-hidden="true">~ </span>The Scriptorium<span class="tilde" aria-hidden="true"> ~</span></h2>
+
+          <p class="lede">
+            Lamplight pools on a desk buried in solvers and half-finished notebooks.
+          </p>
+
+          <dl class="sheet">
+            <div><dt>Studying</dt><dd>
+              <span>MSc Physics of Complex Systems, Paris-Saclay</span>
+              <span>MSc Quantum Information, Sorbonne Universit&eacute;</span>
+              <span>MSc Economics &amp; Finance, Paris Dauphine-PSL</span>
+            </dd></div>
+            <div><dt>Drawn to</dt><dd>
+              <ul class="flow">
+                <li>computational physics</li>
+                <li>statistical physics</li>
+                <li>complex systems</li>
+                <li>stochastic processes</li>
+                <li>machine learning</li>
+                <li>quantum computing</li>
+                <li>agent-based models</li>
+                <li>mean-field games</li>
+                <li>quantitative finance</li>
+              </ul>
+            </dd></div>
+            <div><dt>Tongues</dt><dd>English &middot; French</dd></div>
+          </dl>
+
+          <div class="exits">
+            <span class="exits-label">Obvious exits:</span>
+            <ul>
+              <li data-dir="n"><span class="dir" aria-hidden="true">north</span> <a href="#research">research</a></li>
+              <li data-dir="e"><span class="dir" aria-hidden="true">east</span> <a href="#projects">projects</a></li>
+              <li data-dir="s"><span class="dir" aria-hidden="true">south</span> <a href="#contact">contact</a></li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- RESEARCH ------------------------------------------------------->
+        <section id="research" class="pane" aria-labelledby="research-h"
+                 data-look="A quest log, its pages dog-eared at three laboratories.">
+          <span class="pane-tab" aria-hidden="true">quest-log</span>
+          <h2 id="research-h" class="room"><span class="tilde" aria-hidden="true">~ </span>Research<span class="tilde" aria-hidden="true"> ~</span></h2>
+
+          <ol class="log" data-count="quests">
+            <li class="entry">
+              <div class="entry-head">
+                <h3>IJCLab</h3>
+                <span class="date"><time datetime="2026-06">Jun</time>&ndash;<time datetime="2026-07">Jul 2026</time></span>
+              </div>
+              <p class="role-line">Research intern &middot; with Chlo&eacute; Hebborn &amp; Patrick McGlynn</p>
+              <p>
+                Scattering solvers (R-matrix, DBMM) and reduced-basis and machine-learning emulators
+                for nuclear reactions, benchmarked for large parameter-space exploration.
+                <a href="projects/nuclear-emulators.html">The project &rarr;</a>
+              </p>
+            </li>
+
+            <li class="entry">
+              <div class="entry-head">
+                <h3>CEREMADE</h3>
+                <span class="date"><time datetime="2024-09">Sep 2024</time>&ndash;<time datetime="2025-01">Jan 2025</time></span>
+              </div>
+              <p class="role-line">Visiting research student &middot; with Pierre Cardaliaguet</p>
+              <p>
+                Mean-field games applied to economics: how monetary shocks propagate in a
+                general-equilibrium economy with sticky prices, through coupled
+                Hamilton&ndash;Jacobi&ndash;Bellman and Fokker&ndash;Planck equations.
+              </p>
+            </li>
+
+            <li class="entry">
+              <div class="entry-head">
+                <h3>Sciences Po Paris</h3>
+                <span class="date"><time datetime="2023-06">Jun</time>&ndash;<time datetime="2023-08">Aug 2023</time></span>
+              </div>
+              <p class="role-line">Research assistant &middot; with Julia Cag&eacute;</p>
+              <p>
+                Media ownership and content bias: built and analysed a large dataset of French
+                television broadcasts, with econometric models of ownership effects.
+              </p>
+            </li>
+          </ol>
+
+          <div class="exits">
+            <span class="exits-label">Obvious exits:</span>
+            <ul>
+              <li data-dir="e"><span class="dir" aria-hidden="true">east</span> <a href="#publications">publications</a></li>
+              <li data-dir="s"><span class="dir" aria-hidden="true">south</span> <a href="#about">about</a></li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- PROJECTS ------------------------------------------------------->
+        <section id="projects" class="pane" aria-labelledby="projects-h"
+                 data-look="A workbench. Three illuminated plates lean against the wall, each a door.">
+          <span class="pane-tab" aria-hidden="true">workbench</span>
+          <h2 id="projects-h" class="room"><span class="tilde" aria-hidden="true">~ </span>Projects<span class="tilde" aria-hidden="true"> ~</span></h2>
+
+          <article id="nuclear-emulators" class="project">
+            <a class="illum" href="projects/nuclear-emulators.html">
+              <img src="{{root}}assets/img/illum-nuclear.png" width="80" height="80"
+                   alt="Project page: illumination of a plane wave scattering off a nucleus">
+            </a>
+            <div class="project-body">
+              <div class="entry-head">
+                <h3><a href="projects/nuclear-emulators.html">Computational emulation of nuclear dynamics</a></h3>
+                <span class="date"><time datetime="2026">2026</time></span>
+              </div>
+              <p class="role-line">M1 internship &middot; IJCLab</p>
+              <p>
+                A coupled-channel scattering solver and two emulators (RBM, LROM) that reproduce it
+                within 0.5&nbsp;% at a fraction of its cost, to make uncertainty quantification on
+                optical potentials affordable.
+              </p>
+              <ul class="actions">
+                <li><a href="projects/nuclear-emulators.html">[page]</a></li>
+                <li><a href="https://github.com/mksv-pro/Mike-M1-Internship-IJCLab-2026/blob/main/docs/memoire_M1.pdf">[report <span class="meta">PDF</span>]</a></li>
+                <li><a href="https://github.com/mksv-pro/Mike-M1-Internship-IJCLab-2026">[code]</a></li>
+              </ul>
+            </div>
+          </article>
+
+          <article id="urban-morphogenesis" class="project">
+            <a class="illum" href="projects/urban-morphogenesis.html">
+              <img src="{{root}}assets/img/illum-dla.png" width="80" height="80"
+                   alt="Project page: illumination of a diffusion-limited aggregation cluster in gold on green">
+            </a>
+            <div class="project-body">
+              <div class="entry-head">
+                <h3><a href="projects/urban-morphogenesis.html">Urban morphogenesis</a></h3>
+                <span class="date"><time datetime="2026-01">Jan 2026</time></span>
+              </div>
+              <p class="role-line">With Raphael Raynaud &middot; Universit&eacute; Paris Cit&eacute;</p>
+              <p>
+                An agent-based city grown from Schelling segregation and diffusion-limited
+                aggregation, and the fractal dimension of what it builds.
+              </p>
+              <ul class="actions">
+                <li><a href="projects/urban-morphogenesis.html">[page &amp; live DLA]</a></li>
+              </ul>
+            </div>
+          </article>
+
+          <article id="n-body" class="project">
+            <a class="illum" href="projects/n-body.html">
+              <img src="{{root}}assets/img/illum-nbody.png" width="80" height="80"
+                   alt="Project page: illumination of three bodies on the figure-eight orbit among stars">
+            </a>
+            <div class="project-body">
+              <div class="entry-head">
+                <h3><a href="projects/n-body.html">Self-gravitating N-body systems</a></h3>
+                <span class="date"><time datetime="2024-02">Feb 2024</time></span>
+              </div>
+              <p class="role-line">With Lionel Foret &middot; Sorbonne Universit&eacute;</p>
+              <p>
+                Direct-integration simulation of gravitating bodies and of the collective behaviour
+                that long-range forces produce.
+              </p>
+              <ul class="actions">
+                <li><a href="projects/n-body.html">[page &amp; live orbits]</a></li>
+              </ul>
+            </div>
+          </article>
+
+          <div class="exits">
+            <span class="exits-label">Obvious exits:</span>
+            <ul>
+              <li data-dir="n"><span class="dir" aria-hidden="true">north</span> <a href="#publications">publications</a></li>
+              <li data-dir="s"><span class="dir" aria-hidden="true">south</span> <a href="#news">news</a></li>
+              <li data-dir="e"><span class="dir" aria-hidden="true">east</span> <a href="projects/nuclear-emulators.html">nuclear emulation</a></li>
+              <li data-dir="w"><span class="dir" aria-hidden="true">west</span> <a href="#about">about</a></li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- PUBLICATIONS --------------------------------------------------->
+        <section id="publications" class="pane" aria-labelledby="pub-h"
+                 data-look="Shelves, mostly bare. One bound report waits for company.">
+          <span class="pane-tab" aria-hidden="true">bibliography</span>
+          <h2 id="pub-h" class="room"><span class="tilde" aria-hidden="true">~ </span>Publications &amp; reports<span class="tilde" aria-hidden="true"> ~</span></h2>
+
+          <!-- One <li class="pub"> per work, newest first. The [bib] link points at a .bib file
+               under assets/bib/; with JS it copies the entry, without it opens the file. -->
+          <ol class="pubs" data-count="pubs">
+            <li class="pub">
+              <p class="pub-title"><a href="projects/nuclear-emulators.html">Computational Emulation of Nuclear Dynamics</a></p>
+              <p class="pub-authors"><b>M. Silva</b> (supervised by C. Hebborn and P. McGlynn)</p>
+              <p class="pub-venue">M1 research internship report, IJCLab &amp; Universit&eacute; Paris Cit&eacute; (2026)</p>
+              <ul class="actions">
+                <li><a href="https://github.com/mksv-pro/Mike-M1-Internship-IJCLab-2026/blob/main/docs/memoire_M1.pdf">[pdf]</a></li>
+                <li><a href="https://github.com/mksv-pro/Mike-M1-Internship-IJCLab-2026">[code]</a></li>
+                <li><a class="copy-bib" href="{{root}}assets/bib/silva2026emulation.bib" type="application/x-bibtex">[bib]</a></li>
+              </ul>
+            </li>
+          </ol>
+
+          <div class="exits">
+            <span class="exits-label">Obvious exits:</span>
+            <ul>
+              <li data-dir="s"><span class="dir" aria-hidden="true">south</span> <a href="#projects">projects</a></li>
+              <li data-dir="w"><span class="dir" aria-hidden="true">west</span> <a href="#research">research</a></li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- TALKS: remove `hidden` and add a tab once there is an entry. -->
+        <section id="talks" class="pane" aria-labelledby="talks-h" hidden>
+          <span class="pane-tab" aria-hidden="true">lectern</span>
+          <h2 id="talks-h" class="room"><span class="tilde" aria-hidden="true">~ </span>Talks &amp; posters<span class="tilde" aria-hidden="true"> ~</span></h2>
+          <ol class="log" data-count="talks">
+            <!-- <li class="entry"><div class="entry-head"><h3>Talk title</h3><span class="date">Mon YYYY</span></div>
+                 <p class="role-line">Event, City</p><ul class="actions"><li><a href="slides.pdf">[slides]</a></li></ul></li> -->
+          </ol>
+        </section>
+
+        <!-- TEACHING: remove `hidden` and add a tab once there is an entry. -->
+        <section id="teaching" class="pane" aria-labelledby="teaching-h" hidden>
+          <span class="pane-tab" aria-hidden="true">schoolroom</span>
+          <h2 id="teaching-h" class="room"><span class="tilde" aria-hidden="true">~ </span>Teaching<span class="tilde" aria-hidden="true"> ~</span></h2>
+          <ol class="log">
+            <!-- <li class="entry"><div class="entry-head"><h3>Course name (TD)</h3><span class="date">YYYY&ndash;YY</span></div>
+                 <p class="role-line">Level, University</p></li> -->
+          </ol>
+        </section>
+
+        <!-- NEWS ----------------------------------------------------------->
+        <section id="news" class="pane" aria-labelledby="news-h"
+                 data-look="A rookery. The ravens bring dated scraps of news.">
+          <span class="pane-tab" aria-hidden="true">ravens</span>
+          <h2 id="news-h" class="room"><span class="tilde" aria-hidden="true">~ </span>News<span class="tilde" aria-hidden="true"> ~</span></h2>
+          <ol class="news">
+            <li><time datetime="2026-07">Jul 2026</time> <span>Finished the M1 internship at IJCLab. The <a href="https://github.com/mksv-pro/Mike-M1-Internship-IJCLab-2026/blob/main/docs/memoire_M1.pdf">report</a> and the <a href="https://github.com/mksv-pro/Mike-M1-Internship-IJCLab-2026">code</a> are public.</span></li>
+          </ol>
+
+          <div class="exits">
+            <span class="exits-label">Obvious exits:</span>
+            <ul>
+              <li data-dir="n"><span class="dir" aria-hidden="true">north</span> <a href="#projects">projects</a></li>
+              <li data-dir="w"><span class="dir" aria-hidden="true">west</span> <a href="#contact">contact</a></li>
+            </ul>
+          </div>
+        </section>
+
+        <!-- CONTACT -------------------------------------------------------->
+        <section id="contact" class="pane" aria-labelledby="contact-h"
+                 data-look="A postbox, a quill, a bowl of sealing wax.">
+          <span class="pane-tab" aria-hidden="true">postbox</span>
+          <h2 id="contact-h" class="room"><span class="tilde" aria-hidden="true">~ </span>Contact<span class="tilde" aria-hidden="true"> ~</span></h2>
+          <dl class="kv">
+            <div><dt>email</dt><dd><a href="mailto:pro.mikesilva@gmail.com">pro.mikesilva@gmail.com</a></dd></div>
+            <div><dt>code</dt><dd><a href="https://github.com/mksv-pro">github.com/mksv-pro</a></dd></div>
+            <div><dt>based</dt><dd>Paris, France</dd></div>
+          </dl>
+          <p class="colophon">
+            Set in Departure Mono and IBM Plex Mono. Plate: Flammarion engraving (1888), public
+            domain, Atkinson-dithered to one bit. No trackers. Press <kbd>?</kbd> for the keys,
+            <kbd>:</kbd> for a command line.
+          </p>
+
+          <div class="exits">
+            <span class="exits-label">Obvious exits:</span>
+            <ul>
+              <li data-dir="n"><span class="dir" aria-hidden="true">north</span> <a href="#about">about</a></li>
+              <li data-dir="e"><span class="dir" aria-hidden="true">east</span> <a href="#news">news</a></li>
+            </ul>
+          </div>
+        </section>
+      </main>
+{{> bottom}}
+</body>
+</html>
