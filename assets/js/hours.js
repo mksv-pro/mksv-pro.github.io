@@ -1545,7 +1545,7 @@ nNnnnn..
       butterflies: Array.from({ length: 3 }, (_, k) => ({ x: M + rng() * Math.min(W, Ws), y: yg + 6 + rng() * (H - yg - 12), ph: rng() * 6, c: [I.FL_WHITE, I.FL_YEL, I.FL_BLUE][k] })),
       birds: null, dragon: null, nextDragon: null,
       // the countryside (see draw and step)
-      watch, mill, chimneys, horse, deer, owl, month, hamlet: { doors, eaves, spire, x1: hamlet.x1 }, fireworks: [], notes: [],
+      watch, mill, chimneys, horse, deer, owl, month, hamlet: { doors, eaves, spire, x0: hamlet.x0, x1: hamlet.x1 }, fireworks: [], notes: [],
       pathX, pathW, top, walker: null, zzz: [], fish: null,
       angler: (() => { const x = M + Math.round(0.135 * Ws); return { x, y: yg + 3 - SPRITES.angler.h, wy: riverBot(x + 6) - 1 }; })(),
       bonfires: [[mill.x + 16, Math.round(hill[clamp(mill.x + 16, 0, WE - 1)]) + 1, L.MID], [hamlet.x1 + 7, riverTop(hamlet.x1 + 7) - 3, L.MID],
@@ -2518,6 +2518,8 @@ f11111f2.
     return q ? new Date(d.getFullYear(), Number(q[1]) - 1, Number(q[2]), d.getHours(), d.getMinutes()) : d;
   }
   /** The festival kept on day d, if any: [name, its line for the message bar]. */
+  /** Market days in the hamlet: Wednesday, Friday, Saturday and Sunday. */
+  const marketDay = (d) => [0, 3, 5, 6].includes(d.getDay());
   function festival(d) {
     const m = d.getMonth() + 1; const day = d.getDate(); const md = m * 100 + day;
     if (md >= 1030 && md <= 1101) return ['samhain', 'All Hallows: the hamlet has carved its pumpkins.'];
@@ -2705,6 +2707,107 @@ f11111f2.
     if (scene.flash > 0) for (let i = 0; i < buf.length; i += 1) tint(i, 236, 240, 255, 0.28 * scene.flash);
   }
 
+  /* ---- the village, close up: the camera eases in on the hamlet (an integer zoom Z once there,
+     the background's pixels Z times bigger), and the market is drawn again over it at the canvas's
+     own pixel size: stalls, vendors and villagers with faces, hats and baskets. ---- */
+  let zoom = null; // { on, t0, done, vx, vy, Z }
+  const ZOOM_S = 0.7;
+  const backBtn = document.createElement('button');
+  backBtn.type = 'button'; backBtn.className = 'village-back'; backBtn.textContent = '[step back · Esc]';
+  backBtn.addEventListener('click', () => zoomTo(false));
+  function zoomTo(on) {
+    if (!scene || (on && zoom && zoom.on) || (!on && !zoom)) return;
+    zoom = { on, t0: now() - (zoom && !reduce ? Math.max(0, ZOOM_S - (now() - zoom.t0)) : 0), done: false };
+    if (on) { parTarget = 0; if (!backBtn.isConnected) document.body.append(backBtn); }
+    root.classList.toggle('village', on);
+    if (!running && isOn()) render(now());
+  }
+  /** The view: the hamlet and the bank of the market, centred; Z the zoom that fits them. */
+  function villageFrame() {
+    const { W, H, hamlet: hm, M } = scene;
+    const a = hm.x0 - 4; const b = hm.x1 + 30; const xc = (a + b) / 2 - M + shift(RATE[L.MID]);
+    const Z = Math.max(2, Math.min(4, Math.floor(W / (b - a + 10))));
+    return { Z, xc, yc: scene.riverTop(hm.x1) - 16, W, H }; // (the village, and a strip of the river)
+  }
+  function zoomed(t) {
+    const { Z, xc, yc, W, H } = villageFrame();
+    const e = reduce ? 1 : clamp((t - zoom.t0) / ZOOM_S); const k = e * e * (3 - 2 * e);
+    if (!zoom.on && e >= 1) { zoom = null; obuf.set(buf); backBtn.remove(); return; }
+    const z = zoom.on ? 1 + (Z - 1) * k : Z - (Z - 1) * k;
+    zoom.done = zoom.on && e >= 1;
+    const vw = W / z; const vh = H / z;
+    const vx = Math.round(clamp(xc - vw / 2, 0, W - vw)); const vy = Math.round(clamp(yc - vh / 2, 0, H - vh));
+    for (let y = 0; y < H; y += 1) {
+      const row = Math.min(H - 1, Math.floor(vy + y / z)) * W;
+      for (let x = 0; x < W; x += 1) obuf[y * W + x] = buf[row + Math.min(W - 1, Math.floor(vx + x / z))];
+    }
+    Object.assign(zoom, { vx, vy, Z });
+    if (zoom.done) villageView(t);
+  }
+  function villageView(t) {
+    const { W, H, M } = scene; const { vx, vy, Z } = zoom; const lm = shift(RATE[L.MID]) - M;
+    const d = today();
+    if (!marketDay(d) || look.night >= 0.3) return;
+    const ox = (X) => (X + lm - vx) * Z; const oy = (Y) => (Y - vy) * Z;
+    const P = (n) => pal32[I[n]];
+    const shade = (c, a) => pack(mix(unpack(c), [0, 0, 0], a));
+    const put = (x, y, c) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && x < W && y >= 0 && y < H) obuf[y * W + x] = c; };
+    const blend = (x, y, rgb, a) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && x < W && y >= 0 && y < H) obuf[y * W + x] = pack(mix(unpack(obuf[y * W + x]), rgb, a)); };
+    const rect = (x, y, w, h, c) => { for (let j = 0; j < h; j += 1) for (let i = 0; i < w; i += 1) put(x + i, y + j, c); };
+    function person(cx, feet, f, still) { // 5 x 12, cx its middle column
+      const hair = [P('HAT'), P('FL_WHITE'), P('BEARD'), P('TIMBER'), P('OUTLINE'), P('RUST_SH')][f.k % 6];
+      const coat = pal32[f.c]; const dark = shade(coat, 0.3); const top = feet - 11; const x0 = cx - 2;
+      const dir = f.dir || 1; const walk = !still && Math.floor(t * 6 + f.k) % 2;
+      rect(x0 + 1, top, 3, 1, hair); rect(x0 + (f.k % 6 === 0 ? 0 : 1), top + 1, f.k % 6 === 0 ? 5 : 3, 1, hair); // hat brim or hair
+      rect(x0 + 1, top + 2, 3, 3, P('SKIN')); put(x0 + (dir > 0 ? 3 : 1), top + 3, P('OUTLINE'));
+      if (f.k % 6 === 1) { put(x0 + 1, top + 2, hair); put(x0 + 3, top + 2, hair); } // a coif
+      rect(x0 + 1, top + 5, 3, 1, coat); rect(x0, top + 6, 5, 3, coat); rect(x0 + 1, top + 9, 3, 1, coat);
+      put(x0, top + 6, dark); put(x0, top + 7, dark); put(x0 + 4, top + 6, dark); put(x0 + 4, top + 7, dark); // the arms
+      put(x0 + (dir > 0 ? 4 : 0), top + 8, P('SKIN')); // a hand
+      const leg = P('CLOAK_SH');
+      put(x0 + 1 + (walk ? 0 : 0), feet - 1, leg); put(x0 + 3, feet - 1, leg);
+      put(x0 + 1 - (walk ? 1 : 0), feet, leg); put(x0 + 3 + (walk ? 1 : 0), feet, leg);
+      if (f.k % 3 === 0) { const bx = dir > 0 ? x0 + 5 : x0 - 2; rect(bx, top + 7, 2, 2, P('TIMBER_HI')); put(bx + (dir > 0 ? 0 : 1), top + 6, P('TIMBER_SH')); } // a basket
+    }
+    const x0 = scene.hamlet.x1 + 1; const mk = market(d.getHours());
+    [[0, I.FLAG, 'bread'], [9, I.FLAG2, 'cloth']].forEach(([dx, c, kind], s) => {
+      const X = x0 + dx; const L0 = ox(X); const Y = scene.riverTop(X) - 3; const w = 7 * Z;
+      const ground = oy(Y) + Z - 1; const counter = oy(Y - 2); const aw = oy(Y - 6);
+      // the vendor, behind the counter, turning now and then
+      person(L0 + Math.round(w / 2), counter + 6, { k: 4 + s * 3, c: s ? I.FLAG2 : I.RUST, dir: Math.sin(t * 0.4 + s * 2) > 0 ? 1 : -1 }, true);
+      rect(L0 + Math.round(w / 2) - 2, counter - 2, 5, 2, P('FL_WHITE')); // the apron's bib
+      rect(L0, aw + 2 * Z, 2, ground - aw - 2 * Z + 1, P('TIMBER_SH')); rect(L0 + w - 2, aw + 2 * Z, 2, ground - aw - 2 * Z + 1, P('TIMBER_SH')); // the poles
+      for (let i = 0; i < 7; i += 1) { // the awning, a scallop under each stripe
+        const col = i % 2 ? pal32[c] : P('FL_WHITE');
+        rect(L0 + i * Z, aw, Z, 2 * Z, col);
+        rect(L0 + i * Z + 1, aw + 2 * Z, Z - 2, 1, col); if (Z > 3) rect(L0 + i * Z + 2, aw + 2 * Z + 1, Z - 4, 1, col);
+      }
+      for (let i = 0; i < w; i += 1) put(L0 + i, aw, shade(obuf[Math.max(0, aw) * W + Math.max(0, Math.min(W - 1, L0 + i))], 0.25));
+      rect(L0 - 1, counter, w + 2, Z, P('TIMBER')); rect(L0 - 1, counter, w + 2, 1, P('TIMBER_HI')); // the counter
+      rect(L0 + 1, counter + Z, 1, ground - counter - Z + 1, P('TIMBER_SH')); rect(L0 + w - 2, counter + Z, 1, ground - counter - Z + 1, P('TIMBER_SH'));
+      for (let i = 0; i < 4; i += 1) { // the wares
+        const wx = L0 + 2 + i * Math.floor((w - 4) / 4);
+        if (kind === 'bread') { rect(wx, counter - 2, 4, 2, P('GOLD_SH')); rect(wx + 1, counter - 2, 2, 1, P('TIMBER_HI')); }
+        else rect(wx, counter - 3, 3, 3, [P('FLAG'), P('FL_YEL'), P('GRASS_HI'), P('FLAG2')][i]);
+      }
+    });
+    if (scene.marketShow > t) mk.m.forEach((v, k) => { // the equilibrium density, a bar per place
+      const X = mk.x0 + k; const base = oy(scene.riverTop(X) - 10);
+      for (let j = 0; j < Math.round(v * mk.N * 1.5 * Z); j += 1) for (let i = 0; i < Z - 1; i += 1) blend(ox(X) + i, base - j, [255, 244, 214], 0.55);
+    });
+    mk.folk.forEach((f) => { // the villagers, walking by the game's policy
+      const X = mk.x0 + f.pos; const feet = oy(scene.riverTop(Math.round(X)) - 3) + Z - 1;
+      f.dir = f.to > f.pos ? 1 : f.to < f.pos ? -1 : (f.dir || 1);
+      person(Math.round(ox(X) + Z / 2), feet, f, Math.abs(f.to - f.pos) < 0.01);
+    });
+  }
+  /** Close up, is canvas pixel (x, y) on the market (the stalls and the bank around them)? */
+  function villageHit(x, y) {
+    if (!zoom || !zoom.done || !marketDay(today()) || look.night >= 0.3 || !scene.market) return false;
+    const mk = scene.market; const { vx, vy, Z } = zoom;
+    const sx = vx + x / Z - (shift(RATE[L.MID]) - scene.M); const sy = vy + y / Z; const top = scene.riverTop(mk.x0 + 18);
+    return sx >= mk.x0 && sx < mk.x0 + mk.N && sy > top - 14 && sy < top + 1;
+  }
   /** The market's equilibrium for hour h (bread in the morning, cloth after noon), solved once an
    *  hour, and its villagers: x0, the bank's first place (MID plane); folk at places (floats). */
   function market(h) {
@@ -2717,7 +2820,7 @@ f11111f2.
     const g = marketGame(pull);
     const draw1 = () => { let r = Math.random(); let x = 0; while (x < N - 1 && (r -= g.m[x]) > 0) x += 1; return x; };
     const COATS = [I.ROBE, I.CLOAK, I.FLAG, I.FLAG2, I.RUST, I.TIMBER];
-    const folk = mk ? mk.folk : Array.from({ length: 14 }, (_, k) => { const x = draw1(); return { pos: x, to: x, c: COATS[k % COATS.length] }; });
+    const folk = mk ? mk.folk : Array.from({ length: 14 }, (_, k) => { const x = draw1(); return { pos: x, to: x, c: COATS[k % COATS.length], k }; });
     scene.market = { h, x0, N, folk, ...g };
     return scene.market;
   }
@@ -3088,11 +3191,11 @@ f11111f2.
       put(x, y - 2, pal32[wk.kind === 'messenger' ? I.FLAG : I.CLOAK], false); put(x, y - 1, pal32[I.CLOAK_SH], false); put(x, y - 3, pal32[I.SKIN], false);
       if (wk.kind === 'lantern') { put(x + 1, y - 2, pack([255, 214, 120]), false); halo(x + 1, y - 2, 3, [255, 190, 90], 0.4 * look.night); }
     }
-    { // market day (Saturdays): two stalls with striped awnings by the hamlet, folk about them
-      const d = today();
-      if (d.getDay() === 6 && look.night < 0.3) {
+    { // market day (see marketDay): two stalls with striped awnings by the hamlet, folk about them
+      const d = today(); const close = zoom && zoom.done; // (close up, villageView draws them)
+      if (marketDay(d) && look.night < 0.3) {
         const x0 = scene.hamlet.x1 + 1;
-        [[0, I.FLAG], [9, I.FLAG2]].forEach(([dx, c]) => {
+        if (!close) [[0, I.FLAG], [9, I.FLAG2]].forEach(([dx, c]) => {
           const x = mx(x0 + dx); const y = scene.riverTop(x0 + dx) - 3;
           for (let k = 0; k < 7; k += 1) { put(x + k, y - 6, k % 2 ? pal32[c] : pal32[I.FL_WHITE], false); put(x + k, y - 5, k % 2 ? pal32[c] : pal32[I.FL_WHITE], false); }
           put(x, y - 4, pal32[I.TIMBER_SH], false); put(x + 6, y - 4, pal32[I.TIMBER_SH], false);
@@ -3100,11 +3203,11 @@ f11111f2.
           put(x + 1, y - 3, pal32[I.RUST_HI], false); put(x + 3, y - 3, pal32[I.GRASS_HI], false); put(x + 5, y - 3, pal32[I.FL_YEL], false); // the wares
         });
         const mk = market(d.getHours());
-        if (scene.marketShow > t) mk.m.forEach((v, k) => { // its density, shown a while on a click
+        if (!close && scene.marketShow > t) mk.m.forEach((v, k) => { // its density, shown a while on a click
           const x = mx(mk.x0 + k); const y = scene.riverTop(mk.x0 + k) - 11; // (over the awnings)
           for (let j = 0; j < Math.round(v * mk.m.length * 3); j += 1) blend(x, y - j, [255, 244, 214], 0.7, false);
         });
-        mk.folk.forEach((f) => { // the villagers, each walking by the game's policy (see step)
+        if (!close) mk.folk.forEach((f) => { // the villagers, each walking by the game's policy (see step)
           const px0 = mk.x0 + f.pos; const x = mx(Math.round(px0)); const y = scene.riverTop(Math.round(px0)) - 3;
           put(x, y - 1, pal32[f.c], false); put(x, y, pal32[f.c === I.ROBE ? I.ROBE_SH : I.CLOAK_SH], false); put(x, y - 2, pal32[I.SKIN], false);
         });
@@ -3290,7 +3393,7 @@ f11111f2.
 
     // the nearest plane, then the tall grass bending in the wind
     landVeil();
-    composite(L.FG);
+    if (!zoom) composite(L.FG); // (the camera passes the near trees on its way to the village)
     if (scene.season === 'autumn' && !WET[weather.kind]) { // leaves drift down (snow falls only when it snows)
       scene.falling.forEach((q) => {
         const x = Math.round(q.x - M + Math.sin(t * 0.8 + q.ph) * 3);
@@ -3298,7 +3401,7 @@ f11111f2.
       });
     }
     const fo = shift(RATE[L.FG]) - M;
-    scene.blades.forEach((b) => {
+    if (!zoom) scene.blades.forEach((b) => {
       const c = pal32[b.c];
       const lean = reduce ? 0 : (Math.sin(t * 1.6 + b.x * 0.21) * 0.6 * clamp(weather.wind / 15, 0.3, 1.6) + Math.sin(t * 0.7 + b.x * 0.05) * 0.6 + windX() * 0.8) * b.h * 0.22;
       for (let r = 0; r < b.h; r += 1) put(b.x + fo + Math.round((lean + b.spread) * (r / b.h) ** 2), b.y - r, c, false);
@@ -3525,7 +3628,7 @@ f11111f2.
   function render(t) {
     const { W, H } = scene;
     const st = view.state;
-    if (st === 'scene') { draw(t); obuf.set(buf); }
+    if (st === 'scene') { draw(t); if (zoom) zoomed(t); else obuf.set(buf); }
     else if (st === 'room') { drawInterior(t); for (let y = 0; y < H; y += 1) for (let x = 0; x < W; x += 1) obuf[y * W + x] = iAt(x, y); }
     else if (st === 'swap') {
       drawInterior(t);
@@ -3559,6 +3662,7 @@ f11111f2.
   /** Go into room `id` (null: back out to the landscape). */
   function goRoom(id, animate) {
     if (!scene) { pendingRoom = id; return; }
+    if (zoom) { zoom = null; root.classList.remove('village'); backBtn.remove(); }
     const t = now(); const anim = animate && !reduce;
     const label = (r) => `Inside the castle: ${ROOM_NAMES[roomOf(r)]}, lit by candles; its window shows the sky over Paris at this hour.`;
     if (id) {
@@ -3641,7 +3745,7 @@ f11111f2.
 
   /** What sits under scene pixel (x, y), if anything one can talk to. */
   function hitAt(x, y) {
-    if (!scene || view.state !== 'scene') return null;
+    if (!scene || view.state !== 'scene' || zoom) return null;
     const go = groundOff(scene.fire.y) - scene.M; const { fire, knight, wizard } = scene;
     const inBox = (x0, y0, w, h) => x >= x0 && x < x0 + w && y >= y0 && y < y0 + h;
     const cat = scene.cats.find((c) => inBox(c.x + go, c.y, c.sp.w, c.sp.h));
@@ -3653,8 +3757,8 @@ f11111f2.
     if (inBox(cmx - 1, c.y - 1, c.w + 2, c.h + 1)) return { kind: 'cellar' };
     if (inBox(knight.x + go, knight.y, SPRITES.knight.w, SPRITES.knight.h)) return { kind: 'knight' };
     const lmx = shift(RATE[L.MID]) - scene.M;
-    const mk = scene.market;
-    if (mk && today().getDay() === 6 && look.night < 0.3 && inBox(mk.x0 + lmx, scene.riverTop(mk.x0 + 18) - 12, mk.N, 12)) return { kind: 'market' };
+    const hm = scene.hamlet; const vy = scene.riverTop(hm.x1);
+    if (inBox(hm.x0 + lmx - 2, vy - 16, hm.x1 + 28 - hm.x0, 16)) return { kind: 'village' };
     if (scene.lichen.patches.some((p) => Math.hypot(x - (p.x + lmx), y - p.y) <= p.r + 2)) return { kind: 'lichen' };
     if (scene.meteors.some((m) => Math.hypot(x - m.x, y - m.y) < 6)) return { kind: 'meteor' };
     const an = scene.angler; if (look.night < 0.5 && inBox(an.x - scene.M + groundOff(an.y + 6), an.y, SPRITES.angler.w + 6, SPRITES.angler.h)) return { kind: 'angler' };
@@ -3684,7 +3788,12 @@ f11111f2.
     else if (hit.kind === 'heron') say('The heron stands on one leg and pretends you are not there.');
     else if (hit.kind === 'meteor') say('You catch the shooting star and make a wish. It is yours to keep.');
     else if (hit.kind === 'angler') say(['The angler raises a finger to his lips. The fish are listening.', 'The angler shows you an empty basket and a patient smile.', '"They bite at dawn," says the angler, "and never when you watch."'][Math.floor(Math.random() * 3)]);
-    else if (hit.kind === 'market') {
+    else if (hit.kind === 'village') {
+      zoomTo(true);
+      const open = marketDay(today()) && look.night < 0.3;
+      say(open ? 'Market day in the village. Click the crowd to see the game behind it; Esc or the button to step back.'
+        : `The village is quiet${look.night < 0.3 ? '' : ' at night'}. Market days: Wednesday, Friday, Saturday and Sunday, by day. Esc to step back.`);
+    } else if (hit.kind === 'market') {
       const mk = scene.market; scene.marketShow = now() + 8;
       say(`Market day. Each villager weighs the pull of the stalls (bread in the morning, cloth later) against the crush around them, and the crowd settles where no one gains by moving: a mean-field Nash equilibrium, found by fictitious play over ${mk.rounds} rounds (gap ${mk.gap.toExponential(0)}). The bars over them show its density.`);
     }
@@ -3915,7 +4024,7 @@ f11111f2.
     const dt = lastMs ? Math.min(0.1, (ms - lastMs) / 1000) : 0;
     lastMs = ms;
     par += (parTarget - par) * (1 - Math.exp(-dt / 0.2));
-    let dirty = view.state === 'in' || view.state === 'out' || view.state === 'swap';
+    let dirty = view.state === 'in' || view.state === 'out' || view.state === 'swap' || !!zoom;
     if (ms - last >= FPS_MS) {
       last = ms;
       if (view.state !== 'room') { stepFire(); step(now()); }
@@ -3966,7 +4075,7 @@ f11111f2.
       // parallax follows a mouse, not a finger; the menu box moves with the wizard
       if (!reduce) {
         addEventListener('pointermove', (e) => {
-          if (e.pointerType !== 'mouse' || !isOn()) return;
+          if (e.pointerType !== 'mouse' || !isOn() || zoom) return;
           parTarget = clamp((e.clientX / innerWidth) * 2 - 1, -1, 1);
         }, { passive: true });
       }
@@ -3977,8 +4086,10 @@ f11111f2.
       document.addEventListener('pointerout', (e) => { if (pointed(e)) hoverId = null; });
       document.addEventListener('focusin', (e) => { const a = pointed(e); hoverId = roomIn(a); if (a) castUntil = now() + 1.2; });
       document.addEventListener('click', (e) => { if (pointed(e)) { castUntil = now() + 0.6; sparkle(24); } });
-      canvas.addEventListener('click', (e) => { const h = isOn() && hitAt(...scenePoint(e)); if (h) talk(h); });
-      canvas.addEventListener('pointermove', (e) => { canvas.style.cursor = isOn() && hitAt(...scenePoint(e)) ? 'pointer' : ''; });
+      // close up, only the market answers (out: the button, or Esc)
+      canvas.addEventListener('click', (e) => { if (zoom) { if (villageHit(...scenePoint(e))) talk({ kind: 'market' }); return; } const h = isOn() && hitAt(...scenePoint(e)); if (h) talk(h); });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && zoom && zoom.on) { e.preventDefault(); zoomTo(false); } });
+      canvas.addEventListener('pointermove', (e) => { canvas.style.cursor = isOn() && (zoom ? villageHit(...scenePoint(e)) : hitAt(...scenePoint(e))) ? 'pointer' : ''; });
       sync();
     },
     /** New minute, or another hour asked for with `sky`: relight the same scene. */
@@ -3997,6 +4108,8 @@ f11111f2.
     hoist(instant) { if (scene && !scene.hoist) scene.hoist = { t0: instant ? -99 : now() }; else if (!scene) pendingHoist = true; },
     /** The weather over Paris changed (or a preview asked for one). */
     weather(w) { weather = { ...weather, ...w }; if (scene && !running && isOn()) render(now()); },
+    /** Close up on the village (the `village` command); out of a room first. */
+    village() { if (scene && view.state === 'scene') talk({ kind: 'village' }); },
     /** Light the thing at index i (hotspot hovered or focused); -1 for none. */
     highlight(i) { hl = i; if (!running && interior && isOn()) render(now()); },
   };

@@ -159,6 +159,10 @@ function run(line) {
     case 'photo': case 'p':
       closeCmd();
       return togglePhoto(true);
+    case 'village': case 'market':
+      closeCmd();
+      if (window.Hours && root.getAttribute('data-theme') === 'hours') return window.Hours.village();
+      return print(T.photoOnly.replace('Photo mode', 'The village'));
     case 'quit': case 'q': case 'exit':
       return showEnd();
     case 'clear': case 'cls':
@@ -186,7 +190,7 @@ cmdForm.addEventListener('submit', (e) => {
 /* Tab completes the word under the cursor: a command or a room first, then what that command
    takes; one match is completed, several are completed to their common start and listed. */
 const COMMANDS = ['help', 'look', 'ls', 'map', 'cd', 'take', 'inventory', 'use', 'rumour', 'descend',
-  'cv', 'mail', 'github', 'theme', 'sky', 'weather', 'photo', 'music', 'volume', 'keys', 'quit', 'clear', 'go'];
+  'cv', 'mail', 'github', 'theme', 'sky', 'weather', 'photo', 'village', 'music', 'volume', 'keys', 'quit', 'clear', 'go'];
 const roomWords = () => ROOM_IDS.map((id) => WORLD[id].label.toLowerCase());
 const ARGS = {
   cd: roomWords, open: roomWords, go: () => ['north', 'south', 'east', 'west'], walk: () => ['north', 'south', 'east', 'west'],
