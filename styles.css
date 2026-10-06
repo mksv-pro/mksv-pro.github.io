@@ -856,6 +856,9 @@ dialog.dungeon canvas {
   padding: 1.1rem clamp(1rem, 2.5vw, 2rem) 1.3rem;
   --ink: #eef2f8; --hi: #ffffff; --accent: #ffd76a; --dim: #c4cedc; --red: #ffb7a6; --green: #b6eec0;
   --panel: transparent; --rule: rgb(255 255 255 / .4);
+  --demo-bg: #17406f; --demo-ink: #ffd76a; /* the live demos (script.js Demo), in the blueprint's colours */
+  --bg: #17406f; /* text on accent (a pressed demo button) */
+  scrollbar-color: #ffd76a #17406f;
   color-scheme: dark; color: var(--ink);
   background:
     radial-gradient(circle at 1.1rem .9rem, #e04848 0 .3rem, #7a1a1a .35rem, transparent .4rem),

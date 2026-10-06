@@ -909,11 +909,14 @@ window.Demo = function Demo(fig, sim) {
   let raf = 0;
   let ink;
 
-  const rgbOf = (prop) => {
-    const h = getComputedStyle(root).getPropertyValue(prop).trim();
+  // the figure's own colours (--demo-bg, --demo-ink: the hours theme's blueprint sets them),
+  // else the theme's panel and accent
+  const rgbOf = (...props) => {
+    const cs = getComputedStyle(fig);
+    const h = props.map((p) => cs.getPropertyValue(p).trim()).find((v) => /^#[0-9a-f]{6}$/i.test(v));
     return [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
   };
-  function palette() { ink = [rgbOf('--panel'), rgbOf('--accent')]; }
+  function palette() { ink = [rgbOf('--demo-bg', '--panel'), rgbOf('--demo-ink', '--accent')]; }
 
   function paint() {
     const d = img.data;
@@ -947,7 +950,7 @@ window.Demo = function Demo(fig, sim) {
   });
   new IntersectionObserver(([en]) => { visible = en.isIntersecting; sync(); }).observe(canvas);
   new MutationObserver(() => { palette(); paint(); })
-    .observe(root, { attributes: true, attributeFilter: ['data-theme', 'data-sky'] });
+    .observe(root, { attributes: true, attributeFilter: ['data-theme', 'data-sky', 'data-room'] });
 
   palette();
   paint();
