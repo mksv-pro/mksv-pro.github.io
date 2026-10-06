@@ -805,6 +805,7 @@ function openCard(i, from) {
 function closeCard(refocus = true) {
   if (card.hidden) return;
   card.hidden = true;
+  cue('close');
   if (refocus && cardFrom) cardFrom.focus();
 }
 card.querySelector('.card-close').addEventListener('click', () => closeCard());

@@ -22,6 +22,7 @@ une entrée là, rien d'autre.
 | `[world]` dans `site.toml` | la grille des salles : les « Obvious exits » (thème terminal), la carte `m` et la descente en dérivent (JSON injecté dans chaque page) |
 | `assets/bib/*.bib` | une entrée BibTeX par publication (le lien `[bib]` la copie) |
 | `assets/fonts/` | polices auto-hébergées (aucune requête tierce) ; Departure Mono, IBM Plex Mono (entière : Reserved Font Name) |
+| `_tools/sounds.py` | les bruitages enregistrés (porte, fiche, cachet, page, fermeture) : prises du pack « RPG Audio » de Kenney (CC0), silences coupés, traitement commun (mono 22 kHz, aigus adoucis, léger bit-crush, écho de pierre, volume normalisé) → `assets/snd/*.mp3` ; le reste du son est synthétisé dans `assets/js/sound.js` |
 | `_tools/og.py` | l'image d'aperçu des liens (`assets/img/og.png`, 1200 × 630) : le château au crépuscule et le nom, photographiés par Firefox headless depuis le site (`?og` masque le reste) ; `uv run python _tools/og.py` |
 | `_tools/cv.py` | le CV PDF, depuis `site.toml` (formation `[[education]]`, champs `cv_*` des expériences et projets, `[cv]`, langues) : écrit `_cv/cv.tex`, compile avec latexmk, copie dans `assets/Mike_Silva_CV.pdf` ; ensuite `build.py` |
 | `_tools/build.py` | génère les pages, `sitemap.xml`, `robots.txt`, `feed.xml` (Atom des news), les `?v=` anti-cache (`{{v:chemin}}`) ; CI : `.github/workflows/check.yml` (build inchangé, check, lint) |

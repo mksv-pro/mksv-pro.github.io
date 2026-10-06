@@ -9,6 +9,9 @@
    state() (script.js) says what the page shows; setVolume(0..1), setMusic(bool). */
 
 (function () {
+  // recorded foley for the interface (_tools/sounds.py: Kenney's RPG Audio, CC0, treated to match)
+  const SND = new URL('../snd/', document.currentScript.src);
+  const RECORDED = ['door', 'card', 'seal', 'page', 'close']; const takes = {};
   let ac = null; let master; let dry; let wet; let noise; let timer = 0; let state = () => ({});
   let volume = 0.6; let music = true;
   const beds = {}; // continuous layers: fire, wind, rain, river, forge
@@ -140,9 +143,16 @@
     if (s.night && s.summer && Math.random() < 0.3) for (let k = 0; k < 3; k += 1) tone(4400, 4300, 0.03, 0.012, { at: k * 0.05, type: 'square' }); // crickets
   }
 
-  /** The page's events. */
+  /** A recorded take, a little higher or lower each time so it never repeats exactly. */
+  function play(name, vol = 0.9) {
+    const src = ac.createBufferSource(); src.buffer = takes[name]; src.playbackRate.value = 0.94 + Math.random() * 0.12;
+    const g = ac.createGain(); g.gain.value = vol; src.connect(g).connect(out(name === 'door')); src.start();
+  }
+
+  /** The page's events: a recording when there is one (loaded), else a synthesised sound. */
   function cue(name) {
     if (!ac || !state().on) return;
+    if (takes[name]) { play(name); return; }
     ({
       page: () => { // a leaf lifted, flapping over, laid down: three rustles and a soft slap
         burst(1800, 0.18, 0.32, { sweep: 2.4 }); burst(3200, 0.12, 0.22, { type: 'highpass', at: 0.12 });
@@ -183,6 +193,8 @@
         noise = noiseBuffer();
         beds.fire = bed('lowpass', 500, 0.5); beds.wind = bed('bandpass', 500, 0.8); beds.rain = bed('bandpass', 1800, 0.4);
         beds.river = bed('bandpass', 900, 1.6);
+        RECORDED.forEach((n) => fetch(new URL(`${n}.mp3`, SND)).then((r) => r.arrayBuffer()).then((b) => ac.decodeAudioData(b))
+          .then((buf) => { takes[n] = buf; }).catch(() => {})); // (the synthesised sound stays if a file fails)
       }
       ac.resume();
       clearInterval(timer); timer = setInterval(tick, 250); tick();
