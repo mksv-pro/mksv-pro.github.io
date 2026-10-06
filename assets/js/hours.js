@@ -1674,6 +1674,7 @@ hhhhhh.
 
   const root = document.documentElement;
   let plate; let canvas; let ctx; let img; let buf; let obuf; let idxNow; let pal32; let planeColour;
+  let backBuf; let backIdx; let backKey = ''; // the still planes, composed (see draw)
   let ipal32; let interior = null; let ibase; let ibuf; let iprev;
   let view = { state: 'scene', id: null, t0: 0 }; // scene | in | room | out | swap
   let hoverId = null; let pendingRoom = null;
@@ -1709,6 +1710,7 @@ hhhhhh.
     const moonlit = ((1 - Math.cos(elong0)) / 2) * clamp(sky.moon[2] / Math.sin(25 * deg)); // phase x height
     look = paletteAt(Math.asin(sky.sun[2]) / deg, moonlit);
     pal32 = look.pal.map(pack);
+    backKey = ''; // new colours: compose the still planes again
     planeColour = scene.planes.map((p) => {
       const c = new Uint32Array(p.length);
       for (let i = 0; i < p.length; i += 1) if (p[i] !== CLEAR) c[i] = pal32[p[i]];
@@ -1756,6 +1758,7 @@ hhhhhh.
     img = ctx.createImageData(W, H);
     obuf = new Uint32Array(img.data.buffer);
     buf = new Uint32Array(W * H); ibuf = new Uint32Array(W * H); iprev = new Uint32Array(W * H); ibase = new Uint32Array(W * H);
+    backBuf = new Uint32Array(W * H); backIdx = new Uint8Array(W * H); backKey = '';
     idxNow = new Uint8Array(W * H);
     scene = generate(W, H, Ws);
     wizPx = null;
@@ -1840,7 +1843,14 @@ hhhhhh.
     const mx = (x) => x - M + shift(RATE[L.MID]); // castle and hill things, plane to screen
     const gx = (x, y) => x - M + groundOff(y); // meadow things
 
-    composite(L.SKY);
+    // the planes from the sky to the castle are still between parallax steps and relights: kept
+    // composed in backBuf (5 planes, ~0.3 MB a frame otherwise); what moves over them draws on
+    // sky pixels only, or (the dragon) on the far ones, so the result is the same as in order
+    const key = RATE.slice(0, L.GROUND).map((r) => shift(r)).join();
+    if (key !== backKey) {
+      [L.SKY, L.FAR, L.NEAR, L.TREES, L.MID].forEach(composite);
+      backBuf.set(buf); backIdx.set(idxNow); backKey = key;
+    } else { buf.set(backBuf); idxNow.set(backIdx); }
 
     // stars
     if (look.stars > 0) {
@@ -1900,17 +1910,20 @@ hhhhhh.
       });
     }
 
-    composite(L.FAR);
-    composite(L.NEAR);
-    // the dragon, high up: in front of the mountains, behind the castle and the trees
+    // the dragon, high up: in front of the mountains, behind the trees and the castle
     const dg = scene.dragon;
     if (dg) {
-      blit((dg.dir > 0 ? SPRITES.dragon : SPRITES.dragonL)[Math.floor(tick / 3) % 2], Math.round(dg.x), Math.round(dg.y), yl0);
-      dg.flames.forEach((f) => put(f.x, f.y, pack(hex(FIRE[Math.max(1, Math.round(FIRE_MAX * (1 - f.age / f.life)))])), false));
+      const far = (x, y) => x >= 0 && x < W && y >= 0 && y < yl0 && idxNow[y * W + x] <= FAR;
+      const sp = (dg.dir > 0 ? SPRITES.dragon : SPRITES.dragonL)[Math.floor(tick / 3) % 2];
+      const x0 = Math.round(dg.x); const y0 = Math.round(dg.y);
+      for (let y = 0; y < sp.h; y += 1) {
+        for (let x = 0; x < sp.w; x += 1) {
+          const c = sp.px[y * sp.w + x];
+          if (c >= 0 && far(x0 + x, y0 + y)) buf[(y0 + y) * W + x0 + x] = pal32[c];
+        }
+      }
+      dg.flames.forEach((f) => { if (far(Math.round(f.x), Math.round(f.y))) put(f.x, f.y, pack(hex(FIRE[Math.max(1, Math.round(FIRE_MAX * (1 - f.age / f.life)))])), false); });
     }
-
-    composite(L.TREES);
-    composite(L.MID);
 
     // the castle's life: windows (glowing at night), pennants, torches, chimney smoke, sentries
     const wl = pal32[I.WIN_LIT]; const wd = pal32[I.WIN_DARK];
@@ -2092,17 +2105,18 @@ hhhhhh.
 
     // firelight: warm, stepped falloff, flickering radius; strongest at night
     const k0 = 0.3 + 0.95 * look.night;
-    const R = 0.42 * H * (1 + (reduce ? 0 : 0.05 * Math.sin(t * 13) + 0.03 * Math.sin(t * 29)));
+    const R = 0.42 * H * (1 + (reduce ? 0 : 0.05 * Math.sin(t * 13) + 0.03 * Math.sin(t * 29))); const iR2 = 1 / (R * R);
     for (let y = Math.max(0, Math.floor(fire.y - R * 0.7)); y < Math.min(H, fire.y + R * 0.7); y += 1) {
       for (let x = Math.max(0, Math.floor(fxs - R)); x < Math.min(W, fxs + R); x += 1) {
         const i = y * W + x;
         if (idxNow[i] <= FAR) continue;
-        const dd = Math.hypot(x - fxs, (y - fire.y) * 1.5) / R;
-        if (dd >= 1) continue;
-        const k = Math.floor(((1 - dd) ** 1.6 * k0) * 4 + bayer(x, y)) / 4;
+        const dx = x - fxs; const dy = (y - fire.y) * 1.5; const d2 = (dx * dx + dy * dy) * iR2;
+        if (d2 >= 1) continue;
+        const k = Math.floor(((1 - Math.sqrt(d2)) ** 1.6 * k0) * 4 + bayer(x, y)) / 4;
         if (k <= 0) continue;
-        const c = unpack(buf[i]);
-        buf[i] = pack([c[0] + (c[0] * 1.5 + 70) * k, c[1] + (c[1] * 0.6 + 26) * k, c[2] + c[2] * 0.05 * k]);
+        const v = buf[i]; const r = v & 255; const g = (v >> 8) & 255; const b = (v >> 16) & 255; // no arrays: this runs ~40k times a frame
+        buf[i] = 0xff000000 | (Math.min(255, Math.round(b + b * 0.05 * k)) << 16)
+          | (Math.min(255, Math.round(g + (g * 0.6 + 26) * k)) << 8) | Math.min(255, Math.round(r + (r * 1.5 + 70) * k));
       }
     }
     catEyes();
