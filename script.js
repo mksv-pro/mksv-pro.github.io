@@ -475,6 +475,14 @@ function closeCard(refocus = true) {
   if (refocus && cardFrom) cardFrom.focus();
 }
 card.querySelector('.card-close').addEventListener('click', () => closeCard());
+card.addEventListener('keydown', (e) => { // Tab stays in the card while it is open; Esc (below) closes it
+  if (e.key !== 'Tab') return;
+  const f = [...card.querySelectorAll('a[href], button, [tabindex]:not([tabindex="-1"])')].filter((el) => !el.closest('[hidden]'));
+  if (!f.length) return;
+  const first = f[0]; const last = f[f.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+});
 document.addEventListener('pointerdown', (e) => {
   if (!card.hidden && !card.contains(e.target) && !e.target.closest('.spot')) closeCard(false);
 });
