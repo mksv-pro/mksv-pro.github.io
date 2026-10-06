@@ -1,0 +1,38 @@
+name: Check
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # the pages are committed: a rebuild must not change them
+      - name: Build
+        run: python3 _tools/build.py && git diff --exit-code -- .
+
+      - name: Check (links, ids, alt, contrast)
+        run: python3 _tools/check.py
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Lint JS
+        run: deno lint
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Lint tools
+        run: uvx ruff check _tools

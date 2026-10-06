@@ -1,0 +1,3 @@
+# GitHub Pages runs Jekyll on this repo: it already skips _src/ and _tools/ (leading "_");
+# these are sources or tool config, not pages.
+exclude: [README.md, deno.json, pyproject.toml]
