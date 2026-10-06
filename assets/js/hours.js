@@ -466,6 +466,98 @@ nNnnnn..
       return a + (b - a) * f * f * (3 - 2 * f);
     };
   }
+  /* ---- lichen on the castle rock: diffusion-limited aggregation (Witten & Sander 1981) ----
+     on[i]: 1 rock, 2 lichen, over the MID plane. Walkers start on a ring just outside a patch,
+     step to a 4-neighbour (only over rock) and stick, with probability `stick`, on touching it;
+     too far, they start again. */
+  function lichenInit(plane, WE, H, y0, y1, rng, rock) {
+    const on = new Uint8Array(WE * H); const list = [];
+    for (let y = y0; y < y1; y += 1) for (let x = 0; x < WE; x += 1) if (rock.has(plane[y * WE + x])) { on[y * WE + x] = 1; list.push(y * WE + x); }
+    const patches = [];
+    for (let tries = 0; patches.length < 3 && list.length && tries < 400; tries += 1) {
+      const i = list[Math.floor(rng() * list.length)]; const x = i % WE; const y = (i - x) / WE;
+      if (y < y0 + 3 || patches.some((p) => Math.hypot(p.x - x, p.y - y) < 18)) continue;
+      on[i] = 2; patches.push({ x, y, cells: [[x, y]], r: 0, w: null, species: patches.length % 3 === 1 ? 'xanthoria' : 'lecanora' });
+    }
+    return { on, WE, patches, max: 120, stick: 0.3 }; // (sticking below 1: a crust more than a fern)
+  }
+  /** Spend `budget` walker steps over the patches still growing; returns the cells added. */
+  function lichenGrow(lc, budget) {
+    const { on, WE } = lc; let added = 0;
+    const live = lc.patches.filter((p) => p.cells.length < lc.max);
+    if (!live.length) return 0;
+    const per = Math.ceil(budget / live.length);
+    live.forEach((p) => {
+      for (let s = 0; s < per && p.cells.length < lc.max; s += 1) {
+        if (!p.w) { // launch on a ring just outside the patch, on rock
+          const a = Math.random() * 6.283; const R = p.r + 5;
+          const x = Math.round(p.x + Math.cos(a) * R); const y = Math.round(p.y + Math.sin(a) * R);
+          if (on[y * WE + x] !== 1) continue;
+          p.w = [x, y];
+        }
+        const [x, y] = p.w; const d = [[1, 0], [-1, 0], [0, 1], [0, -1]][Math.floor(Math.random() * 4)];
+        const nx = x + d[0]; const ny = y + d[1];
+        if (on[ny * WE + nx] === 1) p.w = [nx, ny]; // (off the rock: it stays where it is)
+        const [wx, wy] = p.w;
+        if (Math.hypot(wx - p.x, wy - p.y) > 2 * p.r + 10) { p.w = null; continue; }
+        const touch = on[wy * WE + wx + 1] === 2 || on[wy * WE + wx - 1] === 2 || on[(wy + 1) * WE + wx] === 2 || on[(wy - 1) * WE + wx] === 2;
+        if (touch && Math.random() < lc.stick) {
+          on[wy * WE + wx] = 2; p.cells.push([wx, wy]); p.r = Math.max(p.r, Math.hypot(wx - p.x, wy - p.y)); p.w = null; added += 1;
+        }
+      }
+    });
+    return added;
+  }
+  /** Mass-radius dimension of the patches: slope of log N(r) against log r (least squares). */
+  function lichenDim(lc) {
+    const pts = [];
+    lc.patches.forEach((p) => {
+      for (let r = 2; r <= p.r * 0.85; r += 1) pts.push([Math.log(r), Math.log(p.cells.filter(([x, y]) => Math.hypot(x - p.x, y - p.y) <= r).length)]);
+    });
+    if (pts.length < 3) return null;
+    const mx = pts.reduce((a, q) => a + q[0], 0) / pts.length; const my = pts.reduce((a, q) => a + q[1], 0) / pts.length;
+    return pts.reduce((a, q) => a + (q[0] - mx) * (q[1] - my), 0) / pts.reduce((a, q) => a + (q[0] - mx) ** 2, 0);
+  }
+
+  /* ---- the Saturday market's crowd: a stationary mean-field game (Lasry & Lions 2007) on a line
+     of N places along the bank. Cost of standing at x: the crush there (kappa N m(x)) less the
+     stalls' pull; eps per step taken; entropy sigma (each villager a little whimsical); discount
+     gamma. Solved by fictitious play (Cardaliaguet & Hadikhanloo 2017): the best reply to the
+     average crowd so far, the crowd that reply makes, averaged in. gap: L1 distance between the
+     crowd found and the one its own best reply makes (0 at a Nash equilibrium). */
+  function marketGame(pull, { kappa = 0.35, eps = 0.04, sigma = 0.06, gamma = 0.95, rounds = 300 } = {}) {
+    const N = pull.length; const Q = new Float64Array(N * 3); const V = new Float64Array(N); const pol = new Float64Array(N * 3);
+    let mbar = new Float64Array(N).fill(1 / N); let m = mbar.slice();
+    const reply = (iters) => { // soft value iteration against the crowd mbar (warm-started: V carries over)
+      for (let it = 0; it < iters; it += 1) {
+        for (let x = 0; x < N; x += 1) {
+          const c = kappa * N * mbar[x] - pull[x]; let mn = Infinity;
+          for (let a = 0; a < 3; a += 1) {
+            const y = x + a - 1; const q = y < 0 || y >= N ? Infinity : c + (a === 1 ? 0 : eps) + gamma * V[y];
+            Q[x * 3 + a] = q; mn = Math.min(mn, q);
+          }
+          let z = 0; for (let a = 0; a < 3; a += 1) z += Math.exp(-(Q[x * 3 + a] - mn) / sigma);
+          V[x] = mn - sigma * Math.log(z);
+          for (let a = 0; a < 3; a += 1) pol[x * 3 + a] = Math.exp(-(Q[x * 3 + a] - mn) / sigma) / z;
+        }
+      }
+    };
+    const forward = (iters) => { // the crowd that policy makes, run towards its stationary law
+      for (let it = 0; it < iters; it += 1) {
+        const m2 = new Float64Array(N);
+        for (let x = 0; x < N; x += 1) for (let a = 0; a < 3; a += 1) if (pol[x * 3 + a]) m2[x + a - 1] += m[x] * pol[x * 3 + a];
+        m = m2;
+      }
+    };
+    for (let k = 0; k < rounds; k += 1) {
+      reply(k ? 20 : 200); forward(k ? 40 : 400);
+      mbar = mbar.map((v, x) => v + (m[x] - v) / (k + 2));
+    }
+    reply(300); m = mbar.slice(); forward(2000); // how far mbar is from the crowd its own best reply makes
+    const gap = m.reduce((s, v, x) => s + Math.abs(v - mbar[x]), 0);
+    return { m: mbar, pol, gap, rounds };
+  }
+
   function fbm(rng, oct = 4) {
     const ns = Array.from({ length: oct }, () => noise1(rng));
     return (x) => {
@@ -1422,6 +1514,10 @@ nNnnnn..
       clouds.push({ m, w: cw, h: 3, x: rng() * (W + cw), y: Math.round(yHor * (0.55 + rng() * 0.3)), v: 0.25 });
     }
 
+    // the lichen's patches on the rock, grown part-way now (see step)
+    const lichen = lichenInit(planes[L.MID], WE, H, crest, yl0, rng, new Set([I.ROCK_HI, I.ROCK, I.ROCK_SH, I.ROCK_DK]));
+    lichen.max = reduce ? 130 : 45; for (let k = 0; k < 40; k += 1) lichenGrow(lichen, 3000); lichen.max = 130;
+
     // the rows each plane covers, so compositing skips the empty ones
     const rows = planes.map((p) => {
       let a = H; let b = 0;
@@ -1450,7 +1546,7 @@ nNnnnn..
         [M + Math.round(0.33 * Ws), crestAt(M + Math.round(0.33 * Ws)) + 1, L.NEAR]],
       heron: (() => { const x = M + Math.round(0.74 * Ws); return { x, y: riverTop(x) + 4 - SPRITES.heron.h }; })(),
       ducks: [0, 1, 2].map((k) => ({ x: pathX[yl0 + 4] + 20 + k * 9, a: pathX[yl0 + 4] + 16, b: M + Math.round(0.92 * Ws), dir: k % 2 ? 1 : -1, ph: k })),
-      geese: null, swallows: null, meteors: [], millAngle: 0,
+      geese: null, swallows: null, meteors: [], millAngle: 0, lichen,
     };
   }
 
@@ -2062,6 +2158,19 @@ f11111f2.
         const lft = k < Math.ceil(hangs.length / 2); const j = lft ? k : k - Math.ceil(hangs.length / 2);
         hanging(lft ? S(0.32) - j * 24 : S(0.68) + j * 24, Math.round(H * 0.18), e, k);
       });
+      { // the loom, right of the hangings: its weave runs in drawInterior
+        const nr = hangs.length - Math.ceil(hangs.length / 2);
+        const a = (nr ? S(0.68) + (nr - 1) * 24 + 16 : S(0.6)); const b = BR - 5;
+        const w = Math.min(24, (b - a - 4) & ~1); const h = 28; const y0 = Math.round(H * 0.18);
+        if (w >= 12) {
+          const x = Math.round((a + b - w) / 2);
+          rect(x - 4, y0, w + 8, 1, I.TIMBER_SH); set(x - 5, y0, I.GOLD); set(x + w + 4, y0, I.GOLD); // the beam
+          rect(x - 1, y0 + 2, w + 2, h + 2, I.GOLD_SH); // the selvedge
+          for (let xx = 0; xx < w + 2; xx += 2) set(x - 1 + xx, y0 + h + 4, I.GOLD); // the fringe
+          deco.push({ type: 'ising', x, y: y0 + 3, w, h });
+          extra.push({ t: { kind: 'loom', label: "The weaver's loom", get html() { return loomCard(); } }, b: box(x - 5, y0, w + 10, h + 5) });
+        }
+      }
       rect(S(0.86), floorY(0.1) - 6, 13, 1, I.TIMBER_HI); rect(S(0.87), floorY(0.1) - 5, 1, 6, I.TIMBER_SH); rect(S(0.86) + 11, floorY(0.1) - 5, 1, 6, I.TIMBER_SH);
       cat('thin', S(0.04), floorY(0.5));
     } else if (kind === 'projects') { // the workshop: a working model of each project on the bench
@@ -2348,6 +2457,46 @@ f11111f2.
   // the weather over Paris (script.js, from Open-Meteo): kind clear|cloudy|overcast|fog|drizzle|rain|snow|storm,
   // cover 0..1 (cloud cover), wind (km/h)
   let weather = { kind: 'clear', cover: 0.3, wind: 10, dir: 270 };
+
+  /* ---- the observatory's loom: a 2D Ising model (J = 1, no field, periodic edges), woven live by
+     Metropolis checkerboard sweeps, at a temperature set by Paris's: T/Tc = 2^((t - 15 °C) / 20),
+     so a 15 °C day weaves the critical point, Tc = 2 / ln(1 + √2) (Onsager 1944). w, h even. */
+  const TC = 2 / Math.log(1 + Math.SQRT2);
+  let loom = null;
+  const loomT = () => TC * 2 ** (((weather.temp ?? 15) - 15) / 20);
+  function loomSweep() {
+    const { w, h, s } = loom; const b = 1 / loomT(); const p4 = Math.exp(-4 * b); const p8 = Math.exp(-8 * b);
+    for (let par = 0; par < 2; par += 1) {
+      for (let y = 0; y < h; y += 1) {
+        for (let x = (y + par) % 2; x < w; x += 2) {
+          const i = y * w + x;
+          const n = s[y * w + (x + 1) % w] + s[y * w + (x + w - 1) % w] + s[((y + 1) % h) * w + x] + s[((y + h - 1) % h) * w + x];
+          const dE = 2 * s[i] * n;
+          if (dE <= 0 || Math.random() < (dE === 4 ? p4 : p8)) s[i] = -s[i];
+        }
+      }
+    }
+    loom.sweeps += 1;
+  }
+  function loomOf(w, h) { // (kept from one visit of the room to the next)
+    if (!loom || loom.w !== w || loom.h !== h) {
+      loom = { w, h, s: Int8Array.from({ length: w * h }, () => (Math.random() < 0.5 ? 1 : -1)), sweeps: 0 };
+      for (let k = 0; k < 300; k += 1) loomSweep();
+    }
+    return loom;
+  }
+  function loomCard() {
+    const lm = loom; const T = loomT(); const t = weather.temp;
+    const m = Math.abs(lm.s.reduce((a, v) => a + v, 0)) / lm.s.length;
+    const phase = T < 0.9 * TC ? 'Below it one colour wins and wide patches form: a cold day.'
+      : T > 1.1 * TC ? 'Above it the colours mix into a fine noise: a warm day.'
+        : 'Near it there are patches of every size, the weave is critical: a mild day.';
+    return '<h3>The weaver\'s loom</h3><p>Each stitch of this tapestry is a spin, red or blue, that would rather match its four '
+      + `neighbours, while the heat shakes it loose: the Ising model, woven live by the Metropolis rule (${lm.sweeps} sweeps so far).</p>`
+      + `<p>The loom keeps the temperature of Paris: ${t == null ? 'no reading today, so it holds the critical point' : `${t}&nbsp;°C outside`}, `
+      + `so T&nbsp;=&nbsp;${T.toFixed(2)}, against the critical T<sub>c</sub>&nbsp;=&nbsp;2.27 (Onsager, 1944). ${phase}</p>`
+      + `<p>Magnetisation |m|&nbsp;=&nbsp;${m.toFixed(2)}.</p>`;
+  }
   /** The wind across the screen, +x to the right: we look south, so east is on the left and a
    *  west wind (dir 270, where it comes from) pushes things left. About -1..1 for 0..30 km/h. */
   const windX = () => Math.sin((weather.dir ?? 270) * Math.PI / 180) * clamp(weather.wind / 30, 0.1, 1.5);
@@ -2550,6 +2699,22 @@ f11111f2.
     if (scene.flash > 0) for (let i = 0; i < buf.length; i += 1) tint(i, 236, 240, 255, 0.28 * scene.flash);
   }
 
+  /** The market's equilibrium for hour h (bread in the morning, cloth after noon), solved once an
+   *  hour, and its villagers: x0, the bank's first place (MID plane); folk at places (floats). */
+  function market(h) {
+    const mk = scene.market;
+    if (mk && mk.h === h) return mk;
+    const N = 40; const x0 = scene.hamlet.x1 - 14; const s0 = 18; const s1 = 27; // (the stalls' middles, see draw)
+    const late = clamp((h - 9) / 8);
+    const A0 = 1 - 0.6 * late; const A1 = 0.4 + 0.6 * late;
+    const pull = Array.from({ length: N }, (_, x) => A0 * Math.exp(-(((x - s0) / 2.5) ** 2)) + A1 * Math.exp(-(((x - s1) / 2.5) ** 2)) - (0.16 * Math.abs(x - (s0 + s1) / 2)) / N);
+    const g = marketGame(pull);
+    const draw1 = () => { let r = Math.random(); let x = 0; while (x < N - 1 && (r -= g.m[x]) > 0) x += 1; return x; };
+    const COATS = [I.ROBE, I.CLOAK, I.FLAG, I.FLAG2, I.RUST, I.TIMBER];
+    const folk = mk ? mk.folk : Array.from({ length: 14 }, (_, k) => { const x = draw1(); return { pos: x, to: x, c: COATS[k % COATS.length] }; });
+    scene.market = { h, x0, N, folk, ...g };
+    return scene.market;
+  }
   function draw(t) {
     const { W, H, M, fire, fw, fh, cells, yl0, yg, yHor } = scene;
     const put = (x, y, c, skyOnly) => {
@@ -2594,6 +2759,19 @@ f11111f2.
       [L.SKY, L.FAR, L.NEAR, L.TREES, L.MID].forEach(composite);
       backBuf.set(buf); backIdx.set(idxNow); backKey = key;
     } else { buf.set(backBuf); idxNow.set(backIdx); }
+
+    { // the lichen on the rock: the newest cells, at the rim, are the palest
+      const ROCKS = [I.ROCK_HI, I.ROCK, I.ROCK_SH, I.ROCK_DK];
+      scene.lichen.patches.forEach((p) => {
+        const [body, rim] = p.species === 'xanthoria' ? [I.LEAF, I.LEAF2] : [I.MOSS, I.MOSS_HI];
+        const n = p.cells.length;
+        p.cells.forEach(([x, y], k) => {
+          const sx = mx(x); if (sx < 0 || sx >= W) return;
+          const i = y * W + sx;
+          if (ROCKS.includes(idxNow[i])) blend(sx, y, unpack(pal32[k > n * 0.85 ? rim : body]), 0.8, false);
+        });
+      });
+    }
 
     // stars
     if (look.stars > 0) {
@@ -2914,8 +3092,15 @@ f11111f2.
           put(x, y - 4, pal32[I.TIMBER_SH], false); put(x + 6, y - 4, pal32[I.TIMBER_SH], false);
           for (let k = 0; k < 7; k += 1) put(x + k, y - 2, pal32[I.TIMBER], false);
           put(x + 1, y - 3, pal32[I.RUST_HI], false); put(x + 3, y - 3, pal32[I.GRASS_HI], false); put(x + 5, y - 3, pal32[I.FL_YEL], false); // the wares
-          const fx = x + 2 + Math.round(Math.sin(t * 0.5 + dx) * 2); // a buyer
-          put(fx, y - 1, pal32[I.ROBE], false); put(fx, y, pal32[I.ROBE_SH], false); put(fx, y - 2, pal32[I.SKIN], false);
+        });
+        const mk = market(d.getHours());
+        if (scene.marketShow > t) mk.m.forEach((v, k) => { // its density, shown a while on a click
+          const x = mx(mk.x0 + k); const y = scene.riverTop(mk.x0 + k) - 11; // (over the awnings)
+          for (let j = 0; j < Math.round(v * mk.m.length * 3); j += 1) blend(x, y - j, [255, 244, 214], 0.7, false);
+        });
+        mk.folk.forEach((f) => { // the villagers, each walking by the game's policy (see step)
+          const px0 = mk.x0 + f.pos; const x = mx(Math.round(px0)); const y = scene.riverTop(Math.round(px0)) - 3;
+          put(x, y - 1, pal32[f.c], false); put(x, y, pal32[f.c === I.ROBE ? I.ROBE_SH : I.CLOAK_SH], false); put(x, y - 2, pal32[I.SKIN], false);
         });
       }
     }
@@ -3197,6 +3382,7 @@ f11111f2.
   }
 
   function stepInterior() {
+    if (loom && !reduce && interior.deco.some((d) => d.type === 'ising')) loomSweep();
     interior.flames.forEach((f) => { if (f.hearth) stepCells(interior.cells, 9, 14); });
     interior.motes.forEach((m) => { m.x += Math.sin(now() * 0.4 + m.ph) * 0.15; m.y += Math.cos(now() * 0.3 + m.ph) * 0.1; });
   }
@@ -3256,6 +3442,11 @@ f11111f2.
           const a = (reduce ? k : t * w) + k * 2;
           put(d.x + Math.round(Math.cos(a) * r), d.y + Math.round(Math.sin(a) * r * 0.45), P(c));
         });
+      } else if (d.type === 'ising') { // red up, blue down, every other stitch a shade darker
+        const lm = loomOf(d.w, d.h); const up = unpack(P('FLAG')); const dn = unpack(P('FLAG2'));
+        for (let y = 0; y < d.h; y += 1) {
+          for (let x = 0; x < d.w; x += 1) put(d.x + x, d.y + y, pack(mix(lm.s[y * d.w + x] > 0 ? up : dn, [0, 0, 0], (x + y) % 2 ? 0.15 : 0)));
+        }
       } else if (d.type === 'gear') { // a rim, a hub, teeth that turn
         const a0 = reduce ? 0 : t * d.sp;
         for (let a = 0; a < 6.28; a += 0.35) put(d.x + Math.round(Math.cos(a) * d.r), d.y + Math.round(Math.sin(a) * d.r), P('GOLD'));
@@ -3455,6 +3646,10 @@ f11111f2.
     const c = scene.cellar; const cmx = c.x - scene.M + shift(RATE[L.MID]);
     if (inBox(cmx - 1, c.y - 1, c.w + 2, c.h + 1)) return { kind: 'cellar' };
     if (inBox(knight.x + go, knight.y, SPRITES.knight.w, SPRITES.knight.h)) return { kind: 'knight' };
+    const lmx = shift(RATE[L.MID]) - scene.M;
+    const mk = scene.market;
+    if (mk && today().getDay() === 6 && look.night < 0.3 && inBox(mk.x0 + lmx, scene.riverTop(mk.x0 + 18) - 12, mk.N, 12)) return { kind: 'market' };
+    if (scene.lichen.patches.some((p) => Math.hypot(x - (p.x + lmx), y - p.y) <= p.r + 2)) return { kind: 'lichen' };
     if (scene.meteors.some((m) => Math.hypot(x - m.x, y - m.y) < 6)) return { kind: 'meteor' };
     const an = scene.angler; if (look.night < 0.5 && inBox(an.x - scene.M + groundOff(an.y + 6), an.y, SPRITES.angler.w + 6, SPRITES.angler.h)) return { kind: 'angler' };
     const hs = scene.horse; if (inBox(hs.x + go, hs.y, SPRITES.horse[0].w, SPRITES.horse[0].h)) return { kind: 'horse' };
@@ -3483,6 +3678,14 @@ f11111f2.
     else if (hit.kind === 'heron') say('The heron stands on one leg and pretends you are not there.');
     else if (hit.kind === 'meteor') say('You catch the shooting star and make a wish. It is yours to keep.');
     else if (hit.kind === 'angler') say(['The angler raises a finger to his lips. The fish are listening.', 'The angler shows you an empty basket and a patient smile.', '"They bite at dawn," says the angler, "and never when you watch."'][Math.floor(Math.random() * 3)]);
+    else if (hit.kind === 'market') {
+      const mk = scene.market; scene.marketShow = now() + 8;
+      say(`Market day. Each villager weighs the pull of the stalls (bread in the morning, cloth later) against the crush around them, and the crowd settles where no one gains by moving: a mean-field Nash equilibrium, found by fictitious play over ${mk.rounds} rounds (gap ${mk.gap.toExponential(0)}). The bars over them show its density.`);
+    }
+    else if (hit.kind === 'lichen') {
+      const lc = scene.lichen; const n = lc.patches.reduce((a, p) => a + p.cells.length, 0); const D = lichenDim(lc);
+      say(`Lichen on the castle rock, growing while you watch: spores wander at random and take hold where they touch it (diffusion-limited aggregation). ${n} cells so far${D ? `; fractal dimension about ${D.toFixed(2)} (1.71 for a large cluster)` : ''}.`);
+    }
     else if (hit.kind === 'owl') say('The owl turns its head right round and hoots: "Who-oo?"');
     else if (hit.kind === 'mill') {
       const w = Math.round(weather.wind);
@@ -3556,6 +3759,14 @@ f11111f2.
     if (look.night > 0.7 && !reduce && Math.random() < 0.025) {
       const go0 = groundOff(fire.y) - M; scene.zzz.push({ x: scene.knight.x + go0 + 17, y: scene.knight.y + 2, age: 0 });
     }
+    if (scene.market && !reduce) scene.market.folk.forEach((f) => { // a step, now and then, drawn from the policy
+      const mk = scene.market;
+      if (Math.abs(f.pos - f.to) > 0.01) { f.pos += Math.sign(f.to - f.pos) * Math.min(0.1, Math.abs(f.to - f.pos)); return; }
+      if (Math.random() > 0.05) return;
+      let r = Math.random(); let a = 0; while (a < 2 && (r -= mk.pol[f.to * 3 + a]) > 0) a += 1;
+      f.to = clamp(f.to + a - 1, 0, mk.N - 1);
+    });
+    if (!reduce && tick % 2 === 0) lichenGrow(scene.lichen, 150); // (some three minutes to full size)
     scene.zzz = scene.zzz.filter((z) => { z.y -= 0.25; z.x += 0.15; z.age += 1; return z.age < 40; });
     const fest = festival(today());
     if (fest && fest[0] === 'fireworks' && look.night > 0.4 && !reduce && Math.random() < 0.07) {

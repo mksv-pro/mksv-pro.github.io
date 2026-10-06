@@ -332,6 +332,7 @@ soundBtn.after(volume);
 const applyVolume = () => { store('volume', volume.value); if (window.Sound) window.Sound.setVolume(Number(volume.value) / 10); };
 volume.addEventListener('input', applyVolume);
 let musicOn = store('music') !== 'off';
+// deno-lint-ignore no-unused-vars -- cmdline.js
 function setMusic(on) { musicOn = on; store('music', on ? 'on' : 'off'); if (window.Sound) window.Sound.setMusic(on); }
 if (soundOn) {
   soundBtn.setAttribute('aria-pressed', 'true'); soundBtn.querySelector('b').textContent = T.on;
@@ -383,6 +384,7 @@ const CURIOS = {
   wizard: 'the wizard', knight: 'the knight', shield: "the knight's arms", fire: 'the fire', cat: 'the cats',
   horse: "the knight's horse", cellar: 'the cellar door', mill: 'the windmill', heron: 'the heron',
   angler: 'the patient angler', owl: 'the owl (by night)', meteor: 'a wish on a falling star (clear nights)',
+  lichen: 'the lichen on the rock', market: 'the Saturday market (by day)',
 };
 const curios = () => sessionList('curios');
 function showCurios() {
