@@ -1141,7 +1141,7 @@ nNnnnn..
         if (kind === 'chapel') { // a narrow nave and its spire, a bell under the cap
           for (let k = 0; k < 6; k += 1) for (let dx = -Math.floor(k / 2); dx <= Math.floor(k / 2); dx += 1) set(x + 2 + dx, yb - h - 6 + k, dx < 0 ? I.SLATE_HI : I.SLATE_SH);
           set(x + 2, yb - h - 7, I.GOLD); set(x + 2, yb - h + 2, I.GOLD_SH); spire = [x + 2, yb - h - 8];
-          windows.push({ pts: [[x + 2, yb - 3]], lit: rng() < 0.5 });
+          set(x + 2, yb - 5, I.T_GULES); set(x + 2, yb - 4, I.T_AZURE); set(x + 2, yb - 3, I.T_OR); // its stained-glass slit
         } else { // a gable roof seen from the side, overhanging, a chimney at one end
           const rh = Math.ceil(w / 3); const R = kind === 'thatch' ? [I.THATCH, I.THATCH_SH] : [I.ROOF_HI, I.ROOF_SH];
           for (let k = 0; k < rh; k += 1) for (let xx = x - 1 + k; xx <= x + w - k; xx += 1) set(xx, yb - h - k, k === rh - 1 || xx > x + w / 2 ? R[1] : R[0]);
@@ -1785,6 +1785,20 @@ f11111f2.
       sills.push({ x0, w, y: y0 + h + 1, top: y0 }); // (y: the sill's top row)
       for (let k = 0; k < 10; k += 1) motes.push({ x: x0 + rng() * w, y: y0 + h + rng() * (yf - y0 - h), ph: rng() * 6 });
     }
+    /** A rose window: eight petals in the colours of the schools between lead cames, a gold heart,
+     *  a stone ring. Lit by the day like the windows (out = 1: the outdoor palette), dark at night. */
+    function roseWindow(cx, cy, R) {
+      const GLASS = [I.T_PRUNE, I.T_NAVY, I.T_AZURE, I.T_BORDEAUX, I.T_BRIGHT, I.T_GULES, I.T_PRUNE, I.T_NAVY];
+      for (let y = -R - 2; y <= R + 2; y += 1) for (let x = -R - 2; x <= R + 2; x += 1) {
+        const d = Math.hypot(x, y); const a = Math.atan2(y, x) + Math.PI; const sec = (a / (2 * Math.PI)) * 8;
+        if (d > R + 2) continue;
+        if (d > R + 0.6) { set(cx + x, cy + y, (x + y) % 3 ? I.ROCK_HI : I.ROCK); continue; } // the tracery's stone
+        const lead = Math.abs(d - R) < 0.7 || Math.abs(d - R * 0.42) < 0.6 || (d > R * 0.42 && Math.abs(sec - Math.round(sec)) * d * 0.8 < 0.55);
+        const c = lead ? I.OUTLINE : d < R * 0.42 ? (d < 1.2 ? I.T_GULES : I.T_OR) : GLASS[Math.floor(sec) % 8];
+        set(cx + x, cy + y, c, lead ? 0 : 1);
+      }
+      pools.push({ x: cx, w: R * 1.6, y0: cy + R }); // its light on the floor
+    }
     function candle(x, y, big) {
       rect(x, y - (big ? 4 : 3), 1, big ? 4 : 3, I.STEM); set(x, y, I.GOLD_SH); set(x - 1, y, I.GOLD); set(x + 1, y, I.GOLD);
       flames.push({ x, y: y - (big ? 5 : 4) }); lights.push({ x, y: y - 4, r: big ? 0.5 * H : 0.38 * H });
@@ -2092,7 +2106,14 @@ f11111f2.
       // the schools' hangings along the wall, each on its own rod (one row; spread when there is room)
       const gap = clamp(Math.floor((BR - BL - 6) / Math.max(1, hangs.length)), 21, 24); const tw = hangs.length * gap; const narrow = BR - (tw + S(0.05) + 10) < 72;
       const tx = narrow ? Math.max(BL + 2, Math.round(BL + (BR - BL - tw) / 2)) : S(0.05); const ty = 9;
-      hangs.forEach((e, k) => hanging(tx + 12 + k * gap, ty + (k % 2) * 2, e, k));
+      // a narrow room: the rose window in the middle of the row, the hangings parted either side of it
+      let RR = 10; while (RR > 5 && tw + 2 * RR + 10 > BR - BL - 4) RR -= 1; // smaller when the wall is short
+      const G = 2 * RR + 10; let rose = null;
+      if (narrow && tw + G <= BR - BL - 4) {
+        const half = Math.ceil(hangs.length / 2); const x0 = Math.round((BL + BR - tw - G) / 2);
+        hangs.forEach((e, k) => hanging(x0 + 12 + k * gap + (k >= half ? G : 0), ty + (k % 2) * 2, e, k));
+        rose = [x0 + half * gap + Math.round(G / 2) + 3, ty + 14];
+      } else hangs.forEach((e, k) => hanging(tx + 12 + k * gap, ty + (k % 2) * 2, e, k));
       // the council chamber: a round table, high-backed chairs about it, a chandelier over it;
       // each talk a scroll laid at a place (from the far side round to the near), more at the centre
       // the table takes the room right of the tapestry, whole: it never runs off the edges
@@ -2137,6 +2158,13 @@ f11111f2.
         for (let k = 1; k < 8; k += 2) rect(x - 4 + k, y - 4, 1, 8, I.TIMBER);
         rect(x - 4, y + 6, 1, Math.max(1, floorY(0.95) - y - 6), I.TIMBER_SH); rect(x + 4, y + 6, 1, Math.max(1, floorY(0.95) - y - 6), I.TIMBER_SH);
       });
+      { // the rose window: over the table, left of the chandelier's chain; under the hangings in a narrow room
+        // (else sized to the wall left between the hangings, or the beams, and the chairs' high backs)
+        const top = narrow ? ty + 32 : Math.round(H * 0.16); const bottom = tcy - ry - 15;
+        const R = Math.min(11, Math.floor((bottom - top) / 2) - 2);
+        if (rose) roseWindow(rose[0], rose[1], RR);
+        else if (R >= 5) roseWindow(narrow ? Math.round((BL + BR) / 2) : Math.round(tcx - rx * 0.5), Math.round((top + bottom) / 2), R);
+      }
       if (!narrow) chandelier(tcx, Math.max(Math.round(H * 0.3), tcy - ry - 26)); // low over the table, clear of the menu's beam
       const lx = tcx - rx - 16; // the speaker's lectern, at the head of the table, waiting
       rect(lx + 3, yf - 13, 2, 13, I.TIMBER_SH); rect(lx + 1, yf - 1, 6, 1, I.TIMBER_SH);
