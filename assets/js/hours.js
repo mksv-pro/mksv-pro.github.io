@@ -1651,6 +1651,7 @@ f11111f2.
       }
     }
     const pools = []; // pale light under each window (lit in lightInterior, no dither)
+    const sills = []; // the windows' sills, where the season's vase stands
     const doorList = [];
     if (box3d) { // the side walls, receding: each room's own material and ceiling
       const hw = yf + H; // wall height, back units: the walls run up out of sight, under a flat ceiling
@@ -1781,6 +1782,7 @@ f11111f2.
       // to the right of their fire (outside, from the meadow's side, they are to its left)
       camps.push({ x: x0 + Math.max(1, Math.round(w * 0.3)), y: Math.round(y0 + h * 0.83) });
       pools.push({ x: x0 + w / 2, w, y0: y0 + h }); // a pale fall of light on the floor below it
+      sills.push({ x0, w, y: y0 + h + 1, top: y0 }); // (y: the sill's top row)
       for (let k = 0; k < 10; k += 1) motes.push({ x: x0 + rng() * w, y: y0 + h + rng() * (yf - y0 - h), ph: rng() * 6 });
     }
     function candle(x, y, big) {
@@ -1847,6 +1849,56 @@ f11111f2.
       for (let y = 4; y < y0; y += 1) set(cx0, y, y % 2 ? I.ARM_SH : I.ARM);
       rect(cx0 - 7, y0, 15, 1, I.ARM_SH); rect(cx0 - 6, y0 + 1, 13, 1, I.ARM);
       [-6, -2, 2, 6].forEach((dx) => candle(cx0 + dx, y0 - 1, false));
+    }
+
+    /* the year inside too: a brazier and frost in winter, a vase of the season on the sill (or by the
+       wall), apples in autumn; pumpkins and a cobweb on All Hallows, holly in December, lily of the
+       valley on May Day. After the room's furniture, so it stands in front. */
+    function seasonal() {
+      const qs = new URLSearchParams(location.search).get('season');
+      const d = today(); const season = ['spring', 'summer', 'autumn', 'winter'].includes(qs) ? qs : SEASON(d.getMonth());
+      const fest = festival(d); const kind = fest && fest[0];
+      const S = (f) => Math.round(BL + f * (BR - BL)); // a place on the back wall
+      const sill = sills[0]; const corner = BR - 12; const fy = floorY(0.22);
+      const vase = (x, yb, flower) => { // a jug and its bunch: stems fanning out, a flower on each
+        rect(x, yb - 5, 5, 5, I.ROBE); rect(x, yb - 5, 1, 5, I.ROBE_HI); rect(x + 4, yb - 5, 1, 5, I.ROBE_SH); rect(x - 1, yb - 6, 7, 1, I.ROBE_SH);
+        [[-3, 5], [-1, 7], [2, 8], [5, 7], [7, 5]].forEach(([dx, hgt], k) => {
+          for (let j = 1; j < hgt; j += 1) set(x + 2 + Math.round((dx * j) / hgt), yb - 6 - j, I.FERN_SH);
+          const fx = x + 2 + dx; const fy = yb - 6 - hgt; const c = flower[k % flower.length];
+          set(fx, fy, c); set(fx - 1, fy, c); set(fx + 1, fy, c); set(fx, fy - 1, c); set(fx, fy + 1, I.FL_YEL);
+        });
+      };
+      const vx = sill ? Math.round(sill.x0 + sill.w * 0.7) : S(0.08); const vy = sill ? sill.y : yf - 2;
+      if (kind === 'may') vase(vx, vy, [I.FL_WHITE, I.FERN, I.FL_WHITE]);
+      else if (season === 'spring') vase(vx, vy, [I.BLOSSOM, I.FL_YEL, I.FL_VIOLET]);
+      else if (season === 'summer') vase(vx, vy, [I.FL_YEL, I.LEAF2, I.FL_YEL]);
+      if (season === 'autumn' && kind !== 'samhain') { // a basket of apples by the wall, a few leaves blown in
+        rect(corner, fy - 5, 9, 5, I.TIMBER); rect(corner, fy - 5, 9, 1, I.TIMBER_HI); for (let k = 1; k < 9; k += 2) rect(corner + k, fy - 4, 1, 4, I.TIMBER_SH);
+        [[1, -7], [3, -7], [5, -7], [7, -7], [2, -8], [4, -8], [6, -8], [3, -9], [5, -9]].forEach(([dx, dy], k) => { set(corner + dx, fy + dy, k % 3 ? I.CAP : I.LEAF2); set(corner + dx + 1, fy + dy, k % 3 ? I.CAP_SH : I.LEAF); });
+        if (sill) for (let k = 0; k < 5; k += 1) set(sill.x0 + k * 3 - 2, floorY(0.08 + (k % 3) * 0.05), k % 2 ? I.LEAF : I.LEAF2);
+      }
+      if (season === 'winter') { // a brazier glowing by the wall; frost in the window's corners
+        const bx = S(0.12); const by = floorY(0.3);
+        rect(bx - 3, by - 3, 7, 1, I.ARM_SH); rect(bx - 2, by - 2, 5, 2, I.ARM); set(bx - 2, by, I.ARM_SH); set(bx + 2, by, I.ARM_SH);
+        for (let k = -2; k <= 2; k += 2) flames.push({ x: bx + k, y: by - 4, small: true });
+        lights.push({ x: bx, y: by - 5, r: 0.45 * H });
+        sills.forEach((w) => { for (let k = 0; k < 4; k += 1) { set(w.x0 + k, w.y - 2 - k, I.FL_WHITE); set(w.x0 + w.w - 1 - k, w.y - 2 - k, I.FL_WHITE); } });
+      }
+      if (kind === 'samhain') { // a carved pumpkin by the wall, lit; a cobweb in the corner
+        const px0 = corner; const py = fy;
+        rect(px0, py - 4, 6, 4, I.RUST_HI); rect(px0, py - 4, 6, 1, I.RUST); set(px0 + 3, py - 5, I.FERN_SH);
+        set(px0 + 1, py - 3, I.FL_YEL); set(px0 + 4, py - 3, I.FL_YEL); rect(px0 + 2, py - 2, 2, 1, I.FL_YEL);
+        lights.push({ x: px0 + 3, y: py - 3, r: 0.25 * H });
+        const cx = BL + 1; const cy = 6;
+        for (let k = 0; k < 9; k += 1) { set(cx + k, cy + Math.floor(k / 2), I.PLASTER_HI); set(cx + Math.floor(k / 2), cy + k, I.PLASTER_HI); }
+        for (let k = 2; k < 8; k += 3) for (let j = 0; j <= k; j += 1) set(cx + k - j, cy + j, I.PLASTER);
+      }
+      if (kind === 'advent' || kind === 'christmas') { // holly along the beams, a wreath on the back wall
+        for (let x = BL; x < BR; x += 1) { const y = 7 + Math.round(Math.abs(Math.sin((x - BL) / 7)) * 2); set(x, y, I.FERN_SH); if (x % 4 === 0) set(x, y + 1, I.CAP); }
+        const wx = sill ? (sill.x0 > (BL + BR) / 2 ? S(0.2) : S(0.8)) : S(0.5); const wy = Math.round(H * 0.16); // beside the window, not behind it
+        for (let a = 0; a < 6.28; a += 0.3) set(wx + Math.round(Math.cos(a) * 4), wy + Math.round(Math.sin(a) * 4), a % 0.9 < 0.3 ? I.CAP : I.FERN);
+        set(wx, wy + 4, I.CAP); set(wx - 1, wy + 5, I.CAP); set(wx + 1, wy + 5, I.CAP);
+      }
     }
 
     const things = ROOM_NAMES[id] ? (itemsOf(id) || []) : null; // null: a project page, its text on the easel
@@ -2179,6 +2231,7 @@ f11111f2.
       windowArch(S(0.06), Math.round(H * 0.14), Math.max(10, Sw(0.1)), Math.round(H * 0.26));
     }
     doorList.forEach((e) => extra.push(e));
+    seasonal();
     extra.forEach(({ t, b }) => { slots[things.length] = b; things.push(t); }); // the hangings and the doors can be looked at too
     } else { // a project page: the workshop, its text on the blueprint on the easel
       easelUnder(bot);
