@@ -14,9 +14,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "assets" / "snd"
-# cue: [(take, seconds of silence before it)]
+# cue: [(take, seconds after the previous take ends: < 0 overlaps it, tempo)]
 CUES = {
-    "door": [("doorOpen_2", 0), ("doorClose_1", 0.12)],  # into a room: the hinges, then the door shuts
+    "door": [("doorOpen_2", 0, 1.2), ("doorClose_1", -0.75)],  # the hinges, and the door shut on them
     "card": [("cloth3", 0), ("bookFlip2", 0.0)],         # a sheet of vellum taken up and unfolded
     "seal": [("bookOpen", 0), ("cloth1", 0.05)],         # the wax snaps, the letter is opened
     "page": [("bookFlip1", 0)],                          # a page turned
@@ -31,23 +31,33 @@ def run(*cmd):
     subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+def duration(p):
+    out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(p)],
+                         check=True, capture_output=True, text=True).stdout
+    return float(out)
+
+
 def main(src):
     src = Path(src)
     src = src / "OGG" if (src / "OGG").is_dir() else src
     OUT.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         for cue, takes in CUES.items():
-            parts = []
-            for k, (name, gap) in enumerate(takes):
+            parts = []; at = 0.0
+            for k, (name, gap, *tempo) in enumerate(takes):
                 p = Path(tmp) / f"{cue}{k}.wav"
-                pad = f"adelay={int(gap * 1000)}|{int(gap * 1000)}," if gap else ""
                 trim = (TRIM + ",areverse," + TRIM + ",areverse,")  # the take's silences cut at both ends
-                run("ffmpeg", "-y", "-i", str(src / f"{name}.ogg"), "-af", f"{trim}{pad}aformat=channel_layouts=mono",
+                speed = f"atempo={tempo[0]}," if tempo else ""
+                run("ffmpeg", "-y", "-i", str(src / f"{name}.ogg"), "-af", f"{trim}{speed}aformat=channel_layouts=mono",
                     "-ar", "22050", str(p))
-                parts.append(p)
+                start = max(0.0, at + gap) if k else 0.0
+                parts.append((p, start))
+                at = start + duration(p)
             joined = Path(tmp) / f"{cue}.wav"
-            inputs = sum((["-i", str(p)] for p in parts), [])
-            run("ffmpeg", "-y", *inputs, "-filter_complex", f"concat=n={len(parts)}:v=0:a=1", str(joined))
+            inputs = sum((["-i", str(p)] for p, _ in parts), [])
+            delays = "".join(f"[{k}]adelay={int(t * 1000)}:all=1[d{k}];" for k, (_, t) in enumerate(parts))
+            mix = "".join(f"[d{k}]" for k in range(len(parts))) + f"amix=inputs={len(parts)}:normalize=0"
+            run("ffmpeg", "-y", *inputs, "-filter_complex", delays + mix, str(joined))
             run("ffmpeg", "-y", "-i", str(joined), "-af", TREAT, "-ac", "1", "-ar", "22050",
                 "-c:a", "libmp3lame", "-b:a", "48k", str(OUT / f"{cue}.mp3"))
             print(f"  assets/snd/{cue}.mp3 ({(OUT / f'{cue}.mp3').stat().st_size // 1024} KB)")

@@ -384,7 +384,7 @@ const CURIOS = {
   wizard: 'the wizard', knight: 'the knight', shield: "the knight's arms", fire: 'the fire', cat: 'the cats',
   horse: "the knight's horse", cellar: 'the cellar door', mill: 'the windmill', heron: 'the heron',
   angler: 'the patient angler', owl: 'the owl (by night)', meteor: 'a wish on a falling star (clear nights)',
-  lichen: 'the lichen on the rock', market: 'the Saturday market (by day)',
+  lichen: 'the lichen on the rock', market: 'the market crowd (Saturdays, by day)',
 };
 const curios = () => sessionList('curios');
 function showCurios() {

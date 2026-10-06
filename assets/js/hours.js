@@ -467,7 +467,7 @@ nNnnnn..
     };
   }
   /* ---- lichen on the castle rock: diffusion-limited aggregation (Witten & Sander 1981) ----
-     on[i]: 1 rock, 2 lichen, over the MID plane. Walkers start on a ring just outside a patch,
+     on[i]: 1 rock, 2 + k lichen of patch k, over the MID plane. Walkers start on a ring just outside a patch,
      step to a 4-neighbour (only over rock) and stick, with probability `stick`, on touching it;
      too far, they start again. */
   function lichenInit(plane, WE, H, y0, y1, rng, rock) {
@@ -477,7 +477,7 @@ nNnnnn..
     for (let tries = 0; patches.length < 3 && list.length && tries < 400; tries += 1) {
       const i = list[Math.floor(rng() * list.length)]; const x = i % WE; const y = (i - x) / WE;
       if (y < y0 + 3 || patches.some((p) => Math.hypot(p.x - x, p.y - y) < 18)) continue;
-      on[i] = 2; patches.push({ x, y, cells: [[x, y]], r: 0, w: null, species: patches.length % 3 === 1 ? 'xanthoria' : 'lecanora' });
+      on[i] = 2 + patches.length; patches.push({ x, y, cells: [[x, y]], r: 0, w: null, sum: [x, y, x * x + y * y], hist: [], species: patches.length % 3 === 1 ? 'xanthoria' : 'lecanora' });
     }
     return { on, WE, patches, max: 120, stick: 0.3 }; // (sticking below 1: a crust more than a fern)
   }
@@ -487,7 +487,9 @@ nNnnnn..
     const live = lc.patches.filter((p) => p.cells.length < lc.max);
     if (!live.length) return 0;
     const per = Math.ceil(budget / live.length);
-    live.forEach((p) => {
+    lc.patches.forEach((p, k) => {
+      if (p.cells.length >= lc.max) return;
+      const me = 2 + k; // (a walker takes hold on its own patch only: they would merge, and r with them)
       for (let s = 0; s < per && p.cells.length < lc.max; s += 1) {
         if (!p.w) { // launch on a ring just outside the patch, on rock
           const a = Math.random() * 6.283; const R = p.r + 5;
@@ -500,23 +502,27 @@ nNnnnn..
         if (on[ny * WE + nx] === 1) p.w = [nx, ny]; // (off the rock: it stays where it is)
         const [wx, wy] = p.w;
         if (Math.hypot(wx - p.x, wy - p.y) > 2 * p.r + 10) { p.w = null; continue; }
-        const touch = on[wy * WE + wx + 1] === 2 || on[wy * WE + wx - 1] === 2 || on[(wy + 1) * WE + wx] === 2 || on[(wy - 1) * WE + wx] === 2;
+        const touch = on[wy * WE + wx + 1] === me || on[wy * WE + wx - 1] === me || on[(wy + 1) * WE + wx] === me || on[(wy - 1) * WE + wx] === me;
         if (touch && Math.random() < lc.stick) {
-          on[wy * WE + wx] = 2; p.cells.push([wx, wy]); p.r = Math.max(p.r, Math.hypot(wx - p.x, wy - p.y)); p.w = null; added += 1;
+          on[wy * WE + wx] = me; p.cells.push([wx, wy]); p.r = Math.max(p.r, Math.hypot(wx - p.x, wy - p.y)); p.w = null; added += 1;
+          const n = p.cells.length; const q = p.sum; q[0] += wx; q[1] += wy; q[2] += wx * wx + wy * wy;
+          const rg2 = q[2] / n - (q[0] / n) ** 2 - (q[1] / n) ** 2; // radius of gyration, squared
+          if (n >= 10) p.hist.push([Math.log(n), 0.5 * Math.log(rg2)]);
         }
       }
     });
     return added;
   }
-  /** Mass-radius dimension of the patches: slope of log N(r) against log r (least squares). */
+  /** Fractal dimension D from each patch's growth, N ~ Rg^D (least squares of log N on log Rg),
+   *  averaged over the patches. (Mass within r of the seed undercounts on clusters this small:
+   *  the outer rim is still filling in: 0.9 to 1.3 where this gives 1.6 to 1.8.) */
   function lichenDim(lc) {
-    const pts = [];
-    lc.patches.forEach((p) => {
-      for (let r = 2; r <= p.r * 0.85; r += 1) pts.push([Math.log(r), Math.log(p.cells.filter(([x, y]) => Math.hypot(x - p.x, y - p.y) <= r).length)]);
-    });
-    if (pts.length < 3) return null;
-    const mx = pts.reduce((a, q) => a + q[0], 0) / pts.length; const my = pts.reduce((a, q) => a + q[1], 0) / pts.length;
-    return pts.reduce((a, q) => a + (q[0] - mx) * (q[1] - my), 0) / pts.reduce((a, q) => a + (q[0] - mx) ** 2, 0);
+    const fit = (pts) => {
+      const mx = pts.reduce((a, q) => a + q[1], 0) / pts.length; const my = pts.reduce((a, q) => a + q[0], 0) / pts.length;
+      return pts.reduce((a, q) => a + (q[1] - mx) * (q[0] - my), 0) / pts.reduce((a, q) => a + (q[1] - mx) ** 2, 0);
+    };
+    const ds = lc.patches.filter((p) => p.hist.length >= 10).map((p) => fit(p.hist));
+    return ds.length ? ds.reduce((a, d) => a + d, 0) / ds.length : null;
   }
 
   /* ---- the Saturday market's crowd: a stationary mean-field game (Lasry & Lions 2007) on a line

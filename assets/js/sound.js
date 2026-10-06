@@ -144,7 +144,7 @@
   }
 
   /** A recorded take, a little higher or lower each time so it never repeats exactly. */
-  function play(name, vol = 0.9) {
+  function play(name, vol = 0.65) {
     const src = ac.createBufferSource(); src.buffer = takes[name]; src.playbackRate.value = 0.94 + Math.random() * 0.12;
     const g = ac.createGain(); g.gain.value = vol; src.connect(g).connect(out(name === 'door')); src.start();
   }
