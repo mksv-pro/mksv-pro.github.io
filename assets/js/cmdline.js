@@ -133,7 +133,7 @@ function run(line) {
       return print(T.themeSet(T.themeName[want]));
     }
     case 'sky': {
-      if (!(arg in SKY_ALT) && arg !== 'now') return print(esc(T.skyHint));
+      if (!Object.hasOwn(SKY_ALT, arg) && arg !== 'now') return print(esc(T.skyHint));
       session('sky', arg === 'now' ? null : arg);
       updateSky();
       return print(esc(T.skySet(arg)));

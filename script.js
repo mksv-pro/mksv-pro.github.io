@@ -142,6 +142,8 @@ function sessionList(key) {
 }
 
 const $ = (id) => document.getElementById(id);
+/** decodeURIComponent that gives back its input when the URL holds a malformed escape (%E0). */
+const decode = (s) => { try { return decodeURIComponent(s); } catch { return s; } };
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 /* ---- message line ------------------------------------------------------ */
@@ -213,7 +215,7 @@ function tokenRGB(prop) {
 /* ---- the 404 tombstone names the missing path ------------------------- */
 
 if ($('rip-path')) {
-  $('rip-path').textContent = decodeURIComponent(location.pathname);
+  $('rip-path').textContent = decode(location.pathname);
   $('rip-path').parentElement.hidden = false;
 }
 
@@ -307,7 +309,7 @@ function currentWindow() {
 }
 
 function openWindow(hash, { userAction, animate = userAction }) {
-  const target = (hash && document.getElementById(decodeURIComponent(hash.slice(1)))) || null;
+  const target = (hash && document.getElementById(decode(hash.slice(1)))) || null;
   const win = target ? target.closest('main > section') : windows[0];
   if (!windows.includes(win)) return; // e.g. the skip link's #main: leave the windows alone
 
@@ -414,7 +416,8 @@ function roomItems(id) {
     case 'research': return of('.entry', 'scroll', (el) => ({ arms: el.dataset.arms, label: text(el.querySelector('h3')), html: el.innerHTML }));
     case 'projects': return of('article.project', 'model', (el) => ({ model: el.id, label: text(el.querySelector('h3')), html: el.innerHTML }));
     case 'publications': { // the works face out on the ledge; then the shelves, and the volumes on them
-      const lib = DATA.library || {}; const vols = lib.volumes || [];
+      const lib = DATA.library || {};
+      const vols = (lib.volumes || []).map((b) => ({ ...b, url: /^https?:\/\//.test(b.url || '') ? b.url : '' })); // web links only
       const volume = (b) => `<b>${b.url ? `<a href="${esc(b.url)}" rel="noopener">${esc(b.title)}</a>` : esc(b.title)}</b>`
         + `, ${esc(b.author)}${b.year ? ` (${esc(b.year)})` : ''}${b.note ? `<br><span class="dim">${esc(b.note)}</span>` : ''}`;
       return [
@@ -792,14 +795,14 @@ const pad = (n) => String(n).padStart(2, '0');
    screenshots): the same day in Paris at a sun altitude of SKY_ALT[name] degrees. */
 const SKY_ALT = { dawn: 4, noon: 38, dusk: -4, night: -30 }; // dusk: below the -3 deg night line
 const skyParam = new URLSearchParams(location.search).get('sky');
-if (skyParam in SKY_ALT) session('sky', skyParam);
+if (Object.hasOwn(SKY_ALT, skyParam || '')) session('sky', skyParam);
 
 /** The instant the sky shows: now, or the hour of today whose sun altitude is SKY_ALT[name],
  *  morning side for dawn, evening side for dusk and night (found by bisection). */
 function skyNow() {
   const name = session('sky');
   const now = new Date();
-  if (!(name in SKY_ALT)) return now;
+  if (!Object.hasOwn(SKY_ALT, name || '')) return now;
   const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12).getTime();
   const alt = (t) => Math.asin(skyAt(new Date(t)).sun[2]) / rad;
   if (name === 'noon') return new Date(t0);
