@@ -1115,3 +1115,8 @@ html.photo :is(.msgline, .host, .tabs, .status, .spots, .card, .leave, main, .cm
 [data-theme="hours"] .card .droll.at-left { left: .3rem; } [data-theme="hours"] .card .droll.at-right { right: .3rem; }
 [data-theme="hours"] .card .droll.flip { transform: scaleX(-1); }
 [data-theme="hours"] .card .page .droll { bottom: 0; }
+
+/* ?og (the link preview's photograph, _tools/og.py): the landscape and the name alone */
+html.og :is(.msgline, .tabs, .status, .spots, .card, .leave, main, .cmdline, .links, .statement, .almanac, .photo-bar, dialog) { visibility: hidden; }
+html.og :is(.msgline, .status) { display: none; }
+html.og { --msg-h: 0px; --status-h: 0px; } /* the scene takes the whole frame */

@@ -1,13 +1,14 @@
 """Build the site's generated images from _tools/src/ into assets/img/.
 
-Run from the site root:  python _tools/make_assets.py [engraving illuminations monogram og figures]
+Run from the site root:  python _tools/make_assets.py [engraving illuminations monogram figures]
+(the share card, og.png, is photographed from the site by og.py)
 (no argument: all). Needs Pillow + NumPy. Colours must match the tokens at the top of styles.css.
 """
 import sys
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 
 import illuminations
 from colour import rgb
@@ -15,7 +16,6 @@ from colour import rgb
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "_tools" / "src"
 OUT = ROOT / "assets" / "img"
-FONT = ROOT / "assets" / "fonts" / "DepartureMono-Regular.woff2"
 # Report figures, from the nuclear-emulators project of the EnvS workspace (published as-is, resized).
 FIGURES = ROOT.parent / "projects" / "nuclear-emulators" / "src" / "nuclear_emulators" / "outputs" / "figures"
 
@@ -94,34 +94,6 @@ def monogram_rects(ox=0, oy=0):
     return "".join(out)
 
 
-def og_card():
-    """1200x630 share card: the dark plate on the left, name and line on the right."""
-    bg, ink = THEMES["dark"]
-    accent = "#e0a23a"
-    card = Image.new("RGB", (1200, 630), rgb(bg))
-    plate = Image.open(OUT / "flammarion-dark.png").convert("RGB")
-    k = 630 / plate.height
-    plate = plate.resize((round(plate.width * k), 630), Image.NEAREST)
-    card.paste(plate, (0, 0))
-    d = ImageDraw.Draw(card)
-    x0 = plate.width + 1
-    d.line([(x0, 0), (x0, 630)], fill=rgb("#4d4230"), width=2)
-    px = 7  # monogram pixel size
-    for y, row in enumerate(MONOGRAM):
-        for x, c in enumerate(row):
-            if c == "X":
-                d.rectangle([x0 + 60 + x * px, 120 + y * px,
-                             x0 + 60 + (x + 1) * px - 1, 120 + (y + 1) * px - 1], fill=rgb(accent))
-    big = ImageFont.truetype(str(FONT), 72)
-    small = ImageFont.truetype(str(FONT), 28)
-    d.text((x0 + 60, 250), "Mike Silva", font=big, fill=rgb("#efe3c4"))
-    d.text((x0 + 60, 345), "physics \u00b7 complex systems", font=small, fill=rgb(accent))
-    d.text((x0 + 60, 385), "stochastic processes \u00b7 simulation", font=small, fill=rgb(ink))
-    d.text((x0 + 60, 520), "mksv-pro.github.io", font=small, fill=rgb("#968768"))
-    card.save(OUT / "og.png", optimize=True)
-    print("og card: 1200x630")
-
-
 def figures():
     """Copy two report figures into assets/img/projects/, at most `width` px wide."""
     dest = OUT / "projects"
@@ -151,6 +123,6 @@ def monogram():
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
     steps = {"engraving": engraving, "illuminations": lambda: illuminations.build(OUT),
-             "monogram": monogram, "og": og_card, "figures": figures}
+             "monogram": monogram, "figures": figures}  # the share card: og.py
     for name in sys.argv[1:] or steps:
         steps[name]()

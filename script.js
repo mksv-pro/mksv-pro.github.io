@@ -7,6 +7,8 @@ const HOURS_SRC = document.currentScript.dataset.hours; // loaded with the hours
 const ARMS_SRC = document.currentScript.dataset.arms; // its coats of arms, before it
 const SOUND_SRC = document.currentScript.dataset.sound; // ambient sound, loaded when switched on
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+// ?og: the view _tools/og.py photographs for the link preview (the name over the landscape)
+if (new URLSearchParams(location.search).has('og')) document.documentElement.classList.add('og');
 
 /* ---- the world: one grid for the exits, the map (m) and the descent (>) ---
    From _src/site.toml, via the JSON that build.py writes into every page. Column c, row r;
