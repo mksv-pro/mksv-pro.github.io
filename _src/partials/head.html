@@ -20,15 +20,30 @@
   <link rel="icon" href="{{root}}assets/img/monogram.svg" type="image/svg+xml">
 
   <script>
-    // Before first paint, so a stored or system light theme never flashes dark.
+    // Before first paint, so a stored theme never flashes. A light system preference gets the
+    // hours theme (its day is the light one); 'light' from before folio was dropped, likewise.
+    // data-sky (day|night) picks the hours theme's palette: night once the sun is 3 deg below
+    // Paris's horizon (low-precision solar position, ~0.5 deg; script.js keeps it current).
     (function () {
-      var t = null;
-      try { t = localStorage.getItem('theme'); } catch (e) {}
-      if (t !== 'light' && t !== 'dark') {
-        t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+      var t = null, s = null, r = document.documentElement;
+      try { t = localStorage.getItem('theme'); s = sessionStorage.getItem('sky'); } catch (e) {}
+      var q = location.search; // ?theme= and ?sky= preview a look without storing it
+      t = (/[?&]theme=(\w+)/.exec(q) || [])[1] || t;
+      s = (/[?&]sky=(\w+)/.exec(q) || [])[1] || s;
+      if (t === 'light') t = 'hours';
+      if (t !== 'dark' && t !== 'hours') {
+        t = matchMedia('(prefers-color-scheme: light)').matches ? 'hours' : 'dark';
       }
-      document.documentElement.setAttribute('data-theme', t);
-      document.documentElement.classList.add('js');
+      var k = Math.PI / 180, d = Date.now() / 864e5 - 10957.5;
+      var g = (357.529 + 0.98560028 * d) * k;
+      var L = (280.459 + 0.98564736 * d + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * k;
+      var dec = Math.asin(Math.sin(23.439 * k) * Math.sin(L));
+      var H = (280.46061837 + 360.98564736629 * d + 2.3522) * k - Math.atan2(Math.cos(23.439 * k) * Math.sin(L), Math.cos(L));
+      var alt = Math.asin(Math.sin(48.8566 * k) * Math.sin(dec) + Math.cos(48.8566 * k) * Math.cos(dec) * Math.cos(H)) / k;
+      var night = { night: true, dusk: true, dawn: false, noon: false }[s];
+      r.setAttribute('data-sky', (night === undefined ? alt < -3 : night) ? 'night' : 'day');
+      r.setAttribute('data-theme', t);
+      r.classList.add('js');
     })();
   </script>
 

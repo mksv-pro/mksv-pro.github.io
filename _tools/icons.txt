@@ -1,0 +1,129 @@
+# Pixel icons for the hours theme: material letters as in assets/js/hours.js (MATS);
+# k outline, R ember red, y gold, c cream. Built by _tools/icons.py into assets/img/icons/.
+== candle
+.....y.....
+....yRy....
+....yRy....
+.....y.....
+.....k.....
+....eee....
+....eee....
+....eeE....
+....eee....
+..ggggggg..
+...ggggg...
+== astrolabe
+....ggg....
+...gkkkg...
+..gkg.gkg..
+.gk.ggg.kg.
+.gkg.R.gkg.
+.gk.ggg.kg.
+..gkg.gkg..
+...gkkkg...
+....ggg....
+....ggg....
+...ggggg...
+== anvil
+...........
+.aaaaaaaaa.
+aaaaaaaaaaa
+..aaaaaaaa.
+....aaaa...
+....aaaa...
+....aaaa...
+...aaaaaa..
+..aaaaaaaa.
+.wwwwwwwww.
+.wwwwwwwww.
+== book
+...rrrrrrr.
+..rrrrrrrr.
+..rrgggrrr.
+..rrgRgrrr.
+..rrgggrrr.
+..rrrrrrrr.
+..rrrrrrrr.
+.eeeeeeeer.
+.eeeeeeeer.
+..eeeeeeer.
+== horn
+.........gg
+........ggg
+.......gggg
+......gggg.
+....ggggg..
+.hhgggggg..
+hhhggggg...
+hh..ggg....
+...........
+== slate
+wwwwwwwwwww
+wkkkkkkkkkw
+wkckkkckkkw
+wkkckckkkkw
+wkkkckkkkkw
+wkkkkkkcckw
+wkkkkkkkkkw
+wwwwwwwwwww
+.ww.....ww.
+== raven
+......nnn..
+.....nnnnyy
+.....nnnn..
+...nnnnnn..
+..nnnnnnn..
+.nnnnnnn...
+nnnnnnn....
+nn..h.h....
+....h.h....
+== letter
+...........
+eeeeeeeeeee
+eEeeeeeeeEe
+eeEeeeeeEee
+eeeEerreEee
+eeeeerreeee
+eeeeeeeeeee
+eeeeeeeeeee
+== scroll
+.ww........
+weeeeeeeee.
+.eekkkkkee.
+.eeeeeeeee.
+.eekkkkkee.
+.eeeeeeeee.
+.eekkkkee..
+.eeeeeeeee.
+.eeeeeeeeew
+........ww.
+== scrollbib
+.ww........
+weeeeeeeee.
+.eekkkkkee.
+.eeeeeeeee.
+.eekkkkkee.
+.eeeeeeeee.
+.eekkkrree.
+.eeeeerreee
+.eeeeeeeeew
+........ww.
+== quill
+.........ee
+........eee
+.......eee.
+......eee..
+.....eee...
+....eee....
+...eee.....
+..ee.......
+.hh........
+hh.........
+== lodestone
+...ssss....
+..ssssssk..
+.ssssssssk.
+.RRRRRzzzz.
+.ssssssssk.
+..sssssskk.
+...kkkkk...

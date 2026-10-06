@@ -3,7 +3,7 @@
 - every generated page is newer than its template (rebuild forgotten?)
 - local links and #fragments resolve; ids are unique; every <img> has alt; <html lang> is set
 - no placeholder left (XXXX, 0000-0000, example.com, lorem, TODO)
-- text tokens of both themes reach 4.5:1 against --bg, --panel and --bar (WCAG AA)
+- text tokens of every theme (hours: day and night) reach 4.5:1 against --bg, --panel and --bar (WCAG AA)
 - --external: every http(s) link answers < 400 (GitHub, arXiv... may rate-limit: rerun)
 - --shots DIR: headless Firefox screenshots, both themes, 360 px and 1280 px wide
 Exit status 1 on any failure. Stdlib only.
@@ -127,7 +127,9 @@ def check_pages(external):
 def check_contrast():
     css = (ROOT / "styles.css").read_text()
     blocks = {"dark": re.search(r":root \{(.*?)\}", css, re.S).group(1),
-              "light": re.search(r'\[data-theme="light"\] \{(.*?)\}', css, re.S).group(1)}
+              "hours": re.search(r'\[data-theme="hours"\] \{(.*?)\}', css, re.S).group(1),
+              "hours night": re.search(r'\[data-theme="hours"\]\[data-sky="night"\] \{(.*?)\}',
+                                       css, re.S).group(1)}
     dark = dict(re.findall(r"(--[a-z]+):\s*(#[0-9a-f]{6})", blocks["dark"]))
     for theme, block in blocks.items():
         tok = dict(dark)
@@ -149,7 +151,7 @@ def shots(out, port=8766):
         targets = ["", "projects/nuclear-emulators.html", "projects/urban-morphogenesis.html",
                    "projects/n-body.html", "404.html"]
         for theme, pref in (("dark", 'user_pref("ui.systemUsesDarkTheme", 1);\n'),
-                            ("light", 'user_pref("layout.css.prefers-color-scheme.content-override", 1);\n')):
+                            ("hours", 'user_pref("layout.css.prefers-color-scheme.content-override", 1);\n')):
             for width in (360, 1280):
                 for t in targets:
                     with tempfile.TemporaryDirectory() as prof:  # fresh profile: no stale CSS

@@ -94,7 +94,8 @@ def entries(key):
         role = e.get("role") or e.get("venue", "")
         body = f'\n              <p>\n{indent(e["text"], 16)}\n              </p>' if e.get("text") else ""
         acts = f'\n{actions(e["actions"], 14)}' if e.get("actions") else ""
-        out.append(f"""            <li class="entry">
+        arms = f' data-arms="{e["arms"]}"' if e.get("arms") else ""
+        out.append(f"""            <li class="entry"{arms}>
               <div class="entry-head">
                 <h3>{head}</h3>
                 <span class="date">{span(e.get("from") or e["date"], e.get("to"))}</span>
@@ -205,7 +206,8 @@ def site_json():
     """What script.js and dungeon.js need: the world, and where the objects lead."""
     bib = next((p["bib"] for p in DATA["publications"] if p.get("bib")), None)
     doc = {"world": ROOMS, "links": LINKS, "email": DATA["site"]["email"],
-           "github": DATA["site"]["github"], "bib": bib and f"assets/bib/{bib}"}
+           "github": DATA["site"]["github"], "bib": bib and f"assets/bib/{bib}",
+           "heraldry": DATA["heraldry"]}
     return json.dumps(doc, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
 
 
@@ -257,7 +259,7 @@ BLOCKS = {
     "tabs": tabs,
     "stats": stats,
     "jsonld": jsonld,
-    "studying": lambda: "\n".join(f"              <span>{x['degree']}</span>"
+    "studying": lambda: "\n".join(f"              <span data-arms=\"{x['arms']}\">{x['degree']}</span>"
                                   for x in DATA["person"]["studying"]),
     "drawn_to": lambda: "\n".join(f"                <li>{x}</li>" for x in DATA["person"]["drawn_to"]),
 }
@@ -288,6 +290,8 @@ def render(src, hashes):
         "v_js": hashes["script.js"],
         "v_cv": hashes["assets/Mike_Silva_CV.pdf"],
         "v_dungeon": hashes["assets/js/dungeon.js"],
+        "v_hours": hashes["assets/js/hours.js"],
+        "v_arms": hashes["assets/js/arms.js"],
         "name_tag": "h1" if is_index else "p",
         "name": s["name"], "role": s["role"], "place": s["place"],
         "email": s["email"], "github": s["github"],
@@ -326,7 +330,8 @@ def render(src, hashes):
 def main():
     hashes = {p: short_hash(p) for p in
               ("styles.css", "script.js", "assets/Mike_Silva_CV.pdf",
-               "assets/js/dla.js", "assets/js/nbody.js", "assets/js/dungeon.js")}
+               "assets/js/dla.js", "assets/js/nbody.js", "assets/js/dungeon.js",
+               "assets/js/hours.js", "assets/js/arms.js")}
     pages = sorted(p for p in SRC.rglob("*.html") if "partials" not in p.parts)
     sitemap = []
     for src in pages:

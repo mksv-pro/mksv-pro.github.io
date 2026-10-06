@@ -3,6 +3,8 @@
 const root = document.documentElement;
 const SITE = new URL('.', document.currentScript.src); // the site root: script.js lives there
 const DUNGEON_SRC = document.currentScript.dataset.dungeon; // loaded on the first descent
+const HOURS_SRC = document.currentScript.dataset.hours; // loaded with the hours theme
+const ARMS_SRC = document.currentScript.dataset.arms; // its coats of arms, before it
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---- the world: one grid for the exits, the map (m) and the descent (>) ---
@@ -43,7 +45,18 @@ const T = {
   noRoom: (r) => `There is no room called '${r}' here.`,
   rooms: 'Rooms',
   nothing: 'Nothing happens.',
-  themeSet: (t) => `The lamp turns: ${t === 'light' ? 'folio' : 'terminal'}.`,
+  themeName: { dark: 'terminal', hours: 'hours' },
+  leave: '[leave the room \u00b7 Esc]',
+  notebook: 'The notebook on the desk',
+  lookHint: '(What glints can be looked at: point at it, or Tab, then Enter.)',
+  charter: 'A charter of enrolment, sealed with the arms of the school.',
+  register: 'The register by the door',
+  close: 'Close',
+  pagePrev: 'Previous page', pageNext: 'Next page',
+  pageOf: (k, n) => `page ${k} of ${n}`,
+  themeSet: (name) => `The lamp turns: ${name}.`,
+  skySet: (s) => (s === 'now' ? 'The sky keeps the true hour again.' : `The sky turns to ${s}.`),
+  skyHint: 'sky dawn|noon|dusk|night|now (seen in the hours theme)',
   keysSet: (on) => `Single-key shortcuts ${on ? 'on' : 'off'}.`,
   wizardOn: 'You feel a strange vibration under your feet. Wizard mode.',
   wizardOff: 'You feel less magical.',
@@ -57,6 +70,7 @@ const T = {
   help: (nTabs) => `<h3>Keys</h3>
 <dl class="keys">
   <div><dt>1&ndash;${nTabs}</dt><dd>open a section</dd></div>
+  <div><dt>&larr; &rarr; &uarr; &darr;</dt><dd>move through the menu, Enter to open</dd></div>
   <div><dt>m</dt><dd>map of the place</dd></div>
   <div><dt>i &middot; ,</dt><dd>inventory &middot; pick up what lies here</dd></div>
   <div><dt>&gt;</dt><dd>descend: walk the site in first person</dd></div>
@@ -75,14 +89,14 @@ const T = {
   <div><dt>descend</dt><dd>first-person view (arrows or WASD, Enter reads, Esc leaves)</dd></div>
   <div><dt>rumour</dt><dd>listen</dd></div>
   <div><dt>cv &middot; mail &middot; github</dt><dd>take what you came for</dd></div>
-  <div><dt>theme &middot; keys on|off</dt><dd>terminal or folio &middot; single-key shortcuts</dd></div>
+  <div><dt>theme &middot; keys on|off</dt><dd>terminal or hours &middot; single-key shortcuts</dd></div>
+  <div><dt>sky &lt;hour&gt;</dt><dd>dawn, noon, dusk, night or now, in the hours theme</dd></div>
   <div><dt>quit</dt><dd>end the visit</dd></div>
 </dl>`,
   mapTitle: 'Map',
   invTitle: 'Inventory',
   packEmpty: 'Your pack is empty.',
-  endTitleDark: 'Do you want your possessions identified? [ynq] (n) y',
-  endTitleLight: 'Finis',
+  endTitle: 'Do you want your possessions identified? [ynq] (n) y',
   end: (loot, k, n, mins) => `${loot}
 <p>You explored ${k} of ${n} rooms in ${mins}, and leave with your sanity intact.</p>
 <p class="dim">Goodbye, traveller.</p>`,
@@ -109,7 +123,8 @@ const RUMOURS = [
 function store(key, value, area = 'localStorage') {
   try {
     if (value === undefined) return window[area].getItem(key);
-    window[area].setItem(key, value);
+    if (value === null) window[area].removeItem(key);
+    else window[area].setItem(key, value);
   } catch {
     return null; // private mode: preferences just don't persist
   }
@@ -143,18 +158,38 @@ moreLink.addEventListener('click', (e) => {
 
 const themeToggle = $('theme-toggle');
 const themeColor = document.querySelector('meta[name="theme-color"]');
+const THEMES = ['dark', 'hours']; // the toggle's cycle
+const nextTheme = () => THEMES[(THEMES.indexOf(root.getAttribute('data-theme')) + 1) % THEMES.length];
 
+let hoursLoading = null;
 function applyTheme(theme, persist) {
   root.setAttribute('data-theme', theme);
-  themeToggle.setAttribute('aria-pressed', String(theme === 'light'));
-  themeColor.setAttribute('content', theme === 'light' ? '#efe4c8' : '#12100c');
+  $('theme-next').textContent = `[${T.themeName[nextTheme()]}]`;
+  themeColor.setAttribute('content', getComputedStyle(root).getPropertyValue('--bar').trim());
   if (persist) store('theme', theme);
+  if (theme === 'hours') {
+    const load = (src) => new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.append(s);
+    });
+    hoursLoading ||= load(ARMS_SRC).then(() => load(HOURS_SRC)).then(() => window.Hours.start({
+      plate: document.querySelector('.plate-img'),
+      sky: () => skyAt(skyNow()),
+      reduceMotion,
+      heraldry: DATA.heraldry,
+      say, // the scene's characters answer in the message line
+      items: roomItems, // what each room holds, to be drawn as things
+      spots: setSpots, // and where those things ended up
+      rumour: () => T.rumour(RUMOURS[Math.floor(Math.random() * RUMOURS.length)]),
+    }));
+  }
 }
 
 applyTheme(root.getAttribute('data-theme'), false);
-themeToggle.addEventListener('click', () => {
-  applyTheme(root.getAttribute('data-theme') === 'light' ? 'dark' : 'light', true);
-});
+themeToggle.addEventListener('click', () => applyTheme(nextTheme(), true));
 
 /** Theme colours as [r, g, b], for the canvases. */
 function tokenRGB(prop) {
@@ -201,7 +236,7 @@ function useItem(letter) {
 function lootHtml() {
   const p = pack();
   if (!p.length) return '';
-  return `<ul class="loot">${p.map((id, i) => `<li><b>${LETTERS[i]}</b> - ${esc(ITEMS[id].name)} `
+  return `<ul class="loot">${p.map((id, i) => `<li data-item="${id}"><b>${LETTERS[i]}</b> - ${esc(ITEMS[id].name)} `
     + `<button type="button" data-use="${LETTERS[i]}">[${ITEMS[id].verb}]</button></li>`).join('')}</ul>`;
 }
 
@@ -256,7 +291,7 @@ function currentWindow() {
   return windows.find((w) => !w.classList.contains('is-off')) || windows[0];
 }
 
-function openWindow(hash, { userAction }) {
+function openWindow(hash, { userAction, animate = userAction }) {
   const target = (hash && document.getElementById(decodeURIComponent(hash.slice(1)))) || null;
   const win = target ? target.closest('main > section') : windows[0];
   if (!windows.includes(win)) return; // e.g. the skip link's #main: leave the windows alone
@@ -267,6 +302,16 @@ function openWindow(hash, { userAction }) {
     else a.removeAttribute('aria-current');
   });
   enterRoom(win.id, !userAction);
+  // the hours theme: a section shown is a room of the castle; no hash at all, the landscape
+  if (target) root.dataset.room = win.id; else delete root.dataset.room;
+  if (target && userAction && root.getAttribute('data-theme') === 'hours') {
+    const empty = win.querySelector('.empty:not([hidden])');
+    const hint = !session('hinted') && wideRooms() ? T.lookHint : ''; // once a visit: how the rooms work
+    if (hint) session('hinted', '1');
+    say([win.dataset.look, empty && empty.textContent.trim(), hint].filter(Boolean).join(' '));
+  }
+  if (window.Hours) window.Hours.room(target ? win.id : null, { animate });
+  else root.classList.toggle('room-ready', Boolean(target)); // no castle (yet): show the text at once
   if (!userAction) return;
   win.classList.add('opening');
   win.addEventListener('animationend', () => win.classList.remove('opening'), { once: true });
@@ -280,6 +325,7 @@ function openWindow(hash, { userAction }) {
     if (window.scrollY > top) window.scrollTo({ top });
   }
   if (cmdOpen()) return; // walking from the command line: leave the focus in it
+  if (tabBar.contains(document.activeElement)) return; // chosen from the menu: the cursor stays there
   const heading = win.querySelector('.room');
   heading.setAttribute('tabindex', '-1');
   heading.focus({ preventScroll: true });
@@ -304,6 +350,194 @@ window.addEventListener('load', () => {
   root.style.scrollBehavior = '';
 });
 window.addEventListener('hashchange', () => openWindow(location.hash, { userAction: true }));
+window.addEventListener('popstate', () => { // back to the landscape (an entry made by leaveRoom)
+  if (!location.hash && isIndex) openWindow('', { userAction: false, animate: true });
+});
+
+/* ---- leaving a room (hours theme): Esc, the parchment's button; on a project page, home ---- */
+
+function leaveRoom() {
+  if (!isIndex) { location.href = SITE.href; return; }
+  history.pushState(null, '', location.pathname + location.search);
+  openWindow('', { userAction: false, animate: true });
+  const cur = [...document.querySelectorAll('.tabs a')].find((a) => a.getAttribute('aria-current'));
+  if (cur) cur.focus();
+}
+if (!isIndex) { // a project page is a room already: the workshop
+  const page = ROOM_IDS.find((id) => WORLD[id].page && location.pathname.endsWith(WORLD[id].page));
+  if (page) { root.dataset.room = page; if (!window.Hours) root.classList.add('room-ready'); }
+}
+{
+  const leave = document.createElement('button');
+  leave.type = 'button';
+  leave.className = 'leave';
+  leave.textContent = T.leave;
+  leave.addEventListener('click', leaveRoom);
+  document.body.append(leave); // outside main: in the castle's rooms main is for readers only
+}
+/* ---- the book (hours theme, about and publications): its two columns turn as pages ---- */
+
+const pager = document.createElement('p');
+pager.className = 'pager';
+pager.hidden = true;
+pager.innerHTML = `<button type="button" data-turn="-1" aria-label="${T.pagePrev}">&lsaquo;</button>`
+  + `<span aria-live="polite"></span><button type="button" data-turn="1" aria-label="${T.pageNext}">&rsaquo;</button>`;
+document.body.append(pager);
+let page = 0;
+const mainEl = document.querySelector('main');
+const openBook = () => {
+  const sec = mainEl && mainEl.querySelector(':scope > section:not(.is-off)');
+  return sec && root.getAttribute('data-theme') === 'hours' && root.dataset.room && mainEl.offsetWidth > 2
+    && getComputedStyle(sec).columnCount === '2' ? sec : null; // (a castle room hides main: no book then)
+};
+function pageStep() { // one page = the content box and one column gap (two columns turn at once)
+  const cs = getComputedStyle(mainEl);
+  return mainEl.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) + parseFloat(getComputedStyle(openBook()).columnGap);
+}
+const pageCount = () => Math.max(1, Math.ceil((mainEl.scrollWidth - parseFloat(getComputedStyle(mainEl).paddingLeft)) / pageStep() - 0.02));
+function turn(by, reset = false) {
+  if (reset && mainEl) { // a text that fits the left page gets a single leaf
+    mainEl.classList.remove('one-page');
+    const sec = openBook();
+    if (sec && sec.lastElementChild) {
+      const r = mainEl.getBoundingClientRect();
+      const ends = [...sec.children].every((c) => c.getBoundingClientRect().right <= r.left + r.width / 2 + 2);
+      mainEl.classList.toggle('one-page', ends);
+    }
+  }
+  if (!openBook()) { pager.hidden = true; return; }
+  const n = pageCount();
+  page = reset ? 0 : Math.min(n - 1, Math.max(0, page + by));
+  mainEl.scrollTo({ left: page * pageStep(), behavior: reduceMotion || reset ? 'auto' : 'smooth' });
+  pager.hidden = n < 2;
+  pager.querySelector('span').textContent = T.pageOf(page + 1, n);
+  pager.querySelector('[data-turn="-1"]').disabled = page === 0;
+  pager.querySelector('[data-turn="1"]').disabled = page === n - 1;
+}
+pager.addEventListener('click', (e) => { const b = e.target.closest('[data-turn]'); if (b) turn(Number(b.dataset.turn)); });
+new MutationObserver(() => turn(0, true)).observe(root, { attributes: true, attributeFilter: ['data-room', 'data-theme', 'class'] });
+addEventListener('resize', () => turn(0, true));
+turn(0, true); // a room opened by the URL: measure now, and again once the fonts are in
+if (document.fonts) document.fonts.ready.then(() => turn(0, true));
+
+// the knight's motto, under the name (shown by the hours theme)
+if (DATA.heraldry && DATA.heraldry.motto) {
+  const m = document.createElement('p');
+  m.className = 'motto';
+  m.lang = 'la';
+  m.textContent = DATA.heraldry.motto;
+  const role = document.querySelector('.host .role');
+  if (role) role.after(m);
+}
+
+/* ---- the hours theme's rooms: what a section holds, as things in the room ----------------
+   Each piece of a section (a lab, a project, a book, a letter, a degree...) becomes an object
+   the room draws (hours.js, from this list); here, a real button lies over it, and opens a card
+   beside it with the piece itself. The section stays in the page for readers without the
+   picture; the card only shows it where the object is. */
+
+/** The castle's rooms show their content as things only on wide screens (the plate fills the page). */
+const wideRooms = () => matchMedia('(min-width: 75rem)').matches;
+
+function roomItems(id) {
+  const sec = isIndex && document.getElementById(id);
+  if (!sec) return [];
+  const text = (el) => (el ? el.textContent.replace(/\s+/g, ' ').trim() : '');
+  const of = (sel, kind, f) => [...sec.querySelectorAll(sel)].map((el) => ({ kind, ...f(el) }));
+  switch (id) {
+    case 'about': {
+      const sheet = sec.querySelector('.sheet').cloneNode(true);
+      [...sheet.children].forEach((d) => { if (d.querySelector('[data-arms]')) d.remove(); });
+      return [{ kind: 'desk-book', label: T.notebook, html: `<h3>${T.notebook}</h3>${sec.querySelector('.lede').outerHTML}${sheet.outerHTML}` },
+        ...of('.sheet span[data-arms]', 'charter', (el) => ({ arms: el.dataset.arms, label: text(el), html: `<h3>${esc(text(el))}</h3><p>${T.charter}</p>` }))];
+    }
+    case 'research': return of('.entry', 'scroll', (el) => ({ arms: el.dataset.arms, label: text(el.querySelector('h3')), html: el.innerHTML }));
+    case 'projects': return of('article.project', 'model', (el) => ({ model: el.id, label: text(el.querySelector('h3')), html: el.innerHTML }));
+    case 'publications': return of('.pub', 'book', (el) => ({ label: text(el.querySelector('.pub-title')), html: el.innerHTML }));
+    case 'news': return of('.news li', 'letter', (el) => ({ label: text(el.querySelector('time')), html: el.innerHTML }));
+    case 'talks': return of('.entry', 'banner', (el) => ({ label: text(el.querySelector('h3')), html: el.innerHTML }));
+    case 'teaching': return of('.entry', 'course', (el) => ({ label: text(el.querySelector('h3')), html: el.innerHTML }));
+    case 'contact': {
+      const things = [...sec.querySelectorAll('.kv div')].map((d) => {
+        const k = text(d.querySelector('dt'));
+        return { kind: { email: 'letterbox', code: 'lodestone', based: 'map' }[k] || 'note', label: k, html: `<h3>${esc(k)}</h3><p>${d.querySelector('dd').innerHTML}</p>` };
+      });
+      const col = sec.querySelector('.colophon');
+      if (col) things.push({ kind: 'register', label: T.register, html: `<h3>${T.register}</h3>${col.outerHTML}` });
+      return things;
+    }
+    default: return [];
+  }
+}
+
+const spots = document.createElement('div');
+spots.className = 'spots';
+document.body.append(spots);
+const card = document.createElement('div');
+card.className = 'card';
+card.hidden = true;
+card.setAttribute('role', 'dialog');
+card.innerHTML = `<button type="button" class="card-close" aria-label="${T.close}">&times;</button><div class="card-body"></div>`;
+document.body.append(card);
+let spotItems = []; let cardFrom = null;
+
+/** hours.js hands over where the objects are (viewport px) and what they are. */
+function setSpots(rects, items) {
+  spotItems = items;
+  closeCard(false);
+  spots.replaceChildren(...rects.map((r, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'spot';
+    Object.assign(b.style, { left: `${r.l}px`, top: `${r.t}px`, width: `${r.w}px`, height: `${r.h}px` });
+    b.setAttribute('aria-label', items[i].label);
+    b.dataset.label = items[i].label;
+    const lit = (on) => window.Hours && window.Hours.highlight(on ? i : -1);
+    b.addEventListener('pointerenter', () => lit(true));
+    b.addEventListener('pointerleave', () => lit(document.activeElement === b));
+    b.addEventListener('focus', () => lit(true));
+    b.addEventListener('blur', () => lit(false));
+    b.addEventListener('click', () => openCard(i, b));
+    return b;
+  }));
+}
+function openCard(i, from) {
+  const it = spotItems[i];
+  card.querySelector('.card-body').innerHTML = it.html;
+  card.dataset.kind = it.kind;
+  card.setAttribute('aria-label', it.label);
+  card.hidden = false;
+  const r = from.getBoundingClientRect();
+  const cw = card.offsetWidth; const ch = card.offsetHeight;
+  const top0 = document.querySelector('.msgline').getBoundingClientRect().bottom + 12;
+  const bot0 = document.querySelector('.status').getBoundingClientRect().top - 12;
+  let left = r.right + 18; let side = 'left';
+  if (left + cw > innerWidth - 12) { left = r.left - 18 - cw; side = 'right'; }
+  left = Math.max(12, Math.min(innerWidth - cw - 12, left));
+  const top = Math.max(top0, Math.min(bot0 - ch, r.top + r.height / 2 - ch / 2));
+  Object.assign(card.style, { left: `${left}px`, top: `${top}px` });
+  card.dataset.side = side;
+  card.style.setProperty('--tail-y', `${Math.max(14, Math.min(ch - 14, r.top + r.height / 2 - top))}px`);
+  cardFrom = from;
+  card.querySelector('.card-close').focus();
+}
+function closeCard(refocus = true) {
+  if (card.hidden) return;
+  card.hidden = true;
+  if (refocus && cardFrom) cardFrom.focus();
+}
+card.querySelector('.card-close').addEventListener('click', () => closeCard());
+document.addEventListener('pointerdown', (e) => {
+  if (!card.hidden && !card.contains(e.target) && !e.target.closest('.spot')) closeCard(false);
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || !root.dataset.room || root.getAttribute('data-theme') !== 'hours') return;
+  if (document.querySelector('dialog[open]') || cmdOpen()) return;
+  e.preventDefault();
+  if (!card.hidden) { closeCard(); return; } // Esc: first the card, then the room
+  leaveRoom();
+});
 
 /** Go to room `id`, by hash on the index, by page load elsewhere. */
 function goTo(id) {
@@ -341,7 +575,7 @@ const showInventory = () => showDialog(T.invTitle, lootHtml() || `<p>${T.packEmp
 function showEnd() {
   const mins = Math.floor((Date.now() - Number(session('since') || Date.now())) / 60000);
   showDialog(
-    `<span class="when-dark">${T.endTitleDark}</span><span class="when-light">${T.endTitleLight}</span>`,
+    T.endTitle,
     T.end(lootHtml() || T.emptyHanded, visited().length, ROOM_IDS.length, T.minutes(mins)),
   );
 }
@@ -546,10 +780,17 @@ function run(line) {
       location.href = DATA.github;
       return undefined;
     case 'theme': {
-      const want = { dark: 'dark', terminal: 'dark', light: 'light', folio: 'light' }[arg]
-        || (root.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+      const want = {
+        dark: 'dark', terminal: 'dark', light: 'hours', hours: 'hours', colour: 'hours',
+      }[arg] || nextTheme();
       applyTheme(want, true);
-      return print(T.themeSet(want));
+      return print(T.themeSet(T.themeName[want]));
+    }
+    case 'sky': {
+      if (!(arg in SKY_ALT) && arg !== 'now') return print(esc(T.skyHint));
+      session('sky', arg === 'now' ? null : arg);
+      updateSky();
+      return print(esc(T.skySet(arg)));
     }
     case 'keys':
       setKeys(arg ? arg !== 'off' : !keysOn);
@@ -648,6 +889,51 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+/* ---- arrows move through the menu, as in a game's choice box -----------
+   Inside the menu: arrows go to the nearest entry that way (by position on screen, so the
+   same code serves the one-row tab bar and the hours theme's two-column box), wrapping at the
+   ends; Home and End; Enter follows the link and the cursor stays in the menu (openWindow). From
+   anywhere but a control, Left or Right (which do not scroll the page) bring the cursor back to
+   the current entry, when single-key shortcuts are on. */
+
+const ARROWS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+
+function nextTab(from, [dx, dy]) {
+  const c = (a) => { const r = a.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+  const [x0, y0] = c(from);
+  let best = null; let bestD = Infinity;
+  allTabs.forEach((a) => {
+    if (a === from) return;
+    const [x, y] = c(a);
+    const along = (x - x0) * dx + (y - y0) * dy; // distance in the arrow's direction
+    const across = Math.abs((x - x0) * dy) + Math.abs((y - y0) * dx);
+    if (along <= 1) return;
+    const d = along + across * 3; // stay in the same row or column when there is one
+    if (d < bestD) { bestD = d; best = a; }
+  });
+  if (best) return best;
+  const i = allTabs.indexOf(from); // nothing further that way: wrap round in reading order
+  return allTabs[(i + (dx + dy > 0 ? 1 : -1) + allTabs.length) % allTabs.length];
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey || document.querySelector('dialog[open]')) return;
+  const inMenu = e.target.closest && e.target.closest('.tabs a');
+  if (inMenu) {
+    let to = null;
+    if (ARROWS[e.key]) to = nextTab(inMenu, ARROWS[e.key]);
+    else if (e.key === 'Home') [to] = allTabs;
+    else if (e.key === 'End') to = allTabs[allTabs.length - 1];
+    if (to) { e.preventDefault(); to.focus(); }
+    return;
+  }
+  if (!keysOn || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+  if (e.target.closest('a, button, input, textarea, select, summary, [contenteditable]')) return; // a control has the keys
+  if (openBook() && pageCount() > 1) { e.preventDefault(); turn(e.key === 'ArrowLeft' ? -1 : 1); return; }
+  e.preventDefault();
+  (allTabs.find((a) => a.getAttribute('aria-current')) || allTabs[0]).focus();
+});
+
 /* ---- BibTeX: [bib] links copy their .bib file; without JS they open it -- */
 
 document.addEventListener('click', async (e) => {
@@ -713,7 +999,7 @@ window.Demo = function Demo(fig, sim) {
   });
   new IntersectionObserver(([en]) => { visible = en.isIntersecting; sync(); }).observe(canvas);
   new MutationObserver(() => { palette(); paint(); })
-    .observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+    .observe(root, { attributes: true, attributeFilter: ['data-theme', 'data-sky'] });
 
   palette();
   paint();
@@ -795,6 +1081,40 @@ function ordinal(n) {
 
 const pad = (n) => String(n).padStart(2, '0');
 
+/* The hours theme's sky can be set to another hour (`sky` command, or ?sky= in the URL, for
+   screenshots): the same day in Paris at a sun altitude of SKY_ALT[name] degrees. */
+const SKY_ALT = { dawn: 4, noon: 38, dusk: -4, night: -30 }; // dusk: below the -3 deg night line
+const skyParam = new URLSearchParams(location.search).get('sky');
+if (skyParam in SKY_ALT) session('sky', skyParam);
+
+/** The instant the sky shows: now, or the hour of today whose sun altitude is SKY_ALT[name],
+ *  morning side for dawn, evening side for dusk and night (found by bisection). */
+function skyNow() {
+  const name = session('sky');
+  const now = new Date();
+  if (!(name in SKY_ALT)) return now;
+  const t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12).getTime();
+  const alt = (t) => Math.asin(skyAt(new Date(t)).sun[2]) / rad;
+  if (name === 'noon') return new Date(t0);
+  const sign = name === 'dawn' ? -1 : 1;
+  let lo = 0; let hi = 12 * 3600e3; // from noon outwards: the altitude only falls
+  for (let i = 0; i < 30; i += 1) {
+    const mid = (lo + hi) / 2;
+    if (alt(t0 + sign * mid) > SKY_ALT[name]) lo = mid; else hi = mid;
+  }
+  return new Date(t0 + sign * lo);
+}
+
+/** data-sky: the hours theme's day or night palette (same threshold as the inline head script). */
+function updateSky() {
+  const night = Math.asin(skyAt(skyNow()).sun[2]) / rad < -3;
+  if (root.getAttribute('data-sky') !== (night ? 'night' : 'day')) {
+    root.setAttribute('data-sky', night ? 'night' : 'day');
+    themeColor.setAttribute('content', getComputedStyle(root).getPropertyValue('--bar').trim());
+  }
+  if (window.Hours) window.Hours.update();
+}
+
 function tick() {
   const now = new Date();
   const ph = planetaryHour(now);
@@ -807,6 +1127,7 @@ function tick() {
 
   $('st-hour').textContent = T.stHour(ph.hour);
   $('st-moon').textContent = T.stMoon(m.waxing);
+  updateSky();
 }
 
 tick();
@@ -938,7 +1259,7 @@ if (armillary) {
     if (spinning) requestAnimationFrame((t) => { last = t; frame(t); });
   });
   setInterval(() => { sky = skyAt(new Date()); if (!spinning) draw(); }, 60000);
-  new MutationObserver(draw).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+  new MutationObserver(draw).observe(root, { attributes: true, attributeFilter: ['data-theme', 'data-sky'] });
   draw();
   if (spinning) requestAnimationFrame((t) => { last = t; frame(t); });
 }

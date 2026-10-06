@@ -36,14 +36,35 @@ alumni_of = ["Université Paris Cité", "Sorbonne Université", "Université Par
 [[person.studying]]
 degree = "MSc Physics of Complex Systems, Paris-Saclay"
 school = "Université Paris-Saclay"
+arms = "saclay"
 
 [[person.studying]]
 degree = "MSc Quantum Information, Sorbonne Université"
 school = "Sorbonne Université"
+arms = "sorbonne"
 
 [[person.studying]]
 degree = "MSc Economics &amp; Finance, Paris Dauphine-PSL"
 school = "Université Paris Dauphine-PSL"
+arms = "dauphine"
+
+# ---- heraldry (hours theme) --------------------------------------------------------------
+# Invented canting arms (drawings in _tools/arms.txt), not the institutions' logos. `own`:
+# the knight's shield and the header; the tapestry of the great hall runs in this order.
+[heraldry]
+own = "silva"
+motto = ""  # none shown
+tapestry = [
+  ["sorbonne", "2021", "BSc Physics & Mathematics, Sorbonne Université"],
+  ["paris1", "2022", "BA Economics & Political Science, Paris 1 Panthéon-Sorbonne"],
+  ["sciencespo", "2023", "Research assistant, Sciences Po"],
+  ["ceremade", "2024", "Visiting research student, CEREMADE"],
+  ["pariscite", "2025", "MSc Fundamental Physics, Université Paris Cité"],
+  ["dauphine", "2025", "MSc Economics & Finance, Paris Dauphine-PSL"],
+  ["ijclab", "2026", "Research intern, IJCLab"],
+  ["saclay", "2026", "MSc Physics of Complex Systems, Paris-Saclay"],
+  ["sorbonne", "2026", "MSc Quantum Information, Sorbonne Université"],
+]
 
 # ---- the world: a grid of rooms (column c, row r) and the doors between them ----------
 # Exits are derived from it: a door to the room above is "north", and so on. Map label:
@@ -139,6 +160,7 @@ label = "teaching"
 
 [[research]]
 org = "IJCLab"
+arms = "ijclab"
 from = "2026-06"
 to = "2026-07"
 role = "Research intern · with Chloé Hebborn &amp; Patrick McGlynn"
@@ -148,6 +170,7 @@ for nuclear reactions, benchmarked for large parameter-space exploration.
 
 [[research]]
 org = "CEREMADE"
+arms = "ceremade"
 from = "2024-09"
 to = "2025-01"
 role = "Visiting research student · with Pierre Cardaliaguet"
@@ -157,6 +180,7 @@ Hamilton–Jacobi–Bellman and Fokker–Planck equations."""
 
 [[research]]
 org = "Sciences Po Paris"
+arms = "sciencespo"
 from = "2023-06"
 to = "2023-08"
 role = "Research assistant · with Julia Cagé"

@@ -13,12 +13,16 @@ une entrée là, rien d'autre.
 | `styles.css`, `script.js` | écrits à la main, servis tels quels |
 | `assets/js/dla.js`, `nbody.js` | démos des pages projet |
 | `assets/js/dungeon.js` | la descente (`>`) : vue 3D du site, chargée à la demande |
+| `assets/js/hours.js` | le thème « hours » : paysage pixel art pleine page en sept plans avec parallaxe à la souris (château, rivière et pont, chevalier au feu de camp, sorcier qui tient le menu, dragon) ; chaque section est une pièce du château : le menu l'allume, le clic zoome dedans (intérieur dessiné, texte sur un parchemin), Échap ressort sous le ciel réel de Paris, chargé avec le thème ; `?theme=hours&sky=dusk` ou `:sky night` pour prévisualiser une heure |
 | `[world]` dans `site.toml` | la grille des salles : les « Obvious exits », la carte `m` et la descente en dérivent (JSON injecté dans chaque page) |
 | `assets/bib/*.bib` | une entrée BibTeX par publication (le lien `[bib]` la copie) |
 | `assets/fonts/` | polices auto-hébergées (aucune requête tierce) ; Plex et Unifraktur entières (Reserved Font Name), EB Garamond sous-ensemble |
 | `_tools/build.py` | génère les pages, `sitemap.xml`, `robots.txt`, `feed.xml` (Atom des news), les `?v=` anti-cache (CV, CSS, JS) |
 | `_tools/check.py` | liens, ancres, ids, alt, placeholders, contraste ; `--external`, `--shots DIR` |
 | `_tools/deploy.py` | build + check + rsync vers `../site/` (dry run ; `--apply`, `--commit`) ; ne pousse jamais |
+| `_tools/icons.py` | icônes pixel du thème hours : `_tools/icons.txt` (dessins ASCII) → `assets/img/icons/*.svg` ; cadre pixel des boîtes (`frame.svg`) et curseur du menu (`cursor.svg`) |
+| `_tools/arms.txt` | blasons du thème hours (armes parlantes inventées, pas les logos officiels) ; `_tools/icons.py` en tire `assets/img/arms/*.svg` et `assets/js/arms.js` ; devise et ordre de la tapisserie dans `[heraldry]` de `site.toml` |
+| `_tools/trame.py` | vignettes de projet tramées façon *Vermis* pour le thème hours (`assets/img/trame-*.png`) ; `uv run` (NumPy, Pillow) |
 | `_tools/make_assets.py` | images (gravure, enluminures, monogramme, `og`, figures du mémoire) ; Pillow + NumPy |
 
 ```bash

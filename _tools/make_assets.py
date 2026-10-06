@@ -19,10 +19,9 @@ FONT = ROOT / "assets" / "fonts" / "DepartureMono-Regular.woff2"
 # Report figures, from the nuclear-emulators project of the EnvS workspace (published as-is, resized).
 FIGURES = ROOT.parent / "projects" / "nuclear-emulators" / "src" / "nuclear_emulators" / "outputs" / "figures"
 
-# (background, ink) per theme; "dark" lights the engraved lines, "light" prints them.
+# (background, ink) of the terminal theme's plate: the engraved lines lit on the dark.
 THEMES = {
     "dark": ("#12100c", "#cdb98f"),
-    "light": ("#efe4c8", "#2a1d10"),
 }
 
 
@@ -60,7 +59,6 @@ def engraving(width=380):
     g = np.asarray(im.resize((width, h), Image.LANCZOS), dtype=np.float64) / 255.0
     paper = atkinson(g)
     two_tone(~paper, THEMES["dark"][0], THEMES["dark"][1], "flammarion-dark.png")   # lines lit
-    two_tone(~paper, THEMES["light"][0], THEMES["light"][1], "flammarion-light.png")  # ink on paper
     print(f"engraving: {width}x{h}")
 
 

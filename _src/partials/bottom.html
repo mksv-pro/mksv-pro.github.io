@@ -25,13 +25,12 @@
     </p>
     <button class="cmd-toggle" id="cmd-toggle" type="button" aria-controls="cmdline" aria-expanded="false"
             title="Command line (:)">[:]<span class="sr-only">Command line</span></button>
-    <button class="theme-toggle" id="theme-toggle" type="button" aria-pressed="false">
-      <span class="when-dark">[folio]</span><span class="when-light">[terminal]</span>
-      <span class="sr-only">Light theme</span>
+    <button class="theme-toggle" id="theme-toggle" type="button">
+      <span class="sr-only">Switch theme to </span><span id="theme-next">[hours]</span>
     </button>
     <button class="keys-toggle" id="keys-toggle" type="button" aria-pressed="true"
             title="Single-key shortcuts (1-6, :, ?)">keys:<b>on</b></button>
   </footer>
 
   <script type="application/json" id="site-data">{{site_json}}</script>
-  <script src="{{root}}script.js?v={{v_js}}" data-dungeon="{{root}}assets/js/dungeon.js?v={{v_dungeon}}"></script>{{scripts}}
+  <script src="{{root}}script.js?v={{v_js}}" data-dungeon="{{root}}assets/js/dungeon.js?v={{v_dungeon}}" data-hours="{{root}}assets/js/hours.js?v={{v_hours}}" data-arms="{{root}}assets/js/arms.js?v={{v_arms}}"></script>{{scripts}}

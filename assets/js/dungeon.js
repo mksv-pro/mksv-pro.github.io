@@ -323,7 +323,7 @@
       if (b) KEYS[b.dataset.k]();
     });
     new MutationObserver(() => { if (dlg.open) render(); })
-      .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+      .observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'data-sky'] });
   }
 
   window.Dungeon = {
