@@ -719,7 +719,14 @@ function turn(dir) {
   const pgs = card.bookPages;
   if (!pgs || !card.classList.contains('as-book')) return;
   const n = Math.ceil(pgs.length / 2);
+  const was = card.bookAt;
   card.bookAt = Math.max(0, Math.min(n - 1, card.bookAt + dir));
+  if (dir && card.bookAt !== was && !reduceMotion) { // a leaf turning over the gutter, in a few steps
+    const leaf = document.createElement('div');
+    leaf.className = `leaf-turn ${dir > 0 ? 'to-left' : 'to-right'}`;
+    card.querySelector('.spread').append(leaf);
+    leaf.addEventListener('animationend', () => leaf.remove(), { once: true });
+  }
   const [left, right] = card.querySelectorAll('.page');
   left.innerHTML = pgs[card.bookAt * 2]; right.innerHTML = pgs[card.bookAt * 2 + 1] || '';
   [left, right].forEach((pg, k) => { // a drollery at the foot of some pages, outer margin
@@ -749,6 +756,11 @@ function openCard(i, from) {
   card.setAttribute('aria-label', it.label);
   card.hidden = false;
   if (!book && card.droll) body.insertAdjacentHTML('beforeend', card.droll);
+  // what each kind of thing is made of: a letter is sealed, a charter has its seal hanging on a
+  // cord, a scroll keeps its rolled ends (decorations outside .card-body are cleared each time)
+  card.querySelectorAll(':scope > .deco').forEach((d) => d.remove());
+  const deco = { letter: ['wax'], charter: ['hang-seal'], hanging: ['hang-seal'], scroll: ['roll at-top', 'roll at-bottom'] }[it.kind] || [];
+  deco.forEach((c) => card.insertAdjacentHTML('beforeend', `<span class="deco ${c}" aria-hidden="true"></span>`));
   if (book) { // pages are measured, so the card is shown first; again once its fonts have loaded
     bind(body); turn(0);
     const src = card.bookSrc;

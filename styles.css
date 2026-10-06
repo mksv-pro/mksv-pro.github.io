@@ -1120,3 +1120,22 @@ html.photo :is(.msgline, .host, .tabs, .status, .spots, .card, .leave, main, .cm
 html.og :is(.msgline, .tabs, .status, .spots, .card, .leave, main, .cmdline, .links, .statement, .almanac, .photo-bar, dialog) { visibility: hidden; }
 html.og :is(.msgline, .status) { display: none; }
 html.og { --msg-h: 0px; --status-h: 0px; } /* the scene takes the whole frame */
+/* what each thing is made of (script.js, openCard): a letter's wax seal, a charter's seal hanging
+   on its cord, a scroll's rolled ends; ornaments from _tools/ornaments.py */
+[data-theme="hours"] .card .deco { position: absolute; pointer-events: none; image-rendering: pixelated; }
+[data-theme="hours"] .card .wax { right: 1.6rem; bottom: 1.1rem; width: calc(16 * var(--op)); height: calc(16 * var(--op)); background: url("assets/img/orn/seal.svg") center / contain no-repeat; }
+[data-theme="hours"] .card .hang-seal { left: calc(50% - 8 * var(--op)); bottom: calc(-24 * var(--op)); width: calc(16 * var(--op)); height: calc(30 * var(--op)); background: url("assets/img/orn/seal-hung.svg") center / contain no-repeat; }
+[data-theme="hours"] .card .roll { left: -.3rem; right: -.3rem; height: calc(9 * var(--op)); background: url("assets/img/orn/roll.svg") left / auto 100% repeat-x; }
+[data-theme="hours"] .card .roll.at-top { top: calc(-5 * var(--op)); }
+[data-theme="hours"] .card .roll.at-bottom { bottom: calc(-5 * var(--op)); }
+/* a page turning in a book: a leaf of vellum folding over the gutter, shaded, in steps */
+[data-theme="hours"] .card .spread { position: relative; }
+[data-theme="hours"] .card .leaf-turn {
+  position: absolute; top: 0; bottom: 0; width: calc(50% - 2.2rem); pointer-events: none;
+  background: linear-gradient(to right, #e4d6b2, #f2ead8 40%, #d8c69c);
+  animation: leaf-turn .42s steps(6, end) forwards;
+}
+[data-theme="hours"] .card .leaf-turn.to-left { right: 0; transform-origin: left center; }
+[data-theme="hours"] .card .leaf-turn.to-right { left: 0; transform-origin: right center; animation-name: leaf-turn-back; }
+@keyframes leaf-turn { from { transform: translateX(0) scaleX(1); } 50% { transform: translateX(-2.2rem) scaleX(.12); } to { transform: translateX(calc(-100% - 4.4rem)) scaleX(1); opacity: 0; } }
+@keyframes leaf-turn-back { from { transform: translateX(0) scaleX(1); } 50% { transform: translateX(2.2rem) scaleX(.12); } to { transform: translateX(calc(100% + 4.4rem)) scaleX(1); opacity: 0; } }

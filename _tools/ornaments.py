@@ -12,6 +12,8 @@ fleuron-*: either side of a title (9 x 11): quatrefoil, lily, rosette, trefoil
 tail-*:    the cul-de-lampe closing a text (33 x 15): triangle, drop, ribbon
 tendril-*: the flourish from the initial down the margin, repeated down (9 x 24), in r, b or G
 droll-*:   marginal drolleries (18 x 12): snail, bird, rabbit, fish, dragonet, cat
+seal:      a wax seal, the letters' (16 x 16); seal-hung: on its cord, under a charter (16 x 30)
+roll:      the rolled edge of a scroll, a tile repeated across (6 x 9)
 diamond-*: the list bullets, blue and red in turn
 """
 import math
@@ -20,7 +22,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "assets" / "img" / "orn"
 INK = {"b": "#2a4caa", "r": "#b03020", "g": "#b8862a", "G": "#3f7238", "y": "#e0b850", "k": "#3a2a1c",
-       "w": "#f6efe0", "h": "#7a5432"}
+       "w": "#f6efe0", "h": "#7a5432",
+       # sealing wax (light, mid, dark), parchment roll (light, mid, shadow, edge), cord
+       "L": "#d8553c", "M": "#b0301e", "D": "#701810", "P": "#f4e8c8", "Q": "#dcc690", "S": "#b0915e",
+       "T": "#7a5c38", "C": "#c8963a"}
 
 
 def svg(px, w, h):
@@ -247,6 +252,43 @@ DROLLS = {
 }
 
 
+def seal(r0=6.6):
+    """A disc of red wax, a little uneven, a ring pressed in it and a star at its heart."""
+    n = 16; c = (n - 1) / 2
+    px = {}
+    for y in range(n):
+        for x in range(n):
+            a = math.atan2(y - c, x - c); d = math.hypot(x - c, y - c)
+            edge = r0 + 0.7 * math.sin(3 * a) + 0.4 * math.cos(5 * a)  # wax spreads unevenly
+            if d > edge:
+                continue
+            ink = "D" if d > edge - 1 else "L" if (x - c) + (y - c) < -r0 * 0.9 else "M"
+            if abs(d - 4.2) < 0.55:
+                ink = "D"  # the pressed ring
+            px[x, y] = ink
+    for dx, dy in ((0, -2), (0, -1), (-2, 0), (-1, 0), (0, 0), (1, 0), (2, 0), (0, 1), (0, 2), (-1, -1), (1, 1), (1, -1), (-1, 1)):
+        px[round(c) + dx, round(c) + dy] = "D" if abs(dx) + abs(dy) == 2 and dx and dy else "L"
+    return px, n, n
+
+
+def seal_hung():
+    """The seal on a twisted cord, as it hangs from a charter."""
+    px, n, _ = seal()
+    out = {(x, y + 14): c for (x, y), c in px.items()}
+    for y in range(16):
+        out[7, y] = "C" if y % 2 else "M"; out[8, y] = "M" if y % 2 else "C"
+    return out, n, 30
+
+
+def roll():
+    """A tile of the rolled parchment: the cylinder lit from above, its edge, a curl line."""
+    w, h = 6, 9
+    shades = ["T", "P", "P", "Q", "Q", "S", "S", "T", "T"]
+    px = {(x, y): shades[y] for x in range(w) for y in range(h)}
+    px[2, 3] = "S"; px[5, 6] = "Q"
+    return px, w, h
+
+
 def diamond(c):
     return {(1, 0): c, (0, 1): c, (1, 1): c, (2, 1): c, (1, 2): c}, 3, 3
 
@@ -266,6 +308,7 @@ def main():
             ("triangle", tail_triangle), ("drop", tail_drop), ("ribbon", tail_ribbon))},
         **{f"tendril-{c}": tendril(c, b) for c, b in (("r", "b"), ("b", "r"), ("G", "r"))},
         **{f"droll-{n}": canvas(a, 18, 12) for n, a in DROLLS.items()},
+        "seal": seal(), "seal-hung": seal_hung(), "roll": roll(),
         "diamond-b": diamond("b"), "diamond-r": diamond("r"),
     }
     for name, art in arts.items():
