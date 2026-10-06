@@ -2028,11 +2028,12 @@ f11111f2.
       for (let row = 0; row < rows; row += 1) { const y = Math.round(H * 0.5) - row * 17; rect(l - 2, y, r - l + 4, 2, I.TIMBER_HI); rect(l - 2, y + 2, r - l + 4, 1, I.TIMBER_SH); }
       spread(np, l, r, 13).forEach(({ k, row, xc }) => { slots[pubs[k][1]] = bookFace(xc, Math.round(H * 0.5) - row * 17, k); });
       if (rows < 2) windowArch(S(0.5) - 6, 7, 12, Math.round(H * 0.24));
-      const lx = S(0.5) - 4; rect(lx + 3, yf - 13, 2, 13, I.TIMBER_SH); rect(lx + 1, yf - 1, 6, 1, I.TIMBER_SH); // a lectern before them
-      for (let k = 0; k < 9; k += 1) set(lx + k, yf - 14 + Math.floor(k / 3), I.TIMBER_HI);
-      openBook(lx, yf - 14, 9); candle(lx + 12, yf - 2, true);
-      set(lx + 4, yf - 15, I.CLOTH); set(lx + 4, yf - 14, I.CLOTH); set(lx + 4, yf - 13, I.CLOTH); // its ribbon: the book of courses
-      of('ledger').forEach(([, i]) => { slots[i] = box(lx - 1, yf - 19, 11, 8); });
+      // a lectern before them, the great book of courses open on it (gilt edges, a red ribbon)
+      const lx = S(0.5) - 8; rect(lx + 7, yf - 13, 3, 13, I.TIMBER_SH); rect(lx + 3, yf - 1, 11, 1, I.TIMBER_SH);
+      for (let k = 0; k < 17; k += 1) set(lx + k, yf - 14 + Math.floor(k / 6), I.TIMBER_HI);
+      rect(lx - 1, yf - 16, 19, 1, I.GOLD_SH); openBook(lx, yf - 16, 17); candle(lx + 21, yf - 2, true);
+      for (let k = 0; k < 4; k += 1) set(lx + 8, yf - 17 + k, I.CLOTH);
+      of('ledger').forEach(([, i]) => { slots[i] = box(lx - 2, yf - 22, 21, 10); });
       rug(S(0.3), floorY(0.55), Sw(0.4));
       cat('whiteTabby', S(0.36), floorY(0.55) + 4); // asleep on the rug, by the lectern
     } else if (kind === 'talks') { // the great hall: a banner on the pole for each talk; the tapestry
