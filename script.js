@@ -67,6 +67,7 @@ const T = {
     'No one has catalogued this shelf yet.', 'Dust, and books waiting for their entry in the catalogue.'],
   source: 'where to read it',
   ledger: 'The book of courses',
+  pages: 'Pages', prevPage: 'Previous page', nextPage: 'Next page',
   themeSet: (name) => `The lamp turns: ${name}.`,
   skySet: (s) => (s === 'now' ? 'The sky keeps the true hour again.' : `The sky turns to ${s}.`),
   skyHint: 'sky dawn|noon|dusk|night|now (seen in the hours theme)',
@@ -556,7 +557,10 @@ function roomItems(id) {
           + (b.url ? `<p><a href="${esc(b.url)}" rel="noopener">${T.source}</a></p>` : '') })),
       ];
     }
-    case 'news': return of('.news li', 'letter', (el) => ({ label: text(el.querySelector('time')), html: el.innerHTML }));
+    case 'news': return of('.news li', 'letter', (el) => { // the date heads the letter, the rest is its text
+      const t = el.querySelector('time'); const rest = el.cloneNode(true); rest.querySelector('time').remove();
+      return { label: text(t), html: `<h3>${t.outerHTML}</h3><p>${rest.innerHTML.trim()}</p>` };
+    });
     case 'talks': return of('.entry', 'banner', (el) => ({ label: text(el.querySelector('h3')), html: el.innerHTML }));
     case 'teaching': return of('.entry', 'course', (el) => ({ label: text(el.querySelector('h3')), html: el.innerHTML }));
     case 'contact': {
@@ -615,13 +619,63 @@ function roomDoors(id) {
   }).filter((d) => d.go) : [];
 }
 
+/* ---- the cards as manuscript: a rubricated title between fleurons over a vine scroll, a
+   pen-flourished initial (blue, a red tendril down the margin), a tailpiece to close; the books
+   (the book of courses, the notebook, the works) open as a two-page spread, turned leaf by leaf */
+
+const BOOKISH = new Set(['ledger', 'desk-book', 'book', 'volume']);
+const ROMAN = (n) => { // folio numbers
+  let out = '';
+  for (const [v, r] of [[50, 'l'], [40, 'xl'], [10, 'x'], [9, 'ix'], [5, 'v'], [4, 'iv'], [1, 'i']]) while (n >= v) { out += r; n -= v; }
+  return out;
+};
+
+function illuminate(body) {
+  const title = body.querySelector('h3');
+  if (title) {
+    title.classList.add('card-title');
+    (title.closest('.entry-head') || title).insertAdjacentHTML('afterend', '<div class="orn-band" aria-hidden="true"></div>');
+  }
+  const opening = [...body.querySelectorAll('p')].find((p) => (!p.className || p.classList.contains('lede')) && p.textContent.trim().length > 60);
+  if (opening) opening.classList.add('opening');
+}
+
+function bind(body) { // the book's spread: two columns that scroll a spread at a time
+  body.innerHTML = `<div class="pages">${body.innerHTML}</div>
+<nav class="pager" aria-label="${T.pages}"><button type="button" data-turn="-1" aria-label="${T.prevPage}">\u2039</button><span class="folio"></span><button type="button" data-turn="1" aria-label="${T.nextPage}">\u203a</button></nav>`;
+}
+function turn(dir) {
+  const pages = card.querySelector('.pages');
+  if (!pages) return;
+  const step = pages.clientWidth + parseFloat(getComputedStyle(pages).columnGap || 0);
+  const n = Math.max(1, Math.round(pages.scrollWidth / step));
+  const at = Math.max(0, Math.min(n - 1, Math.round(pages.scrollLeft / step) + dir));
+  pages.scrollLeft = at * step;
+  card.querySelector('.folio').textContent = `${ROMAN(at * 2 + 1)} \u00b7 ${ROMAN(at * 2 + 2)}  (${at + 1}/${n})`;
+  card.querySelector('[data-turn="-1"]').disabled = at === 0;
+  card.querySelector('[data-turn="1"]').disabled = at === n - 1;
+  const last = pages.lastElementChild; // a short text: a single leaf, no spread
+  card.classList.toggle('one-leaf', n === 1 && last && last.getBoundingClientRect().right <= pages.getBoundingClientRect().left + pages.clientWidth / 2 + 2);
+}
+card.addEventListener('click', (e) => { const b = e.target.closest('[data-turn]'); if (b) turn(Number(b.dataset.turn)); });
+card.addEventListener('keydown', (e) => {
+  if (!card.querySelector('.pages') || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+  e.preventDefault(); turn(e.key === 'ArrowLeft' ? -1 : 1);
+});
+
 function openCard(i, from) {
   const it = spotItems[i];
   if (it.go) { goTo(it.go); return; } // a door: through it
-  card.querySelector('.card-body').innerHTML = it.html;
+  const body = card.querySelector('.card-body');
+  body.innerHTML = it.html;
+  illuminate(body);
+  const book = BOOKISH.has(it.kind) && root.getAttribute('data-theme') === 'hours';
+  card.classList.toggle('as-book', book); card.classList.remove('one-leaf');
+  if (book) bind(body);
   card.dataset.kind = it.kind;
   card.setAttribute('aria-label', it.label);
   card.hidden = false;
+  if (book) turn(0);
   const r = from.getBoundingClientRect();
   const cw = card.offsetWidth; const ch = card.offsetHeight;
   const top0 = document.querySelector('.msgline').getBoundingClientRect().bottom + 12;

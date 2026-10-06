@@ -993,3 +993,78 @@ html.photo :is(.msgline, .host, .tabs, .status, .spots, .card, .leave, main, .cm
 .ledger-prog { margin: .5rem 0 .15rem; color: var(--dim); }
 .ledger .flow li, .card .ledger-year .flow li { white-space: normal; } /* long titles wrap on narrow screens */
 [data-theme="hours"] .card[data-kind="ledger"]:not([hidden]) { width: min(46rem, 58vw); }
+
+/* ---- the castle's texts as manuscript (script.js: illuminate, bind) -------------------------
+   Ruled margins, a rubricated title between fleurons over a vine scroll, a blue initial with a
+   red tendril down the margin, lozenge bullets, a tailpiece; ornaments from _tools/ornaments.py,
+   drawn at the UI pixel. The books open as a two-page spread with a gutter and folios. */
+[data-theme="hours"] .card { --lapis: #2a4caa; --rubric: #a82c1c; --gilt: #8a621a; --op: var(--upx, 2px); }
+[data-theme="hours"] .card-body {
+  padding: 1.3rem 2.2rem 1rem 2.7rem; line-height: 1.7;
+  background:
+    linear-gradient(to right, transparent 1.55rem, rgb(168 44 28 / .3) 1.55rem, rgb(168 44 28 / .3) calc(1.55rem + 1px), transparent calc(1.55rem + 1px)),
+    linear-gradient(to left, transparent 1.3rem, rgb(168 44 28 / .3) 1.3rem, rgb(168 44 28 / .3) calc(1.3rem + 1px), transparent calc(1.3rem + 1px));
+}
+[data-theme="hours"] .card .card-title {
+  margin: .3rem 1.6rem .1rem; text-align: center; color: var(--rubric);
+  font: 400 1.08rem/1.45 var(--ui); letter-spacing: .05em; text-wrap: balance;
+}
+[data-theme="hours"] .card .card-title::before, [data-theme="hours"] .card .card-title::after {
+  content: ""; display: inline-block; width: calc(9 * var(--op)); height: calc(9 * var(--op)); margin: 0 .7em;
+  vertical-align: -.12em; background: url("assets/img/orn/fleuron.svg") center / contain no-repeat; image-rendering: pixelated;
+}
+[data-theme="hours"] .card .entry-head { display: block; text-align: center; }
+[data-theme="hours"] .card .orn-band {
+  height: calc(19 * var(--op)); width: min(85%, calc(32 * 8 * var(--op))); margin: .25rem auto .9rem;
+  background: url("assets/img/orn/band.svg") center / calc(32 * var(--op)) 100% repeat-x; image-rendering: pixelated;
+}
+[data-theme="hours"] .card :is(.date, .role-line, .ledger-prog, .meta) { font-style: italic; color: var(--gilt); }
+[data-theme="hours"] .card .entry-head .date { display: block; text-align: center; margin-top: -.6rem; }
+[data-theme="hours"] .card p { margin: 0 0 .8rem; }
+[data-theme="hours"] .card p.opening { position: relative; }
+[data-theme="hours"] .card p.opening::first-letter {
+  float: left; font: 400 3.1em/.84 var(--ui); color: var(--lapis); margin: .1em .45rem 0 0;
+  text-shadow: var(--op) var(--op) 0 rgb(168 44 28 / .45);
+}
+[data-theme="hours"] .card p.opening::before { /* the pen flourish trailing down the margin */
+  content: ""; position: absolute; left: -2.05rem; top: .2em; bottom: 0; width: calc(9 * var(--op));
+  background: url("assets/img/orn/tendril.svg") top / calc(9 * var(--op)) calc(24 * var(--op)) repeat-y; image-rendering: pixelated;
+}
+[data-theme="hours"] .card :is(.flow, .bullets) { list-style: none; padding: 0; margin: 0 0 .7rem; }
+[data-theme="hours"] .card :is(.flow, .bullets) li { display: block; white-space: normal; position: relative; padding-left: 1.2em; }
+[data-theme="hours"] .card .flow li::after { content: none; }
+[data-theme="hours"] .card :is(.flow, .bullets) li::before {
+  content: ""; position: absolute; left: .1em; top: .66em; width: calc(3 * var(--op)); height: calc(3 * var(--op));
+  background: url("assets/img/orn/diamond-b.svg") center / contain no-repeat; image-rendering: pixelated;
+}
+[data-theme="hours"] .card :is(.flow, .bullets) li:nth-child(even)::before { background-image: url("assets/img/orn/diamond-r.svg"); }
+[data-theme="hours"] .card .ledger-year h3 { margin: 1.3rem 0 .1rem; color: var(--rubric); letter-spacing: .1em; break-after: avoid; }
+[data-theme="hours"] .card .ledger-year h3::before { content: "\00b6\00a0"; color: var(--lapis); }
+[data-theme="hours"] .card .ledger-year:nth-of-type(even) h3 { color: var(--lapis); }
+[data-theme="hours"] .card .ledger-year:nth-of-type(even) h3::before { color: var(--rubric); }
+[data-theme="hours"] .card .ledger-prog { margin: .55rem 0 .15rem; break-after: avoid; }
+[data-theme="hours"] .card :is(.card-body:not(:has(.pages)), .pages)::after { /* the tailpiece */
+  content: ""; display: block; width: calc(33 * var(--op)); height: calc(15 * var(--op)); margin: 1.4rem auto .3rem;
+  background: url("assets/img/orn/tail.svg") center / contain no-repeat; image-rendering: pixelated;
+}
+/* the books: a spread of two pages, a shadow in the gutter, folios under it */
+[data-theme="hours"] .card.as-book:not([hidden]) { width: min(60rem, 68vw); }
+[data-theme="hours"] .card.as-book .card-body { max-height: none; overflow: visible; padding: 1.2rem 2.2rem .7rem; background: none; }
+[data-theme="hours"] .card.as-book .pages {
+  height: min(64vh, 38rem); columns: 2; column-gap: 4.4rem; column-fill: auto; overflow: hidden;
+  background: linear-gradient(to right, transparent calc(50% - 2.2rem), rgb(90 60 20 / .07) calc(50% - 1rem), rgb(90 60 20 / .2) 50%, rgb(90 60 20 / .07) calc(50% + 1rem), transparent calc(50% + 2.2rem));
+}
+[data-theme="hours"] .card.as-book .pages > * { break-inside: avoid-column; }
+[data-theme="hours"] .card.as-book .pages > .ledger-year { break-inside: auto; }
+[data-theme="hours"] .card .pager { display: flex; justify-content: space-between; align-items: center; margin-top: .3rem; font-style: italic; color: var(--gilt); }
+[data-theme="hours"] .card .pager button { font: 400 1.5rem/1 var(--ui); color: var(--rubric); background: none; border: 0; cursor: pointer; min-width: 24px; min-height: 24px; }
+[data-theme="hours"] .card .pager button:disabled { opacity: .25; cursor: default; }
+[data-theme="hours"] .card.as-book.one-leaf:not([hidden]) { width: min(34rem, 44vw); }
+[data-theme="hours"] .card.one-leaf .pages { columns: 1; height: auto; max-height: 64vh; background: none; }
+[data-theme="hours"] .card.one-leaf .pager { display: none; }
+[data-theme="hours"] .card .entry-head h3.card-title::before { content: ""; } /* the fleuron, not the list's '@' */
+[data-theme="hours"] .card .sheet > div { display: grid; grid-template-columns: 7.5rem 1fr; gap: .2rem 1rem; margin-bottom: .5rem; }
+[data-theme="hours"] .card .sheet dt { color: var(--gilt); font-style: italic; }
+[data-theme="hours"] .card .sheet dd { margin: 0; }
+[data-theme="hours"] .card.as-book .pages { padding-left: 1.6rem; } /* room in the page for the initial's flourish */
+[data-theme="hours"] .card.as-book .pages p.opening::before { left: -1.45rem; }

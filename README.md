@@ -27,6 +27,7 @@ une entrée là, rien d'autre.
 | `_config.yml` | dit à GitHub Pages (Jekyll) de ne pas publier README, `deno.json`, `pyproject.toml` ; `_src/` et `_tools/` sont déjà ignorés (préfixe `_`) |
 | `_tools/icons.py` | icônes pixel du thème hours : `_tools/icons.txt` (dessins ASCII) → `assets/img/icons/*.svg` ; cadre pixel des boîtes (`frame.svg`) et curseur du menu (`cursor.svg`) |
 | `_tools/arms.txt` | blasons du thème hours, d'après l'emblème et les couleurs de chaque établissement (pas une copie des logos) ; `_tools/icons.py` en tire `assets/img/arms/*.svg` et `assets/js/arms.js` ; le parcours (tapisseries murales) dans `[heraldry]` de `site.toml` |
+| `_tools/ornaments.py` | ornements à la plume des textes du château (`assets/img/orn/*.svg`) : rinceau sous les titres, fleurons, prolongement filigrané des initiales, losanges des listes, cul-de-lampe |
 | `_tools/trame.py` | vignettes de projet tramées façon *Vermis* pour le thème hours (`assets/img/trame-*.png`) ; `uv run` (NumPy, Pillow) |
 | `_tools/make_assets.py` | images (gravure, enluminures, monogramme, `og`, figures du mémoire) ; Pillow + NumPy |
 | `_tools/illuminations.py` | les vignettes pixel des projets (`assets/img/illum-*.png`) |
