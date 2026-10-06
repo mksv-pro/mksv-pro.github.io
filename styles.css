@@ -698,6 +698,7 @@ dialog.dungeon canvas {
 [data-theme="hours"] .tabs a { display: flex; align-items: center; gap: .45rem; padding: .1rem .3rem; }
 [data-theme="hours"] .tabs a:hover { background: none; color: var(--hi); }
 [data-theme="hours"] .tabs a[aria-current="page"]::after { content: none; }
+[data-theme="hours"] .tabs a[aria-current="page"] { background: none; color: inherit; } /* outside, no room is "current" */
 [data-theme="hours"][data-room] .tabs a[aria-current="page"] { /* the room you are in */
   background: none; color: var(--accent); text-decoration: underline var(--upx, 2px) solid; text-underline-offset: .3em;
 }
