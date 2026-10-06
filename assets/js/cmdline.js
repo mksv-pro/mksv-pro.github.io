@@ -138,6 +138,12 @@ function run(line) {
       updateSky();
       return print(esc(T.skySet(arg)));
     }
+    case 'weather': {
+      if (!WX_KINDS.includes(arg) && arg !== 'now') return print(esc(T.wxHint));
+      session('weather', arg === 'now' ? null : arg);
+      showWeather();
+      return print(esc(T.wxSet(arg)));
+    }
     case 'keys':
       setKeys(arg ? arg !== 'off' : !keysOn);
       return print(T.keysSet(keysOn));
@@ -168,11 +174,12 @@ cmdForm.addEventListener('submit', (e) => {
 /* Tab completes the word under the cursor: a command or a room first, then what that command
    takes; one match is completed, several are completed to their common start and listed. */
 const COMMANDS = ['help', 'look', 'ls', 'map', 'cd', 'take', 'inventory', 'use', 'rumour', 'descend',
-  'cv', 'mail', 'github', 'theme', 'sky', 'keys', 'quit', 'clear', 'go'];
+  'cv', 'mail', 'github', 'theme', 'sky', 'weather', 'keys', 'quit', 'clear', 'go'];
 const roomWords = () => ROOM_IDS.map((id) => WORLD[id].label.toLowerCase());
 const ARGS = {
   cd: roomWords, open: roomWords, go: () => ['north', 'south', 'east', 'west'], walk: () => ['north', 'south', 'east', 'west'],
   theme: () => ['terminal', 'hours'], sky: () => Object.keys(SKY_ALT).concat('now'), keys: () => ['on', 'off'],
+  weather: () => WX_KINDS.concat('now'),
   use: () => pack().map((_, i) => LETTERS[i]),
 };
 

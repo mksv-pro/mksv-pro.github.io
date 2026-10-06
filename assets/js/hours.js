@@ -1917,6 +1917,10 @@ f11111f2.
   let running = false; let visible = true; let raf = 0; let last = 0; let tick = 0;
   let bodies = null; let label0 = ''; let castUntil = 0;
   let par = 0; let parTarget = 0; // pointer parallax, -1 (left) .. 1 (right)
+  // the weather over Paris (script.js, from Open-Meteo): kind clear|cloudy|overcast|fog|drizzle|rain|snow|storm,
+  // cover 0..1 (cloud cover), wind (km/h)
+  let weather = { kind: 'clear', cover: 0.3, wind: 10 };
+  const WET = { drizzle: 0.35, rain: 1, storm: 1.4 }; // rain: drops, relative
   const t0 = performance.now();
   const now = () => (performance.now() - t0) / 1000;
   const isOn = () => root.getAttribute('data-theme') === 'hours';
@@ -2042,6 +2046,46 @@ f11111f2.
     }
   }
 
+  /** Mix buf[i] towards (r, g, b) by a (0..1), integer maths: it runs over the whole frame. */
+  function tint(i, r, g, b, a) {
+    const v = buf[i]; const k = Math.round(a * 256); const j = 256 - k;
+    buf[i] = 0xff000000 | ((((v >> 16) & 255) * j + b * k) >> 8) << 16 | ((((v >> 8) & 255) * j + g * k) >> 8) << 8 | (((v & 255) * j + r * k) >> 8);
+  }
+  /** Overcast: a grey veil over the sky, hiding sun and stars as the cover closes. */
+  function skyVeil() {
+    const wet = WET[weather.kind];
+    const a = clamp((weather.cover - 0.5) * 2) * (wet || weather.kind === 'snow' || weather.kind === 'fog' ? 0.92 : 0.7);
+    if (a <= 0) return;
+    const g = look.night > 0.5 ? [36, 40, 52] : wet ? [112, 118, 130] : [166, 170, 178];
+    const { W, yl0 } = scene;
+    for (let y = 0; y < yl0; y += 1) for (let x = 0; x < W; x += 1) { const i = y * W + x; if (idxNow[i] < N_SKY) tint(i, g[0], g[1], g[2], a); }
+  }
+  /** Fog: far things fade first; rain dims the whole land a little. */
+  function landVeil() {
+    const { W, H, yl0 } = scene;
+    const fog = weather.kind === 'fog'; const wet = WET[weather.kind] || 0;
+    if (!fog && !wet && weather.kind !== 'snow') return;
+    const c = look.night > 0.5 ? [52, 56, 68] : fog ? [196, 200, 204] : [120, 128, 140];
+    for (let y = 0; y < H; y += 1) {
+      const far = clamp(1 - (y - yl0 * 0.6) / (H - yl0 * 0.6)); // 1 up to the far hills, 0 at the bottom
+      const a = fog ? 0.12 + 0.6 * far : (0.06 + 0.12 * far) * Math.max(wet, 0.5);
+      for (let x = 0; x < W; x += 1) { const i = y * W + x; if (idxNow[i] >= N_SKY) tint(i, c[0], c[1], c[2], a); }
+    }
+  }
+  /** Rain streaks or snowflakes, in front of everything; a lightning flash in a storm. */
+  function precipitation(put, blend) {
+    const k = weather.kind;
+    if (WET[k]) {
+      const c = look.night > 0.5 ? [130, 145, 170] : [226, 234, 246]; const slant = clamp(weather.wind / 40, 0, 1);
+      const n = Math.round(scene.drops.length * Math.min(1, WET[k] / 1.4));
+      for (let j = 0; j < n; j += 1) { const d = scene.drops[j]; for (let q = 0; q < 5; q += 1) blend(d.x - q * slant * 0.5, d.y - q, c, 0.75 - q * 0.12, false); }
+    } else if (k === 'snow') {
+      const c = pack([240, 244, 250]);
+      scene.drops.forEach((d, j) => { if (j % 2 === 0) put(d.x + Math.sin(now() * 0.8 + d.ph) * 2, d.y, c, false); });
+    }
+    if (scene.flash > 0) for (let i = 0; i < buf.length; i += 1) tint(i, 236, 240, 255, 0.28 * scene.flash);
+  }
+
   function draw(t) {
     const { W, H, M, fire, fw, fh, cells, yl0, yg } = scene;
     const put = (x, y, c, skyOnly) => {
@@ -2125,18 +2169,26 @@ f11111f2.
       }
     }
 
-    // clouds drift west; at night, thin dithered wisps
-    const pc = pal32[I.CLOUD]; const ps = pal32[I.CLOUD_SH];
+    skyVeil();
+    // clouds drift west, as many as the real cover, as fast as the wind; at night, thin dithered wisps
+    // under a closed sky the clouds turn grey and a second rank fills the gaps
+    const grey = clamp((weather.cover - 0.6) * 2.5) * (look.night > 0.5 ? 0 : 1);
+    const gc = (i, g) => pack(mix(unpack(pal32[i]), g, grey * 0.75));
+    const pc = gc(I.CLOUD, WET[weather.kind] ? [126, 132, 144] : [178, 182, 190]); const ps = gc(I.CLOUD_SH, WET[weather.kind] ? [94, 100, 112] : [140, 146, 156]);
     const veil = 1 - 0.65 * look.night;
-    scene.clouds.forEach((c) => {
-      const x0 = Math.round(((c.x - (reduce ? 0 : t * c.v)) % (W + c.w) + (W + c.w)) % (W + c.w) - c.w);
+    const nCloud = Math.round(scene.clouds.length * clamp(0.15 + weather.cover)); const gust = 0.4 + clamp(weather.wind / 25, 0, 2);
+    const ranks = weather.cover > 0.7 ? [[0, 0], [0.5, 0.18]] : [[0, 0]];
+    ranks.forEach(([dx, dy]) => scene.clouds.forEach((c, j) => {
+      if (j >= nCloud) return;
+      const x0 = Math.round(((c.x + dx * W - (reduce ? 0 : t * c.v * gust)) % (W + c.w) + (W + c.w)) % (W + c.w) - c.w);
+      const y0 = c.y + Math.round(dy * scene.yHor);
       for (let y = 0; y < c.h; y += 1) {
         for (let x = 0; x < c.w; x += 1) {
           const k = c.m[y * c.w + x];
-          if (k && (veil === 1 || bayer(x0 + x, c.y + y) < veil)) put(x0 + x, c.y + y, k === 1 ? pc : ps, true);
+          if (k && (veil === 1 || bayer(x0 + x, y0 + y) < veil)) put(x0 + x, y0 + y, k === 1 ? pc : ps, true);
         }
       }
-    });
+    }));
     if (scene.birds) {
       const bc = pack(look.bird);
       scene.birds.forEach((b, k) => {
@@ -2369,13 +2421,12 @@ f11111f2.
     });
 
     // the nearest plane, then the tall grass bending in the wind
+    landVeil();
     composite(L.FG);
-    if (scene.season === 'autumn' || scene.season === 'winter') { // leaves drift down; or snow
-      const snow = scene.season === 'winter';
+    if (scene.season === 'autumn' && !WET[weather.kind]) { // leaves drift down (snow falls only when it snows)
       scene.falling.forEach((q) => {
         const x = Math.round(q.x - M + Math.sin(t * 0.8 + q.ph) * 3);
-        if (snow) put(x, Math.round(q.y), pack([240, 244, 250]), false);
-        else if (q.y > scene.yHor * 0.6) put(x, Math.round(q.y), pal32[q.c ? I.LEAF : I.LEAF2], false);
+        if (q.y > scene.yHor * 0.6) put(x, Math.round(q.y), pal32[q.c ? I.LEAF : I.LEAF2], false);
       });
     }
     const fo = shift(RATE[L.FG]) - M;
@@ -2384,6 +2435,7 @@ f11111f2.
       const lean = reduce ? 0 : (Math.sin(t * 1.6 + b.x * 0.21) * 0.6 + Math.sin(t * 0.7 + b.x * 0.05) * 0.6) * b.h * 0.22;
       for (let r = 0; r < b.h; r += 1) put(b.x + fo + Math.round((lean + b.spread) * (r / b.h) ** 2), b.y - r, c, false);
     });
+    precipitation(put, blend);
 
     // firelight: warm, stepped falloff, flickering radius; strongest at night
     const k0 = 0.3 + 0.95 * look.night;
@@ -2753,6 +2805,13 @@ f11111f2.
     const { fire, fh, fw, W, Ws, M, yHor, yg, H, chimney } = scene;
     const span = Math.min(W, Ws);
     tick += 1;
+    scene.drops ||= Array.from({ length: Math.round((W * H) / 160) }, () => ({ x: Math.random() * W, y: Math.random() * H, ph: Math.random() * 6 }));
+    if (WET[weather.kind]) { // rain falls fast, leaning with the wind
+      const slant = clamp(weather.wind / 40, 0, 1);
+      scene.drops.forEach((d) => { d.y += 5; d.x += slant * 2.5; if (d.y > H) { d.y -= H + 4; d.x = Math.random() * W; } if (d.x > W) d.x -= W; });
+    } else if (weather.kind === 'snow') scene.drops.forEach((d) => { d.y += 0.6; if (d.y > H) { d.y = -2; d.x = Math.random() * W; } });
+    scene.flash = Math.max(0, (scene.flash || 0) - 1);
+    if (weather.kind === 'storm' && !reduce && Math.random() < 0.006) scene.flash = 3;
 
     if (Math.random() < 0.5) {
       scene.embers.push({ x: fire.x + (Math.random() - 0.5) * fw * 0.6, y: fire.y - fh * 0.5,
@@ -2953,6 +3012,8 @@ f11111f2.
     ring() { if (scene) scene.ringUntil = now() + 5; },
     /** Every room seen: the visitor's banner goes up the keep (`instant`: already up). */
     hoist(instant) { if (scene && !scene.hoist) scene.hoist = { t0: instant ? -99 : now() }; else if (!scene) pendingHoist = true; },
+    /** The weather over Paris changed (or a preview asked for one). */
+    weather(w) { weather = { ...weather, ...w }; if (scene && !running && isOn()) render(now()); },
     /** Light the thing at index i (hotspot hovered or focused); -1 for none. */
     highlight(i) { hl = i; if (!running && interior && isOn()) render(now()); },
   };

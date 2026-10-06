@@ -35,6 +35,11 @@ const T = {
   hour: (day, hour) => `Day of ${day}, hour of ${hour}`,
   moon: (phase, age) => `Moon ${phase}, ${age} days old`,
   stHour: (hour) => `Hour of ${hour}`,
+  wxName: { clear: 'Clear skies', cloudy: 'Some clouds', overcast: 'Overcast', fog: 'Fog', drizzle: 'Drizzle',
+    rain: 'Rain', snow: 'Snow', storm: 'Thunderstorm' },
+  weather: (w) => `${T.wxName[w.kind]} over Paris${w.temp == null ? '' : `, ${w.temp} \u00b0C`}`,
+  wxSet: (k) => (k === 'now' ? 'The weather is the true one again.' : `The weather turns: ${k}.`),
+  wxHint: 'weather clear|cloudy|overcast|fog|drizzle|rain|snow|storm|now (seen in the hours theme)',
   stMoon: (waxing) => `Moon: ${waxing ? 'waxing' : 'waning'}`,
   on: 'on', off: 'off',
   copied: '[copied]', copyFailed: '[copy failed]',
@@ -97,6 +102,7 @@ const T = {
   <div><dt>cv &middot; mail &middot; github</dt><dd>take what you came for</dd></div>
   <div><dt>theme &middot; keys on|off</dt><dd>terminal or hours &middot; single-key shortcuts</dd></div>
   <div><dt>sky &lt;hour&gt;</dt><dd>dawn, noon, dusk, night or now, in the hours theme</dd></div>
+  <div><dt>weather &lt;kind&gt;</dt><dd>clear, rain, snow, fog, storm... or now</dd></div>
   <div><dt>quit</dt><dd>end the visit</dd></div>
 </dl>`,
   mapTitle: 'Map',
@@ -204,7 +210,7 @@ function applyTheme(theme, persist) {
       rumour: () => RUMOURS[Math.floor(Math.random() * RUMOURS.length)], // the knight tells it
       descend, // the cellar door in the rock
       doors: roomDoors, // the doors in the rooms' side walls
-    })).then(() => { if (session('ended')) window.Hours.hoist(true); });
+    })).then(() => { if (session('ended')) window.Hours.hoist(true); showWeather(); });
   }
 }
 
@@ -862,6 +868,56 @@ function tick() {
   lastHour = ph.hour;
 }
 let lastHour = null;
+
+/* ---- the weather over Paris: Open-Meteo (CC BY 4.0, no key, no tracking), at most every 30 min ----
+   The almanac says it; the castle's sky shows it. ?weather=<kind> or `:weather <kind>` previews one. */
+
+const WX_URL = 'https://api.open-meteo.com/v1/forecast?latitude=48.8566&longitude=2.3522'
+  + '&current=temperature_2m,weather_code,cloud_cover,wind_speed_10m&timezone=Europe%2FParis';
+const WX_KINDS = ['clear', 'cloudy', 'overcast', 'fog', 'drizzle', 'rain', 'snow', 'storm'];
+const WX_MS = 30 * 60e3;
+let wxNow = null;
+{
+  const q = new URLSearchParams(location.search).get('weather');
+  if (WX_KINDS.includes(q)) session('weather', q);
+}
+
+/** WMO weather code -> one of WX_KINDS. */
+function wxKind(code) {
+  if (code <= 1) return 'clear';
+  if (code === 2) return 'cloudy';
+  if (code === 3) return 'overcast';
+  if (code <= 48) return 'fog';
+  if (code <= 57) return 'drizzle';
+  if (code <= 67 || (code >= 80 && code <= 82)) return 'rain';
+  if (code <= 77 || code === 85 || code === 86) return 'snow';
+  return 'storm';
+}
+
+function showWeather() {
+  const forced = session('weather');
+  const w = WX_KINDS.includes(forced)
+    ? { kind: forced, cover: { clear: 0.1, cloudy: 0.5 }[forced] ?? 0.95, wind: 18, temp: null } : wxNow;
+  if (!w) return;
+  $('alm-weather').textContent = T.weather(w);
+  if (window.Hours) window.Hours.weather(w);
+}
+
+async function fetchWeather() {
+  try {
+    const c = JSON.parse(session('wx') || 'null');
+    if (c && Date.now() - c.t < WX_MS) { wxNow = c.w; showWeather(); return; }
+    const res = await fetch(WX_URL);
+    if (!res.ok) return;
+    const { current: k } = await res.json();
+    wxNow = { kind: wxKind(k.weather_code), cover: k.cloud_cover / 100, wind: k.wind_speed_10m, temp: Math.round(k.temperature_2m) };
+    session('wx', JSON.stringify({ t: Date.now(), w: wxNow }));
+    showWeather();
+  } catch { /* offline: the sky stays as drawn, the almanac says nothing */ }
+}
+showWeather();
+fetchWeather();
+setInterval(fetchWeather, WX_MS);
 
 tick();
 setTimeout(() => { tick(); setInterval(tick, 60000); }, (60 - new Date().getSeconds()) * 1000);
