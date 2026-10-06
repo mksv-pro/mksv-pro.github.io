@@ -267,7 +267,7 @@ def coursework():
                 <h3>{y}</h3>{body}
               </section>""")
     return (f"""          <details class="ledger" id="coursework">
-            <summary>The book of courses <span class="meta">({n} courses, no grades)</span></summary>
+            <summary>The book of courses <span class="meta">({n} courses)</span></summary>
 """ + "\n".join(out) + "\n          </details>")
 
 
