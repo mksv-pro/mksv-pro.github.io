@@ -298,6 +298,33 @@ gggaaa.
 ...k.k.
 ...k.k.
 ...k.k.`;
+  const MINSTREL = `
+..rr.....
+.rppr....
+..ff.....
+..fkf....
+..ff.....
+.uuuu....
+uuuuuwww.
+uuuuwwgww
+.uuu..ww.
+.uuu.....
+.dd.dd...
+.dd.dd...
+.kk.kk...`;
+  const SNOWMAN = `
+...bbb...
+..bbbbb..
+.bbbbbbb.
+..qqqqq..
+..qkqkq..
+..qqqxx..
+...qqq...
+.qqqqqqq.
+qqqqkqqqq
+qqqqqqqqq
+qqqqkqqqq
+.qqqqqqq.`;
   const DUCK = `
 .hh....
 ghkh...
@@ -512,6 +539,8 @@ nNnnnn..
     SPRITES.heron = shadeSprite(HERON);
     SPRITES.duck = shadeSprite(DUCK);
     SPRITES.duckR = flip(SPRITES.duck);
+    SPRITES.minstrel = shadeSprite(MINSTREL);
+    SPRITES.snowman = shadeSprite(SNOWMAN);
   }
 
   /* ---- the scene: seven planes of palette indices, generated once per size ---- */
@@ -1090,7 +1119,7 @@ nNnnnn..
     // a hamlet by the river, west of the castle: cottages under thatch, a chapel and its spire;
     // their chimneys smoke and their windows light up after dark
     const hamlet = { x0: M + Math.round(0.09 * Ws), x1: M + Math.round(0.22 * Ws) };
-    const chimneys = [];
+    const chimneys = []; const doors = []; const eaves = []; let spire = null;
     windows.push({ pts: [mill.win], lit: true });
     {
       let x = hamlet.x0;
@@ -1100,13 +1129,14 @@ nNnnnn..
         for (let yy = yb - h + 1; yy <= yb; yy += 1) for (let xx = x; xx < x + w; xx += 1) set(xx, yy, wall(xx));
         if (kind === 'chapel') { // a narrow nave and its spire, a bell under the cap
           for (let k = 0; k < 6; k += 1) for (let dx = -Math.floor(k / 2); dx <= Math.floor(k / 2); dx += 1) set(x + 2 + dx, yb - h - 6 + k, dx < 0 ? I.SLATE_HI : I.SLATE_SH);
-          set(x + 2, yb - h - 7, I.GOLD); set(x + 2, yb - h + 2, I.GOLD_SH);
+          set(x + 2, yb - h - 7, I.GOLD); set(x + 2, yb - h + 2, I.GOLD_SH); spire = [x + 2, yb - h - 8];
           windows.push({ pts: [[x + 2, yb - 3]], lit: rng() < 0.5 });
         } else { // a gable roof seen from the side, overhanging, a chimney at one end
           const rh = Math.ceil(w / 3); const R = kind === 'thatch' ? [I.THATCH, I.THATCH_SH] : [I.ROOF_HI, I.ROOF_SH];
           for (let k = 0; k < rh; k += 1) for (let xx = x - 1 + k; xx <= x + w - k; xx += 1) set(xx, yb - h - k, k === rh - 1 || xx > x + w / 2 ? R[1] : R[0]);
           const chx = x + (j % 2 ? 2 : w - 3); rect(chx, yb - h - rh - 1, 1, rh, I.WALL_SH); chimneys.push({ x: chx, y: yb - h - rh - 2 });
           set(x + 1 + (j % 3), yb - 1, I.TIMBER_SH); set(x + 1 + (j % 3), yb - 2, I.TIMBER_SH); // a door
+          doors.push([x + 1 + (j % 3), yb]); eaves.push([x - 1, x + w, yb - h]);
           windows.push({ pts: [[x + w - 3, yb - 3]], lit: rng() < 0.6 });
         }
         x += w + 2 + (j === 1 ? 1 : 0);
@@ -1400,7 +1430,9 @@ nNnnnn..
       butterflies: Array.from({ length: 3 }, (_, k) => ({ x: M + rng() * Math.min(W, Ws), y: yg + 6 + rng() * (H - yg - 12), ph: rng() * 6, c: [I.FL_WHITE, I.FL_YEL, I.FL_BLUE][k] })),
       birds: null, dragon: null, nextDragon: null,
       // the countryside (see draw and step)
-      watch, mill, chimneys, horse, deer, owl, month,
+      watch, mill, chimneys, horse, deer, owl, month, hamlet: { doors, eaves, spire }, fireworks: [], notes: [],
+      bonfires: [[mill.x + 16, Math.round(hill[clamp(mill.x + 16, 0, WE - 1)]) + 1, L.MID], [hamlet.x1 + 7, riverTop(hamlet.x1 + 7) - 3, L.MID],
+        [M + Math.round(0.33 * Ws), crestAt(M + Math.round(0.33 * Ws)) + 1, L.NEAR]],
       heron: (() => { const x = M + Math.round(0.74 * Ws); return { x, y: riverTop(x) + 4 - SPRITES.heron.h }; })(),
       ducks: [0, 1, 2].map((k) => ({ x: pathX[yl0 + 4] + 20 + k * 9, a: pathX[yl0 + 4] + 16, b: M + Math.round(0.92 * Ws), dir: k % 2 ? 1 : -1, ph: k })),
       geese: null, swallows: null, meteors: [], millAngle: 0,
@@ -2216,12 +2248,36 @@ f11111f2.
   let par = 0; let parTarget = 0; // pointer parallax, -1 (left) .. 1 (right)
   // the weather over Paris (script.js, from Open-Meteo): kind clear|cloudy|overcast|fog|drizzle|rain|snow|storm,
   // cover 0..1 (cloud cover), wind (km/h)
-  let weather = { kind: 'clear', cover: 0.3, wind: 10 };
+  let weather = { kind: 'clear', cover: 0.3, wind: 10, dir: 270 };
+  /** The wind across the screen, +x to the right: we look south, so east is on the left and a
+   *  west wind (dir 270, where it comes from) pushes things left. About -1..1 for 0..30 km/h. */
+  const windX = () => Math.sin((weather.dir ?? 270) * Math.PI / 180) * clamp(weather.wind / 30, 0.1, 1.5);
   const WET = { drizzle: 0.35, showers: 0.7, rain: 1, storm: 1.4 }; // rain: drops, relative
   let clockFn = () => new Date(); // the instant the sky shows (script.js: now, or a previewed hour)
   // meteor showers: [month (0-11), day of peak, ZHR, half-width in days]; IMO calendar, rounded
   const SHOWERS = [[0, 3, 110, 0.6], [3, 22, 18, 1], [4, 6, 50, 4], [7, 12, 100, 4], [9, 8, 10, 0.5],
     [9, 21, 20, 3], [10, 17, 15, 1], [11, 14, 150, 1.5]];
+  /** The day the landscape keeps: today (the sky's instant), or ?date=MM-DD for a preview. */
+  function today() {
+    const q = /^(\d\d)-(\d\d)$/.exec(new URLSearchParams(location.search).get('date') || '');
+    const d = clockFn();
+    return q ? new Date(d.getFullYear(), Number(q[1]) - 1, Number(q[2]), d.getHours(), d.getMinutes()) : d;
+  }
+  /** The festival kept on day d, if any: [name, its line for the message bar]. */
+  function festival(d) {
+    const m = d.getMonth() + 1; const day = d.getDate(); const md = m * 100 + day;
+    if (md >= 1030 && md <= 1101) return ['samhain', 'All Hallows: the hamlet has carved its pumpkins.'];
+    if (md === 621) return ['music', 'Midsummer and the feast of music: a minstrel has joined the fire.'];
+    if (md >= 623 && md <= 624) return ['stjohn', "Saint John's Eve: fires burn on the hills tonight."];
+    if (md === 714) return ['fireworks', 'The fourteenth of July: fireworks over the castle tonight.'];
+    if (md === 1231 || md === 101) return ['fireworks', 'The year turns: fireworks over the castle tonight.'];
+    if (md >= 1224 && md <= 1226) return ['christmas', 'Christmas: a star shines over the chapel.'];
+    if (m === 12) return ['advent', 'Advent: lights along the eaves of the hamlet.'];
+    if (md === 401) return ['april', "The first of April. Look at the knight's back."];
+    if (md === 501) return ['may', 'The first of May: lily of the valley by the fire.'];
+    return null;
+  }
+
   /** Meteors an hour under a dark sky on date d: the showers near their peak, plus ~6 sporadic. */
   function meteorRate(d) {
     if (new URLSearchParams(location.search).has('meteors')) return 150; // preview
@@ -2385,7 +2441,7 @@ f11111f2.
   function precipitation(put, blend) {
     const k = weather.kind;
     if (WET[k]) {
-      const c = look.night > 0.5 ? [130, 145, 170] : [226, 234, 246]; const slant = clamp(weather.wind / 40, 0, 1);
+      const c = look.night > 0.5 ? [130, 145, 170] : [226, 234, 246]; const slant = clamp(windX() * 0.75, -1, 1);
       const n = Math.round(scene.drops.length * Math.min(1, WET[k] / 1.4));
       for (let j = 0; j < n; j += 1) { const d = scene.drops[j]; for (let q = 0; q < 5; q += 1) blend(d.x - q * slant * 0.5, d.y - q, c, 0.75 - q * 0.12, false); }
     } else if (k === 'snow') {
@@ -2495,8 +2551,9 @@ f11111f2.
     const ranks = weather.cover > 0.7 ? [[0, 0], [0.5, 0.18]] : [[0, 0]];
     ranks.forEach(([dx, dy]) => scene.clouds.forEach((c, j) => {
       if (j >= nCloud) return;
-      const x0 = Math.round(((c.x + dx * W - (reduce ? 0 : t * c.v * gust)) % (W + c.w) + (W + c.w)) % (W + c.w) - c.w);
+      const x0 = Math.round(((c.x + dx * W + (reduce ? 0 : t * c.v * gust * (windX() < 0 ? -1 : 1))) % (W + c.w) + (W + c.w)) % (W + c.w) - c.w);
       const y0 = c.y + Math.round(dy * scene.yHor);
+      c.sx = x0; c.sy = y0; // where it is, for its shadow on the land
       for (let y = 0; y < c.h; y += 1) {
         for (let x = 0; x < c.w; x += 1) {
           const k = c.m[y * c.w + x];
@@ -2529,6 +2586,11 @@ f11111f2.
         put(g.x, g.y, gc, true); put(g.x + 1, g.y, gc, true); put(g.x - 1, g.y - up, gc, true); put(g.x + 2, g.y - up, gc, true);
       });
     }
+    scene.fireworks.forEach((f) => { // rockets climbing, then their sparks falling and fading
+      if (f.rocket) { put(f.x, f.y, pack([255, 230, 180]), false); put(f.x, f.y + 1, pack([200, 120, 60]), false); return; }
+      const a = 1 - f.age / f.life; put(f.x, f.y, pack(mix(f.c, [40, 30, 60], 1 - a)), false);
+      if (a > 0.6) blend(f.x + 1, f.y, f.c, 0.4, false);
+    });
     if (scene.birds) {
       const bc = pack(look.bird);
       scene.birds.forEach((b, k) => {
@@ -2739,6 +2801,23 @@ f11111f2.
 
     composite(L.GROUND);
 
+    // cloud shadows drift over the land when the sun is out between clouds
+    if (weather.cover > 0.12 && weather.cover < 0.85 && Math.asin(Math.sin(sun[2])) / deg > 6) {
+      scene.clouds.forEach((c) => {
+        if (c.sx === undefined || c.h < 4) return;
+        const cx0 = c.sx + c.w / 2 + (W / 2 - sun[0]) * 0.15; const cy0 = yl0 + 4 + (c.sy / yHor) * (H - yl0) * 1.6;
+        const rx = c.w * 0.55; const ry = Math.max(3, c.h * 0.45);
+        for (let y = Math.floor(cy0 - ry); y <= cy0 + ry; y += 1) {
+          if (y < yl0 - 30 || y >= H) continue;
+          for (let x = Math.floor(cx0 - rx); x <= cx0 + rx; x += 1) {
+            if (x < 0 || x >= W || idxNow[y * W + x] <= FAR) continue;
+            const q = ((x - cx0) / rx) ** 2 + ((y - cy0) / ry) ** 2;
+            if (q < 1 && bayer(x, y) < 1.4 - q) tint(y * W + x, 20, 30, 40, 0.16);
+          }
+        }
+      });
+    }
+
     { // the knight's horse grazes, swishing its tail; deer at the forest's edge at dawn and dusk
       const gh = groundOff(fire.y) - M; const hs = scene.horse;
       blit(SPRITES.horse[!reduce && Math.floor(t / 0.35) % 9 === 0 ? 1 : 0], hs.x + gh, hs.y);
@@ -2746,6 +2825,45 @@ f11111f2.
       if (alt > -8 && alt < 6) scene.deer.forEach((d) => {
         const sp = SPRITES.deer[reduce || Math.floor(t / 2.5 + d.ph) % 3 === 0 ? 0 : 1];
         blit(sp, gx(d.x, d.y), d.y - sp.h);
+      });
+    }
+    { // the festival of the day, if any
+      const fe = festival(today()); const kind = fe && fe[0]; const go0 = groundOff(fire.y) - M; const hm = scene.hamlet;
+      const glow = (x, y, c, r0) => { put(x, y, pack(c), false); if (look.night > 0.3) halo(x, y, r0, c, 0.4 * look.night); };
+      if (kind === 'samhain') { // pumpkins at the doors and by the fire, lit from within after dark
+        const pumpkin = (x, y) => {
+          [[0, 0], [1, 0], [2, 0], [-1, 1], [0, 1], [1, 1], [2, 1], [3, 1], [0, 2], [1, 2], [2, 2]].forEach(([dx, dy]) => put(x + dx, y + dy, pal32[I.RUST_HI], false));
+          put(x + 1, y - 1, pal32[I.FERN_SH], false);
+          const eye = look.night > 0.3 ? pack([255, 230, 120]) : pal32[I.OUTLINE]; put(x, y + 1, eye, false); put(x + 2, y + 1, eye, false);
+          if (look.night > 0.3) halo(x + 1, y + 1, 3, [255, 160, 60], 0.35 * look.night);
+        };
+        hm.doors.forEach(([x, y]) => pumpkin(mx(x) + 2, y - 2));
+        pumpkin(fire.x + go0 - 16, fire.y + 6); pumpkin(fire.x + go0 + 5, fire.y + 9);
+      }
+      if (kind === 'music') { // a minstrel west of the wizard; notes rise from the lute
+        const ms = SPRITES.minstrel; const x0 = scene.wizard.x + go0 - ms.w - 3; const y0 = fire.y + 6 - ms.h;
+        blit(ms, x0, y0 + (reduce ? 0 : Math.floor(t * 2) % 2));
+        scene.minstrelAt = [x0 + 7, y0 + 6];
+        scene.notes.forEach((n) => { const c = pack([250, 240, 200]); put(n.x, n.y, c, false); put(n.x + 1, n.y, c, false); put(n.x + 1, n.y - 1, c, false); put(n.x + 1, n.y - 2, c, false); });
+      } else scene.minstrelAt = null;
+      if (kind === 'stjohn' && look.night > 0.3) scene.bonfires.forEach(([x, y, l]) => { // fires on the hills
+        const sx = x - M + shift(RATE[l]); const f = reduce ? 0 : Math.floor(t * 9 + x) % 3;
+        put(sx, y, pack(hex(FIRE[6])), false); put(sx, y - 1, pack(hex(FIRE[5 - f])), false); put(sx + (f === 1 ? 1 : 0), y - 2, pack(hex(FIRE[4])), false);
+        halo(sx, y - 1, 5, [255, 160, 60], 0.45 * look.night);
+      });
+      if (kind === 'advent' || kind === 'christmas') { // lights along the eaves, twinkling
+        const C = [[255, 90, 80], [255, 220, 100], [110, 200, 255], [130, 240, 130]];
+        hm.eaves.forEach(([a, b, y]) => { for (let x = a; x <= b; x += 2) { const k = (x + Math.floor(t * 1.5)) % 4; put(mx(x), y, pack(look.night > 0.3 ? C[k] : mix(C[k], [90, 80, 70], 0.5)), false); } });
+        if (today().getMonth() === 11 || today().getMonth() === 0) { const sm = SPRITES.snowman; blit(sm, gx(M + Math.round(0.2 * scene.Ws), yg + 14), yg + 14 - sm.h); }
+      }
+      if (kind === 'christmas' && hm.spire) glow(mx(hm.spire[0]), hm.spire[1], [255, 236, 150], 4);
+      if (kind === 'april') { // a paper fish pinned to the knight's back
+        const kx = scene.knight.x + go0 + 5; const ky = scene.knight.y + 15; const fc = pack([240, 140, 60]);
+        [[0, 1], [1, 0], [1, 1], [1, 2], [2, 0], [2, 1], [2, 2], [3, 1], [4, 0], [4, 2]].forEach(([dx, dy]) => put(kx + dx, ky + dy, fc, false));
+      }
+      if (kind === 'may') [[-14, 5], [-11, 7], [9, 8], [12, 6]].forEach(([dx, dy]) => { // lily of the valley
+        const x = fire.x + go0 + dx; const y = fire.y + dy;
+        put(x, y, pal32[I.FERN_SH], false); put(x, y - 1, pal32[I.FERN], false); put(x + 1, y - 2, pal32[I.FL_WHITE], false); put(x + 1, y - 1, pal32[I.FL_WHITE], false);
       });
     }
     if (scene.season === 'summer' && look.night < 0.3) { // swallows skimming the meadow and the water
@@ -2846,7 +2964,7 @@ f11111f2.
     const fo = shift(RATE[L.FG]) - M;
     scene.blades.forEach((b) => {
       const c = pal32[b.c];
-      const lean = reduce ? 0 : (Math.sin(t * 1.6 + b.x * 0.21) * 0.6 + Math.sin(t * 0.7 + b.x * 0.05) * 0.6) * b.h * 0.22;
+      const lean = reduce ? 0 : (Math.sin(t * 1.6 + b.x * 0.21) * 0.6 * clamp(weather.wind / 15, 0.3, 1.6) + Math.sin(t * 0.7 + b.x * 0.05) * 0.6 + windX() * 0.8) * b.h * 0.22;
       for (let r = 0; r < b.h; r += 1) put(b.x + fo + Math.round((lean + b.spread) * (r / b.h) ** 2), b.y - r, c, false);
     });
     if (look.night > 0.5) { // the owl on its branch, blinking now and then
@@ -3237,8 +3355,8 @@ f11111f2.
     tick += 1;
     scene.drops ||= Array.from({ length: Math.round((W * H) / 160) }, () => ({ x: Math.random() * W, y: Math.random() * H, ph: Math.random() * 6 }));
     if (WET[weather.kind]) { // rain falls fast, leaning with the wind
-      const slant = clamp(weather.wind / 40, 0, 1);
-      scene.drops.forEach((d) => { d.y += 5; d.x += slant * 2.5; if (d.y > H) { d.y -= H + 4; d.x = Math.random() * W; } if (d.x > W) d.x -= W; });
+      const slant = clamp(windX() * 0.75, -1, 1);
+      scene.drops.forEach((d) => { d.y += 5; d.x += slant * 2.5; if (d.y > H) { d.y -= H + 4; d.x = Math.random() * W; } d.x = (d.x + W) % W; });
     } else if (weather.kind === 'snow') scene.drops.forEach((d) => { d.y += 0.6; if (d.y > H) { d.y = -2; d.x = Math.random() * W; } });
     scene.flash = Math.max(0, (scene.flash || 0) - 1);
 
@@ -3266,6 +3384,25 @@ f11111f2.
       scene.meteors.push({ x: Math.random() * W, y: Math.random() * yHor * 0.5, dx: dir * v, dy: v * (0.4 + Math.random() * 0.5), age: 0, life: 6 + Math.random() * 6 });
     }
     scene.meteors = scene.meteors.filter((m) => { m.x += m.dx; m.y += m.dy; m.age += 1; return m.age < m.life; });
+    const fest = festival(today());
+    if (fest && fest[0] === 'fireworks' && look.night > 0.4 && !reduce && Math.random() < 0.07) {
+      scene.fireworks.push({ rocket: true, x: Math.round(W * (0.5 + Math.random() * 0.3)) + shift(RATE[L.MID]), y: scene.castleTop + 30, top: scene.castleTop - 10 - Math.random() * yHor * 0.4 });
+    }
+    const sparksOut = [];
+    scene.fireworks = scene.fireworks.filter((f) => {
+      if (f.rocket) {
+        f.y -= 3.5;
+        if (f.y > f.top) return true;
+        const c = [[255, 90, 90], [255, 220, 110], [120, 210, 255], [200, 130, 255], [140, 255, 150]][Math.floor(Math.random() * 5)];
+        for (let k = 0; k < 26; k += 1) { const a = (k / 26) * 2 * Math.PI; const v = 1 + Math.random() * 0.6; sparksOut.push({ x: f.x, y: f.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, age: 0, life: 22 + Math.random() * 10, c }); }
+        return false;
+      }
+      f.x += f.vx; f.y += f.vy; f.vy += 0.04; f.vx *= 0.97; f.age += 1; return f.age < f.life;
+    });
+    scene.fireworks.push(...sparksOut);
+    if (scene.minstrelAt && !reduce && Math.random() < 0.06) scene.notes.push({ x: scene.minstrelAt[0], y: scene.minstrelAt[1], age: 0, ph: Math.random() * 6 });
+    scene.notes = scene.notes.filter((n) => { n.y -= 0.3; n.x += Math.sin(n.age * 0.15 + n.ph) * 0.4; n.age += 1; return n.age < 70; });
+    if (fest && !scene.toldFest) { scene.toldFest = true; try { if (sessionStorage.getItem('fest') !== fest[0]) { sessionStorage.setItem('fest', fest[0]); say(fest[1]); } } catch { /* private mode */ } }
     if (weather.kind === 'storm' && !reduce && Math.random() < 0.006) scene.flash = 3;
 
     if (Math.random() < 0.5) {
@@ -3277,13 +3414,13 @@ f11111f2.
     }
     if (Math.random() < 0.12) scene.fumes.push({ x: chimney.x, y: chimney.y, r: 1, age: 0, life: 60 + Math.random() * 40 });
     const age = (list, move) => list.filter((p) => { p.age += 1; move(p); return p.age < p.life; });
-    scene.embers = age(scene.embers, (e) => { e.y += e.vy; e.x += Math.sin(e.age * 0.3 + e.ph) * 0.5; });
+    scene.embers = age(scene.embers, (e) => { e.y += e.vy; e.x += Math.sin(e.age * 0.3 + e.ph) * 0.5 + windX() * 0.2; });
     scene.smoke = age(scene.smoke, (p) => {
-      p.y -= 0.35; p.x += 0.12 + Math.sin(p.age * 0.05) * 0.1;
+      p.y -= 0.35; p.x += windX() * 0.22 + Math.sin(p.age * 0.05) * 0.1; // drifts with the real wind
       if (p.age % 20 === 0 && p.r < 4) p.r += 1;
     });
     scene.fumes = age(scene.fumes, (p) => {
-      p.y -= 0.18; p.x += 0.08 + Math.sin(p.age * 0.07) * 0.05;
+      p.y -= 0.18; p.x += windX() * 0.15 + Math.sin(p.age * 0.07) * 0.05;
       if (p.age % 25 === 0 && p.r < 3) p.r += 1;
     });
     if (t < castUntil && Math.random() < 0.8) sparkle(1);

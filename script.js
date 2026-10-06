@@ -874,7 +874,7 @@ let lastHour = null;
    The almanac says it; the castle's sky shows it. ?weather=<kind> or `:weather <kind>` previews one. */
 
 const WX_URL = 'https://api.open-meteo.com/v1/forecast?latitude=48.8566&longitude=2.3522'
-  + '&current=temperature_2m,weather_code,cloud_cover,wind_speed_10m&timezone=Europe%2FParis';
+  + '&current=temperature_2m,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m&timezone=Europe%2FParis';
 const WX_KINDS = ['clear', 'cloudy', 'overcast', 'fog', 'drizzle', 'showers', 'rain', 'snow', 'storm'];
 const WX_MS = 30 * 60e3;
 let wxNow = null;
@@ -899,7 +899,7 @@ function wxKind(code) {
 function showWeather() {
   const forced = session('weather');
   const w = WX_KINDS.includes(forced)
-    ? { kind: forced, cover: { clear: 0.1, cloudy: 0.5, showers: 0.6 }[forced] ?? 0.95, wind: 18, temp: null } : wxNow;
+    ? { kind: forced, cover: { clear: 0.1, cloudy: 0.5, showers: 0.6 }[forced] ?? 0.95, wind: 18, dir: 250, temp: null } : wxNow;
   if (!w) return;
   $('alm-weather').textContent = T.weather(w);
   if (window.Hours) window.Hours.weather(w);
@@ -912,7 +912,7 @@ async function fetchWeather() {
     const res = await fetch(WX_URL);
     if (!res.ok) return;
     const { current: k } = await res.json();
-    wxNow = { kind: wxKind(k.weather_code), cover: k.cloud_cover / 100, wind: k.wind_speed_10m, temp: Math.round(k.temperature_2m) };
+    wxNow = { kind: wxKind(k.weather_code), cover: k.cloud_cover / 100, wind: k.wind_speed_10m, dir: k.wind_direction_10m, temp: Math.round(k.temperature_2m) };
     session('wx', JSON.stringify({ t: Date.now(), w: wxNow }));
     showWeather();
   } catch { /* offline: the sky stays as drawn, the almanac says nothing */ }
