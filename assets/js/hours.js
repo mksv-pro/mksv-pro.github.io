@@ -1320,15 +1320,6 @@ nNnnnn..
     /* FG: the nearest plane: big pines, mossy rocks, mushrooms, ferns, a stump, a fallen branch */
     on(L.FG);
     const FGP = [I.FG_PINE_HI, I.FG_PINE, I.FG_PINE_SH];
-    const clearOf = wizard.x - 3; // the left pines' skirts stop short of the wizard
-    pine(Math.min(M + Math.round(-0.08 * Ws), Math.round(clearOf - 0.24 * 0.78 * H)), H + 2, 0.78 * H, FGP);
-    pine(Math.min(M + Math.round(0.05 * Ws), Math.round(clearOf - 0.24 * 0.5 * H)), H + 2, 0.5 * H, FGP);
-    pine(M + Math.round(Ws * 1.02), H + 2, 0.66 * H, FGP);
-    pine(M + Math.round(Ws * 0.93), H + 2, 0.42 * H, FGP);
-    // a bare branch out of that pine's west side, where an owl perches at night
-    const owl = { x: M + Math.round(Ws * 0.93) - Math.round(0.12 * 0.42 * H) - 7, y: Math.round(H + 2 - 0.42 * H * 0.52) };
-    rect(owl.x - 1, owl.y, Math.round(0.12 * 0.42 * H) + 8, 1, I.BARK); set(owl.x - 2, owl.y - 1, I.BARK);
-    owl.y -= SPRITES.owl.h - 1;
     const free = (x) => !(x > fire.x - 70 && x < fire.x + 22) && Math.abs(x - pathX[H - 1]) > pathW[H - 1] + 4;
     function mossyRock(x0, y0, rx, ry) {
       blob(x0, y0, rx, ry, [I.STONE_HI, I.STONE, I.STONE_SH], null);
@@ -1375,6 +1366,17 @@ nNnnnn..
       for (let k = 0; k < 16; k += 1) set(stumpX + 6 + k, H - 3 - Math.round(k * 0.15), k % 5 ? I.DIRT : I.DIRT_SH);
       set(stumpX + 10, H - 5, I.DIRT); set(stumpX + 11, H - 6, I.DIRT); set(stumpX + 15, H - 6, I.DIRT_SH);
     }
+
+    // the big pines last: they stand in front of the rocks, mushrooms and ferns at their feet
+    const clearOf = wizard.x - 3; // the left pines' skirts stop short of the wizard
+    pine(Math.min(M + Math.round(-0.08 * Ws), Math.round(clearOf - 0.24 * 0.78 * H)), H + 2, 0.78 * H, FGP);
+    pine(Math.min(M + Math.round(0.05 * Ws), Math.round(clearOf - 0.24 * 0.5 * H)), H + 2, 0.5 * H, FGP);
+    pine(M + Math.round(Ws * 1.02), H + 2, 0.66 * H, FGP);
+    pine(M + Math.round(Ws * 0.93), H + 2, 0.42 * H, FGP);
+    // a bare branch out of that pine's west side, where an owl perches at night
+    const owl = { x: M + Math.round(Ws * 0.93) - Math.round(0.12 * 0.42 * H) - 7, y: Math.round(H + 2 - 0.42 * H * 0.52) };
+    rect(owl.x - 1, owl.y, Math.round(0.12 * 0.42 * H) + 8, 1, I.BARK); set(owl.x - 2, owl.y - 1, I.BARK);
+    owl.y -= SPRITES.owl.h - 1;
 
     // tall grass along the bottom, in tufts of three blades fanning out; drawn each frame (wind)
     const blades = [];
