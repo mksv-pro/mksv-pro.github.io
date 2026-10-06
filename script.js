@@ -5,6 +5,7 @@ const SITE = new URL('.', document.currentScript.src); // the site root: script.
 const DUNGEON_SRC = document.currentScript.dataset.dungeon; // loaded on the first descent
 const HOURS_SRC = document.currentScript.dataset.hours; // loaded with the hours theme
 const ARMS_SRC = document.currentScript.dataset.arms; // its coats of arms, before it
+const SOUND_SRC = document.currentScript.dataset.sound; // ambient sound, loaded when switched on
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ---- the world: one grid for the exits, the map (m) and the descent (>) ---
@@ -104,6 +105,7 @@ const T = {
   <div><dt>theme &middot; keys on|off</dt><dd>terminal or hours &middot; single-key shortcuts</dd></div>
   <div><dt>sky &lt;hour&gt;</dt><dd>dawn, noon, dusk, night or now, in the hours theme</dd></div>
   <div><dt>weather &lt;kind&gt;</dt><dd>clear, rain, snow, fog, storm... or now</dd></div>
+  <div><dt>photo</dt><dd>the landscape alone, to save as a picture</dd></div>
   <div><dt>quit</dt><dd>end the visit</dd></div>
 </dl>`,
   mapTitle: 'Map',
@@ -285,6 +287,36 @@ async function copyFrom(href) {
     window.open(href, '_blank', 'noopener');
     return false;
   }
+}
+
+/* ---- ambient sound (castle theme), off by default; the choice is remembered ------------
+   Browsers start audio only after a gesture: a stored 'on' waits for the first click or key. */
+
+const soundBtn = $('sound-toggle');
+let soundOn = store('sound') === 'on'; let soundLoading = null;
+function soundState() {
+  return {
+    on: soundOn && root.getAttribute('data-theme') === 'hours' && !document.hidden,
+    wx: currentWx(), night: root.getAttribute('data-sky') === 'night', inside: Boolean(root.dataset.room),
+    summer: [5, 6, 7].includes(new Date().getMonth()),
+  };
+}
+function setSound(on) {
+  soundOn = on;
+  store('sound', on ? 'on' : 'off');
+  soundBtn.setAttribute('aria-pressed', String(on));
+  soundBtn.querySelector('b').textContent = on ? T.on : T.off;
+  if (!on) { if (window.Sound) window.Sound.stop(); return; }
+  soundLoading ||= new Promise((resolve, reject) => {
+    const s = document.createElement('script'); s.src = SOUND_SRC; s.onload = resolve; s.onerror = reject; document.head.append(s);
+  });
+  soundLoading.then(() => window.Sound.start(soundState));
+}
+soundBtn.addEventListener('click', () => setSound(!soundOn));
+if (soundOn) {
+  soundBtn.setAttribute('aria-pressed', 'true'); soundBtn.querySelector('b').textContent = T.on;
+  const wake = () => { setSound(true); removeEventListener('pointerdown', wake); removeEventListener('keydown', wake); };
+  addEventListener('pointerdown', wake); addEventListener('keydown', wake);
 }
 
 /* ---- photo mode (p): the landscape alone; the picture of the moment can be saved ----- */
@@ -936,6 +968,7 @@ function tick() {
   updateSky();
   if (lastHour && ph.hour !== lastHour && window.Hours) { // the castle bell marks the turn of the hour
     window.Hours.ring();
+    if (window.Sound) window.Sound.bell();
     if (root.getAttribute('data-theme') === 'hours') say(T.bell(ph.hour));
   }
   lastHour = ph.hour;
@@ -968,10 +1001,15 @@ function wxKind(code) {
   return 'storm';
 }
 
-function showWeather() {
+/** The weather shown: a previewed kind, else the real one (null before the first answer). */
+function currentWx() {
   const forced = session('weather');
-  const w = WX_KINDS.includes(forced)
+  return WX_KINDS.includes(forced)
     ? { kind: forced, cover: { clear: 0.1, cloudy: 0.5, showers: 0.6 }[forced] ?? 0.95, wind: 18, dir: 250, temp: null } : wxNow;
+}
+
+function showWeather() {
+  const w = currentWx();
   if (!w) return;
   $('alm-weather').textContent = T.weather(w);
   if (window.Hours) window.Hours.weather(w);

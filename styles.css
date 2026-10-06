@@ -973,7 +973,7 @@ dialog.dungeon canvas {
 }
 
 /* the curiosity hunt is the castle's: no counter in the terminal */
-[data-theme="dark"] #st-curios { display: none; }
+[data-theme="dark"] :is(#st-curios, .sound-toggle) { display: none; }
 
 /* photo mode: only the landscape and a small bar to save or leave */
 html.photo :is(.msgline, .host, .tabs, .status, .spots, .card, .leave, main, .cmdline) { visibility: hidden; }
@@ -981,5 +981,6 @@ html.photo :is(.msgline, .host, .tabs, .status, .spots, .card, .leave, main, .cm
   position: fixed; z-index: 30; bottom: 1rem; left: 50%; transform: translateX(-50%);
   display: flex; gap: 1rem; padding: .4rem .8rem; background: var(--panel); border: 1px solid var(--rule);
 }
+.photo-bar[hidden] { display: none; }
 .photo-bar button { font: inherit; color: var(--accent); background: none; border: 0; cursor: pointer; min-height: 24px; }
 .photo-bar button:hover, .photo-bar button:focus-visible { color: var(--hi); }

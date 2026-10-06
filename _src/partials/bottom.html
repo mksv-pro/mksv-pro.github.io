@@ -29,12 +29,14 @@
     <button class="theme-toggle" id="theme-toggle" type="button">
       <span class="sr-only">Switch theme to </span><span id="theme-next">[hours]</span>
     </button>
+    <button class="keys-toggle sound-toggle" id="sound-toggle" type="button" aria-pressed="false"
+            title="Ambient sound of the landscape (castle theme)">sound:<b>off</b></button>
     <button class="keys-toggle" id="keys-toggle" type="button" aria-pressed="true"
             title="Single-key shortcuts (1-{{n_tabs}}, :, ?)">keys:<b>on</b></button>
   </footer>
 
   <script type="application/json" id="site-data">{{site_json}}</script>
   <script src="{{root}}assets/js/sky.js?v={{v:assets/js/sky.js}}"></script>
-  <script src="{{root}}script.js?v={{v:script.js}}" data-dungeon="{{root}}assets/js/dungeon.js?v={{v:assets/js/dungeon.js}}" data-hours="{{root}}assets/js/hours.js?v={{v:assets/js/hours.js}}" data-arms="{{root}}assets/js/arms.js?v={{v:assets/js/arms.js}}"></script>
+  <script src="{{root}}script.js?v={{v:script.js}}" data-dungeon="{{root}}assets/js/dungeon.js?v={{v:assets/js/dungeon.js}}" data-hours="{{root}}assets/js/hours.js?v={{v:assets/js/hours.js}}" data-arms="{{root}}assets/js/arms.js?v={{v:assets/js/arms.js}}" data-sound="{{root}}assets/js/sound.js?v={{v:assets/js/sound.js}}"></script>
   <script src="{{root}}assets/js/cmdline.js?v={{v:assets/js/cmdline.js}}"></script>
   <script src="{{root}}assets/js/armillary.js?v={{v:assets/js/armillary.js}}"></script>{{scripts}}
