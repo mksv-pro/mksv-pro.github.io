@@ -28,9 +28,8 @@ report_code = "https://github.com/mksv-pro/Mike-M1-Internship-IJCLab-2026"
 [person]
 knows_about = ["Computational physics", "Nuclear reactions", "Reduced-order models",
   "Complex systems", "Stochastic processes", "Mean-field games"]
-drawn_to = ["computational physics", "statistical physics", "complex systems",
-  "stochastic processes", "machine learning", "quantum computing", "agent-based models",
-  "mean-field games", "quantitative finance"]
+drawn_to = ["complex systems", "quantum information", "stochastic processes",
+  "machine learning for physics", "agent-based and mean-field models", "quantitative finance"]
 alumni_of = ["Université Paris Cité", "Sorbonne Université", "Université Paris 1 Panthéon-Sorbonne"]
 
 [[person.studying]]
@@ -49,20 +48,20 @@ school = "Université Paris Dauphine-PSL"
 arms = "dauphine"
 
 # ---- heraldry (hours theme) --------------------------------------------------------------
-# Invented canting arms (drawings in _tools/arms.txt), not the institutions' logos. `own`:
-# the knight's shield and the header; the tapestry of the great hall runs in this order.
+# Arms drawn after each institution's emblem (_tools/arms.txt), not their logos. `own`: the
+# knight's shield. `tapestry`: one wall hanging per institution, in the order first met
+# ([arms, name, what was done there]); the labs hang in the observatory, the schools in the hall.
 [heraldry]
 own = "silva"
 tapestry = [
-  ["sorbonne", "2021", "BSc Physics & Mathematics, Sorbonne Université"],
-  ["paris1", "2022", "BA Economics & Political Science, Paris 1 Panthéon-Sorbonne"],
-  ["sciencespo", "2023", "Research assistant, Sciences Po"],
-  ["ceremade", "2024", "Visiting research student, CEREMADE"],
-  ["pariscite", "2025", "MSc Fundamental Physics, Université Paris Cité"],
-  ["dauphine", "2025", "MSc Economics & Finance, Paris Dauphine-PSL"],
-  ["ijclab", "2026", "Research intern, IJCLab"],
-  ["saclay", "2026", "MSc Physics of Complex Systems, Paris-Saclay"],
-  ["sorbonne", "2026", "MSc Quantum Information, Sorbonne Université"],
+  ["sorbonne", "Sorbonne Université", "BSc Physics & Mathematics; MSc Quantum Information"],
+  ["paris1", "Université Paris 1 Panthéon-Sorbonne", "BA Economics & Political Science"],
+  ["sciencespo", "Sciences Po", "Research assistant"],
+  ["ceremade", "CEREMADE", "Visiting research student"],
+  ["pariscite", "Université Paris Cité", "MSc Fundamental Physics"],
+  ["dauphine", "Université Paris Dauphine-PSL", "MSc Economics & Finance"],
+  ["ijclab", "IJCLab", "Research intern"],
+  ["saclay", "Université Paris-Saclay", "MSc Physics of Complex Systems"],
 ]
 
 # ---- the world: a grid of rooms (column c, row r) and the doors between them ----------
@@ -103,7 +102,7 @@ img = "illum-dla.png"
 [world.rooms.about]
 c = 0
 r = 1
-name = "The Scriptorium"
+name = "About"
 label = "about"
 img = "flammarion-dark.png"
 
@@ -195,7 +194,7 @@ date = "2026"
 role = "M1 internship · IJCLab"
 alt = "Project page: illumination of a plane wave scattering off a nucleus"
 text = """A coupled-channel scattering solver and two emulators (RBM, LROM) that reproduce it
-within 0.5&nbsp;% at a fraction of its cost, to make uncertainty quantification on
+within 0.5&nbsp;% at the median, at a fraction of its cost, to make uncertainty quantification on
 optical potentials affordable."""
 actions = [
   { label = "page", href = "projects/nuclear-emulators.html" },
@@ -270,6 +269,6 @@ text = """Started three master's programmes in parallel: Physics of Complex Syst
 date = "2026-07"
 msg = "A raven arrives: the IJCLab internship report and its code are out."
 text = """Finished the M1 internship at IJCLab and obtained the M1 in Fundamental Physics
-(Université Paris Cité) with honours (<i>mention bien</i>); the internship thesis was
+(Université Paris Cité) with honours (<i>mention bien</i>); the internship report was
 graded 18/20. The <a href="{{url:report}}">report</a> and the
 <a href="{{url:report_code}}">code</a> are public."""

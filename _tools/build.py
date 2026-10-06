@@ -297,6 +297,7 @@ def render(src):
         "email": s["email"], "github": s["github"],
         "github_host": s["github"].split("://", 1)[1],
         "n_rooms": str(len(ROOMS)),
+        "n_tabs": str(len(DATA["tabs"])),
     }
 
     def token(m):

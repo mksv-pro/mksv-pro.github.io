@@ -52,11 +52,13 @@ const T = {
   narrowTheme: 'The castle needs a wider window: hours opens on screens from 1200 px.',
   leave: '[leave the room \u00b7 Esc]',
   notebook: 'The notebook on the desk',
-  lookHint: '(What glints can be looked at: point at it, or Tab, then Enter.)',
+  lookHint: '(Whatever glints can be looked at: point at it, or Tab to it and press Enter.)',
   charter: 'A charter of enrolment, sealed with the arms of the school.',
   register: 'The register by the door',
   shelf: (name) => `Shelf: ${name}`,
-  shelfEmpty: 'Its catalogue is still to be written.',
+  // a few ways to say a shelf is not catalogued yet, so the sixteen do not all say the same
+  shelfEmpty: ['Its catalogue is still to be written.', 'The labels on this shelf are still blank.',
+    'No one has catalogued this shelf yet.', 'Dust, and books waiting for their entry in the catalogue.'],
   source: 'where to read it',
   themeSet: (name) => `The lamp turns: ${name}.`,
   skySet: (s) => (s === 'now' ? 'The sky keeps the true hour again.' : `The sky turns to ${s}.`),
@@ -111,7 +113,7 @@ const T = {
 // Overheard in the corridors. Each one is true; most come from the pages themselves.
 const RUMOURS = [
   'the learning reduced-order model is the cheaper emulator on all four benchmark systems.',
-  'the DBMM solver and the R-matrix code agree to a few parts in ten thousand on the diagonal.',
+  'the DBMM solver and an independent R-matrix code agree closely on every benchmark.',
   'a diffusion-limited aggregate in two dimensions has a fractal dimension near 1.71.',
   'the figure-eight orbit of three equal masses was found by Moore in 1993.',
   'planetary hours are unequal: twelve from sunrise to sunset, twelve through the night.',
@@ -191,7 +193,7 @@ function applyTheme(theme, persist) {
       say, // the scene's characters answer in the message line
       items: roomItems, // what each room holds, to be drawn as things
       spots: setSpots, // and where those things ended up
-      rumour: () => T.rumour(RUMOURS[Math.floor(Math.random() * RUMOURS.length)]),
+      rumour: () => RUMOURS[Math.floor(Math.random() * RUMOURS.length)], // the knight tells it
       descend, // the cellar door in the rock
       doors: roomDoors, // the doors in the rooms' side walls
     })).then(() => { if (session('ended')) window.Hours.hoist(true); });
@@ -417,10 +419,10 @@ function roomItems(id) {
         + `, ${esc(b.author)}${b.year ? ` (${esc(b.year)})` : ''}${b.note ? `<br><span class="dim">${esc(b.note)}</span>` : ''}`;
       return [
         ...of('.pub', 'book', (el) => ({ label: text(el.querySelector('.pub-title')), html: el.innerHTML })),
-        ...(lib.shelves || []).map(([sid, name]) => {
+        ...(lib.shelves || []).map(([sid, name], k) => {
           const here = vols.filter((b) => b.shelf === sid);
           return { kind: 'shelf', shelf: sid, label: T.shelf(name), html: `<h3>${esc(T.shelf(name))}</h3>`
-            + (here.length ? `<ul>${here.map((b) => `<li>${volume(b)}</li>`).join('')}</ul>` : `<p>${T.shelfEmpty}</p>`) };
+            + (here.length ? `<ul>${here.map((b) => `<li>${volume(b)}</li>`).join('')}</ul>` : `<p>${T.shelfEmpty[k % T.shelfEmpty.length]}</p>`) };
         }),
         ...vols.map((b) => ({ kind: 'volume', shelf: b.shelf, label: b.title, html: `<h3>${esc(b.title)}</h3>`
           + `<p>${esc(b.author)}${b.year ? `, ${esc(b.year)}` : ''}</p>${b.note ? `<p class="dim">${esc(b.note)}</p>` : ''}`

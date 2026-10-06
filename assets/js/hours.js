@@ -1139,9 +1139,6 @@ nNnnnn..
     armsCache[id] = { w, h, px };
     return armsCache[id];
   }
-  // a 3x5 figure font, for the years woven into the tapestry
-  const DIGITS = ['111101101101111', '010110010010111', '111001111100111', '111001111001111', '101101111001001',
-    '111100111001111', '111100111101111', '111001010010010', '111101111101111', '111101111001111'];
 
   // a 3x5 chalk hand for the schoolroom's equations
   const GLYPHS = {
@@ -1611,8 +1608,8 @@ f11111f2.
     const hangs = (heraldry.tapestry || []).filter(([aid]) => (kind === 'research' ? LABS.has(aid) : kind === 'talks' ? !LABS.has(aid) : false));
     const extra = [];
     const escHtml = (t) => String(t).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
-    function hanging(xc, y0, [aid, year, desc], k) {
-      const w = 17; const h = 26; const x = xc - 8; const cy = y0 + 2;
+    function hanging(xc, y0, [aid, name, desc], k) {
+      const w = 17; const h = 19; const x = xc - 8; const cy = y0 + 2;
       rect(x - 2, y0, w + 4, 1, I.TIMBER_SH); set(x - 3, y0, I.GOLD); set(x + w + 2, y0, I.GOLD); // the rod and its finials
       set(x + 2, y0 + 1, I.OUTLINE); set(x + w - 3, y0 + 1, I.OUTLINE); // its rings
       for (let y = 0; y < h; y += 1) for (let xx = 0; xx < w; xx += 1) {
@@ -1620,9 +1617,8 @@ f11111f2.
         set(x + xx, cy + y, edge ? I.GOLD_SH : (xx + y * 3 + k) % 7 === 0 ? I.PLASTER : I.PLASTER_HI); // woven, a little uneven
       }
       for (let xx = 0; xx < w; xx += 2) set(x + xx, cy + h, I.GOLD); // the fringe
-      const sp = armsSprite(aid); if (sp) stamp(sp, x + 2, cy + 1);
-      String(year).slice(-2).split('').forEach((d, j) => { const g = DIGITS[Number(d)]; for (let b = 0; b < 15; b += 1) if (g[b] === '1') set(x + 5 + j * 4 + (b % 3), cy + 18 + Math.floor(b / 3), I.GOLD_SH); });
-      extra.push({ t: { kind: 'hanging', label: desc, html: `<h3>${escHtml(desc)}</h3><p>${escHtml(year)}</p>` }, b: box(x - 2, y0, w + 4, h + 4) });
+      const sp = armsSprite(aid); if (sp) stamp(sp, x + 2, cy + 2);
+      extra.push({ t: { kind: 'hanging', label: name, html: `<h3>${escHtml(name)}</h3><p>${escHtml(desc)}</p>` }, b: box(x - 2, y0, w + 4, h + 4) });
     }
     const of = (kind) => things.map((t, i) => [t, i]).filter(([t]) => t.kind === kind);
 
@@ -2734,7 +2730,7 @@ f11111f2.
   }
   function talk(hit) {
     if (hit.kind === 'cat') say(CAT_SAYS[hit.name] || 'A cat looks at you.');
-    else if (hit.kind === 'knight') say(`The knight looks up from the fire. ${rumour()}`);
+    else if (hit.kind === 'knight') { const r = rumour(); say(`The knight looks up from the fire: "${r[0].toUpperCase()}${r.slice(1)}"`); }
     else if (hit.kind === 'wizard') { say(WIZARD_SAYS[Math.floor(Math.random() * WIZARD_SAYS.length)]); castUntil = now() + 0.8; sparkle(16); }
     else if (hit.kind === 'fire') {
       say('The fire crackles and throws up sparks.');
