@@ -157,6 +157,7 @@ ul, ol { padding-left: 1.4em; }
   flex: none;
   white-space: nowrap;
   padding: 0 .3ch;
+  min-height: 24px; display: inline-flex; align-items: center; /* WCAG 2.5.8: 24 px targets */
   background: var(--ink);
   color: var(--bg);
   text-decoration: none;
@@ -522,6 +523,7 @@ html:not(.js) .armillary, html:not(.js) .cap-arm { display: none; }
 
 .dlvl {
   font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer;
+  min-height: 24px; /* WCAG 2.5.8 */
 }
 .dlvl:hover b { color: var(--accent); }
 html:not(.js) .dlvl { cursor: default; }
