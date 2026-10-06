@@ -884,8 +884,19 @@ nNnnnn..
       }
     }
     for (let y = top + 2; y < yg; y += 1) drawPath(y);
-    for (let y = crest + 1; y < top + 2; y += 1) {
-      for (let x = cx - 1; x <= cx + 3; x += 1) set(x, y, (y - crest) % 2 ? I.PATH_HI : I.PATH_SH);
+    { // up the rock in three flights, turning on small landings; a parapet on the drop side
+      const yA = top + 1; const hh = yA - crest - 1; const sw = Math.round(7 * u);
+      const pts = [[cx + 2, yA], [cx + 1 - sw, yA - Math.round(hh / 3)], [cx + 2 + sw, yA - Math.round((2 * hh) / 3)], [cx + 1, crest + 1]];
+      for (let k = 0; k < 3; k += 1) {
+        const [xa, ya] = pts[k]; const [xb, yb] = pts[k + 1]; const dir = Math.sign(xb - xa);
+        for (let y = ya; y >= yb; y -= 1) {
+          const f = ya === yb ? 1 : (ya - y) / (ya - yb); const xc = Math.round(xa + (xb - xa) * f);
+          for (let x = xc - 1; x <= xc + 1; x += 1) set(x, y, (y + k) % 2 ? I.PATH_HI : I.PATH);
+          set(xc + 2 * dir, y, I.PATH_SH); // the step's riser, towards the climb
+          set(xc - 2 * dir, y + 1, I.ROCK_DK); // the parapet's shadow below the treads
+        }
+        rect(xb - 2, yb, 5, 1, I.PATH_HI); // the landing
+      }
     }
 
     // the river: across the whole width, its banks wandering and the bed meandering a little;
@@ -1225,31 +1236,89 @@ nNnnnn..
       { x: wx1 - 6, a: cx + gw, b: wx1 - 3, v: -0.06, pause: 0, wall: wTop },
     ];
 
-    // a hamlet by the river, west of the castle: cottages under thatch, a chapel and its spire;
-    // their chimneys smoke and their windows light up after dark
-    const hamlet = { x0: M + Math.round(0.09 * Ws), x1: M + Math.round(0.22 * Ws) };
+    // a village by the river, west of the castle: a back row up the slope (a barn, a dovecote, a
+    // cottage), then along the bank cottages under thatch, the chapel and its spire, a well, the
+    // forge and the tavern; chimneys smoke, windows and lanterns light up after dark
+    const hamlet = { x0: M + Math.round(0.05 * Ws), x1: 0 };
     const chimneys = []; const doors = []; const eaves = []; let spire = null;
     windows.push({ pts: [mill.win], lit: true });
     {
-      let x = hamlet.x0;
-      [[9, 6, 'thatch'], [5, 9, 'chapel'], [11, 6, 'roof'], [8, 5, 'thatch']].forEach(([w, h, kind], j) => {
-        const yb = Math.min(...Array.from({ length: w }, (_, k) => riverTop(x + k))) - 2;
-        const wall = (xx) => (xx === x ? I.WALL_HI : xx === x + w - 1 ? I.WALL_SH : I.WALL);
-        for (let yy = yb - h + 1; yy <= yb; yy += 1) for (let xx = x; xx < x + w; xx += 1) set(xx, yy, wall(xx));
+      const baseAt = (x, w) => Math.min(...Array.from({ length: w }, (_, k) => riverTop(x + k))) - 2;
+      const walls = (x, yb, w, h, [hi, mid, sh]) => {
+        for (let yy = yb - h + 1; yy <= yb; yy += 1) for (let xx = x; xx < x + w; xx += 1) set(xx, yy, xx === x ? hi : xx === x + w - 1 ? sh : mid);
+      };
+      const gable = (x, yb, w, h, R) => { // a gable roof seen from the side, overhanging; returns its height
+        const rh = Math.ceil(w / 3);
+        for (let k = 0; k < rh; k += 1) for (let xx = x - 1 + k; xx <= x + w - k; xx += 1) set(xx, yb - h - k, k === rh - 1 || xx > x + w / 2 ? R[1] : R[0]);
+        return rh;
+      };
+      const chimney = (chx, yb, h, rh) => { rect(chx, yb - h - rh - 1, 1, rh, I.WALL_SH); chimneys.push({ x: chx, y: yb - h - rh - 2 }); };
+      const WALLS = [I.WALL_HI, I.WALL, I.WALL_SH]; const STONE3 = [I.ROCK_HI, I.ROCK, I.ROCK_SH];
+      const THATCH = [I.THATCH, I.THATCH_SH]; const TILES = [I.ROOF_HI, I.ROOF_SH]; const SLATES = [I.SLATE_HI, I.SLATE_SH];
+      function building(x, yb, w, h, kind, j) {
+        if (kind === 'well') { // a stone ring, two posts, a little roof, the bucket
+          set(x, yb - 1, I.ROCK_HI); set(x + 1, yb - 1, I.OUTLINE); set(x + 2, yb - 1, I.ROCK_SH);
+          set(x, yb, I.ROCK); set(x + 1, yb, I.ROCK); set(x + 2, yb, I.ROCK_SH);
+          rect(x, yb - 4, 1, 3, I.TIMBER_SH); rect(x + 2, yb - 4, 1, 3, I.TIMBER_SH); set(x + 1, yb - 3, I.GOLD_SH);
+          rect(x - 1, yb - 5, 5, 1, I.ROOF_SH); set(x - 1, yb - 5, I.ROOF_HI);
+          return;
+        }
+        if (kind === 'lamp') { rect(x, yb - 4, 1, 5, I.TIMBER_SH); set(x + 1, yb - 4, I.TIMBER_SH); set(x + 1, yb - 3, I.ARM_SH); windows.push({ pts: [[x + 1, yb - 3]], lit: true }); return; }
         if (kind === 'chapel') { // a narrow nave and its spire, a bell under the cap
+          walls(x, yb, w, h, WALLS);
           for (let k = 0; k < 6; k += 1) for (let dx = -Math.floor(k / 2); dx <= Math.floor(k / 2); dx += 1) set(x + 2 + dx, yb - h - 6 + k, dx < 0 ? I.SLATE_HI : I.SLATE_SH);
           set(x + 2, yb - h - 7, I.GOLD); set(x + 2, yb - h + 2, I.GOLD_SH); spire = [x + 2, yb - h - 8];
           set(x + 2, yb - 5, I.T_GULES); set(x + 2, yb - 4, I.T_AZURE); set(x + 2, yb - 3, I.T_OR); // its stained-glass slit
-        } else { // a gable roof seen from the side, overhanging, a chimney at one end
-          const rh = Math.ceil(w / 3); const R = kind === 'thatch' ? [I.THATCH, I.THATCH_SH] : [I.ROOF_HI, I.ROOF_SH];
-          for (let k = 0; k < rh; k += 1) for (let xx = x - 1 + k; xx <= x + w - k; xx += 1) set(xx, yb - h - k, k === rh - 1 || xx > x + w / 2 ? R[1] : R[0]);
-          const chx = x + (j % 2 ? 2 : w - 3); rect(chx, yb - h - rh - 1, 1, rh, I.WALL_SH); chimneys.push({ x: chx, y: yb - h - rh - 2 });
-          set(x + 1 + (j % 3), yb - 1, I.TIMBER_SH); set(x + 1 + (j % 3), yb - 2, I.TIMBER_SH); // a door
-          doors.push([x + 1 + (j % 3), yb]); eaves.push([x - 1, x + w, yb - h]);
-          windows.push({ pts: [[x + w - 3, yb - 3]], lit: rng() < 0.6 });
+          return;
         }
-        x += w + 2 + (j === 1 ? 1 : 0);
+        if (kind === 'dovecote') { // a round tower of the birds, its cap pointed, holes under the eaves
+          walls(x, yb, w, h, WALLS);
+          for (let k = 0; k < 5; k += 1) for (let dx = -Math.floor(k / 2); dx <= Math.floor(k / 2) + 1; dx += 1) set(x + 1 + dx, yb - h - 4 + k, dx <= 0 ? I.ROOF_HI : I.ROOF_SH);
+          set(x + 1, yb - h + 2, I.OUTLINE); set(x + 2, yb - h + 2, I.OUTLINE); set(x + 1, yb - h + 4, I.OUTLINE);
+          return;
+        }
+        if (kind === 'barn') { // planks, the great doors crossed, hay under thatch
+          for (let yy = yb - h + 1; yy <= yb; yy += 1) for (let xx = x; xx < x + w; xx += 1) set(xx, yy, (xx - x) % 2 ? I.TIMBER_SH : I.TIMBER);
+          const dx0 = x + Math.floor(w / 2) - 2;
+          for (let k = 0; k < 4; k += 1) { set(dx0 + k, yb - 3 + k, I.TIMBER_HI); set(dx0 + 3 - k, yb - 3 + k, I.TIMBER_HI); }
+          gable(x, yb, w, h, THATCH); set(x + 2, yb - h - 1, I.FL_YEL);
+          return;
+        }
+        if (kind === 'forge') { // stone, a slate roof, its mouth open on the fire, the anvil before it
+          walls(x, yb, w, h, STONE3);
+          const rh = gable(x, yb, w, h, SLATES);
+          rect(x + 1, yb - 3, 4, 3, I.OUTLINE); set(x + 2, yb - 1, I.RUST_HI); set(x + 3, yb - 1, I.FL_YEL); set(x + 2, yb - 2, I.RUST);
+          windows.push({ pts: [[x + 3, yb - 1]], lit: true }); // the fire: it glows by day and night
+          set(x + 6, yb - 1, I.ARM_SH); set(x + 5, yb - 1, I.ARM_SH); set(x + 6, yb, I.OUTLINE);
+          rect(x + w - 2, yb - h - rh - 3, 2, rh + 2, I.ROCK_SH); chimneys.push({ x: x + w - 2, y: yb - h - rh - 4 });
+          eaves.push([x - 1, x + w, yb - h]);
+          return;
+        }
+        walls(x, yb, w, h, WALLS);
+        if (kind === 'tavern') { // two storeys, timber-framed, the upper one jutting; its sign on a bracket
+          rect(x, yb - 4, w, 1, I.TIMBER_SH);
+          for (let yy = yb - h + 1; yy < yb - 4; yy += 1) { set(x - 1, yy, I.WALL_HI); set(x + w, yy, I.WALL_SH); set(x + 3, yy, I.TIMBER_SH); set(x + w - 4, yy, I.TIMBER_SH); }
+          set(x + 1, yb - 6, I.TIMBER_SH); set(x + 2, yb - 7, I.TIMBER_SH); // a brace
+          windows.push({ pts: [[x + 5, yb - 7], [x + 1, yb - 2], [x + w - 2, yb - 2]], lit: true });
+          set(x + w, yb - 6, I.TIMBER_SH); set(x + w + 1, yb - 6, I.TIMBER_SH); rect(x + w + 1, yb - 5, 2, 2, I.GOLD); set(x + w + 2, yb - 4, I.GOLD_SH);
+        }
+        const rh = gable(x, yb, w, h, kind === 'thatch' ? THATCH : TILES);
+        chimney(x + (j % 2 ? 2 : w - 3), yb, h, rh);
+        const dxd = kind === 'tavern' ? Math.floor(w / 2) - 1 : 1 + (j % 3);
+        set(x + dxd, yb - 1, I.TIMBER_SH); set(x + dxd, yb - 2, I.TIMBER_SH); // a door
+        doors.push([x + dxd, yb]); eaves.push([x - 1, x + w, yb - h]);
+        if (kind !== 'tavern') windows.push({ pts: [[x + w - 3, yb - 3]], lit: rng() < 0.6 });
+      }
+      // the back row first, up the slope: the bank's row stands in front of it
+      [[3, 10, 6, 'barn'], [24, 4, 11, 'dovecote'], [40, 8, 5, 'roof'], [63, 7, 5, 'thatch']].forEach(([dx, w, h, kind], j) => {
+        const x = hamlet.x0 + dx; building(x, baseAt(x, w) - 6, w, h, kind, j + 1);
       });
+      let x = hamlet.x0;
+      [[9, 6, 'thatch'], [5, 9, 'chapel'], [1, 0, 'lamp'], [11, 6, 'roof'], [3, 4, 'well'], [8, 6, 'forge'], [10, 9, 'tavern'], [1, 0, 'lamp'], [8, 5, 'thatch']]
+        .forEach(([w, h, kind], j) => {
+          building(x, baseAt(x, w), w, h, kind, j);
+          x += w + (kind === 'tavern' ? 4 : 2); // (room for the tavern's sign)
+        });
       hamlet.x1 = x;
     }
 
@@ -2725,8 +2794,11 @@ f11111f2.
   /** The view: the hamlet and the bank of the market, centred; Z the zoom that fits them. */
   function villageFrame() {
     const { W, H, hamlet: hm, M } = scene;
-    const a = hm.x0 - 4; const b = hm.x1 + 30; const xc = (a + b) / 2 - M + shift(RATE[L.MID]);
-    const Z = Math.max(2, Math.min(4, Math.floor(W / (b - a + 10))));
+    // the market and the bank's last houses at Z = 3 (4 on a narrow plate); the arrow keys pan along
+    const Z = W < 300 ? 4 : 3; const a = hm.x0 - 6; const b = hm.x1 + 34; const half = W / Z / 2;
+    const xm = clamp(hm.x1 - 8 + (zoom ? zoom.pan || 0 : 0), a + half, b - half);
+    if (zoom) zoom.pan = xm - (hm.x1 - 8);
+    const xc = xm - M + shift(RATE[L.MID]);
     return { Z, xc, yc: scene.riverTop(hm.x1) - 16, W, H }; // (the village, and a strip of the river)
   }
   function zoomed(t) {
@@ -2741,7 +2813,7 @@ f11111f2.
       const row = Math.min(H - 1, Math.floor(vy + y / z)) * W;
       for (let x = 0; x < W; x += 1) obuf[y * W + x] = buf[row + Math.min(W - 1, Math.floor(vx + x / z))];
     }
-    Object.assign(zoom, { vx, vy, Z });
+    Object.assign(zoom, { vx, vy, Z, z });
     if (zoom.done) villageView(t);
   }
   function villageView(t) {
@@ -2805,15 +2877,254 @@ f11111f2.
   function villageHit(x, y) {
     if (!zoom || !zoom.done || !marketDay(today()) || look.night >= 0.3 || !scene.market) return false;
     const mk = scene.market; const { vx, vy, Z } = zoom;
-    const sx = vx + x / Z - (shift(RATE[L.MID]) - scene.M); const sy = vy + y / Z; const top = scene.riverTop(mk.x0 + 18);
+    const sx = vx + x / Z - (shift(RATE[L.MID]) - scene.M); const sy = vy + y / Z; const top = scene.riverTop(mk.x0 + 5);
     return sx >= mk.x0 && sx < mk.x0 + mk.N && sy > top - 14 && sy < top + 1;
   }
+  /* ---- the watchtower, up top: a 360° view, a quarter per screen width, N E S W. From the near
+     range (the landscape looks south): the high mountains to the south, the castle east along the
+     range, the river, the village and the far city to the north, hills and vineyards west. The
+     panorama is indexed in the scene's palette, so it is lit by the hour; the sun and the moon
+     stand at their true azimuths, the clouds and the weather are the real ones. ---- */
+  let tower = null; // { on, t0, yaw, to }
+  let pano = null; // { P (indices, 4W x H), W, H, yh, clouds, fires }
+  const TOWER_S = 0.6;
+  const DIRS = [['North', 'the river, the village and, far off, the city'], ['East', 'the castle on its rock, along the range'],
+    ['South', 'the high mountains, their snow and their glaciers'], ['West', 'the hills going down, vines and forest, where the sun sets']];
+  const towerBar = document.createElement('div');
+  towerBar.className = 'tower-bar';
+  towerBar.innerHTML = '<button type="button" data-turn="-1">[◄]</button> <button type="button" data-turn="0">[step down · Esc]</button> <button type="button" data-turn="1">[►]</button>';
+  towerBar.addEventListener('click', (e) => { const b = e.target.closest('[data-turn]'); if (!b) return; const k = Number(b.dataset.turn); if (k) turnTower(k); else towerTo(false); });
+  function towerTo(on) {
+    if (!scene || (on && tower && tower.on) || (!on && !tower)) return;
+    if (on) { if (!pano || pano.W !== scene.W || pano.H !== scene.H) pano = makePano(scene.W, scene.H); tower = { on: true, t0: now(), yaw: 2, to: 2 }; document.body.append(towerBar); }
+    else tower = { ...tower, on: false, t0: now() };
+    root.classList.toggle('lookout', on);
+    if (on) say(`Atop the watchtower. Facing ${DIRS[2][0].toLowerCase()}: ${DIRS[2][1]}. The arrow keys turn you round; Esc goes down.`);
+    if (!running && isOn()) render(now());
+  }
+  function turnTower(k) {
+    if (!tower || !tower.on) return;
+    tower.to += k; tower.from = tower.yaw; tower.tt = now();
+    const d = DIRS[((tower.to % 4) + 4) % 4]; say(`${d[0]}: ${d[1]}.`);
+  }
+  /** Sines of whole periods round the circle: noise that joins up at north again. */
+  function ring(rng, terms) {
+    const ks = terms.map(([k, a]) => [k, a, rng() * 6.283]);
+    return (x, PW) => ks.reduce((s, [k, a, ph]) => s + a * Math.sin((6.283 * k * x) / PW + ph), 0);
+  }
+  function makePano(W, H) {
+    const rng = mulberry32(4471); const PW = 4 * W; const P = new Uint8Array(PW * H).fill(CLEAR);
+    const yh = Math.round(H * 0.5); // the horizon: we are up high
+    const set = (x, y, i) => { x = ((Math.round(x) % PW) + PW) % PW; y = Math.round(y); if (y >= 0 && y < H) P[y * PW + x] = i; };
+    const az = (x) => ((x / W - 0.5) * 90 + 360) % 360; // column -> azimuth (degrees from north)
+    const near = (x, a0, w) => { const d = Math.abs(((az(x) - a0 + 540) % 360) - 180); return Math.exp(-((d / w) ** 2)); };
+    const winter = scene.season === 'winter'; const autumn = scene.season === 'autumn';
+    for (let y = 0; y < H; y += 1) { // the sky, as in the landscape
+      const g = clamp(y / yh) * (N_SKY - 1); const j = Math.min(N_SKY - 2, Math.floor(g)); const t = clamp((g - j - 0.3) / 0.5);
+      for (let x = 0; x < PW; x += 1) P[y * PW + x] = t > bayer(x, y) ? j + 1 : j;
+    }
+    // the ranges all round, the high ones south: ridged multi-octave peaks; facets run diagonally
+    // down from the crests (as in the landscape), lit from the west; snow under the crests
+    const nf = fbm(rng);
+    const ridged = (octs) => { // 1 - |sin| over whole periods: sharp crests, closing up at north
+      const o = octs.map(([k, a]) => [k, a, rng() * 6.283]);
+      const w = o.reduce((q, [, a]) => q + a, 0);
+      return (x) => o.reduce((q, [k, a, ph]) => q + a * (1 - Math.abs(Math.sin((3.1416 * k * x) / PW + ph))) ** 1.6, 0) / w;
+    };
+    function range(top, light, shade, snowLine, depth) {
+      const ys = new Float32Array(PW + 1);
+      for (let x = 0; x <= PW; x += 1) ys[x] = top(x);
+      for (let x = 0; x < PW; x += 1) {
+        const y0 = Math.round(ys[x]); const slope = ys[x + 1] - ys[Math.max(0, x - 1)];
+        const sd = snowLine === null ? 0 : (snowLine(x) - y0) * 0.8 + (nf(x * 0.9) - 0.5) * 4;
+        for (let y = Math.max(0, y0); y < yh + depth; y += 1) {
+          const lit = slope * 1.5 + (nf((x - y * 0.9) * 0.11 + 31) - 0.5) * 2.4 + (nf((x + y) * 0.07 + 57) - 0.5) * 1.2 > 0;
+          set(x, y, y - y0 < sd ? (lit ? I.SNOW : I.SNOW_SH) : lit ? light : shade);
+        }
+      }
+    }
+    const hi = ridged([[6, 1], [13, 0.5], [29, 0.25], [61, 0.12]]); const lo = ridged([[5, 1], [11, 0.5], [23, 0.25], [53, 0.12]]);
+    const south = (x) => near(x, 180, 65);
+    range((x) => yh - H * (0.05 + 0.06 * lo(x) + south(x) * (0.1 + 0.26 * clamp((hi(x) - 0.2) / 0.6) ** 1.3)), I.MT_FAR, I.MT_FAR_SH,
+      (x) => yh - H * ((winter ? 0.12 : 0.2) - 0.04 * (1 - south(x))), 4);
+    const mid = ridged([[4, 1], [9, 0.5], [19, 0.25], [41, 0.12]]);
+    range((x) => yh - H * (0.015 + 0.04 * mid(x) + 0.05 * south(x) + 0.03 * near(x, 90, 30)), I.MT_NEAR, I.MT_NEAR_SH, winter ? (x) => yh - H * 0.06 + 0 * x : null, 8);
+    const leaf = winter ? [I.TREES_FAR_SH, I.TREES_FAR_SH] : [I.TREES_FAR, I.TREES_FAR_SH];
+    for (let x = 0; x < PW; x += 1) for (let y = yh + 2; y < yh + 7; y += 1) set(x, y, I.TREES_FAR_SH);
+    for (let x = 0; x < PW; x += 2 + Math.floor(rng() * 2)) { // a fringe of small conifers
+      const h = 2 + Math.floor(rng() * 3); const by = yh + 3;
+      for (let r = 0; r < h; r += 1) for (let dx = -Math.floor((h - r) / 2); dx <= Math.floor((h - r) / 2); dx += 1) set(x + dx, by - r, autumn && (x * 7) % 5 === 0 ? I.RUST_SH : leaf[dx > 0 ? 1 : 0]);
+    }
+    // the land below: a soft patchwork in perspective (bands taller towards us), hedges as rows of
+    // dots, copses as dark blobs; vines in rows to the west; the forest falls away to the south
+    const rows = []; for (let y = yh + 7, h = 2; y < H; y += h, h = Math.min(16, Math.round(h * 1.3 + 1))) rows.push([y, h]);
+    const FIELDS = winter ? [I.SNOWFIELD, I.SNOWFIELD, I.SNOWFIELD, I.HILL_SH] : autumn ? [I.HILL, I.HILL, I.HILL_HI, I.FURROW, I.WHEAT_SH, I.HILL_SH]
+      : [I.HILL, I.HILL, I.HILL_HI, I.GRASS_HI, I.WHEAT, I.FURROW];
+    rows.forEach(([y0, h], r) => {
+      let x = Math.floor(rng() * 6); const cw = 6 + r * 4;
+      while (x < PW) {
+        const w = Math.round(cw * (0.6 + rng() * 0.9)); const a = az(x);
+        let c = FIELDS[Math.floor(rng() * FIELDS.length)];
+        const vines = !winter && a > 240 && a < 300 && rng() < 0.6;
+        const forest = a > 140 && a < 220;
+        if (forest) c = I.PINE_SH;
+        for (let yy = y0; yy < y0 + h && yy < H; yy += 1) for (let xx = x; xx < x + w; xx += 1) {
+          let k = c;
+          if (vines) k = (yy - y0) % 2 ? I.HILL_SH : (xx % 2 ? (autumn ? I.VINE_AUT : I.VINE) : I.HILL_SH);
+          else if (c === I.FURROW && (yy - y0) % 2) k = I.FURROW_SH;
+          else if (forest && bayer(xx, yy) < 0.35) k = I.PINE;
+          set(xx, yy, k);
+        }
+        if (!forest && r > 0 && rng() < 0.45) for (let xx = x; xx < x + w; xx += 2) set(xx, y0, I.BUSH_SH); // a hedge along it
+        x += w;
+      }
+    });
+    for (let k = 0; k < 90; k += 1) { // copses, bigger the nearer
+      const x = rng() * PW; const a = az(x); const y = yh + 8 + (rng() ** 1.6) * (H * 0.36); const r = 1 + (y - yh) * 0.05;
+      if (a > 140 && a < 220) continue;
+      for (let dy = -r; dy <= r * 0.6; dy += 1) for (let dx = -r * 1.6; dx <= r * 1.6; dx += 1) {
+        if ((dx / (r * 1.6)) ** 2 + (dy / r) ** 2 > 1) continue;
+        set(x + dx, y + dy, autumn && k % 3 === 0 ? (dx + dy < 0 ? I.RUST_HI : I.RUST) : dx + dy < -r * 0.3 ? I.OAK_HI : dx + dy > r * 0.4 ? I.OAK_SH : I.OAK);
+      }
+    }
+    for (let k = 0; k < 2600; k += 1) { // south: the forest going down, a pine at each point, bigger the nearer
+      const x = Math.round(((140 + rng() * 80) / 90 + 0.5) * W); const y = Math.round(yh + 8 + (rng() ** 1.3) * (H - yh - 8)); const h = 2 + Math.round((y - yh) * 0.09);
+      if (Math.abs(az(x) - 180) > 40 - 10 * Math.abs(Math.sin(y))) continue;
+      for (let r = 0; r < h; r += 1) { const half = Math.floor(((h - r) * 0.45)); for (let dx = -half; dx <= half; dx += 1) set(x + dx, y - r, dx < 0 ? (winter && r > h / 2 ? I.SNOW : I.PINE_HI) : dx === 0 ? I.PINE : I.PINE_SH); }
+    }
+    { // south: a lake in the valley floor, under the mountains
+      const lx = Math.round((180 / 90 + 0.5) * W) + Math.round(W * 0.12); const ly = yh + 10;
+      for (let dy = 0; dy < 5; dy += 1) for (let dx = -26 + dy * 3; dx <= 26 - dy * 3; dx += 1) set(lx + dx, ly + dy, dy === 0 || (dx + dy) % 9 === 0 ? I.WATER_HI : I.WATER);
+    }
+    const xAt = (a) => Math.round((a / 90 + 0.5) * W); // azimuth -> column
+    { // north: the river across the plain, winding, the village on it, the city on the horizon
+      const rv = ring(rng, [[6, 1], [14, 0.4]]);
+      for (let x = xAt(-55 + 360) - PW; x < xAt(55); x += 1) {
+        const yc = yh + 0.2 * H + rv(x, PW) * 0.03 * H; const w = 1.5 + 0.02 * H * clamp((yc - yh) / (0.4 * H));
+        for (let y = Math.round(yc - w); y <= yc + w; y += 1) set(x, y, Math.abs(y - yc) > w - 1 ? I.WATER_HI : I.WATER);
+      }
+      const vx = xAt(-18 + 360); const vy = Math.round(yh + 0.2 * H + rv(vx, PW) * 0.03 * H) - 4;
+      [[0, 4, 3, I.THATCH], [6, 3, 4, I.ROOF], [11, 2, 6, I.SLATE], [15, 5, 3, I.ROOF], [22, 4, 3, I.THATCH], [3, 3, 2, I.THATCH]].forEach(([dx, w, h, roof], k) => {
+        const y0 = vy - (k === 5 ? 3 : 0);
+        for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) set(vx + dx + x, y0 - y, x === 0 ? I.WALL_HI : I.WALL);
+        for (let x = -1; x <= w; x += 1) set(vx + dx + x, y0 - h, roof);
+        if (roof === I.SLATE) { set(vx + dx, y0 - h - 1, I.SLATE); set(vx + dx + 1, y0 - h - 1, I.SLATE); set(vx + dx, y0 - h - 2, I.SLATE); } // the spire
+      });
+      const cx0 = xAt(10); // the city: low roofs, two towers of a cathedral, a dome, in the haze
+      for (let x = -26; x <= 26; x += 1) {
+        const hgt = 1 + ((x * 7919) % 5 + 5) % 3 + (Math.abs(x) < 3 ? 6 : 0) + (x === 12 || x === 13 ? 4 : 0) + (x === -10 ? 8 : 0);
+        for (let y = 0; y < hgt; y += 1) set(cx0 + x, yh + 1 - y, I.MT_FAR_SH);
+      }
+      for (let x = 10; x <= 15; x += 1) set(cx0 + x, yh - 4 - Math.round(Math.sqrt(Math.max(0, 6 - (x - 12.5) ** 2))), I.MT_FAR_SH);
+    }
+    { // east: the castle on its rock, a little way along the range
+      const cx = xAt(92); const base = yh + Math.round(0.07 * H); const k = 1.6; const q = (v) => Math.round(v * k);
+      for (let y = 0; y < q(12); y += 1) for (let x = -q(14) - y; x <= q(14) + y; x += 1) { // the rock
+        const e = (x + q(14) + y) / (2 * (q(14) + y));
+        set(cx + x, base + y, e < 0.15 ? I.ROCK_HI : e > 0.75 ? I.ROCK_SH : (x * 3 + y * 5) % 17 === 0 ? I.ROCK_DK : I.ROCK);
+      }
+      for (let y = 0; y < q(8); y += 1) for (let x = -q(12); x <= q(12); x += 1) set(cx + x, base - y, x === -q(12) ? I.WALL_HI : x === q(12) ? I.WALL_SH : I.WALL); // the curtain wall
+      for (let x = -q(12); x <= q(12); x += 2) set(cx + x, base - q(8), I.WALL);
+      [[-12, 14, I.ROOF], [-5, 17, I.ROOF], [-1, 22, I.ROOF], [5, 12, I.SLATE], [10, 15, I.ROOF]].forEach(([dx, h, roof]) => { // towers, their caps
+        const w = q(4); const x0 = cx + q(dx); const hh = q(h);
+        for (let y = 0; y < hh; y += 1) for (let x = 0; x < w; x += 1) set(x0 + x, base - y, x === 0 ? I.WALL_HI : x === w - 1 ? I.WALL_SH : I.WALL);
+        const ch = Math.ceil(w / 2) + 2;
+        for (let j = 0; j < ch; j += 1) { const hw = (w / 2 + 1) * (1 - j / ch); for (let x = Math.round(-hw); x <= Math.round(hw); x += 1) set(x0 + Math.floor(w / 2) + x, base - hh - j, x < 0 ? (roof === I.ROOF ? I.ROOF_HI : I.SLATE_HI) : roof); }
+        set(x0 + 1, base - Math.round(hh * 0.55), I.WIN_DARK); set(x0 + 1, base - Math.round(hh * 0.55) + 1, I.WIN_DARK);
+      });
+      const fy = base - q(22) - Math.ceil(q(4) / 2) - 3; const fx = cx + q(-1) + Math.floor(q(4) / 2);
+      for (let y = 0; y < 4; y += 1) set(fx, fy - y, I.TIMBER_SH); set(fx + 1, fy - 3, I.FLAG); set(fx + 2, fy - 3, I.FLAG); set(fx + 1, fy - 2, I.FLAG);
+      for (let y = 0; y < q(3); y += 1) for (let x = 0; x < 2; x += 1) set(cx + 1 + x, base - y, I.OUTLINE); // the gate
+    }
+    // the parapet all round: a wall's top, merlons and crenels, the stone lit from above
+    const wallY = H - Math.round(0.11 * H); const mer = Math.round(0.08 * H); const pitch = Math.round(W / 5);
+    for (let x = 0; x < PW; x += 1) {
+      const m = x % pitch; const merlon = m < pitch * 0.45;
+      const top = merlon ? wallY - mer : wallY;
+      for (let y = top; y < H; y += 1) {
+        const edge = y === top || (merlon && (m === 0 || m === Math.floor(pitch * 0.45) - 1));
+        const course = (y - wallY) % 5 === 0 || (x + (Math.floor((y - wallY) / 5) % 2) * 4) % 8 === 0;
+        set(x, y, edge ? (m === 0 ? I.ROCK_HI : I.ROCK_HI) : course ? I.ROCK_SH : y > H - 4 ? I.ROCK_DK : I.ROCK);
+      }
+    }
+    const clouds = Array.from({ length: 14 }, () => ({ x: rng() * PW, y: H * (0.05 + rng() * 0.25), w: 10 + rng() * 22, h: 3 + rng() * 4 }));
+    const birds = Array.from({ length: 3 }, (_, k) => ({ x: rng() * PW, y: H * (0.15 + k * 0.08), ph: rng() * 6 }));
+    return { P, W, H, PW, yh, clouds, birds, xAt, fire: { x: pitch * 2 + Math.round(pitch * 0.7), y: wallY - 1 } };
+  }
+  function drawTower(t) {
+    const { W, H } = scene; const { P, PW, yh, xAt } = pano;
+    if (tower.tt !== undefined) { const e = reduce ? 1 : clamp((t - tower.tt) / 0.5); tower.yaw = tower.from + (tower.to - tower.from) * e * e * (3 - 2 * e); }
+    const ox = Math.round(tower.yaw * W); // the view's left column: yaw 0 has north in the middle, 1 east...
+    for (let y = 0; y < H; y += 1) {
+      for (let x = 0; x < W; x += 1) {
+        const i = y * W + x; const c = P[y * PW + (((ox + x) % PW) + PW) % PW];
+        idxNow[i] = c; buf[i] = pal32[c];
+      }
+    }
+    const put = (x, y, c, skyOnly) => { x = Math.round(x); y = Math.round(y); if (x < 0 || x >= W || y < 0 || y >= H) return; const i = y * W + x; if (!skyOnly || idxNow[i] < N_SKY) buf[i] = c; };
+    const blend = (x, y, rgb, a, skyOnly) => { x = Math.round(x); y = Math.round(y); if (x < 0 || x >= W || y < 0 || y >= H || a <= 0) return; const i = y * W + x; if (skyOnly && idxNow[i] >= N_SKY) return; buf[i] = pack(mix(unpack(buf[i]), rgb, a)); };
+    const sx = (X) => { let d = (((X - ox) % PW) + PW) % PW; if (d > PW / 2) d -= PW; return d; }; // panorama column -> screen
+    const sky = skyFn();
+    const at = (v) => { const a = (Math.atan2(v[0], v[1]) / deg + 360) % 360; const alt = Math.asin(clamp(v[2], -1, 1)); return [sx(xAt(a)), yh - (alt / (62 * deg)) * (yh - 4), alt]; };
+    if (look.stars > 0) for (let k = 0; k < 160; k += 1) { // the stars wheel round too
+      const X = (k * 7919) % PW; const Y = (k * 104729) % Math.round(yh * 0.95);
+      blend(sx(X), Y, [255, 255, 255], look.stars * (reduce ? 0.8 : 0.5 + 0.5 * Math.sin(t * 2 + k)), true);
+    }
+    const sun = at(sky.sun); const moon = at(sky.moon);
+    if (sun[2] > -3 * deg) for (let y = -8; y <= 8; y += 1) for (let x = -8; x <= 8; x += 1) {
+      const q = Math.hypot(x, y);
+      if (q <= 5) put(sun[0] + x, sun[1] + y, pack(look.sun), true); else if (q <= 8 && bayer(x + 8, y + 8) < 0.5 - (q - 5) / 8) blend(sun[0] + x, sun[1] + y, look.sun, 0.45, true);
+    }
+    if (moon[2] > -3 * deg) {
+      const d = [sun[0] - moon[0], sun[1] - moon[1]]; const n = Math.hypot(...d) || 1;
+      const elong = Math.acos(clamp(sky.sun[0] * sky.moon[0] + sky.sun[1] * sky.moon[1] + sky.sun[2] * sky.moon[2], -1, 1));
+      const L = [(d[0] / n) * Math.sin(elong), (d[1] / n) * Math.sin(elong), -Math.cos(elong)];
+      for (let y = -6; y <= 6; y += 1) for (let x = -6; x <= 6; x += 1) {
+        const q = (x * x + y * y) / 36; if (q > 1) continue;
+        if ((x / 6) * L[0] + (y / 6) * L[1] + Math.sqrt(1 - q) * L[2] > 0) put(moon[0] + x, moon[1] + y, pack([240, 238, 220]), true);
+        else blend(moon[0] + x, moon[1] + y, [240, 238, 220], 0.12, true);
+      }
+    }
+    skyVeil();
+    const nC = Math.round(pano.clouds.length * clamp(0.15 + weather.cover)); const cc = unpack(pal32[I.CLOUD]); const cs = unpack(pal32[I.CLOUD_SH]);
+    pano.clouds.slice(0, nC).forEach((c) => { // the real cover, drifting with the real wind
+      if (!reduce) c.x = (c.x + windX() * 0.08 + PW) % PW;
+      const x0 = sx(c.x);
+      for (let y = -c.h; y <= c.h; y += 1) for (let x = -c.w; x <= c.w; x += 1) {
+        const q = (x / c.w) ** 2 + (y / c.h) ** 2; if (q > 1 || bayer(x0 + x, c.y + y) > 1.6 - q * 1.2) continue;
+        blend(x0 + x, c.y + y, y > c.h * 0.3 ? cs : cc, look.night > 0.5 ? 0.35 : 0.95, true);
+      }
+    });
+    if (look.night < 0.6) pano.birds.forEach((b) => { // swifts wheeling over the valley
+      if (!reduce) b.x = (b.x + 0.3 + PW) % PW;
+      const x = sx(b.x); const y = b.y + Math.sin(t * 1.3 + b.ph) * 3; const f = Math.floor(t * 4 + b.ph) % 2;
+      put(x, y, pal32[I.OUTLINE], true); put(x - 1, y - f, pal32[I.OUTLINE], true); put(x + 1, y - f, pal32[I.OUTLINE], true);
+    });
+    landVeil();
+    if (look.night > 0.2) { // the castle's windows and the village's, lit; the signal fire on the parapet
+      [[92, 0], [-18, 1]].forEach(([a, k]) => { const x = sx(xAt((a + 360) % 360)); const y = yh + (k ? Math.round(0.2 * H) - 6 : Math.round(0.07 * H) - 10);
+        for (let j = 0; j < 3; j += 1) blend(x + j * 4 - 4, y - (j % 2), [255, 200, 110], look.night, false); });
+      const f = pano.fire; const x = sx(f.x); const hot = reduce || Math.random() < 0.6;
+      put(x, f.y, pack(hex(FIRE[hot ? 7 : 5])), false); put(x, f.y - 1, pack(hex(FIRE[hot ? 5 : 4])), false); put(x + (hot ? 1 : -1), f.y - 2, pack(hex(FIRE[3])), false);
+      for (let y = -6; y <= 4; y += 1) for (let dx = -6; dx <= 6; dx += 1) { const q = Math.hypot(dx, y) / 6; if (q < 1 && bayer(x + dx, f.y + y) < (1 - q) * 0.8) blend(x + dx, f.y + y, [255, 160, 70], 0.35 * look.night, false); }
+    }
+    precipitation(put, blend);
+  }
+  function renderTower(t) {
+    const e = reduce ? 1 : clamp((t - tower.t0) / TOWER_S); const th = tower.on ? e : 1 - e;
+    if (th < 1) { draw(t); obuf.set(buf); }
+    drawTower(t);
+    if (th >= 1) obuf.set(buf);
+    else for (let i = 0; i < buf.length; i += 1) { const x = i % scene.W; const y = (i - x) / scene.W; if (bayer(x, y) < th) obuf[i] = buf[i]; }
+    if (!tower.on && e >= 1) { tower = null; towerBar.remove(); if (!running && isOn()) render(now()); }
+  }
+
   /** The market's equilibrium for hour h (bread in the morning, cloth after noon), solved once an
    *  hour, and its villagers: x0, the bank's first place (MID plane); folk at places (floats). */
   function market(h) {
     const mk = scene.market;
     if (mk && mk.h === h) return mk;
-    const N = 40; const x0 = scene.hamlet.x1 - 14; const s0 = 18; const s1 = 27; // (the stalls' middles, see draw)
+    const N = 32; const x0 = scene.hamlet.x1 - 1; const s0 = 5; const s1 = 14; // (clear of the houses; the stalls' middles, see draw)
     const late = clamp((h - 9) / 8);
     const A0 = 1 - 0.6 * late; const A1 = 0.4 + 0.6 * late;
     const pull = Array.from({ length: N }, (_, x) => A0 * Math.exp(-(((x - s0) / 2.5) ** 2)) + A1 * Math.exp(-(((x - s1) / 2.5) ** 2)) - (0.16 * Math.abs(x - (s0 + s1) / 2)) / N);
@@ -3393,7 +3704,8 @@ f11111f2.
 
     // the nearest plane, then the tall grass bending in the wind
     landVeil();
-    if (!zoom) composite(L.FG); // (the camera passes the near trees on its way to the village)
+    const nearOn = !zoom || (!zoom.on && (zoom.z || 1) < 2.2); // (the camera passes the near trees on its way to the village)
+    if (nearOn) composite(L.FG);
     if (scene.season === 'autumn' && !WET[weather.kind]) { // leaves drift down (snow falls only when it snows)
       scene.falling.forEach((q) => {
         const x = Math.round(q.x - M + Math.sin(t * 0.8 + q.ph) * 3);
@@ -3401,7 +3713,7 @@ f11111f2.
       });
     }
     const fo = shift(RATE[L.FG]) - M;
-    if (!zoom) scene.blades.forEach((b) => {
+    if (nearOn) scene.blades.forEach((b) => {
       const c = pal32[b.c];
       const lean = reduce ? 0 : (Math.sin(t * 1.6 + b.x * 0.21) * 0.6 * clamp(weather.wind / 15, 0.3, 1.6) + Math.sin(t * 0.7 + b.x * 0.05) * 0.6 + windX() * 0.8) * b.h * 0.22;
       for (let r = 0; r < b.h; r += 1) put(b.x + fo + Math.round((lean + b.spread) * (r / b.h) ** 2), b.y - r, c, false);
@@ -3628,7 +3940,8 @@ f11111f2.
   function render(t) {
     const { W, H } = scene;
     const st = view.state;
-    if (st === 'scene') { draw(t); if (zoom) zoomed(t); else obuf.set(buf); }
+    if (st === 'scene' && tower) renderTower(t);
+    else if (st === 'scene') { draw(t); if (zoom) zoomed(t); else obuf.set(buf); }
     else if (st === 'room') { drawInterior(t); for (let y = 0; y < H; y += 1) for (let x = 0; x < W; x += 1) obuf[y * W + x] = iAt(x, y); }
     else if (st === 'swap') {
       drawInterior(t);
@@ -3663,6 +3976,7 @@ f11111f2.
   function goRoom(id, animate) {
     if (!scene) { pendingRoom = id; return; }
     if (zoom) { zoom = null; root.classList.remove('village'); backBtn.remove(); }
+    if (tower) { tower = null; root.classList.remove('lookout'); towerBar.remove(); }
     const t = now(); const anim = animate && !reduce;
     const label = (r) => `Inside the castle: ${ROOM_NAMES[roomOf(r)]}, lit by candles; its window shows the sky over Paris at this hour.`;
     if (id) {
@@ -3745,7 +4059,7 @@ f11111f2.
 
   /** What sits under scene pixel (x, y), if anything one can talk to. */
   function hitAt(x, y) {
-    if (!scene || view.state !== 'scene' || zoom) return null;
+    if (!scene || view.state !== 'scene' || zoom || tower) return null;
     const go = groundOff(scene.fire.y) - scene.M; const { fire, knight, wizard } = scene;
     const inBox = (x0, y0, w, h) => x >= x0 && x < x0 + w && y >= y0 && y < y0 + h;
     const cat = scene.cats.find((c) => inBox(c.x + go, c.y, c.sp.w, c.sp.h));
@@ -3757,6 +4071,8 @@ f11111f2.
     if (inBox(cmx - 1, c.y - 1, c.w + 2, c.h + 1)) return { kind: 'cellar' };
     if (inBox(knight.x + go, knight.y, SPRITES.knight.w, SPRITES.knight.h)) return { kind: 'knight' };
     const lmx = shift(RATE[L.MID]) - scene.M;
+    const wt = scene.watch; const wtx = wt.x - scene.M + shift(RATE[L.NEAR]);
+    if (inBox(wtx - 3, wt.y - 1, 7, 15)) return { kind: 'watch' };
     const hm = scene.hamlet; const vy = scene.riverTop(hm.x1);
     if (inBox(hm.x0 + lmx - 2, vy - 16, hm.x1 + 28 - hm.x0, 16)) return { kind: 'village' };
     if (scene.lichen.patches.some((p) => Math.hypot(x - (p.x + lmx), y - p.y) <= p.r + 2)) return { kind: 'lichen' };
@@ -3788,11 +4104,12 @@ f11111f2.
     else if (hit.kind === 'heron') say('The heron stands on one leg and pretends you are not there.');
     else if (hit.kind === 'meteor') say('You catch the shooting star and make a wish. It is yours to keep.');
     else if (hit.kind === 'angler') say(['The angler raises a finger to his lips. The fish are listening.', 'The angler shows you an empty basket and a patient smile.', '"They bite at dawn," says the angler, "and never when you watch."'][Math.floor(Math.random() * 3)]);
+    else if (hit.kind === 'watch') towerTo(true);
     else if (hit.kind === 'village') {
       zoomTo(true);
       const open = marketDay(today()) && look.night < 0.3;
-      say(open ? 'Market day in the village. Click the crowd to see the game behind it; Esc or the button to step back.'
-        : `The village is quiet${look.night < 0.3 ? '' : ' at night'}. Market days: Wednesday, Friday, Saturday and Sunday, by day. Esc to step back.`);
+      say(open ? 'Market day in the village. Click the crowd to see the game behind it; the arrow keys walk along the bank, Esc steps back.'
+        : `The village is quiet${look.night < 0.3 ? '' : ' at night'}. Market days: Wednesday, Friday, Saturday and Sunday, by day. The arrow keys walk along the bank, Esc steps back.`);
     } else if (hit.kind === 'market') {
       const mk = scene.market; scene.marketShow = now() + 8;
       say(`Market day. Each villager weighs the pull of the stalls (bread in the morning, cloth later) against the crush around them, and the crowd settles where no one gains by moving: a mean-field Nash equilibrium, found by fictitious play over ${mk.rounds} rounds (gap ${mk.gap.toExponential(0)}). The bars over them show its density.`);
@@ -4024,7 +4341,7 @@ f11111f2.
     const dt = lastMs ? Math.min(0.1, (ms - lastMs) / 1000) : 0;
     lastMs = ms;
     par += (parTarget - par) * (1 - Math.exp(-dt / 0.2));
-    let dirty = view.state === 'in' || view.state === 'out' || view.state === 'swap' || !!zoom;
+    let dirty = view.state === 'in' || view.state === 'out' || view.state === 'swap' || !!zoom || !!tower;
     if (ms - last >= FPS_MS) {
       last = ms;
       if (view.state !== 'room') { stepFire(); step(now()); }
@@ -4087,8 +4404,17 @@ f11111f2.
       document.addEventListener('focusin', (e) => { const a = pointed(e); hoverId = roomIn(a); if (a) castUntil = now() + 1.2; });
       document.addEventListener('click', (e) => { if (pointed(e)) { castUntil = now() + 0.6; sparkle(24); } });
       // close up, only the market answers (out: the button, or Esc)
-      canvas.addEventListener('click', (e) => { if (zoom) { if (villageHit(...scenePoint(e))) talk({ kind: 'market' }); return; } const h = isOn() && hitAt(...scenePoint(e)); if (h) talk(h); });
-      document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && zoom && zoom.on) { e.preventDefault(); zoomTo(false); } });
+      canvas.addEventListener('click', (e) => { if (tower) return; if (zoom) { if (villageHit(...scenePoint(e))) talk({ kind: 'market' }); return; } const h = isOn() && hitAt(...scenePoint(e)); if (h) talk(h); });
+      document.addEventListener('keydown', (e) => {
+        if (tower && tower.on) {
+          if (e.key === 'Escape') { e.preventDefault(); towerTo(false); }
+          else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); e.stopImmediatePropagation(); turnTower(e.key === 'ArrowLeft' ? -1 : 1); }
+          return;
+        }
+        if (!zoom || !zoom.on) return;
+        if (e.key === 'Escape') { e.preventDefault(); zoomTo(false); }
+        else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); e.stopImmediatePropagation(); zoom.pan = (zoom.pan || 0) + (e.key === 'ArrowLeft' ? -8 : 8); }
+      }, true);
       canvas.addEventListener('pointermove', (e) => { canvas.style.cursor = isOn() && (zoom ? villageHit(...scenePoint(e)) : hitAt(...scenePoint(e))) ? 'pointer' : ''; });
       sync();
     },
@@ -4109,7 +4435,9 @@ f11111f2.
     /** The weather over Paris changed (or a preview asked for one). */
     weather(w) { weather = { ...weather, ...w }; if (scene && !running && isOn()) render(now()); },
     /** Close up on the village (the `village` command); out of a room first. */
-    village() { if (scene && view.state === 'scene') talk({ kind: 'village' }); },
+    village() { if (scene && view.state === 'scene' && !tower) talk({ kind: 'village' }); },
+    /** Up the watchtower (the `tower` command). */
+    tower() { if (scene && view.state === 'scene' && !zoom) talk({ kind: 'watch' }); },
     /** Light the thing at index i (hotspot hovered or focused); -1 for none. */
     highlight(i) { hl = i; if (!running && interior && isOn()) render(now()); },
   };

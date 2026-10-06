@@ -110,6 +110,7 @@ const T = {
   <div><dt>sky &lt;hour&gt;</dt><dd>dawn, noon, dusk, night or now, in the hours theme</dd></div>
   <div><dt>weather &lt;kind&gt;</dt><dd>clear, rain, snow, fog, storm... or now</dd></div>
   <div><dt>photo</dt><dd>the landscape alone, to save as a picture</dd></div>
+  <div><dt>tower</dt><dd>up the watchtower: the view all round, N E S W</dd></div>
   <div><dt>village</dt><dd>close up on the hamlet and its market (Wed, Fri, Sat, Sun, by day)</dd></div>
   <div><dt>music &middot; volume 0-10</dt><dd>the lute on or off &middot; how loud (sound on, castle theme)</dd></div>
   <div><dt>quit</dt><dd>end the visit</dd></div>
@@ -385,7 +386,7 @@ const CURIOS = {
   wizard: 'the wizard', knight: 'the knight', shield: "the knight's arms", fire: 'the fire', cat: 'the cats',
   horse: "the knight's horse", cellar: 'the cellar door', mill: 'the windmill', heron: 'the heron',
   angler: 'the patient angler', owl: 'the owl (by night)', meteor: 'a wish on a falling star (clear nights)',
-  lichen: 'the lichen on the rock', market: 'the market crowd (close up, on market days)',
+  lichen: 'the lichen on the rock', watch: 'the view from the watchtower', market: 'the market crowd (close up, on market days)',
 };
 const curios = () => sessionList('curios');
 function showCurios() {
