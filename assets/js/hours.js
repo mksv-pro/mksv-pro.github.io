@@ -70,6 +70,14 @@
     ['T_PRUNE', '#63003c', 0], ['T_BORDEAUX', '#8a1538', 0], ['T_NAVY', '#1d2a57', 0], ['T_BRIGHT', '#2a6fd0', 0],
     ['FURROW', '#9a7048', 0.08], ['FURROW_SH', '#74523a', 0.08], ['WHEAT', '#e2c050', 0.08], ['WHEAT_SH', '#b8962e', 0.08],
     ['SNOWFIELD', '#e8eef4', 0.08], ['BLOSSOM', '#f4b8c8', 0], ['LEAF', '#d07a2a', 0], ['LEAF2', '#e8b03a', 0],
+    // the countryside: broadleaf trees through the seasons, vines, thatch, willow, water lilies
+    ['OAK_HI', '#74b04e', 0.06], ['OAK', '#4f8c3c', 0.06], ['OAK_SH', '#356a32', 0.06],
+    ['RUST_HI', '#eaa040', 0.06], ['RUST', '#c86a2a', 0.06], ['RUST_SH', '#8e4626', 0.06],
+    ['BARK', '#5e4838', 0.06], ['BIRCH', '#e8e4d8', 0.06],
+    ['VINE', '#5f8e36', 0.1], ['VINE_AUT', '#b85a2a', 0.1], ['GRAPE', '#5a2c5e', 0.1],
+    ['THATCH', '#c9a252', 0.1], ['THATCH_SH', '#97752f', 0.1],
+    ['WILLOW_HI', '#b0cc66', 0], ['WILLOW', '#7ea44c', 0], ['WILLOW_SH', '#577c3a', 0],
+    ['LILY', '#4f8c3e', 0], ['LILY_FL', '#f6c4d4', 0],
     // inside the castle
     ['PLASTER_HI', '#e2d6b8', 0], ['PLASTER', '#cdbf9e', 0], ['PLASTER_SH', '#ad9e7e', 0],
     ['LIME_HI', '#ece8dc', 0], ['LIME', '#d8d2c2', 0], ['LIME_SH', '#b8b0a0', 0],
@@ -88,7 +96,7 @@
     n: ['RAVEN', '#6a6a90', '#3a3a58', '#22223a'], b: ['BLACKFUR', '#4a4a5e', '#2c2c38', '#18181f'],
     q: ['WHITEFUR', '#ffffff', '#e6e2da', '#b6b0a6'], t: ['TABBY', '#d8a868', '#a87a48', '#6e4a2a'],
   };
-  const ALIAS = { l: 'a', m: 'a', v: 'u' }; // same material, separate part: the seam is shaded
+  const ALIAS = { l: 'a', m: 'a', v: 'u', o: 'h' }; // same material, separate part: the seam is shaded
   const FLAT = { k: 'OUTLINE', '*': 'ORB', y: 'GOLD_HI', c: 'CREAM', E: 'EYE' };
   const EMISSIVE = { ORB: '#c8fbff', EYE: '#dcf05a' }; // cats' eyes shine, in any light
 
@@ -185,6 +193,81 @@ uuuuuuuuuuuuu..w...
 .uuuuuuuuuuuu..w...
 ..hhh....hhh...w...`;
   const ORB = [16, 3]; // the staff's orb in the shaded wizard
+
+  // the countryside's animals (h brown, b black, t fawn, q white, a grey, k outline, g gold)
+  const HORSE = [`
+.........bbbb...........
+........bhhhhhhhhhhhhh..
+.......bhhhhhhhhhhhhhhh.
+......bhhhhhhhhhhhhhhhhb
+.....bhhhhhhhhhhhhhhhhhbb
+....bhh.hhhhhhhhhhhhhh.bb
+...bhh..hhhhhhhhhhhhhh..b
+..bhh...oo.oo....oo.oo..b
+.hhh....oo.oo....oo.oo...
+hhkh....oo.oo....oo.oo...
+hhh.....oo.oo....oo.oo...
+.hh.....kk.kk....kk.kk...`, `
+.........bbbb...........
+........bhhhhhhhhhhhhh..
+.......bhhhhhhhhhhhhhhh.
+......bhhhhhhhhhhhhhhhhb
+.....bhhhhhhhhhhhhhhhhhb.
+....bhh.hhhhhhhhhhhhhh.b.
+...bhh..hhhhhhhhhhhhhh.b.
+..bhh...oo.oo....oo.oo.b.
+.hhh....oo.oo....oo.oo..b
+hhkh....oo.oo....oo.oo...
+hhh.....oo.oo....oo.oo...
+.hh.....kk.kk....kk.kk...`];
+  const DEER = [`
+.........t..
+........ttt.
+........tktt
+.......tt...
+.qtttttttt..
+qtttttttttt.
+.tttttttt...
+.t.t...t.t..
+.t.t...t.t..
+.k.k...k.k..`, `
+............
+............
+............
+............
+.qtttttttt..
+qtttttttttt.
+.tttttttt.t.
+.t.t...t.ttk
+.t.t...t.ttt
+.k.k...k.k..`];
+  const OWL = `
+.h.h.
+hhhhh
+tEhEt
+hhghh
+htttt
+.hhh.
+.g.g.`;
+  const HERON = `
+...kaa.
+gggaaa.
+....aa.
+.....a.
+.....a.
+....aa.
+...aaaa
+..aaaaa
+..aaaaa
+...aaa.
+...k.k.
+...k.k.
+...k.k.`;
+  const DUCK = `
+.hh....
+ghkh...
+.hhhhhh
+..hhhh.`;
   const WIZ_HEAD_X = 9;
 
   const DRAGON_BODY = `
@@ -388,6 +471,12 @@ nNnnnn..
     SPRITES.cats.blackLoaf = { ...flip(lf), eyes: lf.eyes.map(([x, y]) => [lf.w - 1 - x, y]) };
     SPRITES.raven = shadeSprite(RAVEN);
     SPRITES.peasant = PEASANT.map(shadeSprite);
+    SPRITES.horse = HORSE.map(shadeSprite);
+    SPRITES.deer = DEER.map(shadeSprite);
+    SPRITES.owl = shadeSprite(OWL);
+    SPRITES.heron = shadeSprite(HERON);
+    SPRITES.duck = shadeSprite(DUCK);
+    SPRITES.duckR = flip(SPRITES.duck);
   }
 
   /* ---- the scene: seven planes of palette indices, generated once per size ---- */
@@ -467,9 +556,50 @@ nNnnnn..
         }
       }
     }
-    const month = new Date().getMonth(); const season = SEASON(month);
+    // ?season= previews another time of year (screenshots); the month follows it
+    const qSeason = new URLSearchParams(location.search).get('season');
+    const month = { winter: 0, spring: 4, summer: 6, autumn: 9 }[qSeason] ?? new Date().getMonth(); const season = SEASON(month);
     on(L.FAR); range(yg - 0.6 * H, 0.24 * H, 70, I.MT_FAR, I.MT_FAR_SH, yg - (season === 'winter' ? 0.43 : 0.5) * H);
     on(L.NEAR); range(yg - 0.44 * H, 0.15 * H, 95, I.MT_NEAR, I.MT_NEAR_SH, null);
+
+    // west of the castle, on the near range: a watchtower on the crest (its signal fire burns at night)
+    const crestAt = (x) => { for (let y = 0; y < H; y += 1) if (get(x, y, L.NEAR) !== CLEAR) return y; return H; };
+    const watch = { x: M + Math.round(0.17 * Ws) };
+    {
+      const yb = crestAt(watch.x) + 3; const x0 = watch.x - 2;
+      rect(x0, yb - 11, 5, 11, I.WALL); rect(x0, yb - 11, 1, 11, I.WALL_HI); rect(x0 + 4, yb - 11, 1, 11, I.WALL_SH);
+      for (let k = 0; k < 5; k += 2) set(x0 + k, yb - 12, I.WALL); // its crenels
+      set(x0 + 2, yb - 8, I.WIN_DARK); set(x0 + 2, yb - 4, I.WIN_DARK);
+      watch.y = yb - 13; // where the fire burns
+    }
+    const VINES = { autumn: month >= 9 ? [I.VINE_AUT, I.RUST_HI] : [I.VINE, I.GRAPE], summer: [I.VINE, month === 7 ? I.GRAPE : I.VINE],
+      spring: [I.VINE, I.OAK_HI], winter: [I.BARK, I.BARK] }[season];
+    /** A broadleaf tree (oak, now and then a birch) in the current plane, dressed for the season:
+     *  leaves, blossom in spring, rust and gold in autumn, bare branches in winter. */
+    function broadleaf(xc, yb, h) {
+      const kind = rng(); const birch = kind < 0.2;
+      const trunkH = Math.max(2, Math.round(h * 0.38));
+      const rx = Math.max(2, h * 0.36); const ry = Math.max(2, h * 0.32); const cy = yb - trunkH - ry + 1;
+      for (let y = 0; y < trunkH + (season === 'winter' ? ry : 0); y += 1) set(xc, yb - y, birch && y % 3 !== 1 ? I.BIRCH : I.BARK);
+      if (season === 'winter') { // bare: forking branches, a few twigs
+        [0.2, 0.55].forEach((f, j) => [-1, 1].forEach((dir) => {
+          for (let k = 1; k <= rx * (1 - j * 0.3); k += 1) set(xc + dir * k, Math.round(cy + ry * (0.6 - f) - k * 0.8), I.BARK);
+        }));
+        return;
+      }
+      const P = season === 'autumn'
+        ? (kind < 0.45 ? [I.RUST_HI, I.RUST, I.RUST_SH] : kind < 0.8 ? [I.LEAF2, I.RUST_HI, I.RUST] : [I.OAK_HI, I.OAK, I.OAK_SH])
+        : [I.OAK_HI, I.OAK, I.OAK_SH];
+      for (let dy = -Math.ceil(ry); dy <= ry; dy += 1) {
+        for (let dx = -Math.ceil(rx); dx <= rx; dx += 1) {
+          const x = Math.round(xc + dx); const y = Math.round(cy + dy);
+          if ((dx / rx) ** 2 + (dy / ry) ** 2 + (bayer(x, y) - 0.5) * 0.4 > 1) continue; // a lumpy edge
+          let c = dx + dy < -rx * 0.3 ? P[0] : dx + dy > rx * 0.35 || dy > ry * 0.45 ? P[2] : P[1];
+          if (season === 'spring' && kind > 0.5 && bayer(x, y) < 0.14) c = I.BLOSSOM;
+          set(x, y, c);
+        }
+      }
+    }
 
     // the forest: two rows of small conifers, irregularly spaced and sized, over a dark understorey
     on(L.TREES);
@@ -479,12 +609,34 @@ nNnnnn..
       for (let x = 0; x < WE; x += 1) for (let y = edge(x) + 2; y < yg; y += 1) set(x, y, sh);
       for (let x = Math.floor(rng() * 3); x < WE; x += 2 + Math.floor(rng() * 4)) {
         const h = hMin + rng() * (hMax - hMin) * (0.5 + tn(x / 25 + row)); const base = edge(x) + 3;
+        if (row === 1 && tn(x / 18 + 40) > 0.55) { broadleaf(x, base, h * 0.85); x += 2; continue; } // groves of broadleaf
         for (let r = 0; r < h; r += 1) {
           const half = (h - r) * 0.3 + (r % 3 === 0 ? 0.6 : 0); // tiers
           for (let dx = -Math.round(half); dx <= Math.round(half); dx += 1) set(x + dx, base - r, dx < 0 || (dx === 0 && r % 2) ? lit : sh);
         }
       }
     });
+
+    // behind the hamlet the forest gives way to a vineyard on the gentle slope: rows of vines
+    // across it, green, then grapes in late summer, red-gold in October, bare stakes in winter
+    {
+      const xa = M + Math.round(0.035 * Ws); const xb = M + Math.round(0.235 * Ws);
+      const top0 = (x) => Math.round(yl0 - 0.12 * H + (tn(x / 40) - 0.5) * 0.06 * H) + 3;
+      const y1 = yl0 - 9; // the hamlet's roofs below
+      for (let x = xa; x < xb; x += 1) {
+        const ragged = (x - xa < 4 || xb - x < 4) && bayer(x, 3) < 0.5; // the ends fray into the forest
+        for (let y = top0(x); y < y1; y += 1) {
+          if (ragged && y < top0(x) + 2) continue;
+          const row = (y - top0(x)) % 3;
+          if (row === 2) set(x, y, (x % 4 === 0) ? I.BARK : I.HILL); // the path between rows, a stake now and then
+          else if (season === 'winter') set(x, y, x % 4 === 0 ? I.BARK : I.HILL_SH);
+          else { // leaves in clumps along the row, its shadow under them
+            const leaf = row === 0 && (x + Math.floor(y / 3)) % 4 !== 0;
+            set(x, y, !leaf ? I.HILL_SH : (x * 7 + y * 3) % 7 === 0 ? VINES[1] : (x * 5 + y) % 3 === 0 ? I.VINE : VINES[0]);
+          }
+        }
+      }
+    }
 
     /* MID: hill, rock, castle, lake, the upper path, its pines and bushes */
     on(L.MID);
@@ -593,6 +745,18 @@ nNnnnn..
       if (!isWater(x, y) || Math.abs(x - pathX[clamp(y, 0, H - 1)]) < 12) continue;
       set(x, y, I.STONE); set(x + 1, y, I.STONE_SH); set(x, y - 1, I.STONE_HI); set(x + 2, y, I.WATER_HI); set(x + 3, y + (rng() < 0.5 ? 0 : 1), I.WATER_HI);
     }
+    // water lilies in the slack water, west by the hamlet and east by the willow (none in winter)
+    if (season !== 'winter') {
+      [0.07, 0.15, 0.8, 0.86].forEach((f, j) => {
+        const x0 = M + Math.round(f * Ws);
+        for (let k = 0; k < 5; k += 1) {
+          const x = x0 + Math.round((rng() - 0.5) * 10); const y = riverTop(x) + 2 + Math.floor(rng() * Math.max(1, riverBot(x) - riverTop(x) - 3));
+          if (!isWater(x, y) || !isWater(x + 1, y)) continue;
+          set(x, y, season === 'autumn' ? I.RUST_SH : I.LILY); set(x + 1, y, season === 'autumn' ? I.RUST : I.LILY);
+          if (season !== 'autumn' && (k + j) % 2 === 0) set(x, y - 1, I.LILY_FL);
+        }
+      });
+    }
     { // the bridge: a humped stone deck with parapets, its arch open over the water on the near side
       const yA = Math.min(...[-2, 0, 2].map((d) => riverTop(Math.round(pathX[yl0 + 4]) + d))) - 2;
       const yB = Math.max(...[-2, 0, 2].map((d) => riverBot(Math.round(pathX[yg - 2]) + d))) + 1;
@@ -644,6 +808,21 @@ nNnnnn..
       }
     } else field.none = true;
     field.season = season;
+
+    // a windmill above the field, its sails turning with the real wind over Paris (see draw)
+    const mill = { x: field.none ? Math.round(rockEast + 12) : field.x1 - 4 };
+    {
+      const base = Math.round(hill[clamp(mill.x, 0, WE - 1)]) + 3; const bh = Math.max(10, Math.round(13 * u * 0.85));
+      for (let y = 0; y < bh; y += 1) {
+        const half = Math.round(3.5 - (y / bh) * 1.4);
+        for (let dx = -half; dx <= half; dx += 1) set(mill.x + dx, base - y, dx === -half ? I.WALL_HI : dx === half ? I.WALL_SH : I.WALL);
+      }
+      const capY = base - bh;
+      for (let k = 0; k < 4; k += 1) for (let dx = -(3 - k); dx <= 3 - k; dx += 1) set(mill.x + dx, capY - k, dx < 0 ? I.ROOF_HI : I.ROOF_SH);
+      rect(mill.x - 1, base - 3, 2, 3, I.TIMBER_SH); // its door
+      mill.win = [mill.x, Math.round(base - bh * 0.6)];
+      mill.hub = [mill.x, capY - 1]; mill.len = Math.max(7, Math.round(9 * u * 0.8));
+    }
 
     for (let k = 0; k < WE / 30; k += 1) { // a few bushes on the hill
       const x = Math.round(rng() * WE); const y = Math.round(hill[clamp(x, 0, WE - 1)] + 2 + rng() * 6);
@@ -868,6 +1047,33 @@ nNnnnn..
       { x: wx1 - 6, a: cx + gw, b: wx1 - 3, v: -0.06, pause: 0, wall: wTop },
     ];
 
+    // a hamlet by the river, west of the castle: cottages under thatch, a chapel and its spire;
+    // their chimneys smoke and their windows light up after dark
+    const hamlet = { x0: M + Math.round(0.09 * Ws), x1: M + Math.round(0.22 * Ws) };
+    const chimneys = [];
+    windows.push({ pts: [mill.win], lit: true });
+    {
+      let x = hamlet.x0;
+      [[9, 6, 'thatch'], [5, 9, 'chapel'], [11, 6, 'roof'], [8, 5, 'thatch']].forEach(([w, h, kind], j) => {
+        const yb = Math.min(...Array.from({ length: w }, (_, k) => riverTop(x + k))) - 2;
+        const wall = (xx) => (xx === x ? I.WALL_HI : xx === x + w - 1 ? I.WALL_SH : I.WALL);
+        for (let yy = yb - h + 1; yy <= yb; yy += 1) for (let xx = x; xx < x + w; xx += 1) set(xx, yy, wall(xx));
+        if (kind === 'chapel') { // a narrow nave and its spire, a bell under the cap
+          for (let k = 0; k < 6; k += 1) for (let dx = -Math.floor(k / 2); dx <= Math.floor(k / 2); dx += 1) set(x + 2 + dx, yb - h - 6 + k, dx < 0 ? I.SLATE_HI : I.SLATE_SH);
+          set(x + 2, yb - h - 7, I.GOLD); set(x + 2, yb - h + 2, I.GOLD_SH);
+          windows.push({ pts: [[x + 2, yb - 3]], lit: rng() < 0.5 });
+        } else { // a gable roof seen from the side, overhanging, a chimney at one end
+          const rh = Math.ceil(w / 3); const R = kind === 'thatch' ? [I.THATCH, I.THATCH_SH] : [I.ROOF_HI, I.ROOF_SH];
+          for (let k = 0; k < rh; k += 1) for (let xx = x - 1 + k; xx <= x + w - k; xx += 1) set(xx, yb - h - k, k === rh - 1 || xx > x + w / 2 ? R[1] : R[0]);
+          const chx = x + (j % 2 ? 2 : w - 3); rect(chx, yb - h - rh - 1, 1, rh, I.WALL_SH); chimneys.push({ x: chx, y: yb - h - rh - 2 });
+          set(x + 1 + (j % 3), yb - 1, I.TIMBER_SH); set(x + 1 + (j % 3), yb - 2, I.TIMBER_SH); // a door
+          windows.push({ pts: [[x + w - 3, yb - 3]], lit: rng() < 0.6 });
+        }
+        x += w + 2 + (j === 1 ? 1 : 0);
+      });
+      hamlet.x1 = x;
+    }
+
     // pines on the hill, smaller and sparser with distance
     function pine(xc, yb, h, [hi, mid, sh]) {
       const trunk = Math.max(1, Math.round(h * 0.08));
@@ -894,9 +1100,12 @@ nNnnnn..
       const yb = Math.round(hx + 3 + rng() * Math.max(1, yl0 - hx - 3));
       if (get(x, yb) === I.WATER) continue;
       if (!field.none && x >= field.x0 - 3 && x <= field.x1 + 3 && yb <= field.bot + 6) continue;
+      if (x > hamlet.x0 - 4 && x < hamlet.x1 + 4) continue; // the hamlet's clearing
+      if (Math.abs(x - mill.x) < 8) continue;
       mids.push([x, yb, (6 + rng() * 9) * u * (0.6 + (0.4 * (yb - top)) / (yl0 - top + 1))]);
     }
-    mids.sort((a, b) => a[1] - b[1]).forEach(([x, yb, h]) => pine(x, yb, Math.max(5, h), [I.PINE_HI, I.PINE, I.PINE_SH]));
+    mids.sort((a, b) => a[1] - b[1]).forEach(([x, yb, h], k) => ((x * 7 + k) % 3 === 0
+      ? broadleaf(x, yb, Math.max(5, h * 0.8)) : pine(x, yb, Math.max(5, h), [I.PINE_HI, I.PINE, I.PINE_SH])));
 
     /* GROUND: the meadow, denser in detail towards the viewer */
     on(L.GROUND);
@@ -951,6 +1160,23 @@ nNnnnn..
       blob(x, y, 3 + Math.floor(rng() * 2), 2 + Math.floor(rng() * 2), [I.BUSH_HI, I.BUSH, I.BUSH_SH]);
     }
 
+    // a willow on the near bank, east of the bridge: its strands hang to the water
+    {
+      const wy = yg + 5; let wx = M + Math.round(0.84 * Ws);
+      while (Math.abs(wx - pathX[wy]) < pathW[wy] + 16 && wx < M + Ws) wx += 2; // clear of the path
+      {
+        const P = season === 'autumn' ? [I.LEAF2, I.WILLOW_HI, I.WILLOW] : season === 'winter' ? [I.WHEAT_SH, I.BARK, I.BARK] : [I.WILLOW_HI, I.WILLOW, I.WILLOW_SH];
+        const th = Math.round(0.09 * H); const R = Math.max(5, Math.round(0.065 * H)); const span = Math.round(R * 1.4);
+        rect(wx - 1, wy - th, 3, th, I.BARK); set(wx - 1, wy - th + 2, I.DIRT_SH);
+        for (let dx = -span; dx <= span; dx += 1) {
+          const f = dx / span; const topY = wy - th - 1 - Math.round(R * Math.sqrt(Math.max(0, 1 - f * f)));
+          const len = Math.round(R * 0.6 + R * 0.9 * (1 - Math.abs(f)) + rng() * 3);
+          if (season === 'winter' && dx % 2) continue;
+          for (let k = 0; k < len; k += 1) set(wx + dx + (k > len * 0.6 ? Math.sign(dx) : 0), topY + k, k === 0 ? P[0] : (dx + k) % 3 === 0 ? P[2] : P[1]);
+        }
+      }
+    }
+
     // the bonfire: scorched ground, a ring of stones, a sword driven into the coals
     for (let y = -4; y <= 4; y += 1) {
       for (let x = -11; x <= 11; x += 1) {
@@ -988,6 +1214,13 @@ nNnnnn..
       }
     }
 
+    // the knight's horse grazes east of the fire (tail swishing, see draw), clear of the path
+    const horse = { x: fire.x + 36, y: fire.y + 8 - SPRITES.horse[0].h };
+    while (horse.x > fire.x + 24 && Math.abs(horse.x + 12 - pathX[clamp(fire.y + 6, 0, H - 1)]) < pathW[clamp(fire.y + 6, 0, H - 1)] + 16) horse.x -= 1;
+    for (let x = -12; x <= 12; x += 1) if (bayer(x, 0) < 0.6) set(horse.x + 12 + x, fire.y + 8, I.GRASS_SH);
+    // deer come out at the forest's edge at dawn and dusk (west, on the meadow's far rim)
+    const deer = [0.1, 0.155].map((f, k) => ({ x: M + Math.round(f * Ws), y: yg + 6 + k * 3, ph: k * 2.3 }));
+
     /* FG: the nearest plane: big pines, mossy rocks, mushrooms, ferns, a stump, a fallen branch */
     on(L.FG);
     const FGP = [I.FG_PINE_HI, I.FG_PINE, I.FG_PINE_SH];
@@ -996,6 +1229,10 @@ nNnnnn..
     pine(Math.min(M + Math.round(0.05 * Ws), Math.round(clearOf - 0.24 * 0.5 * H)), H + 2, 0.5 * H, FGP);
     pine(M + Math.round(Ws * 1.02), H + 2, 0.66 * H, FGP);
     pine(M + Math.round(Ws * 0.93), H + 2, 0.42 * H, FGP);
+    // a bare branch out of that pine's west side, where an owl perches at night
+    const owl = { x: M + Math.round(Ws * 0.93) - Math.round(0.12 * 0.42 * H) - 7, y: Math.round(H + 2 - 0.42 * H * 0.52) };
+    rect(owl.x - 1, owl.y, Math.round(0.12 * 0.42 * H) + 8, 1, I.BARK); set(owl.x - 2, owl.y - 1, I.BARK);
+    owl.y -= SPRITES.owl.h - 1;
     const free = (x) => !(x > fire.x - 70 && x < fire.x + 22) && Math.abs(x - pathX[H - 1]) > pathW[H - 1] + 4;
     function mossyRock(x0, y0, rx, ry) {
       blob(x0, y0, rx, ry, [I.STONE_HI, I.STONE, I.STONE_SH], null);
@@ -1107,6 +1344,11 @@ nNnnnn..
       flies: Array.from({ length: 22 }, () => ({ x: M + rng() * Math.min(W, Ws), y: yl0 + (rng() ** 0.5) * (H - yl0), ph: rng() * 6 })),
       butterflies: Array.from({ length: 3 }, (_, k) => ({ x: M + rng() * Math.min(W, Ws), y: yg + 6 + rng() * (H - yg - 12), ph: rng() * 6, c: [I.FL_WHITE, I.FL_YEL, I.FL_BLUE][k] })),
       birds: null, dragon: null, nextDragon: null,
+      // the countryside (see draw and step)
+      watch, mill, chimneys, horse, deer, owl, month,
+      heron: (() => { const x = M + Math.round(0.88 * Ws); return { x, y: riverTop(x) + 4 - SPRITES.heron.h }; })(),
+      ducks: [0, 1, 2].map((k) => ({ x: pathX[yl0 + 4] + 20 + k * 9, a: pathX[yl0 + 4] + 16, b: M + Math.round(0.92 * Ws), dir: k % 2 ? 1 : -1, ph: k })),
+      geese: null, swallows: null, meteors: [], millAngle: 0,
     };
   }
 
@@ -1920,7 +2162,19 @@ f11111f2.
   // the weather over Paris (script.js, from Open-Meteo): kind clear|cloudy|overcast|fog|drizzle|rain|snow|storm,
   // cover 0..1 (cloud cover), wind (km/h)
   let weather = { kind: 'clear', cover: 0.3, wind: 10 };
-  const WET = { drizzle: 0.35, rain: 1, storm: 1.4 }; // rain: drops, relative
+  const WET = { drizzle: 0.35, showers: 0.7, rain: 1, storm: 1.4 }; // rain: drops, relative
+  let clockFn = () => new Date(); // the instant the sky shows (script.js: now, or a previewed hour)
+  // meteor showers: [month (0-11), day of peak, ZHR, half-width in days]; IMO calendar, rounded
+  const SHOWERS = [[0, 3, 110, 0.6], [3, 22, 18, 1], [4, 6, 50, 4], [7, 12, 100, 4], [9, 8, 10, 0.5],
+    [9, 21, 20, 3], [10, 17, 15, 1], [11, 14, 150, 1.5]];
+  /** Meteors an hour under a dark sky on date d: the showers near their peak, plus ~6 sporadic. */
+  function meteorRate(d) {
+    if (new URLSearchParams(location.search).has('meteors')) return 150; // preview
+    return 6 + SHOWERS.reduce((a, [m, day, zhr, w]) => {
+      const peak = new Date(d.getFullYear(), m, day); const dd = (d - peak) / 864e5;
+      return a + zhr * Math.exp(-((dd / w) ** 2));
+    }, 0);
+  }
   const t0 = performance.now();
   const now = () => (performance.now() - t0) / 1000;
   const isOn = () => root.getAttribute('data-theme') === 'hours';
@@ -2087,7 +2341,7 @@ f11111f2.
   }
 
   function draw(t) {
-    const { W, H, M, fire, fw, fh, cells, yl0, yg } = scene;
+    const { W, H, M, fire, fw, fh, cells, yl0, yg, yHor } = scene;
     const put = (x, y, c, skyOnly) => {
       x = Math.round(x); y = Math.round(y);
       if (x < 0 || x >= W || y < 0 || y >= H) return;
@@ -2142,6 +2396,12 @@ f11111f2.
       });
     }
 
+    // shooting stars: streaks with a bright head, fading as they go
+    scene.meteors.forEach((m) => {
+      const a = 1 - m.age / m.life;
+      for (let k = 0; k < 7; k += 1) blend(m.x - m.dx * k * 0.6, m.y - m.dy * k * 0.6, [255, 250, 230], a * (1 - k / 7) * 0.9, true);
+    });
+
     // sun: disc and a dithered halo; moon: lit where it faces the sun (phase and tilt follow)
     const { sun, moon, light } = bodies;
     if (sun[2] > -3 * deg) {
@@ -2189,6 +2449,31 @@ f11111f2.
         }
       }
     }));
+    // a rainbow when it rains with the sun out, opposite the sun and 42 deg round its antisolar
+    // point (so only while the sun is under 42 deg); on the sky and the far mountains
+    {
+      const alt = Math.asin(Math.sin(sun[2])) / deg; // sun[2]: its altitude, radians
+      if ((WET[weather.kind] && weather.kind !== 'storm') && weather.cover < 0.9 && alt > 1 && alt < 41 && look.night < 0.2) {
+        const span = yHor - Math.max(4, 0.06 * H); const R = (42 / 62) * span;
+        const ax = clamp(W - sun[0], W * 0.15, W * 0.85); const ay = yHor + (alt / 62) * span;
+        const bands = [[226, 70, 60], [240, 150, 60], [244, 220, 90], [110, 190, 90], [80, 130, 220], [140, 90, 200]];
+        const bw = Math.max(1, Math.round(R * 0.03)); const a0 = 0.34 * (1 - weather.cover * 0.5);
+        for (let y = Math.max(0, Math.floor(ay - R)); y < Math.min(yl0, ay); y += 1) {
+          for (let x = Math.max(0, Math.floor(ax - R)); x < Math.min(W, ax + R); x += 1) {
+            const k = Math.floor((R - Math.hypot(x - ax, y - ay)) / bw);
+            if (k < 0 || k >= bands.length || idxNow[y * W + x] > FAR) continue;
+            blend(x, y, bands[k], a0 * clamp((ay - y) / (R * 0.3)), false); // it fades into the haze low down
+          }
+        }
+      }
+    }
+    if (scene.geese) { // autumn: a V of geese going south-west, wings beating
+      const gc = pack(mix(look.bird, [90, 90, 96], 0.3));
+      scene.geese.forEach((g, k) => {
+        const up = (Math.floor(t * 3) + k) % 2;
+        put(g.x, g.y, gc, true); put(g.x + 1, g.y, gc, true); put(g.x - 1, g.y - up, gc, true); put(g.x + 2, g.y - up, gc, true);
+      });
+    }
     if (scene.birds) {
       const bc = pack(look.bird);
       scene.birds.forEach((b, k) => {
@@ -2213,6 +2498,15 @@ f11111f2.
       dg.flames.forEach((f) => { if (far(Math.round(f.x), Math.round(f.y))) put(f.x, f.y, pack(hex(FIRE[Math.max(1, Math.round(FIRE_MAX * (1 - f.age / f.life)))])), false); });
     }
 
+    if (look.night > 0.4) { // the watchtower's signal fire on the crest
+      const wx = scene.watch.x - M + shift(RATE[L.NEAR]); const wy = scene.watch.y;
+      const f = reduce ? 0 : Math.floor(t * 8) % 3;
+      if (wx >= 0 && wx < W && idxNow[wy * W + wx] <= FAR) {
+        put(wx, wy, pack(hex(FIRE[6 - f])), false); put(wx, wy - 1 - (f === 2 ? 1 : 0), pack(hex(FIRE[4 + f])), false);
+        halo(wx, wy, 4, [255, 170, 70], 0.4 * look.night);
+      }
+    }
+
     // the castle's life: windows (glowing at night), pennants, torches, chimney smoke, sentries
     const wl = pal32[I.WIN_LIT]; const wd = pal32[I.WIN_DARK];
     scene.windows.forEach((w) => {
@@ -2234,6 +2528,28 @@ f11111f2.
         for (let x = 0; x < p.r; x += 1) if (bayer(Math.round(p.x) + x, Math.round(p.y) + y) < a) blend(mx(p.x) + x, p.y + y, look.smoke, 0.7, false);
       }
     });
+    { // the windmill's sails: four lattice arms, the cloth on their trailing side
+      const [hx0, hy] = scene.mill.hub; const hx = mx(hx0); const L0 = scene.mill.len;
+      const spar = pal32[I.TIMBER_SH]; const cloth = pal32[I.PLASTER_HI];
+      for (let a = 0; a < 4; a += 1) {
+        const ang = scene.millAngle + (a * Math.PI) / 2; const c = Math.cos(ang); const sn = Math.sin(ang);
+        for (let k = 1; k <= L0; k += 1) {
+          put(hx + c * k, hy + sn * k, spar, false);
+          if (k > 2) { put(hx + c * k - sn, hy + sn * k + c, cloth, false); if (k > 3) put(hx + c * k - sn * 2, hy + sn * k + c * 2, (k % 2 ? cloth : spar), false); }
+        }
+      }
+      put(hx, hy, pal32[I.OUTLINE], false);
+    }
+    if (look.night > 0.15) { // bats about the towers from dusk on, in jerky loops
+      const bc = pack([30, 26, 38]); const top0 = scene.castleTop;
+      for (let k = 0; k < 5; k += 1) {
+        const ph = t * (1.1 + k * 0.13) + k * 1.9;
+        const bx = mx(M + Math.round(0.64 * scene.Ws)) + Math.round(Math.sin(ph) * (14 + k * 4) + Math.sin(ph * 2.7) * 3); // round the castle
+        const by = Math.round(top0 + 10 + k * 3 + Math.cos(ph * 1.3) * 8);
+        const up = Math.floor(t * 10 + k) % 2;
+        put(bx, by, bc, false); put(bx - 1, by - up, bc, false); put(bx + 1, by - up, bc, false);
+      }
+    }
     const guard = pal32[I.GUARD]; const tabard = pal32[I.GUARD_HI]; const spear = pal32[I.BLADE_SH];
     scene.sentries.forEach((s) => {
       const x = mx(Math.round(s.x)); const y = s.wall;
@@ -2342,7 +2658,50 @@ f11111f2.
       }
     }
 
+    { // the heron in the shallows; the ducks paddle up and down the reach east of the bridge
+      const hn = scene.heron; blit(SPRITES.heron, mx(hn.x), hn.y + (reduce ? 0 : Math.floor(t / 3) % 5 === 0 ? 1 : 0));
+      scene.ducks.forEach((d) => {
+        const x = Math.round(d.x); const sp = d.dir < 0 ? SPRITES.duck : SPRITES.duckR;
+        const y = Math.round((scene.riverTop(x) + scene.riverBot(x)) / 2) - sp.h + 2;
+        blit(sp, mx(x) - Math.floor(sp.w / 2), y, scene.riverBot(x) + 1);
+        if (!reduce && Math.floor(t * 2 + d.ph) % 2) put(mx(x) + d.dir * -4, y + sp.h - 1, pal32[I.WATER_HI], false); // its wake
+      });
+    }
+    { // mist on the river at dawn, and in fog
+      const alt = Math.asin(Math.sin(sun[2])) / deg; const morning = clockFn().getHours() < 12;
+      const k = weather.kind === 'fog' ? 1 : morning && alt > -6 && alt < 9 ? 1 - Math.abs(alt - 1.5) / 7.5 : 0;
+      if (k > 0) {
+        const c = look.night > 0.5 ? [150, 160, 180] : [228, 232, 238];
+        for (let y = yl0 - 5; y < yg + 2; y += 1) {
+          const fade = 1 - Math.abs(y - (yl0 + yg) / 2) / ((yg - yl0) / 2 + 6);
+          for (let x = 0; x < W; x += 1) {
+            const n = Math.sin(x * 0.06 + t * 0.25 + y * 0.4) + Math.sin(x * 0.021 - t * 0.13 + y * 0.9) * 0.8;
+            if (n > 0.35) blend(x, y, c, 0.42 * k * fade * Math.min(1, n - 0.35 + 0.3), false);
+          }
+        }
+      }
+    }
+
     composite(L.GROUND);
+
+    { // the knight's horse grazes, swishing its tail; deer at the forest's edge at dawn and dusk
+      const gh = groundOff(fire.y) - M; const hs = scene.horse;
+      blit(SPRITES.horse[!reduce && Math.floor(t / 0.35) % 9 === 0 ? 1 : 0], hs.x + gh, hs.y);
+      const alt = Math.asin(Math.sin(sun[2])) / deg;
+      if (alt > -8 && alt < 6) scene.deer.forEach((d) => {
+        const sp = SPRITES.deer[reduce || Math.floor(t / 2.5 + d.ph) % 3 === 0 ? 0 : 1];
+        blit(sp, gx(d.x, d.y), d.y - sp.h);
+      });
+    }
+    if (scene.season === 'summer' && look.night < 0.3) { // swallows skimming the meadow and the water
+      const sc = pack([34, 30, 52]);
+      for (let k = 0; k < 4; k += 1) {
+        const ph = t * (0.9 + k * 0.17) + k * 2.1;
+        const x = Math.round(W * (0.35 + 0.3 * Math.sin(ph)) + Math.sin(ph * 3.1) * 12); const y = Math.round(yl0 + (yg - yl0) * 0.5 + Math.sin(ph * 2.3) * 9);
+        const up = Math.floor(t * 12 + k) % 2;
+        put(x, y, sc, false); put(x - 1, y - up, sc, false); put(x + 1, y - up, sc, false); put(x + 2, y + 1 - up, sc, false);
+      }
+    }
 
     // butterflies by day, fireflies at night
     if (look.night < 0.3) {
@@ -2435,6 +2794,11 @@ f11111f2.
       const lean = reduce ? 0 : (Math.sin(t * 1.6 + b.x * 0.21) * 0.6 + Math.sin(t * 0.7 + b.x * 0.05) * 0.6) * b.h * 0.22;
       for (let r = 0; r < b.h; r += 1) put(b.x + fo + Math.round((lean + b.spread) * (r / b.h) ** 2), b.y - r, c, false);
     });
+    if (look.night > 0.5) { // the owl on its branch, blinking now and then
+      const ow = scene.owl; const ox = ow.x + fo;
+      blit(SPRITES.owl, ox, ow.y);
+      if (!reduce && Math.sin(t * 0.6) > 0.95) { put(ox + 2, ow.y + 3, pal32[I.LEATHER], false); put(ox + 4, ow.y + 3, pal32[I.LEATHER], false); }
+    }
     precipitation(put, blend);
 
     // firelight: warm, stepped falloff, flickering radius; strongest at night
@@ -2773,6 +3137,11 @@ f11111f2.
     const c = scene.cellar; const cmx = c.x - scene.M + shift(RATE[L.MID]);
     if (inBox(cmx - 1, c.y - 1, c.w + 2, c.h + 1)) return { kind: 'cellar' };
     if (inBox(knight.x + go, knight.y, SPRITES.knight.w, SPRITES.knight.h)) return { kind: 'knight' };
+    const hs = scene.horse; if (inBox(hs.x + go, hs.y, SPRITES.horse[0].w, SPRITES.horse[0].h)) return { kind: 'horse' };
+    const ow = scene.owl; const fo = shift(RATE[L.FG]) - scene.M;
+    if (look.night > 0.5 && inBox(ow.x + fo - 1, ow.y - 1, SPRITES.owl.w + 2, SPRITES.owl.h + 2)) return { kind: 'owl' };
+    const [mhx, mhy] = scene.mill.hub; const mmx = mhx - scene.M + shift(RATE[L.MID]); const ml = scene.mill.len;
+    if (inBox(mmx - ml, mhy - ml, 2 * ml + 1, 2 * ml + 14)) return { kind: 'mill' };
     if (inBox(wizard.x + go, wizard.y, SPRITES.wizard.w, SPRITES.wizard.h)) return { kind: 'wizard' };
     return null;
   }
@@ -2785,6 +3154,12 @@ f11111f2.
       for (let k = 0; k < 24; k += 1) scene.embers.push({ x: scene.fire.x + (Math.random() - 0.5) * 8, y: scene.fire.y - 10, vy: -(0.8 + Math.random() * 1.4), ph: Math.random() * 6, age: 0, life: 20 + Math.random() * 30 });
     } else if (hit.kind === 'shield') say("On the knight's shield: azure, an armillary sphere or, over a bell curve argent.");
     else if (hit.kind === 'cellar') { say('A low door in the rock. Stone steps go down into the dark.'); descendTo(); }
+    else if (hit.kind === 'horse') say("The knight's horse crops the grass and flicks its tail at you.");
+    else if (hit.kind === 'owl') say('The owl turns its head right round and hoots: "Who-oo?"');
+    else if (hit.kind === 'mill') {
+      const w = Math.round(weather.wind);
+      say(w < 2 ? 'The mill stands still: not a breath of wind over Paris.' : `The mill's sails turn in the wind: ${w} km/h over Paris.`);
+    }
   }
   const scenePoint = (e) => {
     const r = plate.getBoundingClientRect();
@@ -2811,6 +3186,31 @@ f11111f2.
       scene.drops.forEach((d) => { d.y += 5; d.x += slant * 2.5; if (d.y > H) { d.y -= H + 4; d.x = Math.random() * W; } if (d.x > W) d.x -= W; });
     } else if (weather.kind === 'snow') scene.drops.forEach((d) => { d.y += 0.6; if (d.y > H) { d.y = -2; d.x = Math.random() * W; } });
     scene.flash = Math.max(0, (scene.flash || 0) - 1);
+
+    // the countryside: the mill turns with the wind (still in a calm), the hamlet's chimneys smoke,
+    // the ducks paddle and turn, geese pass in autumn, shooting stars on clear nights
+    if (!reduce) scene.millAngle += Math.min(weather.wind, 60) * 0.0025;
+    if (scene.chimneys.length && Math.random() < 0.08) {
+      const c = scene.chimneys[Math.floor(Math.random() * scene.chimneys.length)];
+      scene.fumes.push({ x: c.x, y: c.y, r: 1, age: 0, life: 40 + Math.random() * 30 });
+    }
+    scene.ducks.forEach((d) => {
+      d.x += d.dir * 0.06;
+      if (d.x < d.a || d.x > d.b || Math.random() < 0.002) d.dir = -d.dir;
+    });
+    if (!scene.geese && scene.season === 'autumn' && look.night < 0.3 && Math.random() < 0.0012) {
+      const y0 = Math.round(yHor * (0.2 + Math.random() * 0.25));
+      scene.geese = Array.from({ length: 9 }, (_, k) => ({ x: span + 10 + Math.ceil(k / 2) * 5, y: y0 + Math.ceil(k / 2) * (k % 2 ? 3 : -3) }));
+    }
+    if (scene.geese) {
+      scene.geese.forEach((g) => { g.x -= 0.8; g.y += 0.05; });
+      if (scene.geese.every((g) => g.x < -6)) scene.geese = null;
+    }
+    if (look.night > 0.6 && weather.cover < 0.6 && !reduce && Math.random() < (meteorRate(clockFn()) * 8) / (3600 * 12)) {
+      const dir = Math.random() < 0.5 ? -1 : 1; const v = 2 + Math.random() * 2;
+      scene.meteors.push({ x: Math.random() * W, y: Math.random() * yHor * 0.5, dx: dir * v, dy: v * (0.4 + Math.random() * 0.5), age: 0, life: 6 + Math.random() * 6 });
+    }
+    scene.meteors = scene.meteors.filter((m) => { m.x += m.dx; m.y += m.dy; m.age += 1; return m.age < m.life; });
     if (weather.kind === 'storm' && !reduce && Math.random() < 0.006) scene.flash = 3;
 
     if (Math.random() < 0.5) {
@@ -2964,7 +3364,7 @@ f11111f2.
   window.Hours = {
     start(o) {
       if (canvas) return;
-      plate = o.plate; skyFn = o.sky; reduce = o.reduceMotion;
+      plate = o.plate; skyFn = o.sky; reduce = o.reduceMotion; clockFn = o.clock || clockFn;
       heraldry = o.heraldry || heraldry; say = o.say || say; rumour = o.rumour || rumour;
       itemsOf = o.items || itemsOf; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo; doorsOf = o.doors || doorsOf;
       pendingRoom = root.dataset.room || null;

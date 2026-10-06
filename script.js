@@ -35,11 +35,11 @@ const T = {
   hour: (day, hour) => `Day of ${day}, hour of ${hour}`,
   moon: (phase, age) => `Moon ${phase}, ${age} days old`,
   stHour: (hour) => `Hour of ${hour}`,
-  wxName: { clear: 'Clear skies', cloudy: 'Some clouds', overcast: 'Overcast', fog: 'Fog', drizzle: 'Drizzle',
+  wxName: { clear: 'Clear skies', cloudy: 'Some clouds', overcast: 'Overcast', fog: 'Fog', drizzle: 'Drizzle', showers: 'Showers',
     rain: 'Rain', snow: 'Snow', storm: 'Thunderstorm' },
   weather: (w) => `${T.wxName[w.kind]} over Paris${w.temp == null ? '' : `, ${w.temp} \u00b0C`}`,
   wxSet: (k) => (k === 'now' ? 'The weather is the true one again.' : `The weather turns: ${k}.`),
-  wxHint: 'weather clear|cloudy|overcast|fog|drizzle|rain|snow|storm|now (seen in the hours theme)',
+  wxHint: 'weather clear|cloudy|overcast|fog|drizzle|showers|rain|snow|storm|now (seen in the hours theme)',
   stMoon: (waxing) => `Moon: ${waxing ? 'waxing' : 'waning'}`,
   on: 'on', off: 'off',
   copied: '[copied]', copyFailed: '[copy failed]',
@@ -210,6 +210,7 @@ function applyTheme(theme, persist) {
       rumour: () => RUMOURS[Math.floor(Math.random() * RUMOURS.length)], // the knight tells it
       descend, // the cellar door in the rock
       doors: roomDoors, // the doors in the rooms' side walls
+      clock: skyNow, // the instant shown: dawn mist, the night's meteor shower
     })).then(() => { if (session('ended')) window.Hours.hoist(true); showWeather(); });
   }
 }
@@ -874,7 +875,7 @@ let lastHour = null;
 
 const WX_URL = 'https://api.open-meteo.com/v1/forecast?latitude=48.8566&longitude=2.3522'
   + '&current=temperature_2m,weather_code,cloud_cover,wind_speed_10m&timezone=Europe%2FParis';
-const WX_KINDS = ['clear', 'cloudy', 'overcast', 'fog', 'drizzle', 'rain', 'snow', 'storm'];
+const WX_KINDS = ['clear', 'cloudy', 'overcast', 'fog', 'drizzle', 'showers', 'rain', 'snow', 'storm'];
 const WX_MS = 30 * 60e3;
 let wxNow = null;
 {
@@ -889,7 +890,8 @@ function wxKind(code) {
   if (code === 3) return 'overcast';
   if (code <= 48) return 'fog';
   if (code <= 57) return 'drizzle';
-  if (code <= 67 || (code >= 80 && code <= 82)) return 'rain';
+  if (code >= 80 && code <= 82) return 'showers';
+  if (code <= 67) return 'rain';
   if (code <= 77 || code === 85 || code === 86) return 'snow';
   return 'storm';
 }
@@ -897,7 +899,7 @@ function wxKind(code) {
 function showWeather() {
   const forced = session('weather');
   const w = WX_KINDS.includes(forced)
-    ? { kind: forced, cover: { clear: 0.1, cloudy: 0.5 }[forced] ?? 0.95, wind: 18, temp: null } : wxNow;
+    ? { kind: forced, cover: { clear: 0.1, cloudy: 0.5, showers: 0.6 }[forced] ?? 0.95, wind: 18, temp: null } : wxNow;
   if (!w) return;
   $('alm-weather').textContent = T.weather(w);
   if (window.Hours) window.Hours.weather(w);
