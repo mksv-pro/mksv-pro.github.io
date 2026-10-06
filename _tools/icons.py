@@ -1,6 +1,5 @@
 """Pixel assets for the hours theme: _tools/icons.txt -> assets/img/icons/<name>.svg, the pixel
-frame of the boxes (frame.svg, a 9-slice for border-image), the menu's pointer (cursor.svg) and the
-hanging scroll of the rooms (scroll.svg: rollers and deckled sides, 9-slice; nail.svg).
+frame of the boxes (frame.svg, a 9-slice for border-image) and the menu's pointer (cursor.svg).
 
 Same shading rule as shadeSprite in assets/js/hours.js: each material lit on its right side and,
 dithered, on top; shaded on the left and underneath; a 1 px outline around the silhouette.
@@ -84,36 +83,7 @@ ohgo.
 oho..
 o....
 """
-SCROLL = """
-oGgoooooooooogGo
-GgsoHHHHHHHHosgG
-ggsowwwwwwwwosgg
-sssoWWWWWWWWosss
-.oooooooooooooo.
-.PppppppppppppP.
-..PppppppppppP..
-.PppppppppppppP.
-PPppppppppppppPP
-.PppppppppppppP.
-..PppppppppppP..
-.oooooooooooooo.
-GgsoHHHHHHHHosgG
-ggsowwwwwwwwosgg
-sssoWWWWWWWWosss
-.oooooooooooooo.
-"""
-NAIL = """
-.ooo.
-oGgso
-.oso.
-..w..
-..w..
-..w..
-..w..
-..w..
-"""
-PIX = {'o': '#16121c', 'h': '#f6d77a', 'g': '#d8a838', 's': '#9a6a1e', 'G': '#f6d77a',
-       'H': '#b0885a', 'w': '#7e5a38', 'W': '#553a24', 'p': '#ecdcb4', 'P': '#c2aa7c'}
+PIX = {'o': '#16121c', 'h': '#f6d77a', 'g': '#d8a838', 's': '#9a6a1e'}
 
 
 def pixels(art):
@@ -145,7 +115,7 @@ def arms():
     out.mkdir(parents=True, exist_ok=True)
     for name, rows in coats.items():
         h0, w0 = len(rows), max(map(len, rows))
-        at = lambda x, y: rows[y][x] if 0 <= y < h0 and 0 <= x < len(rows[y]) else '.'
+        at = lambda x, y, rows=rows, h0=h0: rows[y][x] if 0 <= y < h0 and 0 <= x < len(rows[y]) else '.'
         px = {}
         for y in range(-1, h0 + 1):
             for x in range(-1, w0 + 1):
@@ -171,8 +141,7 @@ def main():
         (out / f'{lines[0].strip()}.svg').write_text(svg(*shade(rows)))
         print(f'  icons/{lines[0].strip()}.svg')
     arms()
-    for name, art in (('frame', FRAME), ('cursor', CURSOR), ('scroll', SCROLL), ('nail', NAIL)):
-        # 9-slice box border, menu pointer, the hanging scroll (rollers, deckled sides), its nail
+    for name, art in (('frame', FRAME), ('cursor', CURSOR)):  # 9-slice box border, menu pointer
         (ROOT / f'assets/img/{name}.svg').write_text(pixels(art))
         print(f'  {name}.svg')
 

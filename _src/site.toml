@@ -53,7 +53,6 @@ arms = "dauphine"
 # the knight's shield and the header; the tapestry of the great hall runs in this order.
 [heraldry]
 own = "silva"
-motto = ""  # none shown
 tapestry = [
   ["sorbonne", "2021", "BSc Physics & Mathematics, Sorbonne Université"],
   ["paris1", "2022", "BA Economics & Political Science, Paris 1 Panthéon-Sorbonne"],

@@ -24,8 +24,9 @@
   <link rel="icon" href="/assets/img/monogram.svg" type="image/svg+xml">
 
   <script>
-    // Before first paint, so a stored theme never flashes. A light system preference gets the
-    // hours theme (its day is the light one); 'light' from before folio was dropped, likewise.
+    // Before first paint, so a stored theme never flashes. The theme follows the screen: the
+    // castle (hours) wants a wide one, below 75rem the terminal; on a wide screen a stored choice
+    // wins, else hours. ('light', from before folio was dropped, reads as hours.)
     // data-sky (day|night) picks the hours theme's palette: night once the sun is 3 deg below
     // Paris's horizon (low-precision solar position, ~0.5 deg; script.js keeps it current).
     (function () {
@@ -35,9 +36,8 @@
       t = (/[?&]theme=(\w+)/.exec(q) || [])[1] || t;
       s = (/[?&]sky=(\w+)/.exec(q) || [])[1] || s;
       if (t === 'light') t = 'hours';
-      if (t !== 'dark' && t !== 'hours') {
-        t = matchMedia('(prefers-color-scheme: light)').matches ? 'hours' : 'dark';
-      }
+      if (!matchMedia('(min-width: 75rem)').matches) t = 'dark';
+      else if (t !== 'dark') t = 'hours';
       var k = Math.PI / 180, d = Date.now() / 864e5 - 10957.5;
       var g = (357.529 + 0.98560028 * d) * k;
       var L = (280.459 + 0.98564736 * d + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * k;
@@ -53,7 +53,7 @@
 
   <link rel="preload" href="/assets/fonts/DepartureMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/assets/fonts/IBMPlexMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/styles.css?v=6d6a9ba0">
+  <link rel="stylesheet" href="/styles.css?v=aadb2459">
   <meta name="robots" content="noindex">
 </head>
 <body>
@@ -75,7 +75,6 @@
       </button>
       <figcaption class="plate-caption">
         <span class="cap-dark">fig. 0 &middot; Flammarion, <i>L'atmosph&egrave;re</i>, 1888<span class="cap-arm"> &middot; fig. 1 &middot; the sky over Paris, now</span></span>
-        <span class="cap-hours">fig. 0 &middot; the hours of Paris: this sky keeps the true hour, sun and moon in place</span>
       </figcaption>
     </figure>
 
@@ -189,7 +188,7 @@
             title="Single-key shortcuts (1-6, :, ?)">keys:<b>on</b></button>
   </footer>
 
-  <script type="application/json" id="site-data">{"world":{"research":{"c":0,"r":0,"name":"Research","label":"research"},"publications":{"c":1,"r":0,"name":"Publications","label":"publications"},"urban-morphogenesis":{"c":2,"r":0,"name":"Urban morphogenesis","label":"city","exit":"urban morphogenesis","page":"projects/urban-morphogenesis.html","img":"illum-dla.png"},"about":{"c":0,"r":1,"name":"The Scriptorium","label":"about","img":"flammarion-dark.png"},"projects":{"c":1,"r":1,"name":"Projects","label":"projects"},"nuclear-emulators":{"c":2,"r":1,"name":"Nuclear emulation","label":"nuclear","exit":"nuclear emulation","page":"projects/nuclear-emulators.html","img":"illum-nuclear.png"},"contact":{"c":0,"r":2,"name":"Contact","label":"contact"},"news":{"c":1,"r":2,"name":"News","label":"news"},"n-body":{"c":2,"r":2,"name":"N-body systems","label":"orrery","exit":"N-body systems","page":"projects/n-body.html","img":"illum-nbody.png"},"talks":{"c":0,"r":3,"name":"Talks","label":"talks"},"teaching":{"c":1,"r":3,"name":"Teaching","label":"teaching"}},"links":[["research","publications"],["research","about"],["publications","projects"],["about","projects"],["about","contact"],["projects","news"],["contact","news"],["projects","nuclear-emulators"],["nuclear-emulators","urban-morphogenesis"],["nuclear-emulators","n-body"],["contact","talks"],["news","teaching"],["talks","teaching"]],"email":"pro.mikesilva@gmail.com","github":"https://github.com/mksv-pro","bib":"assets/bib/silva2026emulation.bib","heraldry":{"own":"silva","motto":"","tapestry":[["sorbonne","2021","BSc Physics & Mathematics, Sorbonne Université"],["paris1","2022","BA Economics & Political Science, Paris 1 Panthéon-Sorbonne"],["sciencespo","2023","Research assistant, Sciences Po"],["ceremade","2024","Visiting research student, CEREMADE"],["pariscite","2025","MSc Fundamental Physics, Université Paris Cité"],["dauphine","2025","MSc Economics & Finance, Paris Dauphine-PSL"],["ijclab","2026","Research intern, IJCLab"],["saclay","2026","MSc Physics of Complex Systems, Paris-Saclay"],["sorbonne","2026","MSc Quantum Information, Sorbonne Université"]]}}</script>
-  <script src="/script.js?v=5091c58b" data-dungeon="/assets/js/dungeon.js?v=a76e80b6" data-hours="/assets/js/hours.js?v=aae6765e" data-arms="/assets/js/arms.js?v=33075736"></script>
+  <script type="application/json" id="site-data">{"world":{"research":{"c":0,"r":0,"name":"Research","label":"research"},"publications":{"c":1,"r":0,"name":"Publications","label":"publications"},"urban-morphogenesis":{"c":2,"r":0,"name":"Urban morphogenesis","label":"city","exit":"urban morphogenesis","page":"projects/urban-morphogenesis.html","img":"illum-dla.png"},"about":{"c":0,"r":1,"name":"The Scriptorium","label":"about","img":"flammarion-dark.png"},"projects":{"c":1,"r":1,"name":"Projects","label":"projects"},"nuclear-emulators":{"c":2,"r":1,"name":"Nuclear emulation","label":"nuclear","exit":"nuclear emulation","page":"projects/nuclear-emulators.html","img":"illum-nuclear.png"},"contact":{"c":0,"r":2,"name":"Contact","label":"contact"},"news":{"c":1,"r":2,"name":"News","label":"news"},"n-body":{"c":2,"r":2,"name":"N-body systems","label":"orrery","exit":"N-body systems","page":"projects/n-body.html","img":"illum-nbody.png"},"talks":{"c":0,"r":3,"name":"Talks","label":"talks"},"teaching":{"c":1,"r":3,"name":"Teaching","label":"teaching"}},"links":[["research","publications"],["research","about"],["publications","projects"],["about","projects"],["about","contact"],["projects","news"],["contact","news"],["projects","nuclear-emulators"],["nuclear-emulators","urban-morphogenesis"],["nuclear-emulators","n-body"],["contact","talks"],["news","teaching"],["talks","teaching"]],"email":"pro.mikesilva@gmail.com","github":"https://github.com/mksv-pro","bib":"assets/bib/silva2026emulation.bib","heraldry":{"own":"silva","tapestry":[["sorbonne","2021","BSc Physics & Mathematics, Sorbonne Université"],["paris1","2022","BA Economics & Political Science, Paris 1 Panthéon-Sorbonne"],["sciencespo","2023","Research assistant, Sciences Po"],["ceremade","2024","Visiting research student, CEREMADE"],["pariscite","2025","MSc Fundamental Physics, Université Paris Cité"],["dauphine","2025","MSc Economics & Finance, Paris Dauphine-PSL"],["ijclab","2026","Research intern, IJCLab"],["saclay","2026","MSc Physics of Complex Systems, Paris-Saclay"],["sorbonne","2026","MSc Quantum Information, Sorbonne Université"]]}}</script>
+  <script src="/script.js?v=d4971b34" data-dungeon="/assets/js/dungeon.js?v=a76e80b6" data-hours="/assets/js/hours.js?v=ac682ac8" data-arms="/assets/js/arms.js?v=33075736"></script>
 </body>
 </html>

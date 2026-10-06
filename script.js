@@ -46,14 +46,12 @@ const T = {
   rooms: 'Rooms',
   nothing: 'Nothing happens.',
   themeName: { dark: 'terminal', hours: 'hours' },
+  narrowTheme: 'The castle needs a wider window: hours opens on screens from 1200 px.',
   leave: '[leave the room \u00b7 Esc]',
   notebook: 'The notebook on the desk',
   lookHint: '(What glints can be looked at: point at it, or Tab, then Enter.)',
   charter: 'A charter of enrolment, sealed with the arms of the school.',
   register: 'The register by the door',
-  close: 'Close',
-  pagePrev: 'Previous page', pageNext: 'Next page',
-  pageOf: (k, n) => `page ${k} of ${n}`,
   themeSet: (name) => `The lamp turns: ${name}.`,
   skySet: (s) => (s === 'now' ? 'The sky keeps the true hour again.' : `The sky turns to ${s}.`),
   skyHint: 'sky dawn|noon|dusk|night|now (seen in the hours theme)',
@@ -159,6 +157,10 @@ moreLink.addEventListener('click', (e) => {
 const themeToggle = $('theme-toggle');
 const themeColor = document.querySelector('meta[name="theme-color"]');
 const THEMES = ['dark', 'hours']; // the toggle's cycle
+// the theme follows the screen (as in the head script): hours needs a wide one
+const WIDE = matchMedia('(min-width: 75rem)');
+const qTheme = new URLSearchParams(location.search).get('theme');
+const chosenTheme = () => (!WIDE.matches ? 'dark' : ((qTheme || store('theme')) === 'dark' ? 'dark' : 'hours'));
 const nextTheme = () => THEMES[(THEMES.indexOf(root.getAttribute('data-theme')) + 1) % THEMES.length];
 
 let hoursLoading = null;
@@ -190,6 +192,7 @@ function applyTheme(theme, persist) {
 
 applyTheme(root.getAttribute('data-theme'), false);
 themeToggle.addEventListener('click', () => applyTheme(nextTheme(), true));
+WIDE.addEventListener('change', () => applyTheme(chosenTheme(), false));
 
 /** Theme colours as [r, g, b], for the canvases. */
 function tokenRGB(prop) {
@@ -375,61 +378,6 @@ if (!isIndex) { // a project page is a room already: the workshop
   leave.addEventListener('click', leaveRoom);
   document.body.append(leave); // outside main: in the castle's rooms main is for readers only
 }
-/* ---- the book (hours theme, about and publications): its two columns turn as pages ---- */
-
-const pager = document.createElement('p');
-pager.className = 'pager';
-pager.hidden = true;
-pager.innerHTML = `<button type="button" data-turn="-1" aria-label="${T.pagePrev}">&lsaquo;</button>`
-  + `<span aria-live="polite"></span><button type="button" data-turn="1" aria-label="${T.pageNext}">&rsaquo;</button>`;
-document.body.append(pager);
-let page = 0;
-const mainEl = document.querySelector('main');
-const openBook = () => {
-  const sec = mainEl && mainEl.querySelector(':scope > section:not(.is-off)');
-  return sec && root.getAttribute('data-theme') === 'hours' && root.dataset.room && mainEl.offsetWidth > 2
-    && getComputedStyle(sec).columnCount === '2' ? sec : null; // (a castle room hides main: no book then)
-};
-function pageStep() { // one page = the content box and one column gap (two columns turn at once)
-  const cs = getComputedStyle(mainEl);
-  return mainEl.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) + parseFloat(getComputedStyle(openBook()).columnGap);
-}
-const pageCount = () => Math.max(1, Math.ceil((mainEl.scrollWidth - parseFloat(getComputedStyle(mainEl).paddingLeft)) / pageStep() - 0.02));
-function turn(by, reset = false) {
-  if (reset && mainEl) { // a text that fits the left page gets a single leaf
-    mainEl.classList.remove('one-page');
-    const sec = openBook();
-    if (sec && sec.lastElementChild) {
-      const r = mainEl.getBoundingClientRect();
-      const ends = [...sec.children].every((c) => c.getBoundingClientRect().right <= r.left + r.width / 2 + 2);
-      mainEl.classList.toggle('one-page', ends);
-    }
-  }
-  if (!openBook()) { pager.hidden = true; return; }
-  const n = pageCount();
-  page = reset ? 0 : Math.min(n - 1, Math.max(0, page + by));
-  mainEl.scrollTo({ left: page * pageStep(), behavior: reduceMotion || reset ? 'auto' : 'smooth' });
-  pager.hidden = n < 2;
-  pager.querySelector('span').textContent = T.pageOf(page + 1, n);
-  pager.querySelector('[data-turn="-1"]').disabled = page === 0;
-  pager.querySelector('[data-turn="1"]').disabled = page === n - 1;
-}
-pager.addEventListener('click', (e) => { const b = e.target.closest('[data-turn]'); if (b) turn(Number(b.dataset.turn)); });
-new MutationObserver(() => turn(0, true)).observe(root, { attributes: true, attributeFilter: ['data-room', 'data-theme', 'class'] });
-addEventListener('resize', () => turn(0, true));
-turn(0, true); // a room opened by the URL: measure now, and again once the fonts are in
-if (document.fonts) document.fonts.ready.then(() => turn(0, true));
-
-// the knight's motto, under the name (shown by the hours theme)
-if (DATA.heraldry && DATA.heraldry.motto) {
-  const m = document.createElement('p');
-  m.className = 'motto';
-  m.lang = 'la';
-  m.textContent = DATA.heraldry.motto;
-  const role = document.querySelector('.host .role');
-  if (role) role.after(m);
-}
-
 /* ---- the hours theme's rooms: what a section holds, as things in the room ----------------
    Each piece of a section (a lab, a project, a book, a letter, a degree...) becomes an object
    the room draws (hours.js, from this list); here, a real button lies over it, and opens a card
@@ -783,6 +731,7 @@ function run(line) {
       const want = {
         dark: 'dark', terminal: 'dark', light: 'hours', hours: 'hours', colour: 'hours',
       }[arg] || nextTheme();
+      if (!WIDE.matches && want === 'hours') return print(esc(T.narrowTheme));
       applyTheme(want, true);
       return print(T.themeSet(T.themeName[want]));
     }
@@ -929,7 +878,6 @@ document.addEventListener('keydown', (e) => {
   }
   if (!keysOn || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
   if (e.target.closest('a, button, input, textarea, select, summary, [contenteditable]')) return; // a control has the keys
-  if (openBook() && pageCount() > 1) { e.preventDefault(); turn(e.key === 'ArrowLeft' ? -1 : 1); return; }
   e.preventDefault();
   (allTabs.find((a) => a.getAttribute('aria-current')) || allTabs[0]).focus();
 });

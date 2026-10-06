@@ -1297,19 +1297,7 @@ hhhhhh.
     function rug(x, y, w) {
       for (let r = 0; r < 4; r += 1) for (let k = 0; k < w; k += 1) set(x + k, y + r, r === 0 || r === 3 || k === 0 || k === w - 1 ? I.GOLD_SH : (k + r) % 4 === 0 ? I.GOLD : I.CLOTH_SH);
     }
-    function banner(x, y, h, gold) {
-      for (let r = 0; r < h; r += 1) for (let k = 0; k < 5; k += 1) {
-        if (r === h - 1 && k === 2) continue;
-        set(x + k, y + r, k === 2 ? (gold ? I.BANNER_GOLD : I.WING) : k === 4 ? I.BANNER_SH : I.BANNER);
-      }
-      rect(x - 1, y - 1, 7, 1, I.TIMBER_SH);
-    }
     function bench(x, w, dy = 4) { rect(x, yf + dy, w, 1, I.TIMBER_HI); rect(x, yf + dy + 1, w, 1, I.TIMBER_SH); rect(x + 1, yf + dy + 2, 1, 3, I.TIMBER_SH); rect(x + w - 2, yf + dy + 2, 1, 3, I.TIMBER_SH); }
-    function lectern(x) { // stands on the floor, a book open on its slope
-      rect(x + 3, yf - 13, 2, 13, I.TIMBER_SH); rect(x + 1, yf - 1, 6, 1, I.TIMBER_SH);
-      for (let k = 0; k < 9; k += 1) set(x + k, yf - 14 + Math.floor(k / 3), I.TIMBER_HI);
-      openBook(x, yf - 14, 9);
-    }
     function lantern(x, y) { set(x, y - 1, I.OUTLINE); rect(x - 1, y, 3, 3, I.ARM_SH); set(x, y + 1, I.WIN_LIT); flames.push({ x, y: y + 1, small: true }); lights.push({ x, y: y + 1, r: 0.3 * H }); }
 
     /* the text's holder stands where the text is (`sup`: its box, from the page, in this room's
@@ -1321,18 +1309,6 @@ hhhhhh.
     const floorY = (k) => yf + Math.round(k * (H - yf)); // k in [0, 1]: from the wall to the near edge
     const cat = (name, x, yb) => { const c = SPRITES.cats[name]; if (c) stamp(c, x, yb - c.h); };
 
-    function deskUnder(dt) { // a long table whose top carries the text
-      const a = x0 - 4; const b = x1 + 4; const t = Math.min(dt, floorY(0.4));
-      rect(a, t, b - a, 1, I.TIMBER_HI); rect(a, t + 1, b - a, 2, I.TIMBER); rect(a, t + 3, b - a, 1, I.TIMBER_SH);
-      [a + 1, b - 4].forEach((lx) => { rect(lx, t + 4, 3, floorY(0.45) - t - 4, I.TIMBER_SH); set(lx, t + 4, I.TIMBER); });
-      return t;
-    }
-    function lecternUnder(dt) {
-      const t = Math.min(dt, floorY(0.3)); const mid = Math.round((x0 + x1) / 2);
-      for (let r = 0; r < 4; r += 1) rect(x0 - 2 + r, t + r, x1 - x0 + 4 - 2 * r, 1, r === 0 ? I.TIMBER_HI : I.TIMBER);
-      rect(mid - 2, t + 4, 4, floorY(0.4) - t - 4, I.TIMBER_SH); rect(mid - 1, t + 4, 1, floorY(0.4) - t - 4, I.TIMBER);
-      rect(mid - 8, floorY(0.4), 16, 2, I.TIMBER_SH); rect(mid - 8, floorY(0.4), 16, 1, I.TIMBER);
-    }
     function easelUnder(dt) {
       const t = Math.min(dt, floorY(0.2)); const fy = floorY(0.5);
       rect(x0 - 2, t, x1 - x0 + 4, 2, I.TIMBER_HI); // the ledge the sheet rests on
@@ -1340,25 +1316,6 @@ hhhhhh.
       rect(x0, Math.round((t + fy) / 2), x1 - x0, 1, I.TIMBER_SH);
       rect(Math.round((x0 + x1) / 2), Math.max(6, top - 6), 1, 6, I.TIMBER_SH); // the mast behind, its clamp
       rect(Math.round((x0 + x1) / 2) - 2, Math.max(6, top - 2), 5, 2, I.ARM_SH);
-    }
-    function frameAround(fill, fillHi, minH, frame = 3) { // a board around the text (slate, cork)
-      const a = x0 - frame; const b = x1 + frame; const t = top - frame; const e = Math.max(bot, top + minH) + frame;
-      for (let y = t; y < e; y += 1) for (let x = a; x < b; x += 1) {
-        const onFrame = x < x0 || x >= x1 || y < top || y >= e - frame;
-        set(x, y, onFrame ? ((x === a || y === t) ? I.TIMBER_HI : I.TIMBER) : (noise2(x, y) > 0.62 ? fillHi : fill));
-      }
-      return e;
-    }
-    function doorAround() { // a great door under its arch, the notice nailed to it
-      const a = x0 - 7; const b = x1 + 7; const t = Math.max(8, top - 10); const r = (b - a) / 2;
-      for (let y = t - 3; y < yf; y += 1) for (let x = a - 3; x < b + 3; x += 1) {
-        const ax = (x + 0.5 - a - r) / r; const ay = (y - t - r) / r;
-        const inArch = y >= t + r || ax * ax + ay * ay <= 1; const inStone = y >= t + r - 3 || (ax * ax + ay * ay) <= ((r + 3) / r) ** 2;
-        if (inArch) set(x, y, (x - a) % 5 === 0 ? I.TIMBER_SH : (y - t) % 12 === 6 ? I.ARM_SH : noise2(x, y) > 0.6 ? I.TIMBER_SH : I.TIMBER);
-        else if (inStone) set(x, y, (x + y) % 7 === 0 ? I.ROCK_DK : I.ROCK_HI);
-      }
-      set(b - 4, Math.round((top + yf) / 2) + 4, I.GOLD); set(b - 4, Math.round((top + yf) / 2) + 5, I.GOLD_SH); // the ring
-      return { a, b };
     }
     function chandelier(cx0, y0 = 12) { // hangs from the beams on its chain: a ring of candles
       for (let y = 4; y < y0; y += 1) set(cx0, y, y % 2 ? I.ARM_SH : I.ARM);
@@ -1538,7 +1495,7 @@ hhhhhh.
     } else if (kind === 'talks') { // the great hall: a banner on the pole for each talk; the tapestry
       // the schools' hangings along the wall, each on its own rod (one row; spread when there is room)
       const gap = 24; const tw = hangs.length * gap; const narrow = W - (tw + S(0.05) + 10) < 72;
-      const tx = narrow ? Math.max(2, Math.round((W - tw) / 2)) : Math.max(3, S(0.05)); const ty = 9; const th = 32;
+      const tx = narrow ? Math.max(2, Math.round((W - tw) / 2)) : Math.max(3, S(0.05)); const ty = 9;
       hangs.forEach((e, k) => hanging(tx + 12 + k * gap, ty + (k % 2) * 2, e, k));
       // the council chamber: a round table, high-backed chairs about it, a chandelier over it;
       // each talk a scroll laid at a place (from the far side round to the near), more at the centre
@@ -1574,7 +1531,7 @@ hhhhhh.
       set(tcx + Math.round(rx * 0.45), tcy + 1, I.OUTLINE); set(tcx + Math.round(rx * 0.45) + 1, tcy, I.PLASTER_HI); // the quill in its pot
       // the talks: a scroll at each place, far side first, then the ends, then the near side; the rest at the centre
       const places = [...far, -0.92 * Math.PI, -0.08 * Math.PI, 0.75 * Math.PI, 0.25 * Math.PI];
-      things.forEach((t, k) => {
+      things.forEach((_t, k) => {
         const [x, y] = k < places.length ? onEllipse(places[k], 0.72) : [tcx + ((k * 5) % 9) - 4, tcy + 1];
         slots[k] = scrollThing(x, y + 2, null);
       });
@@ -1600,7 +1557,7 @@ hhhhhh.
         set(x, y, fr ? ((x === bl - 3 || y === bt - 3) ? I.TIMBER_HI : I.TIMBER) : (noise2(x, y) > 0.62 ? I.SLATEB_HI : I.SLATEB));
       }
       rect(bl - 3, bb + 3, br - bl + 6, 2, I.TIMBER_HI); set(bl + 4, bb + 2, I.FL_WHITE); set(bl + 5, bb + 2, I.FL_WHITE); set(br - 8, bb + 2, I.FL_YEL);
-      things.forEach((t, k) => { // a line of chalk, then a little sketch at its end
+      things.forEach((_t, k) => { // a line of chalk, then a little sketch at its end
         const y = bt + 5 + k * 7; let x = bl + 4;
         while (x < br - 10) { const w = 2 + ((x * 7 + k) % 4); for (let c = 0; c < w; c += 1) set(x + c, y + ((c + k) % 3 === 0 ? -1 : 0), I.FL_WHITE); x += w + 2; }
         slots[k] = box(bl + 2, y - 3, br - bl - 4, 6);
@@ -1617,7 +1574,7 @@ hhhhhh.
         const fr = x < cl || x >= cr || y < ct || y >= cb;
         set(x, y, fr ? I.TIMBER_SH : (x * 7 + y * 3) % 5 === 0 ? I.CORK_SH : I.CORK);
       }
-      things.forEach((t, k) => { slots[k] = letterThing(cl + 8 + (k % fit) * 15, ct + 4 + Math.floor(k / fit) * 13, k); });
+      things.forEach((_t, k) => { slots[k] = letterThing(cl + 8 + (k % fit) * 15, ct + 4 + Math.floor(k / fit) * 13, k); });
       const rv = SPRITES.raven;
       [[0.03, 0.3, 3], [0.08, 0.56, 2]].forEach(([f, fy, nn]) => {
         const py = Math.round(H * fy); rect(S(f), py, S(0.3), 2, I.TIMBER_SH); set(S(f), py, I.TIMBER_HI);
@@ -1644,39 +1601,7 @@ hhhhhh.
       cat('thin', a - 6, floorY(0.4));
     }
     extra.forEach(({ t, b }) => { slots[things.length] = b; things.push(t); }); // the hangings can be looked at too
-    } else {
-    if (kind === 'about') { // the scriptorium: the book on a long writing table
-      const t = deskUnder(bot);
-      candle(x0 - 2, t - 1, true); candle(x1 + 2, t - 1, false);
-      set(x1 + 1, t - 1, I.OUTLINE); set(x1 + 1, t - 2, I.BEARD); set(x1 + 2, t - 3, I.BEARD_HI); // quill in its pot
-      windowArch(s(0.12), Math.round(H * 0.14), Math.max(12, s(0.22)), Math.round(H * 0.36));
-      const shTop = Math.round(H * 0.3); const shX = Math.min(W - 18, x1 + 8); shelf(shX, shTop, Math.max(14, W - shX - 4), yf - shTop);
-      cat('blackLoaf', shX + 1, shTop); // asleep on top of the bookcase
-      rug(s(0.1), floorY(0.55), s(0.7));
-      deco.push({ type: 'hourglass', x: s(0.35), y: floorY(0.1) - 10 });
-      rect(s(0.3), floorY(0.1), 10, 1, I.TIMBER_HI); rect(s(0.31), floorY(0.1) + 1, 1, 5, I.TIMBER_SH); rect(s(0.38), floorY(0.1) + 1, 1, 5, I.TIMBER_SH); // a stool
-    } else if (kind === 'publications') { // the library: the book on its lectern between the shelves
-      lecternUnder(bot);
-      rect(x0 - 6, top + 8, 1, yf - top - 8, I.GOLD_SH); candle(x0 - 6, top + 8, true); // a tall candlestick
-      // a bookcase each side of the lectern, the window above the reader's head
-      const lw = Math.max(16, x0 - 14); shelf(4, 7, lw, yf - 7);
-      const rx = x1 + 10; shelf(rx, 7, Math.max(16, W - rx - 4), yf - 7);
-      windowArch(Math.round((x0 + x1) / 2) - 6, 7, 12, Math.max(10, top - 12));
-      cat('whiteTabby', rx + 2, 7); // stretched along the top of a bookcase
-      rug(s(0.2), floorY(0.5), s(0.6));
-    } else if (kind === 'research') { // the observatory: the chart on a table, the telescope at the slit
-      for (let y = 4; y < Math.round(H * 0.42); y += 1) { // the dome's ribs over the wall
-        const half = Math.sqrt(Math.max(0, 1 - ((Math.round(H * 0.42) - y) / (H * 0.4)) ** 2)) * W * 0.5;
-        for (let x = 0; x < W; x += 1) if (Math.abs(x - W / 2) > half) set(x, y, (x + Math.round(y * 1.5)) % 9 === 0 ? I.SLATE_HI : (x + y) % 5 ? I.SLATE_SH : I.SLATE);
-      }
-      deskUnder(bot);
-      windowArch(s(0.42), 5, Math.max(10, s(0.18)), Math.round(H * 0.5)); // the slit, open
-      for (let k = 0; k < 22; k += 1) { const tx = s(0.22) + k; const ty = floorY(0.1) - 20 - Math.round(k * 0.75); set(tx, ty, k < 4 ? I.GOLD_SH : I.ARM_HI); set(tx, ty + 1, I.ARM_SH); if (k > 15) set(tx, ty - 1, I.ARM); }
-      [-5, 0, 5].forEach((dx) => { for (let r = 0; r < 20; r += 1) set(s(0.27) + dx * (r / 20), floorY(0.1) - 20 + r, I.TIMBER_SH); });
-      deco.push({ type: 'orrery', x: s(0.78), y: floorY(0.1) - 14 });
-      rect(s(0.7), floorY(0.1) - 6, 16, 1, I.TIMBER_HI); rect(s(0.71), floorY(0.1) - 5, 1, 6, I.TIMBER_SH); rect(s(0.7) + 14, floorY(0.1) - 5, 1, 6, I.TIMBER_SH);
-      cat('thin', s(0.05), floorY(0.5));
-    } else if (kind === 'projects') { // the workshop: the blueprint on its easel, the forge behind
+    } else { // a project page: the workshop, its text on the blueprint on the easel
       easelUnder(bot);
       const hx = s(0.05); const hw = Math.max(18, s(0.32)); const hy = yf - 24;
       rect(hx - 3, hy - 5, hw + 6, 29, I.BRICK_SH); rect(hx - 3, hy - 5, hw + 6, 2, I.BRICK_HI);
@@ -1689,65 +1614,7 @@ hhhhhh.
       deco.push({ type: 'gear', x: s(0.78), y: Math.round(H * 0.5), r: 4, sp: 0.8 }, { type: 'gear', x: s(0.78) + 8, y: Math.round(H * 0.5) + 4, r: 3, sp: -1.1 });
       lantern(s(0.9), Math.round(H * 0.18));
       cat('spotted', s(0.36), floorY(0.6)); // warming by the forge
-    } else if (kind === 'talks') { // the great hall: the banner between two pillars, the tapestry
-      const pa = x0 - 9; const pb = x1 + 3;
-      [pa, pb].forEach((px0) => { rect(px0, 5, 6, yf - 5, I.ROCK); rect(px0, 5, 1, yf - 5, I.ROCK_HI); rect(px0 + 5, 5, 1, yf - 5, I.ROCK_SH); rect(px0 - 1, 5, 8, 2, I.ROCK_HI); rect(px0 - 1, yf - 3, 8, 3, I.ROCK_SH); });
-      rect(x0 - 4, top - 2, x1 - x0 + 8, 2, I.TIMBER_SH); set(x0 - 5, top - 2, I.GOLD); set(x1 + 4, top - 2, I.GOLD); // its pole
-      const items = heraldry.tapestry || [];
-      const cell = 14; const perRow = Math.max(2, Math.floor((stage - 2) / cell)); const rows = Math.ceil(items.length / perRow);
-      const tw = perRow * cell + 4; const tx = Math.max(2, Math.round((stage - tw) / 2)); const ty = 9; const th = rows * 24 + 3;
-      rect(tx - 2, ty - 2, tw + 4, 1, I.TIMBER_SH); set(tx - 3, ty - 2, I.GOLD); set(tx + tw + 2, ty - 2, I.GOLD);
-      rect(tx, ty - 1, tw, th, I.CLOTH_SH);
-      for (let x = tx; x < tx + tw; x += 1) { set(x, ty - 1, I.GOLD); set(x, ty + th - 2, I.GOLD); if (x % 2) set(x, ty + th - 1, I.GOLD_SH); }
-      for (let y = ty - 1; y < ty + th - 1; y += 1) { set(tx, y, I.GOLD); set(tx + tw - 1, y, I.GOLD); }
-      items.forEach(([aid, year], k) => {
-        const x00 = tx + 2 + (k % perRow) * cell; const y00 = ty + 1 + Math.floor(k / perRow) * 24;
-        const sp = armsSprite(aid); if (sp) stamp(sp, x00, y00);
-        String(year).slice(-2).split('').forEach((d, j) => { const g = DIGITS[Number(d)]; for (let b = 0; b < 15; b += 1) if (g[b] === '1') set(x00 + 3 + j * 4 + (b % 3), y00 + 16 + Math.floor(b / 3), I.GOLD_HI); });
-      });
-      [pa + 3, pb + 3].forEach((sx) => { rect(sx - 1, Math.round(H * 0.4), 3, 1, I.ARM_SH); candle(sx, Math.round(H * 0.4) - 1, true); }); // sconces on the pillars
-      [0.05, 0.5].forEach((f) => bench(s(f), s(0.4)));
-    } else if (kind === 'teaching') { // the schoolroom: the text in chalk on the great board
-      const e = frameAround(I.SLATEB, I.SLATEB_HI, 30, 3);
-      rect(x0 - 3, e, x1 - x0 + 6, 2, I.TIMBER_HI); set(x0 + 4, e - 1, I.FL_WHITE); set(x0 + 5, e - 1, I.FL_WHITE); set(x1 - 8, e - 1, I.FL_YEL); // the chalk on its tray
-      windowArch(s(0.1), Math.round(H * 0.14), Math.max(10, s(0.2)), Math.round(H * 0.34));
-      const dx = x1 + 6; const dw = Math.max(14, W - dx - 4); // the master's desk, right of the board
-      desk(dx, yf - 10, dw); candle(dx + dw - 3, yf - 11, true);
-      for (let k = 0; k < 5; k += 1) set(dx + 3 + k * 2, yf - 12, k % 2 ? I.CAP : I.GOLD); // an abacus
-      rect(dx + 2, yf - 13, 11, 1, I.TIMBER_SH);
-      bench(x0 - 2, Math.round((x1 - x0) * 0.45)); bench(x0 + Math.round((x1 - x0) * 0.55), Math.round((x1 - x0) * 0.47)); // facing the board
-      bench(x0 + 6, Math.round((x1 - x0) * 0.4), 11); // a second row, nearer
-      cat('blackLoaf', x0 + 2, yf + 5); // on the front bench
-    } else if (kind === 'news') { // the rookery: the letters pinned on cork, the ravens on their perches
-      { // a cork board: pale, pitted, in a dark frame
-        const e = frameAround(I.CORK, I.CORK_SH, 20, 2);
-        for (let y = top; y < e - 2; y += 1) for (let x = x0; x < x1; x += 1) if ((x * 7 + y * 3) % 5 === 0) set(x, y, I.CORK_SH);
-        for (let x = x0 - 2; x < x1 + 2; x += 1) { set(x, top - 2, I.TIMBER_SH); set(x, e - 1, I.TIMBER_SH); }
-      }
-      windowArch(s(0.58), Math.round(H * 0.14), Math.max(12, s(0.24)), Math.round(H * 0.36));
-      const rv = SPRITES.raven;
-      [[0.03, 0.3, 3], [0.08, 0.56, 2]].forEach(([f, fy, n]) => {
-        const py = Math.round(H * fy); rect(s(f), py, s(0.5), 2, I.TIMBER_SH); set(s(f), py, I.TIMBER_HI);
-        for (let k = 0; k < n; k += 1) {
-          const x = s(f) + 3 + k * Math.max(rv.w + 3, s(0.16));
-          stamp(rv, x, py - rv.h + 2); blinks.push({ x: x + 6, y: py - rv.h + 3, ph: rng() * 6 });
-        }
-      });
-      for (let k = 0; k < 7; k += 1) set(s(0.1) + Math.floor(rng() * s(0.8)), floorY(0.2 + rng() * 0.6), I.BEARD_SH); // feathers
-      lantern(s(0.92), Math.round(H * 0.2));
-    } else { // contact: the notice nailed to the gatehouse door
-      const d = doorAround();
-      lantern(d.b + 6, Math.round(H * 0.38));
-      for (let k = 0; k < 3; k += 1) { set(d.a - 6 + k * 2, Math.round(H * 0.42), I.GOLD); set(d.a - 6 + k * 2, Math.round(H * 0.42) + 1, I.GOLD_SH); } // keys on a nail
-      for (let y = Math.round(H * 0.3); y < yf; y += 1) set(d.a - 10, y, I.TIMBER_SH); // a halberd against the wall
-      rect(d.a - 11, Math.round(H * 0.3), 3, 2, I.BLADE); set(d.a - 12, Math.round(H * 0.3) + 1, I.BLADE_SH);
-      desk(s(0.3), yf - 10, s(0.4));
-      rect(s(0.34), yf - 12, 8, 2, I.BEARD); set(s(0.34) + 4, yf - 12, I.CAP); candle(s(0.62), yf - 11, true);
-      windowArch(s(0.06), Math.round(H * 0.16), Math.max(10, s(0.16)), Math.round(H * 0.28));
-      cat('thin', d.a - 4, floorY(0.4)); // keeping the door
     }
-    }
-    // the wall beyond the furniture, where the parchment hangs, falls into shadow
     return { id, W, H, idx, out, lights, flames, stars, motes, blinks, camps, deco, pools, yf, slots: things ? slots : [], things: things || [], cells: new Float32Array(9 * 14) };
   }
 
@@ -1810,7 +1677,7 @@ hhhhhh.
   let ipal32; let interior = null; let ibase; let ibuf; let iprev;
   let view = { state: 'scene', id: null, t0: 0 }; // scene | in | room | out | swap
   let hoverId = null; let pendingRoom = null;
-  let heraldry = { own: 'silva', motto: '', tapestry: [] }; let say = () => {}; let rumour = () => '';
+  let heraldry = { own: 'silva', tapestry: [] }; let say = () => {}; let rumour = () => '';
   let itemsOf = () => []; let spotsTo = () => {}; let hl = -1; // the room's things, their hotspots, the one pointed at
   let scene = null; let look = null; let skyFn; let reduce = false; let px = 3;
   let running = false; let visible = true; let raf = 0; let last = 0; let tick = 0;
@@ -1847,7 +1714,7 @@ hhhhhh.
       for (let i = 0; i < p.length; i += 1) if (p[i] !== CLEAR) c[i] = pal32[p[i]];
       return c;
     });
-    ipal32 = NAMES.map((n, i) => (i < N_SKY ? pal32[i] : pack(hex(DAYLIGHT[i]).map((c) => c * 0.62))));
+    ipal32 = NAMES.map((_n, i) => (i < N_SKY ? pal32[i] : pack(hex(DAYLIGHT[i]).map((c) => c * 0.62))));
     if (interior) lightInterior();
     const sun = project(sky.sun); const moon = project(sky.moon);
     const elong = Math.acos(clamp(sky.sun[0] * sky.moon[0] + sky.sun[1] * sky.moon[1] + sky.sun[2] * sky.moon[2], -1, 1));
@@ -2243,54 +2110,36 @@ hhhhhh.
 
   /* ---- the rooms at run time: lighting, animation, the camera between outside and in ---- */
 
-  /** A room at half the scene's resolution (we are inside, closer: its pixels are twice as big). */
-  /* Where each room keeps its text, where it makes sense in that room (fractions of its width and
-     height): on the table, the lectern, the easel, the board at a man's height, the door at eye
-     level. `bottom`: the text rests on something at that height; `top`: it hangs from there.
-     The room draws the holder there, and the page puts the text box on it (--sup-* below). */
-  const PLACES = {
-    about: { x: 0.27, w: 0.5, bottom: 0.6, h: 0.5 },
-    publications: { x: 0.29, w: 0.42, bottom: 0.6, h: 0.5 },
-    research: { x: 0.44, w: 0.47, bottom: 0.66, h: 0.54 },
-    projects: { x: 0.43, w: 0.47, top: 0.15, h: 0.56 },
-    talks: { x: 0.52, w: 0.38, top: 0.15, h: 0.52 },
-    teaching: { x: 0.26, w: 0.48, top: 0.19, h: 0.43 },
-    news: { x: 0.46, w: 0.45, top: 0.16, h: 0.52 },
-    contact: { x: 0.37, w: 0.3, top: 0.26, h: 0.46 },
-  };
-  function placeOf(id, W, H) {
-    const p = PLACES[roomOf(id)]; const k = px * idiv();
+  /* A project page's text sits on the workshop's easel: its box in fractions of the room (it
+     hangs from `top`, under the menu); the room draws the easel there and the page puts the
+     text box on it (--sup-*). The castle's rooms lay out their own things instead. */
+  const PLACE = { x: 0.43, w: 0.47, top: 0.15, h: 0.56 };
+  function placeOf(W, H) {
+    const p = PLACE; const k = px * 2;
     const pr = plate.getBoundingClientRect(); const menu = document.querySelector('.tabs');
     const mb = menu ? Math.ceil((menu.getBoundingClientRect().bottom - pr.top) / k) + 2 : 4; // keep under the menu
     const x = Math.round(p.x * W); const w = Math.round(p.w * W);
-    if (p.bottom) {
-      const b = Math.round(p.bottom * H); const h = Math.min(Math.round(p.h * H), b - mb);
-      return { x, w, y: b - h, h, rests: true };
-    }
     const y = Math.max(Math.round(p.top * H), mb); const h = Math.min(Math.round(p.h * H), Math.round(H * 0.78) - y);
-    return { x, w, y, h, rests: false };
+    return { x, w, y, h };
   }
   /** Hand the text box's place to the page, in viewport pixels. */
   function placeText(pl) {
-    const r = plate.getBoundingClientRect(); const k = px * idiv();
+    const r = plate.getBoundingClientRect(); const k = px * 2;
     const set = (n, v) => root.style.setProperty(n, `${Math.round(v)}px`);
     set('--sup-l', r.left + pl.x * k); set('--sup-w', pl.w * k);
     set('--sup-t', r.top + pl.y * k); set('--sup-h', pl.h * k);
-    set('--sup-b', innerHeight - (r.top + (pl.y + pl.h) * k));
-    root.dataset.rests = pl.rests ? 'yes' : 'no';
   }
+  /** A room at half the scene's resolution (we are inside, closer: its pixels are twice as big). */
   function makeInterior(id) {
-    const W2 = Math.ceil(scene.W / idiv()); const H2 = Math.ceil(scene.H / idiv());
+    const W2 = Math.ceil(scene.W / 2); const H2 = Math.ceil(scene.H / 2);
     // the castle's rooms lay out their own things; a project page keeps its text on the easel
-    const pl = ROOM_NAMES[id] ? null : placeOf(id, W2, H2);
+    const pl = ROOM_NAMES[id] ? null : placeOf(W2, H2);
     if (pl) placeText(pl);
-    const r = generateInterior(id, W2, H2, Math.round(interiorStage(scene.W) / idiv()), pl);
+    const r = generateInterior(id, W2, H2, Math.round(interiorStage(scene.W) / 2), pl);
     for (let k = 0; k < 30; k += 1) stepCells(r.cells, 9, 14); // a hearth already burning
     return r;
   }
-  const iAt = (x, y) => (idiv() === 1 ? ibuf[y * interior.W + x] : ibuf[(y >> 1) * interior.W + (x >> 1)]);
-  /** Rooms are drawn closer (pixels twice the scene's) unless the scene's are already big. */
-  function idiv() { return 2; }
+  const iAt = (x, y) => ibuf[(y >> 1) * interior.W + (x >> 1)];
 
   /** Width left to the furniture: on wide screens the parchment hangs over the right half. */
   function interiorStage(W) {
@@ -2300,7 +2149,7 @@ hhhhhh.
   /** Indoor colours under a dim ambient, darker towards the corners and the beams; the window's
    *  pixels take the outdoor palette, so it shows the true sky. */
   function lightInterior() {
-    const { W, H, idx, out } = interior; const Wi = Math.round(interiorStage(scene.W) / idiv());
+    const { W, H, idx, out } = interior;
     for (let y = 0; y < H; y += 1) {
       const vy = 0.72 + 0.28 * clamp(y / (H * 0.3));
       for (let x = 0; x < W; x += 1) {
@@ -2433,7 +2282,7 @@ hhhhhh.
   function publishSpots(on) {
     const wide = plate && getComputedStyle(plate.parentElement).position === 'fixed';
     if (!on || !wide || !interior || !interior.slots.length) { spotsTo([], []); return; }
-    const r = plate.getBoundingClientRect(); const k = px * idiv();
+    const r = plate.getBoundingClientRect(); const k = px * 2;
     spotsTo(interior.slots.map((b) => ({ l: Math.round(r.left + b.x * k), t: Math.round(r.top + b.y * k), w: Math.round(b.w * k), h: Math.round(b.h * k) })), interior.things);
   }
   const travelling = (on) => root.classList.toggle('travelling', on);
@@ -2545,7 +2394,7 @@ hhhhhh.
     else if (hit.kind === 'fire') {
       say('The fire crackles and throws up sparks.');
       for (let k = 0; k < 24; k += 1) scene.embers.push({ x: scene.fire.x + (Math.random() - 0.5) * 8, y: scene.fire.y - 10, vy: -(0.8 + Math.random() * 1.4), ph: Math.random() * 6, age: 0, life: 20 + Math.random() * 30 });
-    } else if (hit.kind === 'shield') say(`On the knight's shield: azure, an armillary sphere or, over a bell curve argent. ${heraldry.motto ? `Motto: ${heraldry.motto}.` : ''}`);
+    } else if (hit.kind === 'shield') say("On the knight's shield: azure, an armillary sphere or, over a bell curve argent.");
   }
   const scenePoint = (e) => {
     const r = plate.getBoundingClientRect();

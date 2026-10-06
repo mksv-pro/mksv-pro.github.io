@@ -20,8 +20,9 @@
   <link rel="icon" href="{{root}}assets/img/monogram.svg" type="image/svg+xml">
 
   <script>
-    // Before first paint, so a stored theme never flashes. A light system preference gets the
-    // hours theme (its day is the light one); 'light' from before folio was dropped, likewise.
+    // Before first paint, so a stored theme never flashes. The theme follows the screen: the
+    // castle (hours) wants a wide one, below 75rem the terminal; on a wide screen a stored choice
+    // wins, else hours. ('light', from before folio was dropped, reads as hours.)
     // data-sky (day|night) picks the hours theme's palette: night once the sun is 3 deg below
     // Paris's horizon (low-precision solar position, ~0.5 deg; script.js keeps it current).
     (function () {
@@ -31,9 +32,8 @@
       t = (/[?&]theme=(\w+)/.exec(q) || [])[1] || t;
       s = (/[?&]sky=(\w+)/.exec(q) || [])[1] || s;
       if (t === 'light') t = 'hours';
-      if (t !== 'dark' && t !== 'hours') {
-        t = matchMedia('(prefers-color-scheme: light)').matches ? 'hours' : 'dark';
-      }
+      if (!matchMedia('(min-width: 75rem)').matches) t = 'dark';
+      else if (t !== 'dark') t = 'hours';
       var k = Math.PI / 180, d = Date.now() / 864e5 - 10957.5;
       var g = (357.529 + 0.98560028 * d) * k;
       var L = (280.459 + 0.98564736 * d + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * k;

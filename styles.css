@@ -190,7 +190,6 @@ ul, ol { padding-left: 1.4em; }
   font: .8rem/1.5 var(--caption);
   color: var(--dim);
 }
-.cap-hours { display: none; }
 
 .term {
   width: 100%;
@@ -611,30 +610,29 @@ dialog.dungeon canvas {
   .st-right #st-moon { display: none; }
 }
 
-[data-theme="hours"] .cap-dark { display: none; }
-[data-theme="hours"] .cap-hours { display: block; }
 
-/* ---- hours overrides: the page is the landscape ------------------------ */
+/* ---- hours: the page is the landscape (wide screens only: head script, script.js) ---------
+   Boxes are drawn on the interface's pixel grid (--upx: half the scene's pixel, set by
+   hours.js), with the 9-slice frame of _tools/icons.py. */
 
-/* the plate is a live canvas (assets/js/hours.js); until it draws, an empty sky */
+[data-theme="hours"] .shell { display: block; }
+[data-theme="hours"] .plate {
+  position: fixed; inset: var(--msg-h) 0 var(--status-h) 0; z-index: 0;
+  height: auto; border: 0;
+}
+[data-theme="hours"] .plate-caption, [data-theme="hours"] .armillary, [data-theme="hours"] .exits { display: none; }
+/* the plate is a live canvas (hours.js); until it draws, an empty sky */
 [data-theme="hours"] .plate-img { position: relative; background: #2c3b58; }
 [data-theme="hours"][data-sky="day"] .plate-img { background: #8cc9f4; }
-.plate-img canvas {
-  position: absolute; inset: 0;
-  width: 100%; height: 100%;
-  image-rendering: pixelated;
-  display: none;
-}
+.plate-img canvas { display: none; position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
 [data-theme="hours"] .plate-img canvas { display: block; }
-[data-theme="hours"] .armillary, [data-theme="hours"] .cap-arm { display: none; }
-[data-theme="hours"] .shell { display: block; }
-
+[data-theme="hours"] .term { max-width: none; margin: 0; padding: 0; width: auto; }
 [data-theme="hours"] .msgline, [data-theme="hours"] .status { border-color: var(--gold); }
-/* boxes are drawn in pixels, on the interface's grid (--upx: half the scene's pixel, set by
-   hours.js): a 9-slice frame (_tools/icons.py), gold with a dark outline, square-notched corners */
+
 [data-theme="hours"] .pane,
 [data-theme="hours"] .tabs,
-[data-theme="hours"] dialog.scroll {
+[data-theme="hours"] dialog.scroll,
+[data-theme="hours"] .card:not([hidden]) {
   border: calc(4 * var(--upx, 2px)) solid transparent;
   border-image: url("assets/img/frame.svg") 4 / calc(4 * var(--upx, 2px)) stretch;
   background: var(--panel) padding-box;
@@ -642,40 +640,74 @@ dialog.dungeon canvas {
 }
 [data-theme="hours"] .pane-tab {
   top: calc(-4 * var(--upx, 2px) - .7rem);
-  background: #d8a838; color: #16121c;
-  border: var(--upx, 2px) solid #16121c;
+  background: #d8a838; color: #16121c; border: var(--upx, 2px) solid #16121c;
 }
-[data-theme="hours"] .monogram { color: var(--red); border-color: var(--gold); }
-[data-theme="hours"] .role { color: var(--accent); }
 [data-theme="hours"] .room { color: var(--red); }
 [data-theme="hours"][data-sky="night"] .room { color: var(--accent); }
 [data-theme="hours"] .entry-head h3::before, [data-theme="hours"] .entry li::marker { color: var(--red); }
 [data-theme="hours"] a:hover { background: color-mix(in srgb, var(--gold) 30%, transparent); }
 
-/* the menu: a dialogue box held up by the wizard (over his hat on wide screens, see below) */
-[data-theme="hours"] .tabs { display: block; padding: .5rem .8rem .55rem 1.4rem; }
+/* the header floats over the sky: light lettering, a thin dark outline and a drop shadow, a
+   soft dusk behind, fixed colours (the sky changes, the lettering does not) */
+[data-theme="hours"] .host {
+  position: fixed; z-index: 3;
+  top: calc(var(--msg-h) + 1.25rem); left: 1.5rem; right: 1.5rem;
+  pointer-events: none;
+  --ink: #f4ecd8; --hi: #fff8e8; --dim: #ddd4bf; --accent: #f6d77a; --red: #ffb08a;
+  color: var(--ink);
+  text-shadow: 1px 0 #16121c, -1px 0 #16121c, 0 1px #16121c, 0 -1px #16121c,
+    1px 1px #16121c, -1px -1px #16121c, 1px -1px #16121c, -1px 1px #16121c, 2px 2px 0 rgb(10 8 20 / .6);
+}
+[data-theme="hours"] .host::before {
+  content: ""; position: absolute; z-index: -1; inset: -2.5rem -2rem -2.5rem -2.5rem;
+  background:
+    radial-gradient(ellipse 34rem 15rem at 0 0, rgb(14 16 36 / .5), transparent 75%),
+    radial-gradient(ellipse 22rem 10rem at 100% 0, rgb(14 16 36 / .45), transparent 75%);
+}
+[data-theme="hours"] .host .name {
+  white-space: nowrap;
+  text-shadow: var(--upx, 2px) 0 #16121c, calc(-1 * var(--upx, 2px)) 0 #16121c, 0 var(--upx, 2px) #16121c,
+    0 calc(-1 * var(--upx, 2px)) #16121c, calc(2 * var(--upx, 2px)) calc(2 * var(--upx, 2px)) 0 rgb(10 8 20 / .6);
+}
+[data-theme="hours"] .host :is(.role, .alm-hour, .links a) { color: var(--accent); }
+[data-theme="hours"] .host .links a:hover { color: var(--hi); background: none; }
+[data-theme="hours"] .host .monogram { background: #16121c; color: #ffb08a; border-color: #d8a838; }
+[data-theme="hours"] .host :is(a, button) { pointer-events: auto; }
+[data-theme="hours"] .statement { max-width: 44ch; }
+
+/* the menu: a dialogue box held up by the wizard (--wiz-x, --wiz-y from hours.js), opening to
+   his left over the forest edge, its stepped tail towards him */
+[data-theme="hours"] .tabs {
+  --menu-left: max(1rem, calc(var(--wiz-x, 12rem) - 21rem));
+  position: fixed; z-index: 4; display: block;
+  top: auto; left: var(--menu-left); bottom: calc(100dvh - var(--wiz-y, 75dvh) + 1.4rem);
+  width: max-content; margin: 0; padding: .5rem .8rem .55rem 1.4rem;
+}
+[data-theme="hours"] .tabs::after {
+  content: ""; position: absolute;
+  top: calc(100% + 4 * var(--upx, 2px));
+  left: clamp(1rem, calc(var(--wiz-x, 12rem) - var(--menu-left) - 3 * var(--upx, 2px)), calc(100% - 2rem));
+  width: calc(6 * var(--upx, 2px)); height: calc(6 * var(--upx, 2px));
+  background: #d8a838; border: var(--upx, 2px) solid #16121c; border-top: 0;
+  clip-path: polygon(0 0, 100% 0, 100% 33.3%, 66.6% 33.3%, 66.6% 66.6%, 33.3% 66.6%, 33.3% 100%, 0 100%);
+}
 [data-theme="hours"] .tabs-session { display: block; font-size: 0; margin-bottom: .35rem; }
 [data-theme="hours"] .tabs-session::before { content: "Where to, traveller?"; font-size: .85rem; color: var(--red); }
 [data-theme="hours"] .tabs ul { display: grid; grid-template-columns: 1fr 1fr; gap: .1rem 1.1rem; }
 [data-theme="hours"] .tabs a .k { display: none; }
 [data-theme="hours"] .tabs a { display: flex; align-items: center; gap: .45rem; padding: .1rem .3rem; }
-/* the room you are in: its name in the accent, underlined; no block of colour */
-[data-theme="hours"] .tabs a[aria-current="page"] {
-  background: none; color: var(--accent);
-  text-decoration: underline var(--upx, 2px) solid; text-underline-offset: .3em;
-}
-[data-theme="hours"] .tabs a[aria-current="page"]::after { content: none; }
 [data-theme="hours"] .tabs a:hover { background: none; color: var(--hi); }
-/* the choice cursor (pointer or arrow keys, see script.js): a pixel pointer before the entry,
-   blinking when the keys hold it */
+[data-theme="hours"] .tabs a[aria-current="page"]::after { content: none; }
+[data-theme="hours"][data-room] .tabs a[aria-current="page"] { /* the room you are in */
+  background: none; color: var(--accent); text-decoration: underline var(--upx, 2px) solid; text-underline-offset: .3em;
+}
+/* the choice cursor (pointer or arrow keys): a pixel pointer, blinking when the keys hold it */
 [data-theme="hours"] .tabs li { position: relative; }
 [data-theme="hours"] .tabs a:focus-visible { outline: 0; color: var(--hi); }
 [data-theme="hours"] .tabs li:has(a:hover, a:focus-visible)::before {
-  content: "";
-  position: absolute; left: calc(-6 * var(--upx, 2px)); top: 50%; translate: 0 -50%;
+  content: ""; position: absolute; left: calc(-6 * var(--upx, 2px)); top: 50%; translate: 0 -50%;
   width: calc(5 * var(--upx, 2px)); height: calc(7 * var(--upx, 2px));
-  background: url("assets/img/cursor.svg") center / contain no-repeat;
-  image-rendering: pixelated;
+  background: url("assets/img/cursor.svg") center / contain no-repeat; image-rendering: pixelated;
 }
 @media (prefers-reduced-motion: no-preference) {
   [data-theme="hours"] .tabs li:has(a:focus-visible)::before { animation: cursor-blink 1s steps(1) infinite; }
@@ -683,16 +715,10 @@ dialog.dungeon canvas {
 @keyframes cursor-blink { 50% { opacity: 0; } }
 
 /* pixel icons (_tools/icons.py): the menu, the header's links, the pack */
-[data-theme="hours"] .tabs a::before,
-[data-theme="hours"] .links a::before,
-[data-theme="hours"] .loot li::before {
-  content: "";
-  flex: none;
-  display: inline-block;
-  width: calc(13 * var(--upx, 2px)); height: calc(13 * var(--upx, 2px)); /* icons: 13 px drawings */
-  vertical-align: middle;
-  background: var(--icon) center / contain no-repeat;
-  image-rendering: pixelated;
+[data-theme="hours"] :is(.tabs a, .links a, .loot li)::before {
+  content: ""; flex: none; display: inline-block; vertical-align: middle;
+  width: calc(13 * var(--upx, 2px)); height: calc(13 * var(--upx, 2px));
+  background: var(--icon) center / contain no-repeat; image-rendering: pixelated;
 }
 [data-theme="hours"] .links a::before { margin-right: .4rem; }
 [data-theme="hours"] .loot li::before { margin-right: .5rem; }
@@ -703,8 +729,7 @@ dialog.dungeon canvas {
 [data-theme="hours"] .tabs a[href$="#talks"] { --icon: url("assets/img/icons/horn.svg"); }
 [data-theme="hours"] .tabs a[href$="#teaching"] { --icon: url("assets/img/icons/slate.svg"); }
 [data-theme="hours"] .tabs a[href$="#news"] { --icon: url("assets/img/icons/raven.svg"); }
-[data-theme="hours"] .tabs a[href$="#contact"],
-[data-theme="hours"] .links a[href^="mailto:"] { --icon: url("assets/img/icons/letter.svg"); }
+[data-theme="hours"] :is(.tabs a[href$="#contact"], .links a[href^="mailto:"]) { --icon: url("assets/img/icons/letter.svg"); }
 [data-theme="hours"] .links a[href*="github"] { --icon: url("assets/img/icons/lodestone.svg"); }
 [data-theme="hours"] .links a[href*="CV"] { --icon: url("assets/img/icons/scroll.svg"); }
 [data-theme="hours"] .loot li[data-item="about"] { --icon: url("assets/img/icons/scroll.svg"); }
@@ -712,81 +737,125 @@ dialog.dungeon canvas {
 [data-theme="hours"] .loot li[data-item="contact"] { --icon: url("assets/img/icons/quill.svg"); }
 [data-theme="hours"] .loot li[data-item="projects"] { --icon: url("assets/img/icons/lodestone.svg"); }
 
+/* the arms of each school and lab beside its entry (assets/img/arms/, _tools/icons.py) */
+[data-arms="saclay"] { --arms: url("assets/img/arms/saclay.svg"); }
+[data-arms="sorbonne"] { --arms: url("assets/img/arms/sorbonne.svg"); }
+[data-arms="dauphine"] { --arms: url("assets/img/arms/dauphine.svg"); }
+[data-arms="ijclab"] { --arms: url("assets/img/arms/ijclab.svg"); }
+[data-arms="ceremade"] { --arms: url("assets/img/arms/ceremade.svg"); }
+[data-arms="sciencespo"] { --arms: url("assets/img/arms/sciencespo.svg"); }
+[data-theme="hours"] :is(.entry[data-arms] .entry-head h3, .sheet span[data-arms])::before {
+  content: ""; display: inline-block; vertical-align: -.35em; margin-right: .5em;
+  width: calc(13 * var(--upx, 2px) * .8); height: calc(15 * var(--upx, 2px) * .8);
+  background: var(--arms) center / contain no-repeat; image-rendering: pixelated;
+}
 /* the project illuminations, screened like the Vermis plates (_tools/trame.py) */
-[data-theme="hours"] .illum { background: center / cover no-repeat; image-rendering: pixelated; }
+[data-theme="hours"] .illum { background: center / cover no-repeat; image-rendering: pixelated; box-shadow: 0 0 0 1px var(--rule); }
 [data-theme="hours"] .illum img { opacity: 0; }
 [data-theme="hours"] .illum[href*="nuclear"] { background-image: url("assets/img/trame-nuclear.png"); }
 [data-theme="hours"] .illum[href*="urban"] { background-image: url("assets/img/trame-dla.png"); }
 [data-theme="hours"] .illum[href*="n-body"] { background-image: url("assets/img/trame-nbody.png"); }
-[data-theme="hours"] .illum { box-shadow: 0 0 0 1px var(--rule); }
 
-/* rooms (hours.js, script.js): the landscape is home; a section is a room of the castle, its
-   text on a parchment that comes up once the camera is inside (.room-ready) */
-.leave { display: none; }
+/* ---- the castle's rooms (hours.js, script.js): the landscape is home; a section is a room.
+   Its pieces are things drawn in the room, a button over each opens a card beside it; main
+   stays in the page for readers without the picture, out of sight. A project page is the
+   workshop, its text on the blueprint the room draws (--sup-*). */
 [data-theme="hours"]:not([data-room]) main { display: none; }
 [data-theme="hours"][data-room] .host { display: none; }
-[data-theme="hours"]:not([data-room]) .tabs a[aria-current="page"] { color: inherit; text-decoration: none; }
-/* in a room, the text is written on that room's own thing: a book on the lectern (about,
-   publications: it turns its pages), a star chart (research), a blueprint (projects and the
-   project pages), an embroidered banner (talks), the slate (teaching), sealed letters (news),
-   a notice nailed to the door (contact). Each is as big as its text, no bigger. */
-[data-theme="hours"][data-room] main {
-  /* dark ink on paper by default: the vellum tokens, at any hour (read by candlelight) */
-  --bg: #f2ead8; --panel: #ecdcb4; --rule: #a8884a; --ink: #2b2118; --hi: #140e08;
-  --accent: #1f43a0; --dim: #554b3a; --red: #9c2219; --green: #285f33; --bar: #e0cfa4;
-  color-scheme: light;
+/* on the way in or out, the interface waits until the camera has arrived */
+[data-theme="hours"].travelling :is(.tabs, .host) { visibility: hidden; }
+
+/* in a room, the menu is a wooden beam hung from the ceiling on two chains */
+[data-theme="hours"][data-room] .tabs {
+  --ink: #f4e8cc; --hi: #ffffff; --accent: #f6d77a;
+  left: auto; right: 1.5rem; top: calc(var(--msg-h) + 1.25rem); bottom: auto;
+  width: min(46rem, 50vw); padding: .3rem .8rem .3rem 1.4rem;
   color: var(--ink);
-  padding: 1.1rem clamp(1rem, 2.5vw, 2rem) 1.3rem;
-  background: #efe2c2;
-  box-shadow: calc(2 * var(--upx, 2px)) calc(3 * var(--upx, 2px)) 0 rgb(10 6 4 / .45);
-  transition: opacity .2s steps(3, end);
+  border: var(--upx, 2px) solid #16121c; border-image: none;
+  background: repeating-linear-gradient(180deg, #7e5a38 0 calc(3 * var(--upx, 2px)), #6e4e30 0 calc(4 * var(--upx, 2px)));
+  box-shadow: inset 0 var(--upx, 2px) 0 #b0885a, inset 0 calc(-1 * var(--upx, 2px)) 0 #553a24,
+    calc(2 * var(--upx, 2px)) calc(2 * var(--upx, 2px)) 0 rgb(0 0 0 / .35);
 }
-[data-theme="hours"][data-room]:not(.room-ready) main { opacity: 0; pointer-events: none; }
+[data-theme="hours"][data-room] .tabs-session { display: none; }
+[data-theme="hours"][data-room] .tabs ul { grid-template-columns: repeat(4, auto); justify-content: space-between; }
+[data-theme="hours"][data-room] .tabs::after { content: none; }
+[data-theme="hours"][data-room] .tabs::before {
+  content: ""; position: absolute; bottom: 100%; left: 12%; right: 12%; height: 1.4rem;
+  background:
+    repeating-linear-gradient(180deg, #5e5c68 0 calc(2 * var(--upx, 2px)), transparent 0 calc(3 * var(--upx, 2px))) left / var(--upx, 2px) 100% no-repeat,
+    repeating-linear-gradient(180deg, #5e5c68 0 calc(2 * var(--upx, 2px)), transparent 0 calc(3 * var(--upx, 2px))) right / var(--upx, 2px) 100% no-repeat;
+}
+.leave { display: none; }
+[data-theme="hours"][data-room] .leave {
+  display: block; position: fixed; z-index: 4;
+  top: calc(var(--msg-h) + 1.25rem + var(--tabs-h, 5rem) + .6rem); right: 1.5rem;
+  font: .85rem/1 var(--ui); color: #f4ecd8; background: #3a2818; cursor: pointer;
+  border: var(--upx, 2px) solid #16121c; padding: .35rem .6rem;
+}
+
+/* the castle's rooms: the text is in the things */
+[data-theme="hours"]:is([data-room="about"], [data-room="research"], [data-room="projects"], [data-room="publications"],
+  [data-room="talks"], [data-room="teaching"], [data-room="news"], [data-room="contact"]) main {
+  position: fixed; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); padding: 0; border: 0;
+}
+.spots, .card[hidden] { display: none; }
+[data-theme="hours"] .spots { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; }
+[data-theme="hours"] .spot { position: absolute; pointer-events: auto; cursor: pointer; background: none; border: 0; padding: 0; }
+[data-theme="hours"] .spot:focus-visible { outline: var(--upx, 2px) dashed #f6d77a; outline-offset: 2px; }
+[data-theme="hours"] .spot::after { /* its name, on a little tag, when pointed at */
+  content: attr(data-label);
+  position: absolute; left: 50%; bottom: calc(100% + .4rem); translate: -50% 0;
+  white-space: nowrap; max-width: 28rem; overflow: hidden; text-overflow: ellipsis;
+  padding: .2rem .5rem; font: .85rem/1.3 var(--ui);
+  color: #f4ecd8; background: #2a1d14; border: var(--upx, 2px) solid #d8a838;
+  opacity: 0; transition: opacity .12s steps(2, end); pointer-events: none;
+}
+[data-theme="hours"] .spot:is(:hover, :focus-visible)::after { opacity: 1; }
+
+/* paper read by candlelight: the day's vellum tokens, at any hour (cards, the blueprint's ink below) */
+[data-theme="hours"] :is(.card, [data-room] main) {
+  --bg: #f2ead8; --panel: #efe2c2; --rule: #a8884a; --ink: #2b2118; --hi: #140e08;
+  --accent: #1f43a0; --dim: #554b3a; --red: #9c2219; --green: #285f33; --bar: #e0cfa4;
+  color-scheme: light; color: var(--ink);
+}
+[data-theme="hours"] .card:not([hidden]) {
+  display: block; position: fixed; z-index: 5;
+  width: min(32rem, 42vw); padding: 1rem 1.3rem 1.2rem;
+  filter: drop-shadow(calc(2 * var(--upx, 2px)) calc(3 * var(--upx, 2px)) 0 rgb(10 6 4 / .45));
+  box-shadow: none;
+}
 @media (prefers-reduced-motion: no-preference) {
-  [data-theme="hours"].room-ready main { animation: come-in .36s steps(4, end); }
+  [data-theme="hours"] .card:not([hidden]) { animation: come-in .2s steps(3, end); }
 }
 @keyframes come-in { from { opacity: 0; translate: 0 calc(3 * var(--upx, 2px)); } to { opacity: 1; translate: 0 0; } }
-/* on the way in or out, the interface waits: no menu, no header until the camera has arrived */
-[data-theme="hours"].travelling .tabs, [data-theme="hours"].travelling .host, [data-theme="hours"].travelling .pager { visibility: hidden; }
-[data-theme="hours"][data-room] main .pane { border: 0; background: none; box-shadow: none; padding: 0; margin: 0; }
-[data-theme="hours"][data-room] main .pane-tab { display: none; }
-[data-theme="hours"][data-room] main .room { margin-top: .6rem; }
+[data-theme="hours"] .card::before { /* the tail, towards the thing */
+  content: ""; position: absolute; top: calc(var(--tail-y, 2rem) - 9px); width: 12px; height: 18px; background: #d8a838;
+}
+[data-theme="hours"] .card[data-side="left"]::before { right: 100%; clip-path: polygon(100% 0, 33% 33%, 0 50%, 33% 67%, 100% 100%); }
+[data-theme="hours"] .card[data-side="right"]::before { left: 100%; clip-path: polygon(0 0, 67% 33%, 100% 50%, 67% 67%, 0 100%); }
+[data-theme="hours"] .card-body { max-height: calc(100dvh - var(--msg-h) - var(--status-h) - 5rem); overflow: auto; }
+[data-theme="hours"] .card h3 { margin: 0 2rem .5rem 0; font: 600 1.05rem/1.35 var(--text); color: var(--hi); }
+[data-theme="hours"] .card .entry-head { margin-right: 2rem; }
+[data-theme="hours"] .card .entry-head h3::before { content: none; }
+[data-theme="hours"] .card :is(ul, dl, p) { margin-top: 0; }
+[data-theme="hours"] .card .sheet div { grid-template-columns: 8ch 1fr; }
+[data-theme="hours"] .card .illum { float: left; margin: 0 1rem .5rem 0; }
+[data-theme="hours"] .card .illum img { width: 96px; height: 96px; }
+[data-theme="hours"] .card-close {
+  position: absolute; top: .3rem; right: .4rem; padding: .1rem .4rem;
+  font: 1.3rem/1 var(--ui); color: var(--red); background: none; border: 0; cursor: pointer;
+}
 
-
-/* light ink for the dark supports */
-[data-theme="hours"]:is([data-room="projects"], [data-room="nuclear-emulators"], [data-room="urban-morphogenesis"],
-  [data-room="n-body"], [data-room="talks"], [data-room="teaching"]) main {
+/* a project page: the text on the blueprint the workshop draws (hours.js PLACE, --sup-*):
+   blue paper, a white grid, a dashed border, two red pins, light ink */
+[data-theme="hours"][data-room] main {
+  position: fixed; z-index: 3;
+  left: var(--sup-l, 50vw); top: var(--sup-t, 20vh); width: var(--sup-w, 44rem); max-height: var(--sup-h, 60vh);
+  overflow-y: auto; overscroll-behavior: contain;
+  padding: 1.1rem clamp(1rem, 2.5vw, 2rem) 1.3rem;
   --ink: #eef2f8; --hi: #ffffff; --accent: #ffd76a; --dim: #c4cedc; --red: #ffb7a6; --green: #b6eec0;
   --panel: transparent; --rule: rgb(255 255 255 / .4);
-  color-scheme: dark;
-}
-
-/* the book: two pages, a leather binding, the gutter's shadow; columns turn as pages (script.js) */
-[data-theme="hours"]:is([data-room="about"], [data-room="publications"]) main {
-  --gap: 3.6rem;
-  background:
-    linear-gradient(90deg, transparent calc(50% - 1.6rem), rgb(90 60 30 / .22) calc(50% - .15rem), rgb(40 25 10 / .45) 50%,
-      rgb(90 60 30 / .22) calc(50% + .15rem), transparent calc(50% + 1.6rem)),
-    linear-gradient(90deg, rgb(110 70 25 / .18), transparent 6%, transparent 94%, rgb(110 70 25 / .18)),
-    #f1e5c6;
-  border: calc(3 * var(--upx, 2px)) solid #5a2a1c;
-  box-shadow: inset 0 0 0 var(--upx, 2px) #d8a838, calc(2 * var(--upx, 2px)) calc(3 * var(--upx, 2px)) 0 rgb(10 6 4 / .45);
-}
-/* the star chart, held flat by four brass weights */
-[data-theme="hours"][data-room="research"] main {
-  background:
-    radial-gradient(circle at 1rem 1rem, #d8a838 0 .35rem, #6a4a20 .4rem, transparent .45rem),
-    radial-gradient(circle at calc(100% - 1rem) 1rem, #d8a838 0 .35rem, #6a4a20 .4rem, transparent .45rem),
-    radial-gradient(circle at 1rem calc(100% - 1rem), #d8a838 0 .35rem, #6a4a20 .4rem, transparent .45rem),
-    radial-gradient(circle at calc(100% - 1rem) calc(100% - 1rem), #d8a838 0 .35rem, #6a4a20 .4rem, transparent .45rem),
-    radial-gradient(circle at 18% 30%, #2f50b0 0 1.5px, transparent 2px) 0 0 / 7rem 6rem,
-    radial-gradient(circle at 70% 75%, #2f50b0 0 1px, transparent 1.5px) 0 0 / 5rem 4.5rem,
-    radial-gradient(ellipse at 50% 50%, transparent 55%, rgb(110 70 25 / .25)),
-    #e9d7aa;
-  border: var(--upx, 2px) solid #8a6a3a;
-}
-/* the blueprint: blue paper, a white grid, a dashed border, two red pins */
-[data-theme="hours"]:is([data-room="projects"], [data-room="nuclear-emulators"], [data-room="urban-morphogenesis"], [data-room="n-body"]) main {
+  color-scheme: dark; color: var(--ink);
   background:
     radial-gradient(circle at 1.1rem .9rem, #e04848 0 .3rem, #7a1a1a .35rem, transparent .4rem),
     radial-gradient(circle at calc(100% - 1.1rem) .9rem, #e04848 0 .3rem, #7a1a1a .35rem, transparent .4rem),
@@ -794,233 +863,19 @@ dialog.dungeon canvas {
     repeating-linear-gradient(90deg, rgb(255 255 255 / .09) 0 1px, transparent 1px 1.25rem),
     #1f4d8c;
   outline: 1px dashed rgb(255 255 255 / .55); outline-offset: -.6rem;
+  box-shadow: calc(2 * var(--upx, 2px)) calc(3 * var(--upx, 2px)) 0 rgb(10 6 4 / .45);
 }
-/* the banner of the great hall: crimson cloth, a gold border, swallow-tailed, on its pole */
-[data-theme="hours"][data-room="talks"] main {
-  padding-bottom: 3.5rem;
-  background: repeating-linear-gradient(90deg, rgb(0 0 0 / .06) 0 2px, transparent 2px 4px), #8a1f1f;
-  border: calc(2 * var(--upx, 2px)) solid #d8a838; border-top: calc(4 * var(--upx, 2px)) solid #553a24;
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 2.2rem), 0 100%);
+[data-theme="hours"][data-room]:not(.room-ready) main { opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: no-preference) {
+  [data-theme="hours"].room-ready main { animation: come-in .36s steps(4, end); }
 }
-/* the slate: the text is chalk on the board the room draws around it (hours.js) */
-[data-theme="hours"][data-room="teaching"] main {
-  background: none; box-shadow: none;
-  font-family: var(--ui);
-  text-shadow: 0 0 1px rgb(255 255 255 / .35);
-}
-[data-theme="hours"][data-room="teaching"] main a { text-decoration-style: dashed; }
-/* the rookery: no sheet at all, each piece of news is a letter with its seal */
-[data-theme="hours"][data-room="news"] main { background: none; box-shadow: none; padding: .4rem .5rem; }
-[data-theme="hours"][data-room="news"] main :is(.room, .exits) {
-  background: #efe2c2; padding: .35rem .8rem; box-shadow: calc(2 * var(--upx, 2px)) calc(2 * var(--upx, 2px)) 0 rgb(10 6 4 / .4);
-}
-[data-theme="hours"][data-room="news"] .news li {
-  position: relative; display: block;
-  margin: 0 0 .9rem; padding: .7rem 2.6rem .7rem 1rem;
-  background: #f1e4c4; border: 1px solid #c2aa7c;
-  box-shadow: calc(2 * var(--upx, 2px)) calc(2 * var(--upx, 2px)) 0 rgb(10 6 4 / .4);
-  rotate: -.6deg;
-}
-[data-theme="hours"][data-room="news"] .news li:nth-child(even) { rotate: .7deg; }
-[data-theme="hours"][data-room="news"] .news li::after { /* the wax seal */
-  content: ""; position: absolute; top: .6rem; right: .7rem; width: 1.3rem; height: 1.3rem;
-  background: radial-gradient(circle at 40% 35%, #e05040, #9c2219 60%, #6a1410);
-  clip-path: polygon(50% 0, 62% 10%, 80% 6%, 84% 24%, 100% 34%, 92% 52%, 100% 70%, 82% 78%, 76% 96%, 58% 88%, 42% 100%, 30% 86%, 12% 90%, 12% 72%, 0 62%, 8% 44%, 0 28%, 18% 20%, 24% 4%, 40% 10%);
-}
-[data-theme="hours"][data-room="news"] main .see {
-  display: inline-block; background: #efe2c2; padding: .2rem .5rem;
-  box-shadow: calc(2 * var(--upx, 2px)) calc(2 * var(--upx, 2px)) 0 rgb(10 6 4 / .4);
-}
-[data-theme="hours"][data-room="news"] main .see { margin: 0 0 .9rem; }
-/* the notice nailed to the gatehouse door */
-[data-theme="hours"][data-room="contact"] main {
-  rotate: -.5deg;
-  background:
-    radial-gradient(circle at .8rem .8rem, #5e5c68 0 .22rem, transparent .28rem),
-    radial-gradient(circle at calc(100% - .8rem) .8rem, #5e5c68 0 .22rem, transparent .28rem),
-    radial-gradient(circle at .8rem calc(100% - .8rem), #5e5c68 0 .22rem, transparent .28rem),
-    radial-gradient(circle at calc(100% - .8rem) calc(100% - .8rem), #5e5c68 0 .22rem, transparent .28rem),
-    radial-gradient(ellipse at 50% 50%, transparent 60%, rgb(110 70 25 / .2)),
-    #f0e3c4;
-}
-
-/* the pager under the book: page n of m, and the corners to turn */
-.pager { display: none; }
-[data-theme="hours"] .pager:not([hidden]) {
-  display: flex; align-items: center; gap: .8rem;
-  position: fixed; z-index: 3;
-  font: .9rem/1 var(--ui); color: #f4ecd8;
-  text-shadow: 1px 1px 0 #16121c;
-}
-[data-theme="hours"] .pager button {
-  font: inherit; font-size: 1.2rem; color: #f6d77a; background: #3a2818; cursor: pointer;
-  border: var(--upx, 2px) solid #16121c; padding: .15rem .55rem;
-}
-[data-theme="hours"] .pager button:disabled { opacity: .4; cursor: default; }
-
-/* heraldry: the knight's arms in the header, the motto under the name; the arms of each
-   school and lab beside its entry (assets/img/arms/, _tools/icons.py) */
-.motto { display: none; }
-[data-theme="hours"] .motto { display: block; margin: .15rem 0 0; font-style: italic; color: var(--dim); }
-[data-arms="saclay"] { --arms: url("assets/img/arms/saclay.svg"); }
-[data-arms="sorbonne"] { --arms: url("assets/img/arms/sorbonne.svg"); }
-[data-arms="dauphine"] { --arms: url("assets/img/arms/dauphine.svg"); }
-[data-arms="ijclab"] { --arms: url("assets/img/arms/ijclab.svg"); }
-[data-arms="ceremade"] { --arms: url("assets/img/arms/ceremade.svg"); }
-[data-arms="sciencespo"] { --arms: url("assets/img/arms/sciencespo.svg"); }
-[data-theme="hours"] .entry[data-arms] .entry-head h3::before,
-[data-theme="hours"] .sheet span[data-arms]::before {
-  content: ""; display: inline-block; vertical-align: -.35em;
-  width: calc(13 * var(--upx, 2px) * .8); height: calc(15 * var(--upx, 2px) * .8); margin-right: .5em;
-  background: var(--arms) center / contain no-repeat; image-rendering: pixelated;
-}
-
-/* wide screens: the landscape fills the window, the text is a column on its right, the menu
-   floats over the wizard's hat (--wiz-x, --wiz-y: set by hours.js) with its tail towards him */
-@media (min-width: 75rem) {
-  [data-theme="hours"] .plate {
-    position: fixed;
-    inset: var(--msg-h) 0 var(--status-h) 0;
-    height: auto;
-    border: 0;
-    z-index: 0;
-  }
-  [data-theme="hours"] .plate-caption { display: none; }
-  /* no column: the header floats over the sky, outlined in pixels against it */
-  [data-theme="hours"] .term { max-width: none; margin: 0; padding: 0; width: auto; }
-  /* light text, a thin dark outline and a drop shadow, as game titles over a sky; a soft dusk
-     behind the two blocks so the brightest noon still leaves them legible. Fixed colours: the
-     sky changes, the lettering does not. */
-  [data-theme="hours"] .host {
-    position: fixed; z-index: 3;
-    top: calc(var(--msg-h) + 1.25rem); left: 1.5rem; right: 1.5rem;
-    pointer-events: none;
-    --ink: #f4ecd8; --hi: #fff8e8; --dim: #ddd4bf; --accent: #f6d77a; --red: #ffb08a;
-    color: var(--ink);
-    text-shadow: 1px 0 #16121c, -1px 0 #16121c, 0 1px #16121c, 0 -1px #16121c,
-      1px 1px #16121c, -1px -1px #16121c, 1px -1px #16121c, -1px 1px #16121c,
-      2px 2px 0 rgb(10 8 20 / .6);
-  }
-  [data-theme="hours"] .host::before {
-    content: ""; position: absolute; z-index: -1; inset: -2.5rem -2rem -2.5rem -2.5rem;
-    background:
-      radial-gradient(ellipse 34rem 15rem at 0 0, rgb(14 16 36 / .5), transparent 75%),
-      radial-gradient(ellipse 22rem 10rem at 100% 0, rgb(14 16 36 / .45), transparent 75%);
-  }
-  [data-theme="hours"] .host .name { text-shadow: var(--upx, 2px) 0 #16121c, calc(-1 * var(--upx, 2px)) 0 #16121c,
-      0 var(--upx, 2px) #16121c, 0 calc(-1 * var(--upx, 2px)) #16121c, calc(2 * var(--upx, 2px)) calc(2 * var(--upx, 2px)) 0 rgb(10 8 20 / .6); }
-  [data-theme="hours"] .host .role, [data-theme="hours"] .host .alm-hour { color: var(--accent); }
-  [data-theme="hours"] .host .links a { color: var(--accent); }
-  [data-theme="hours"] .host .monogram { background: #16121c; color: #ffb08a; border-color: #d8a838; }
-  [data-theme="hours"] .host .links a:hover { color: var(--hi); background: none; }
-  [data-theme="hours"] .host a, [data-theme="hours"] .host button { pointer-events: auto; }
-  [data-theme="hours"] .monogram { background: var(--bg); }
-  [data-theme="hours"] .statement { max-width: 44ch; }
-  /* in a room, the text sits where the room holds it (hours.js: --sup-l, -t, -w, -h, -b): on the
-     table, the lectern or the easel (data-rests: it grows upwards from there), on the board,
-     the cork, the door or the banner (it hangs from its top) */
-  [data-theme="hours"][data-room] main {
-    position: fixed; z-index: 3;
-    left: var(--sup-l, 50vw); top: var(--sup-t, 20vh); right: auto; bottom: auto;
-    width: var(--sup-w, 44rem); max-height: var(--sup-h, 60vh);
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
-  [data-theme="hours"][data-room][data-rests="yes"] main { top: auto; bottom: var(--sup-b, 20vh); }
-  /* the book keeps the whole height it is given; its text runs in two columns, turned by pages */
-  [data-theme="hours"]:is([data-room="about"], [data-room="publications"]) main {
-    height: var(--sup-h, 60vh);
-    overflow: hidden; padding: 2rem 1.8rem 1.4rem;
-  }
-  [data-theme="hours"]:is([data-room="about"], [data-room="publications"]) main > section:not(.is-off) {
-    height: 100%; columns: 2; column-gap: var(--gap); column-fill: auto;
-  }
-  /* a short text gets a single leaf, centred where the spread would be (script.js measures) */
-  [data-theme="hours"] main.one-page {
-    width: calc(var(--sup-w, 44rem) * .58); left: calc(var(--sup-l, 50vw) + var(--sup-w, 44rem) * .21);
-    height: auto; max-height: var(--sup-h, 60vh);
-  }
-  [data-theme="hours"] main.one-page > section:not(.is-off) { columns: auto; height: auto; }
-  [data-theme="hours"]:is([data-room="about"], [data-room="publications"]) main.one-page {
-    background: linear-gradient(90deg, rgb(110 70 25 / .18), transparent 8%, transparent 92%, rgb(110 70 25 / .18)), #f1e5c6;
-  }
-  [data-theme="hours"] .pager:not([hidden]) {
-    top: calc(var(--sup-t, 20vh) - 2.6rem);
-    left: calc(var(--sup-l, 50vw) + var(--sup-w, 44rem) / 2 - 4.5rem);
-  }
-  [data-theme="hours"] .pager:not([hidden]) {
-    top: calc(var(--msg-h) + 1.25rem + var(--tabs-h, 5rem) + .75rem + min(38rem, 100dvh - var(--msg-h) - 5.1rem - var(--tabs-h, 5rem) - .75rem - var(--status-h)) + .6rem);
-    right: calc(1.5rem + min(60rem, 56vw) / 2 - 4.5rem);
-  }
-  /* in a room the menu becomes a bar over the parchment: the furniture and the window stay clear */
-  [data-theme="hours"][data-room] .tabs {
-    left: auto; right: 1.5rem; top: calc(var(--msg-h) + 1.25rem); bottom: auto;
-    width: min(46rem, 50vw); padding: .3rem .8rem .3rem 1.4rem;
-  }
-  [data-theme="hours"][data-room] .tabs-session { display: none; }
-  [data-theme="hours"][data-room] .tabs {
-    --ink: #f4e8cc; --hi: #ffffff; --accent: #f6d77a;
-    color: var(--ink);
-    border: var(--upx, 2px) solid #16121c; border-image: none;
-    background: repeating-linear-gradient(180deg, #7e5a38 0 calc(3 * var(--upx, 2px)), #6e4e30 0 calc(4 * var(--upx, 2px)));
-    box-shadow: inset 0 var(--upx, 2px) 0 #b0885a, inset 0 calc(-1 * var(--upx, 2px)) 0 #553a24,
-      calc(2 * var(--upx, 2px)) calc(2 * var(--upx, 2px)) 0 rgb(0 0 0 / .35);
-  }
-  [data-theme="hours"][data-room] .tabs a[aria-current="page"] { color: var(--accent); }
-  [data-theme="hours"][data-room] .tabs::before { /* the two chains it hangs by */
-    content: ""; position: absolute; bottom: 100%; left: 12%; right: 12%; height: 1.4rem;
-    background:
-      repeating-linear-gradient(180deg, #5e5c68 0 calc(2 * var(--upx, 2px)), transparent 0 calc(3 * var(--upx, 2px))) left / var(--upx, 2px) 100% no-repeat,
-      repeating-linear-gradient(180deg, #5e5c68 0 calc(2 * var(--upx, 2px)), transparent 0 calc(3 * var(--upx, 2px))) right / var(--upx, 2px) 100% no-repeat;
-  }
-  [data-theme="hours"][data-room]:not([data-room="talks"]) .tabs::after { content: none; }
-  [data-theme="hours"][data-room="talks"] .tabs::after { /* the two cords the banner hangs by */
-    content: ""; position: absolute; top: 100%; left: 18%; right: 18%; height: .75rem;
-    background: linear-gradient(#3a2818 0 0) left / var(--upx, 2px) 100% no-repeat,
-      linear-gradient(#3a2818 0 0) right / var(--upx, 2px) 100% no-repeat;
-    clip-path: none; border: 0; width: auto;
-  }
-  [data-theme="hours"][data-room] .tabs ul { grid-template-columns: repeat(4, auto); justify-content: space-between; }
-
-  [data-theme="hours"] .name { white-space: nowrap; }
-  [data-theme="hours"] .tabs {
-    position: fixed;
-    z-index: 4;
-    top: auto;
-    /* the box opens to the wizard's left, over the forest edge: the hill and its field stay clear */
-    --menu-left: max(1rem, calc(var(--wiz-x, 12rem) - 21rem));
-    left: var(--menu-left);
-    bottom: calc(100dvh - var(--wiz-y, 75dvh) + 1.4rem);
-    width: max-content;
-    margin: 0;
-  }
-  [data-theme="hours"] .tabs::after { /* the speech tail, stepped like a sprite */
-    content: "";
-    position: absolute;
-    top: calc(100% + 4 * var(--upx, 2px));
-    left: clamp(1rem, calc(var(--wiz-x, 12rem) - var(--menu-left) - 3 * var(--upx, 2px)), calc(100% - 2rem));
-    width: calc(6 * var(--upx, 2px)); height: calc(6 * var(--upx, 2px));
-    background: #d8a838;
-    border: var(--upx, 2px) solid #16121c; border-top: 0;
-    clip-path: polygon(0 0, 100% 0, 100% 33.3%, 66.6% 33.3%, 66.6% 66.6%, 33.3% 66.6%, 33.3% 100%, 0 100%);
-  }
-}
-
-/* narrower: the landscape heads the page, the menu box sits in the flow under the header */
-@media (max-width: 74.99rem) {
-  [data-theme="hours"] .plate {
-    position: relative;
-    top: 0;
-    height: min(62svh, 34rem);
-    border-right: 0;
-    border-bottom: 3px solid var(--gold);
-  }
-  [data-theme="hours"] .plate-img { flex: 1; height: auto; }
-  [data-theme="hours"] .plate-caption { display: none; }
-  [data-theme="hours"] .tabs { position: static; margin: 1.5rem 0 1.25rem; }
-}
+[data-theme="hours"][data-room] main .pane { border: 0; background: none; box-shadow: none; padding: 0; margin: 0; }
+[data-theme="hours"][data-room] main .pane-tab { display: none; }
+[data-theme="hours"][data-room] main .room { margin-top: .6rem; }
 
 /* ---- small screens --------------------------------------------------- */
+
+@media (max-width: 74.99rem) { .theme-toggle { display: none; } } /* the terminal only, below 75rem */
 
 @media (max-width: 60rem) {
   :root { --msg-h: 0px; }
@@ -1083,7 +938,7 @@ dialog.dungeon canvas {
   html { scroll-behavior: auto; }
 }
 
-/* ---- print: the folio, without the machinery ------------------------- */
+/* ---- print: the text alone, without the machinery ------------------ */
 
 @media print {
   :root, [data-theme] { --bg: #fff; --panel: #fff; --ink: #000; --hi: #000; --dim: #444; --accent: #000; --red: #000; --rule: #999; }
@@ -1097,77 +952,4 @@ dialog.dungeon canvas {
   .pane-tab { display: none; }
   .room { text-align: left; }
   a[href^="http"]::after { content: " <" attr(href) ">"; font-size: 8pt; color: #444; }
-}
-
-/* hours: no "Obvious exits" (the menu and the rooms are the way about) */
-[data-theme="hours"] .exits { display: none; }
-
-/* the castle's rooms (wide screens): the section's pieces are things in the room (hours.js);
-   a button over each (script.js) opens a card beside it. main stays in the page for readers
-   without the picture, out of sight. Project pages keep their blueprint. */
-.spots, .card[hidden], .leave { display: none; }
-[data-theme="hours"] .spots { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; }
-[data-theme="hours"] .spot {
-  position: absolute; pointer-events: auto; cursor: pointer;
-  background: none; border: 0; padding: 0;
-}
-[data-theme="hours"] .spot:focus-visible { outline: var(--upx, 2px) dashed #f6d77a; outline-offset: 2px; }
-[data-theme="hours"] .spot::after { /* its name, on a little tag, when pointed at */
-  content: attr(data-label);
-  position: absolute; left: 50%; bottom: calc(100% + .4rem); translate: -50% 0;
-  white-space: nowrap; max-width: 28rem; overflow: hidden; text-overflow: ellipsis;
-  padding: .2rem .5rem; font: .85rem/1.3 var(--ui);
-  color: #f4ecd8; background: #2a1d14; border: var(--upx, 2px) solid #d8a838;
-  opacity: 0; transition: opacity .12s steps(2, end); pointer-events: none;
-}
-[data-theme="hours"] .spot:is(:hover, :focus-visible)::after { opacity: 1; }
-[data-theme="hours"] .card:not([hidden]) {
-  display: block; position: fixed; z-index: 5;
-  width: min(32rem, 42vw); max-height: calc(100dvh - var(--msg-h) - var(--status-h) - 3rem); overflow: auto;
-  padding: 1rem 1.3rem 1.2rem;
-  --bg: #f2ead8; --panel: #efe2c2; --ink: #2b2118; --hi: #140e08; --accent: #1f43a0; --dim: #554b3a; --red: #9c2219; --rule: #a8884a;
-  color: var(--ink); color-scheme: light;
-  border: calc(4 * var(--upx, 2px)) solid transparent;
-  border-image: url("assets/img/frame.svg") 4 / calc(4 * var(--upx, 2px)) stretch;
-  background: #efe2c2 padding-box;
-  filter: drop-shadow(calc(2 * var(--upx, 2px)) calc(3 * var(--upx, 2px)) 0 rgb(10 6 4 / .45));
-}
-@media (prefers-reduced-motion: no-preference) {
-  [data-theme="hours"] .card:not([hidden]) { animation: come-in .2s steps(3, end); }
-}
-[data-theme="hours"] .card::before { /* the tail, towards the thing */
-  content: ""; position: absolute; top: calc(var(--tail-y, 2rem) - 9px); width: 12px; height: 18px; background: #d8a838;
-}
-[data-theme="hours"] .card[data-side="left"]::before { right: 100%; clip-path: polygon(100% 0, 33% 33%, 0 50%, 33% 67%, 100% 100%); }
-[data-theme="hours"] .card[data-side="right"]::before { left: 100%; clip-path: polygon(0 0, 67% 33%, 100% 50%, 67% 67%, 0 100%); }
-[data-theme="hours"] .card { overflow: visible; }
-[data-theme="hours"] .card-body { max-height: calc(100dvh - var(--msg-h) - var(--status-h) - 5rem); overflow: auto; }
-[data-theme="hours"] .card h3 { margin: 0 2rem .5rem 0; font: 600 1.05rem/1.35 var(--text); color: var(--hi); }
-[data-theme="hours"] .card .entry-head { margin-right: 2rem; }
-[data-theme="hours"] .card .entry-head h3::before { content: none; }
-[data-theme="hours"] .card :is(ul, dl, p) { margin-top: 0; }
-[data-theme="hours"] .card .sheet div { grid-template-columns: 8ch 1fr; }
-[data-theme="hours"] .card .illum { float: left; margin: 0 1rem .5rem 0; }
-[data-theme="hours"] .card .illum img { width: 96px; height: 96px; }
-[data-theme="hours"] .card-close {
-  position: absolute; top: .3rem; right: .4rem;
-  font: 1.3rem/1 var(--ui); color: var(--red); background: none; border: 0; cursor: pointer; padding: .1rem .4rem;
-}
-[data-theme="hours"] .leave {
-  display: none; position: fixed; z-index: 4;
-  font: .85rem/1 var(--ui); color: #f4ecd8; background: #3a2818; cursor: pointer;
-  border: var(--upx, 2px) solid #16121c; padding: .35rem .6rem;
-}
-[data-theme="hours"][data-room] .leave { display: block; }
-@media (min-width: 75rem) {
-  [data-theme="hours"][data-room] .leave { top: calc(var(--msg-h) + 1.25rem + var(--tabs-h, 5rem) + .6rem); right: 1.5rem; }
-  /* the castle's rooms: their text is in the things; main for readers only */
-  [data-theme="hours"]:is([data-room="about"], [data-room="research"], [data-room="projects"], [data-room="publications"],
-    [data-room="talks"], [data-room="teaching"], [data-room="news"], [data-room="contact"]) main {
-    position: fixed !important; width: 1px !important; height: 1px !important; overflow: hidden !important;
-    clip-path: inset(50%); padding: 0 !important; border: 0 !important; opacity: 0;
-  }
-}
-@media (max-width: 74.99rem) {
-  [data-theme="hours"][data-room] .leave { top: .5rem; right: .5rem; }
 }
