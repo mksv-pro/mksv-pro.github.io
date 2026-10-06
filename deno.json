@@ -1,0 +1,6 @@
+{
+  "lint": {
+    "include": ["script.js", "assets/js/"],
+    "rules": { "exclude": ["no-var", "prefer-const", "no-inner-declarations", "no-window", "no-window-prefix"] }
+  }
+}
