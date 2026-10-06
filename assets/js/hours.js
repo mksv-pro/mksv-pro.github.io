@@ -1193,14 +1193,15 @@ hhhhhh.
     const kind = roomOf(id);
     // a room as a box (prototype: the scriptorium): the back wall between BL and BR, two side walls
     // in perspective; sideBot(x) is where floor meets wall (the near edge at the bottom of the view)
-    // each room its shape, after what it is: a plain box, a deep library lined with shelves, a
-    // narrow stone tower room, a low brick vault, a wide hall on pillars, a schoolroom lit from the
-    // side, an attic under the roof, a vaulted gate passage (project pages stay the flat workshop)
+    // each room its shape, after what it is (flat beamed ceilings: one great building): a plain box,
+    // a deep library lined with shelves, a narrow stone tower room, a sooty brick workshop, a wide
+    // hall on pillars, a schoolroom lit from the side, a plank-lined rookery, a stone gate passage
+    // (project pages stay the flat workshop)
     const SHAPES = {
       about: { side: 0.17, mat: 'wainscot' }, publications: { side: 0.25, mat: 'shelves' },
-      research: { side: 0.11, mat: 'stone' }, projects: { side: 0.15, mat: 'brick', vault: true },
+      research: { side: 0.11, mat: 'stone' }, projects: { side: 0.15, mat: 'brick' },
       talks: { side: 0.09, mat: 'ashlar', pillars: true }, teaching: { side: 0.17, mat: 'lime', sideWindow: true },
-      news: { side: 0.16, mat: 'boards', attic: true }, contact: { side: 0.2, mat: 'ashlar', vault: true },
+      news: { side: 0.16, mat: 'boards' }, contact: { side: 0.2, mat: 'ashlar' },
     };
     const SHAPE = ROOM_NAMES[id] ? SHAPES[kind] : null;
     const box3d = Boolean(SHAPE);
@@ -1245,13 +1246,12 @@ hhhhhh.
       for (let y = 0; y < yf * 0.45; y += 1) for (let x = 0; x < W; x += 1) if (bayer(x, y) < 0.6 * (1 - y / (yf * 0.45))) set(x, y, I.ROCK_DK);
     } else if (kind === 'talks') stones(10, 4, STONE);
     else if (kind === 'teaching') { plaster(0, [I.LIME_HI, I.LIME, I.LIME_SH]); panels(yf - Math.round(H * 0.16), yf, 8); }
-    else if (kind === 'news') { // the rookery is in the roof: boards, rafters
+    else if (kind === 'news') { // the rookery: plank walls
       for (let y = 0; y < yf; y += 1) for (let x = 0; x < W; x += 1) set(x, y, y % 5 === 4 ? I.TIMBER_SH : (noise2(x, y) > 0.6 ? I.TIMBER_SH : (x * 7 + y * 3) % 31 === 0 ? I.TIMBER_HI : I.TIMBER));
-      for (let k = -1; k < 4; k += 1) { const x0 = Math.round(k * W / 3); for (let y = 0; y < yf * 0.5; y += 1) { set(x0 + y, y, I.TIMBER_SH); set(x0 + y + 1, y, I.TIMBER_SH); set(x0 + W / 3 - y, y, I.TIMBER_SH); } }
     } else stones(9, 4, STONE); // the gatehouse: big ashlar
 
     // the ceiling's beams (the observatory has its dome, the rookery its rafters)
-    if (kind !== 'research' && kind !== 'news' && !(SHAPE && SHAPE.vault)) {
+    if (kind !== 'research') {
       for (let x = 0; x < W; x += 1) { rect(x, 0, 1, 3, I.TIMBER_SH); set(x, 3, I.OUTLINE); }
       for (let x = 4; x < W; x += 22) { rect(x, 0, 4, 5, I.TIMBER); rect(x, 0, 1, 5, I.TIMBER_HI); rect(x, 5, 4, 1, I.OUTLINE); }
     }
@@ -1276,7 +1276,7 @@ hhhhhh.
     const pools = []; // pale light under each window (lit in lightInterior, no dither)
     const doorList = [];
     if (box3d) { // the side walls, receding: each room's own material and ceiling
-      const hw = SHAPE.attic ? Math.round(yf * 0.42) : SHAPE.vault ? Math.round(yf * 0.62) : yf + H; // wall height, back units
+      const hw = yf + H; // wall height, back units: the walls run up out of sight, under a flat ceiling
       const topOf = (x) => sideBot(x) - hw * (sideBot(x) / yf); // where a side wall's top runs (y, may be < 0)
       const LOG8 = Math.log(0.8);
       const BOOKS = [I.CLOTH, I.ROBE, I.GOLD_SH, I.HAT, I.DRAKE_SH, I.WING_SH, I.LEATHER, I.FERN_SH];
@@ -1311,11 +1311,7 @@ hhhhhh.
       const darker = { [I.PLASTER_HI]: I.PLASTER, [I.PLASTER]: I.PLASTER_SH, [I.PLASTER_SH]: I.ROCK_SH, [I.LIME_HI]: I.LIME,
         [I.LIME]: I.LIME_SH, [I.LIME_SH]: I.ROCK_SH, [I.TIMBER_HI]: I.TIMBER, [I.TIMBER]: I.TIMBER_SH, [I.ROCK_HI]: I.ROCK,
         [I.ROCK]: I.ROCK_SH, [I.ROCK_SH]: I.ROCK_DK, [I.BRICK_HI]: I.BRICK, [I.BRICK]: I.BRICK_SH, [I.BRICK_SH]: I.ROCK_DK };
-      const roofAt = (x, y) => { // the ceiling over a side wall: beams, a vault, or the roof
-        if (SHAPE.attic) return (Math.round(x * 0.6 + y) % 6 === 0) ? I.TIMBER_SH : (y % 3 ? I.TIMBER : I.TIMBER_SH);
-        if (SHAPE.vault) return (Math.round(x * 0.4 + y * 0.9) % 5 === 0 || y % 4 === 0) ? I.ROCK_DK : I.ROCK_SH;
-        return y % 2 ? I.TIMBER : I.TIMBER_SH;
-      };
+      const roofAt = (_x, y) => (y % 2 ? I.TIMBER : I.TIMBER_SH); // the ceiling's boards
       for (let x = 0; x < W; x += 1) {
         if (x >= BL && x < BR) continue;
         const left = x < BL; const sx = left ? x : W - 1 - x; const bot = sideBot(x); const k = bot / yf; const top = topOf(x);
@@ -1328,25 +1324,13 @@ hhhhhh.
         if (top > 0) set(x, Math.round(top), I.TIMBER_SH); // the wall plate
         set(x, Math.round(bot), I.TIMBER_SH); // the skirting
       }
-      // the back wall's top: a vault's arch, the roof's gable, or the beams already drawn
-      if (SHAPE.vault || SHAPE.attic) {
-        const spring = yf - hw; const cxm = W / 2;
-        for (let x = BL; x < BR; x += 1) {
-          const f = (x - cxm) / ((BR - BL) / 2);
-          const yt = SHAPE.vault ? Math.round(spring - Math.sqrt(Math.max(0, 1 - f * f)) * (spring - 3)) : Math.round(3 + Math.abs(f) * (spring - 3));
-          for (let y = 0; y < yt; y += 1) set(x, y, roofAt(x, y));
-          set(x, yt, SHAPE.vault ? I.ROCK_HI : I.TIMBER_HI);
-        }
-        if (SHAPE.attic) for (let r = -3; r <= 3; r += 1) { // rafters converging to the ridge
-          for (let y = 0; y < spring; y += 1) { const x = Math.round(cxm + r * (BR - BL) / 7 * (1 - y / spring) + r * 2); if (y < Math.round(3 + Math.abs((x - cxm) / ((BR - BL) / 2)) * (spring - 3))) set(x, y, I.TIMBER_SH); }
-        }
-      } else {
+      {
         for (let x = 0; x < BL; x += 1) { // the cornice under the ceiling, falling towards us
           const yc = Math.round(5 * (1 - x / BL)) - 1; set(x, yc + 4, I.TIMBER_SH); set(W - 1 - x, yc + 4, I.TIMBER_SH);
           for (let y = 0; y < yc + 4; y += 1) { set(x, y, I.TIMBER); set(W - 1 - x, y, I.TIMBER_SH); }
         }
       }
-      for (let y = Math.max(0, SHAPE.vault || SHAPE.attic ? yf - hw : 0); y < yf; y += 1) { set(BL, y, I.ROCK_SH); set(BR - 1, y, I.ROCK_SH); } // the corners
+      for (let y = 0; y < yf; y += 1) { set(BL, y, I.ROCK_SH); set(BR - 1, y, I.ROCK_SH); } // the corners
       if (SHAPE.pillars) [BL, BR - 6].forEach((px0) => { // the hall's pillars at the corners
         rect(px0, 0, 6, yf, I.ROCK); rect(px0, 0, 1, yf, I.ROCK_HI); rect(px0 + 5, 0, 1, yf, I.ROCK_SH);
         rect(px0 - 1, yf - 3, 8, 3, I.ROCK_SH); for (let y = 6; y < yf; y += 7) rect(px0, y, 6, 1, I.ROCK_SH);
@@ -1606,13 +1590,15 @@ hhhhhh.
     const of = (kind) => things.map((t, i) => [t, i]).filter(([t]) => t.kind === kind);
 
     if (kind === 'about') { // the scriptorium: a notebook open on the table, the charters of the schools on the wall
-      windowArch(S(0.03), Math.round(H * 0.16), Math.max(10, Math.round((BR - BL) * 0.1)), Math.round(H * 0.34));
+      const ww = Math.max(14, Sw(0.16)); windowArch(S(0.5) - Math.round(ww / 2), Math.round(H * 0.1), ww, Math.round(H * 0.4)); // the great window, over the table
       const tb = table3d(S(0.48), yf - 16, Math.round((BR - BL) * 0.34));
       of('desk-book').forEach(([, i]) => { openBook(S(0.48) - 9, tb.front, 18); slots[i] = box(S(0.48) - 10, tb.front - 6, 20, 7); });
       candle(tb.l - 1, tb.back, true); candle(tb.r + 1, tb.back, false);
       deco.push({ type: 'hourglass', x: tb.r - 4, y: tb.front - 10 });
       const ch = of('charter');
-      spread(ch.length, S(box3d ? 0.15 : 0.2), S(box3d ? 0.8 : 0.62), 20).forEach(({ k, row, xc }) => { const [t, i] = ch[k]; slots[i] = charter(xc, Math.round(H * 0.14) + row * 26, t.arms); });
+      const half = Math.ceil(ch.length / 2); // the charters either side of the window
+      spread(half, S(0), S(0.41), 20).forEach(({ k, row, xc }) => { const [t, i] = ch[k]; slots[i] = charter(xc, Math.round(H * 0.14) + row * 26, t.arms); });
+      spread(ch.length - half, S(0.59), S(0.81), 20).forEach(({ k, row, xc }) => { const [t, i] = ch[half + k]; slots[i] = charter(xc, Math.round(H * 0.14) + row * 26, t.arms); });
       const shX = S(box3d ? 0.83 : 0.8); const shTop = Math.round(H * 0.3); shelf(shX, shTop, Math.max(16, BR - shX - 2), yf - shTop);
       cat('blackLoaf', shX + 1, shTop);
       rug(S(0.3), floorY(0.6), Math.round((BR - BL) * 0.36));
@@ -1621,13 +1607,16 @@ hhhhhh.
         const half = Math.sqrt(Math.max(0, 1 - ((Math.round(H * 0.42) - y) / (H * 0.4)) ** 2)) * W * 0.5; // (over the side walls too: the dome caps the whole tower)
         for (let x = 0; x < W; x += 1) if (Math.abs(x - W / 2) > half) set(x, y, (x + Math.round(y * 1.5)) % 9 === 0 ? I.SLATE_HI : (x + y) % 5 ? I.SLATE_SH : I.SLATE);
       }
-      windowArch(S(0.1), 5, Math.max(10, Sw(0.1)), Math.round(H * 0.5)); // the slit, open
-      for (let k = 0; k < 22; k += 1) { const tx = S(0.3) - k; const ty = floorY(0.1) - 20 - Math.round(k * 0.75); set(tx, ty, k < 4 ? I.GOLD_SH : I.ARM_HI); set(tx, ty + 1, I.ARM_SH); if (k > 15) set(tx, ty - 1, I.ARM); }
-      [-5, 0, 5].forEach((dx) => { for (let r = 0; r < 20; r += 1) set(S(0.29) + dx * (r / 20), floorY(0.1) - 20 + r, I.TIMBER_SH); });
-      const tb = table3d(S(0.6), yf - 16, Sw(0.44));
+      const sw = Math.max(14, Sw(0.18)); windowArch(S(0.5) - Math.round(sw / 2), 5, sw, Math.round(H * 0.46)); // the slit, wide open
+      for (let k = 0; k < 22; k += 1) { const tx = S(0.2) + k; const ty = floorY(0.1) - 20 - Math.round(k * 0.75); set(tx, ty, k < 4 ? I.GOLD_SH : I.ARM_HI); set(tx, ty + 1, I.ARM_SH); if (k > 15) set(tx, ty - 1, I.ARM); } // the telescope, at the slit
+      [-5, 0, 5].forEach((dx) => { for (let r = 0; r < 20; r += 1) set(S(0.21) + dx * (r / 20), floorY(0.1) - 20 + r, I.TIMBER_SH); });
+      const tb = table3d(S(0.62), yf - 16, Sw(0.4));
       spread(n, tb.l, tb.r, 16).forEach(({ k, row, xc }) => { slots[k] = scrollThing(xc, row ? tb.back + 1 : tb.front, things[k].arms); });
       deco.push({ type: 'orrery', x: S(0.9), y: floorY(0.1) - 14 });
-      hangs.forEach((e, k) => hanging(S(0.62) + Math.round((k - (hangs.length - 1) / 2) * 26), Math.round(H * 0.2), e, k)); // the labs' hangings above the table
+      hangs.forEach((e, k) => { // the labs' hangings, either side of the slit
+        const lft = k < Math.ceil(hangs.length / 2); const j = lft ? k : k - Math.ceil(hangs.length / 2);
+        hanging(lft ? S(0.32) - j * 24 : S(0.68) + j * 24, Math.round(H * 0.18), e, k);
+      });
       rect(S(0.86), floorY(0.1) - 6, 13, 1, I.TIMBER_HI); rect(S(0.87), floorY(0.1) - 5, 1, 6, I.TIMBER_SH); rect(S(0.86) + 11, floorY(0.1) - 5, 1, 6, I.TIMBER_SH);
       cat('thin', S(0.04), floorY(0.5));
     } else if (kind === 'projects') { // the workshop: a working model of each project on the bench
@@ -1739,9 +1728,15 @@ hhhhhh.
       const dx = S(0.86); const dw = Math.max(10, BR - dx - 2); desk(dx, yf - 10, dw); candle(dx + dw - 3, yf - 11, true);
       for (let k = 0; k < 5; k += 1) set(dx + 3 + k * 2, yf - 12, k % 2 ? I.CAP : I.GOLD); rect(dx + 2, yf - 13, 11, 1, I.TIMBER_SH);
       bench(bl - 2, Math.round((br - bl) * 0.45)); bench(bl + Math.round((br - bl) * 0.55), Math.round((br - bl) * 0.47)); bench(bl + 6, Math.round((br - bl) * 0.4), 11);
-      cat('blackLoaf', bl + 2, yf + 5);
+      [bl + 4, bl + 14, bl + Math.round((br - bl) * 0.6), bl + Math.round((br - bl) * 0.75)].forEach((x) => { rect(x, yf + 2, 5, 2, I.SLATEB); rect(x, yf + 1, 5, 1, I.TIMBER); }); // the pupils' slates
+      [bl + 12, bl + Math.round((br - bl) * 0.3)].forEach((x) => { rect(x, yf + 9, 5, 2, I.SLATEB); rect(x, yf + 8, 5, 1, I.TIMBER); });
+      { const gx0 = dx + Math.round(dw / 2); const gy = yf - 16; // a globe on the master's desk
+        for (let y = -3; y <= 3; y += 1) for (let x = -3; x <= 3; x += 1) if (x * x + y * y <= 10) set(gx0 + x, gy + y, (x + y * 2) % 4 === 0 ? I.FERN : I.WATER);
+        rect(gx0, gy + 4, 1, 2, I.GOLD_SH); rect(gx0 - 2, gy + 5, 5, 1, I.GOLD); set(gx0 - 4, gy, I.GOLD_SH); set(gx0 + 4, gy, I.GOLD_SH); }
+      [[2, I.CLOTH], [1, I.ROBE], [3, I.FERN_SH]].forEach(([w, c], k) => rect(br - 2 - w, yf + 4 - k * 2, 8 + w, 2, c)); // books stacked on the floor
+      rect(bl + 3, bb + 2, 4, 1, I.CLOTH_SH); // the duster on the ledge
     } else if (kind === 'news') { // the rookery: each piece of news a letter pinned on the cork
-      const cl = S(0.44); const cr = S(0.92); const ct = Math.round(H * 0.18);
+      const cl = S(0.64); const cr = S(0.97); const ct = Math.round(H * 0.18);
       const fit = Math.max(1, Math.floor((cr - cl - 4) / 15)); const cb = Math.max(Math.round(H * 0.5), ct + 6 + Math.ceil(n / fit) * 13);
       for (let y = ct - 2; y < cb + 2; y += 1) for (let x = cl - 2; x < cr + 2; x += 1) {
         const fr = x < cl || x >= cr || y < ct || y >= cb;
@@ -1749,11 +1744,11 @@ hhhhhh.
       }
       things.forEach((_t, k) => { slots[k] = letterThing(cl + 8 + (k % fit) * 15, ct + 4 + Math.floor(k / fit) * 13, k); });
       const rv = SPRITES.raven;
-      [[0.03, 0.3, 3], [0.08, 0.56, 2]].forEach(([f, fy, nn]) => {
-        const py = Math.round(H * fy); rect(S(f), py, S(0.3), 2, I.TIMBER_SH); set(S(f), py, I.TIMBER_HI);
-        for (let k = 0; k < nn; k += 1) { const x = S(f) + 3 + k * Math.max(rv.w + 3, S(0.1)); stamp(rv, x, py - rv.h + 2); blinks.push({ x: x + 6, y: py - rv.h + 3, ph: rng() * 6 }); }
+      [[0.02, 0.3, 2], [0.05, 0.56, 2]].forEach(([f, fy, nn]) => {
+        const py = Math.round(H * fy); rect(S(f), py, Sw(0.3), 2, I.TIMBER_SH); set(S(f), py, I.TIMBER_HI);
+        for (let k = 0; k < nn; k += 1) { const x = S(f) + 2 + k * (rv.w + 3); stamp(rv, x, py - rv.h + 2); blinks.push({ x: x + 6, y: py - rv.h + 3, ph: rng() * 6 }); }
       });
-      windowArch(S(0.22), Math.round(H * 0.12), Math.max(10, Sw(0.07)), Math.round(H * 0.3));
+      const nw = Math.max(16, Sw(0.22)); windowArch(S(0.48) - Math.round(nw / 2), Math.round(H * 0.1), nw, Math.round(H * 0.42)); // where they come and go
       for (let k = 0; k < 7; k += 1) set(S(0.1) + Math.floor(rng() * S(0.8)), floorY(0.2 + rng() * 0.6), I.BEARD_SH);
       lantern(S(0.96), Math.round(H * 0.24));
     } else { // contact: the letterbox in the door, a lodestone and the register on the table, a map of Paris
