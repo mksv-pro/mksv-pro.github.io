@@ -634,7 +634,26 @@ const ROMAN = (n) => { // folio numbers
   return out;
 };
 
-function illuminate(body) {
+/* each text its own ornaments, drawn from its name (the same text always looks the same) */
+const ORN = { band: ['vine', 'interlace', 'lozenges', 'leaves', 'ribbon'], fleuron: ['quatrefoil', 'lily', 'rosette', 'trefoil'],
+  tail: ['triangle', 'drop', 'ribbon'], droll: ['snail', 'bird', 'rabbit', 'fish', 'dragonet', 'cat'] };
+const INKS = [['#2a4caa', 'r'], ['#a82c1c', 'b'], ['#8a621a', 'G']]; // the initial's ink, its flourish's
+const ornUrl = (name) => `url('${new URL(`assets/img/orn/${name}.svg`, SITE).href}')`; // single quotes: it goes into style="" too
+function hashOf(text) { let h = 2166136261; for (const ch of text) h = Math.imul(h ^ ch.codePointAt(0), 16777619); return h >>> 0; }
+const pick = (list, h, salt) => list[hashOf(`${h}:${salt}`) % list.length]; // each kind drawn on its own
+function drollery(h, side) { // a creature in the margin for about one text in two
+  if ((h >>> 20) % 2) return '';
+  return `<span class="droll at-${side}${(h >>> 23) % 2 ? ' flip' : ''}" aria-hidden="true" style="--droll:${ornUrl(`droll-${pick(ORN.droll, h, 9)}`)}"></span>`;
+}
+
+function illuminate(body, key) {
+  const h = hashOf(key);
+  card.style.setProperty('--orn-band', ornUrl(`band-${pick(ORN.band, h, 0)}`));
+  card.style.setProperty('--orn-fleuron', ornUrl(`fleuron-${pick(ORN.fleuron, h, 3)}`));
+  card.style.setProperty('--orn-tail', ornUrl(`tail-${pick(ORN.tail, h, 6)}`));
+  const [ink, flourish] = pick(INKS, h, 12);
+  card.style.setProperty('--ini', ink); card.style.setProperty('--orn-tendril', ornUrl(`tendril-${flourish}`));
+  card.droll = drollery(h, (h >>> 16) % 2 ? 'left' : 'right');
   const title = body.querySelector('h3');
   if (title) {
     title.classList.add('card-title');
@@ -650,9 +669,10 @@ function illuminate(body) {
 function paginate(src, probe) {
   const seq = []; // blocks: { el, list (its ul, for an item), keep }
   const walk = (el) => [...el.children].forEach((n) => {
-    if (n.matches('.ledger-year')) { // between two years, a fleuron on a rule; it keeps with the year
+    if (n.matches('.ledger-year')) { // between two years, a fleuron on a rule (each its own); it keeps with the year
       if (n.previousElementSibling && n.previousElementSibling.matches('.ledger-year')) {
         const orn = document.createElement('div'); orn.className = 'year-orn'; orn.setAttribute('aria-hidden', 'true');
+        orn.style.setProperty('--year-fleuron', ornUrl(`fleuron-${ORN.fleuron[seq.length % ORN.fleuron.length]}`));
         seq.push({ el: orn, keep: true });
       }
       walk(n);
@@ -700,6 +720,10 @@ function turn(dir) {
   card.bookAt = Math.max(0, Math.min(n - 1, card.bookAt + dir));
   const [left, right] = card.querySelectorAll('.page');
   left.innerHTML = pgs[card.bookAt * 2]; right.innerHTML = pgs[card.bookAt * 2 + 1] || '';
+  [left, right].forEach((pg, k) => { // a drollery at the foot of some pages, outer margin
+    const n = card.bookAt * 2 + k;
+    if (pg.innerHTML && pg.firstElementChild.offsetHeight < pg.clientHeight - 30) pg.insertAdjacentHTML('beforeend', drollery(hashOf(`${card.getAttribute('aria-label')}${n}`), k ? 'right' : 'left'));
+  });
   card.querySelector('.folio').textContent = `${ROMAN(card.bookAt * 2 + 1)} · ${ROMAN(card.bookAt * 2 + 2)}  (${card.bookAt + 1}/${n})`;
   card.querySelector('[data-turn="-1"]').disabled = card.bookAt === 0;
   card.querySelector('[data-turn="1"]').disabled = card.bookAt === n - 1;
@@ -712,15 +736,17 @@ card.addEventListener('keydown', (e) => {
 
 function openCard(i, from) {
   const it = spotItems[i];
+  if (!it) return; // a button of the room just left
   if (it.go) { goTo(it.go); return; } // a door: through it
   const body = card.querySelector('.card-body');
   body.innerHTML = it.html;
-  illuminate(body);
+  illuminate(body, it.label);
   const book = BOOKISH.has(it.kind) && root.getAttribute('data-theme') === 'hours';
   card.classList.toggle('as-book', book); card.classList.remove('one-leaf');
   card.dataset.kind = it.kind;
   card.setAttribute('aria-label', it.label);
   card.hidden = false;
+  if (!book && card.droll) body.insertAdjacentHTML('beforeend', card.droll);
   if (book) { // pages are measured, so the card is shown first; again once its fonts have loaded
     bind(body); turn(0);
     const src = card.bookSrc;

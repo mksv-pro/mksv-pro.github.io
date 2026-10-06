@@ -998,7 +998,12 @@ html.photo :is(.msgline, .host, .tabs, .status, .spots, .card, .leave, main, .cm
    Ruled margins, a rubricated title between fleurons over a vine scroll, a blue initial with a
    red tendril down the margin, lozenge bullets, a tailpiece; ornaments from _tools/ornaments.py,
    drawn at the UI pixel. The books open as a two-page spread with a gutter and folios. */
-[data-theme="hours"] .card { --lapis: #2a4caa; --rubric: #a82c1c; --gilt: #8a621a; --op: var(--upx, 2px); }
+[data-theme="hours"] .card {
+  --lapis: #2a4caa; --rubric: #a82c1c; --gilt: #8a621a; --op: var(--upx, 2px);
+  /* the ornaments of this text: script.js picks a design of each kind per text (these are the fallback) */
+  --orn-band: url("assets/img/orn/band-vine.svg"); --orn-fleuron: url("assets/img/orn/fleuron-quatrefoil.svg");
+  --orn-tail: url("assets/img/orn/tail-triangle.svg"); --orn-tendril: url("assets/img/orn/tendril-r.svg");
+}
 [data-theme="hours"] .card-body {
   padding: 1.3rem 2.2rem 1rem 2.7rem; line-height: 1.7;
   background:
@@ -1010,25 +1015,25 @@ html.photo :is(.msgline, .host, .tabs, .status, .spots, .card, .leave, main, .cm
   font: 400 1.08rem/1.45 var(--ui); letter-spacing: .05em; text-wrap: balance;
 }
 [data-theme="hours"] .card .card-title::before, [data-theme="hours"] .card .card-title::after {
-  content: ""; display: inline-block; width: calc(9 * var(--op)); height: calc(9 * var(--op)); margin: 0 .7em;
-  vertical-align: -.12em; background: url("assets/img/orn/fleuron.svg") center / contain no-repeat; image-rendering: pixelated;
+  content: ""; display: inline-block; width: calc(9 * var(--op)); height: calc(11 * var(--op)); margin: 0 .7em;
+  vertical-align: -.12em; background: var(--orn-fleuron) center / contain no-repeat; image-rendering: pixelated;
 }
 [data-theme="hours"] .card .entry-head { display: block; text-align: center; }
 [data-theme="hours"] .card .orn-band {
-  height: calc(19 * var(--op)); width: min(85%, calc(32 * 8 * var(--op))); margin: .25rem auto .9rem;
-  background: url("assets/img/orn/band.svg") center / calc(32 * var(--op)) 100% repeat-x; image-rendering: pixelated;
+  height: calc(19 * var(--op)); width: min(85%, calc(256 * var(--op))); margin: .25rem auto .9rem;
+  background: var(--orn-band) center / auto 100% repeat-x; image-rendering: pixelated;
 }
 [data-theme="hours"] .card :is(.date, .role-line, .ledger-prog, .meta) { font-style: italic; color: var(--gilt); }
 [data-theme="hours"] .card .entry-head .date { display: block; text-align: center; margin-top: .15rem; }
 [data-theme="hours"] .card p { margin: 0 0 .8rem; }
 [data-theme="hours"] .card p.opening { position: relative; }
 [data-theme="hours"] .card p.opening::first-letter {
-  float: left; font: 400 3.1em/.84 var(--ui); color: var(--lapis); margin: .1em .45rem 0 0;
+  float: left; font: 400 3.1em/.84 var(--ui); color: var(--ini, var(--lapis)); margin: .1em .45rem 0 0;
   text-shadow: var(--op) var(--op) 0 rgb(168 44 28 / .45);
 }
 [data-theme="hours"] .card p.opening::before { /* the pen flourish trailing down the margin */
   content: ""; position: absolute; left: -2.05rem; top: .2em; bottom: 0; width: calc(9 * var(--op));
-  background: url("assets/img/orn/tendril.svg") top / calc(9 * var(--op)) calc(24 * var(--op)) repeat-y; image-rendering: pixelated;
+  background: var(--orn-tendril) top / calc(9 * var(--op)) calc(24 * var(--op)) repeat-y; image-rendering: pixelated;
 }
 [data-theme="hours"] .card :is(.flow, .bullets) { list-style: none; padding: 0; margin: 0 0 .7rem; }
 [data-theme="hours"] .card :is(.flow, .bullets) li { display: block; white-space: normal; position: relative; padding-left: 1.2em; }
@@ -1045,7 +1050,7 @@ html.photo :is(.msgline, .host, .tabs, .status, .spots, .card, .leave, main, .cm
 [data-theme="hours"] .card .ledger-prog { margin: .55rem 0 .15rem; break-after: avoid; }
 [data-theme="hours"] .card .card-body:not(:has(.spread))::after { /* the tailpiece (the books: on the blank page) */
   content: ""; display: block; width: calc(33 * var(--op)); height: calc(15 * var(--op)); margin: 1.4rem auto .3rem;
-  background: url("assets/img/orn/tail.svg") center / contain no-repeat; image-rendering: pixelated;
+  background: var(--orn-tail) center / contain no-repeat; image-rendering: pixelated;
 }
 /* the books: a spread of two pages (script.js paginates), a shadow in the gutter, folios under it */
 [data-theme="hours"] .card.as-book:not([hidden]) { width: min(60rem, 68vw); }
@@ -1058,7 +1063,7 @@ html.photo :is(.msgline, .host, .tabs, .status, .spots, .card, .leave, main, .cm
 [data-theme="hours"] .card .page > div > :first-child { margin-top: 0; }
 [data-theme="hours"] .card .page:last-child:empty::after { /* the blank last page: a tailpiece in its middle */
   content: ""; display: block; width: calc(33 * var(--op)); height: calc(15 * var(--op)); margin: 30% auto 0;
-  background: url("assets/img/orn/tail.svg") center / contain no-repeat; image-rendering: pixelated;
+  background: var(--orn-tail) center / contain no-repeat; image-rendering: pixelated;
 }
 [data-theme="hours"] .card .pager { display: flex; justify-content: space-between; align-items: center; margin-top: .3rem; font-style: italic; color: var(--gilt); }
 [data-theme="hours"] .card .pager button { font: 400 1.5rem/1 var(--ui); color: var(--rubric); background: none; border: 0; cursor: pointer; min-width: 24px; min-height: 24px; }
@@ -1089,7 +1094,7 @@ html.photo :is(.msgline, .host, .tabs, .status, .spots, .card, .leave, main, .cm
 [data-theme="hours"] .card .year-orn { /* between two years of the book of courses */
   height: calc(9 * var(--op)); margin: 1.6rem 0 .9rem;
   background:
-    url("assets/img/orn/fleuron.svg") center / calc(9 * var(--op)) 100% no-repeat,
+    var(--year-fleuron, var(--orn-fleuron)) center / calc(9 * var(--op)) 100% no-repeat,
     linear-gradient(rgb(168 44 28 / .45), rgb(168 44 28 / .45)) center / 70% 1px no-repeat;
   image-rendering: pixelated;
 }
@@ -1101,3 +1106,12 @@ html.photo :is(.msgline, .host, .tabs, .status, .spots, .card, .leave, main, .cm
 [data-theme="hours"] .card .card-title a:hover { text-decoration-color: currentColor; }
 /* a project's illumination stands centred above its title */
 [data-theme="hours"] .card .illum { display: block; float: none; width: fit-content; margin: .2rem auto .5rem; }
+/* drolleries: small creatures in the bottom margin of some texts and some pages of the books */
+[data-theme="hours"] .card .card-body, [data-theme="hours"] .card .page { position: relative; }
+[data-theme="hours"] .card .droll {
+  position: absolute; bottom: .2rem; width: calc(18 * var(--op)); height: calc(12 * var(--op));
+  background: var(--droll) center / contain no-repeat; image-rendering: pixelated; pointer-events: none;
+}
+[data-theme="hours"] .card .droll.at-left { left: .3rem; } [data-theme="hours"] .card .droll.at-right { right: .3rem; }
+[data-theme="hours"] .card .droll.flip { transform: scaleX(-1); }
+[data-theme="hours"] .card .page .droll { bottom: 0; }
