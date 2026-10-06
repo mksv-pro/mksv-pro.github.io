@@ -1019,7 +1019,7 @@ html.photo :is(.msgline, .host, .tabs, .status, .spots, .card, .leave, main, .cm
   background: url("assets/img/orn/band.svg") center / calc(32 * var(--op)) 100% repeat-x; image-rendering: pixelated;
 }
 [data-theme="hours"] .card :is(.date, .role-line, .ledger-prog, .meta) { font-style: italic; color: var(--gilt); }
-[data-theme="hours"] .card .entry-head .date { display: block; text-align: center; margin-top: -.6rem; }
+[data-theme="hours"] .card .entry-head .date { display: block; text-align: center; margin-top: .15rem; }
 [data-theme="hours"] .card p { margin: 0 0 .8rem; }
 [data-theme="hours"] .card p.opening { position: relative; }
 [data-theme="hours"] .card p.opening::first-letter {
@@ -1043,28 +1043,61 @@ html.photo :is(.msgline, .host, .tabs, .status, .spots, .card, .leave, main, .cm
 [data-theme="hours"] .card .ledger-year:nth-of-type(even) h3 { color: var(--lapis); }
 [data-theme="hours"] .card .ledger-year:nth-of-type(even) h3::before { color: var(--rubric); }
 [data-theme="hours"] .card .ledger-prog { margin: .55rem 0 .15rem; break-after: avoid; }
-[data-theme="hours"] .card :is(.card-body:not(:has(.pages)), .pages)::after { /* the tailpiece */
+[data-theme="hours"] .card .card-body:not(:has(.spread))::after { /* the tailpiece (the books: on the blank page) */
   content: ""; display: block; width: calc(33 * var(--op)); height: calc(15 * var(--op)); margin: 1.4rem auto .3rem;
   background: url("assets/img/orn/tail.svg") center / contain no-repeat; image-rendering: pixelated;
 }
-/* the books: a spread of two pages, a shadow in the gutter, folios under it */
+/* the books: a spread of two pages (script.js paginates), a shadow in the gutter, folios under it */
 [data-theme="hours"] .card.as-book:not([hidden]) { width: min(60rem, 68vw); }
 [data-theme="hours"] .card.as-book .card-body { max-height: none; overflow: visible; padding: 1.2rem 2.2rem .7rem; background: none; }
-[data-theme="hours"] .card.as-book .pages {
-  height: min(64vh, 38rem); columns: 2; column-gap: 4.4rem; column-fill: auto; overflow: hidden;
+[data-theme="hours"] .card .spread {
+  display: grid; grid-template-columns: 1fr 1fr; column-gap: 4.4rem;
   background: linear-gradient(to right, transparent calc(50% - 2.2rem), rgb(90 60 20 / .07) calc(50% - 1rem), rgb(90 60 20 / .2) 50%, rgb(90 60 20 / .07) calc(50% + 1rem), transparent calc(50% + 2.2rem));
 }
-[data-theme="hours"] .card.as-book .pages > * { break-inside: avoid-column; }
-[data-theme="hours"] .card.as-book .pages > .ledger-year { break-inside: auto; }
+[data-theme="hours"] .card .page { height: min(62vh, 37rem); overflow: hidden; min-width: 0; }
+[data-theme="hours"] .card .page > div > :first-child { margin-top: 0; }
+[data-theme="hours"] .card .page:last-child:empty::after { /* the blank last page: a tailpiece in its middle */
+  content: ""; display: block; width: calc(33 * var(--op)); height: calc(15 * var(--op)); margin: 30% auto 0;
+  background: url("assets/img/orn/tail.svg") center / contain no-repeat; image-rendering: pixelated;
+}
 [data-theme="hours"] .card .pager { display: flex; justify-content: space-between; align-items: center; margin-top: .3rem; font-style: italic; color: var(--gilt); }
 [data-theme="hours"] .card .pager button { font: 400 1.5rem/1 var(--ui); color: var(--rubric); background: none; border: 0; cursor: pointer; min-width: 24px; min-height: 24px; }
 [data-theme="hours"] .card .pager button:disabled { opacity: .25; cursor: default; }
 [data-theme="hours"] .card.as-book.one-leaf:not([hidden]) { width: min(34rem, 44vw); }
-[data-theme="hours"] .card.one-leaf .pages { columns: 1; height: auto; max-height: 64vh; background: none; }
-[data-theme="hours"] .card.one-leaf .pager { display: none; }
+[data-theme="hours"] .card.one-leaf .spread { grid-template-columns: 1fr; background: none; }
+[data-theme="hours"] .card.one-leaf .page { height: auto; }
+[data-theme="hours"] .card.one-leaf .page:last-child, [data-theme="hours"] .card.one-leaf .pager { display: none; }
+/* (no padding on the pages) the initial's paragraph makes room for its flourish */
+[data-theme="hours"] .card.as-book .page p.opening { margin-left: 1.5rem; }
+[data-theme="hours"] .card.as-book .page p.opening::before { left: -1.45rem; }
+/* the book of courses: each year opens a page, under its own heading and lozenge rule */
+[data-theme="hours"] .card .ledger-year h3, [data-theme="hours"] .card .page h3:not(.card-title) { margin: .2rem 0 .5rem; text-align: center; font-size: 1.15em; }
+[data-theme="hours"] .card .page h3:not(.card-title) { color: var(--rubric); letter-spacing: .1em; }
+[data-theme="hours"] .card .page h3:not(.card-title)::before { content: "\00b6\00a0"; color: var(--lapis); }
+[data-theme="hours"] .card .page:last-child h3:not(.card-title) { color: var(--lapis); }
+[data-theme="hours"] .card .page:last-child h3:not(.card-title)::before { color: var(--rubric); }
+[data-theme="hours"] .card .page h3:not(.card-title)::after {
+  content: ""; display: block; height: calc(3 * var(--op)); margin: .35rem auto 0; width: 60%;
+  background: url("assets/img/orn/diamond-r.svg") center / calc(3 * var(--op)) 100% repeat-x;
+  image-rendering: pixelated; opacity: .8;
+}
+[data-theme="hours"] .card .ledger-prog { margin: .9rem 0 .25rem; }
 [data-theme="hours"] .card .entry-head h3.card-title::before { content: ""; } /* the fleuron, not the list's '@' */
 [data-theme="hours"] .card .sheet > div { display: grid; grid-template-columns: 7.5rem 1fr; gap: .2rem 1rem; margin-bottom: .5rem; }
 [data-theme="hours"] .card .sheet dt { color: var(--gilt); font-style: italic; }
 [data-theme="hours"] .card .sheet dd { margin: 0; }
-[data-theme="hours"] .card.as-book .pages { padding-left: 1.6rem; } /* room in the page for the initial's flourish */
-[data-theme="hours"] .card.as-book .pages p.opening::before { left: -1.45rem; }
+[data-theme="hours"] .card .year-orn { /* between two years of the book of courses */
+  height: calc(9 * var(--op)); margin: 1.6rem 0 .9rem;
+  background:
+    url("assets/img/orn/fleuron.svg") center / calc(9 * var(--op)) 100% no-repeat,
+    linear-gradient(rgb(168 44 28 / .45), rgb(168 44 28 / .45)) center / 70% 1px no-repeat;
+  image-rendering: pixelated;
+}
+[data-theme="hours"] .card .page > div > .year-orn:first-child { margin-top: .4rem; }
+/* titles: the fleurons either side, the words wrapping between them (never a fleuron alone) */
+[data-theme="hours"] .card .card-title { display: flex; justify-content: center; align-items: center; gap: .7em; }
+[data-theme="hours"] .card .card-title::before, [data-theme="hours"] .card .card-title::after { flex: none; margin: 0; }
+[data-theme="hours"] .card .card-title a { color: inherit; text-decoration-color: rgb(168 44 28 / .35); }
+[data-theme="hours"] .card .card-title a:hover { text-decoration-color: currentColor; }
+/* a project's illumination stands centred above its title */
+[data-theme="hours"] .card .illum { display: block; float: none; width: fit-content; margin: .2rem auto .5rem; }

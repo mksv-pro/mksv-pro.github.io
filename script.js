@@ -540,7 +540,11 @@ function roomItems(id) {
       const volume = (b) => `<b>${b.url ? `<a href="${esc(b.url)}" rel="noopener">${esc(b.title)}</a>` : esc(b.title)}</b>`
         + `, ${esc(b.author)}${b.year ? ` (${esc(b.year)})` : ''}${b.note ? `<br><span class="dim">${esc(b.note)}</span>` : ''}`;
       return [
-        ...of('.pub', 'book', (el) => ({ label: text(el.querySelector('.pub-title')), html: el.innerHTML })),
+        ...of('.pub', 'book', (el) => { // its title becomes the book's heading
+          const c = el.cloneNode(true); const t = c.querySelector('.pub-title');
+          if (t) t.outerHTML = `<h3>${t.innerHTML}</h3>`;
+          return { label: text(el.querySelector('.pub-title')), html: c.innerHTML };
+        }),
         ...(lib.shelves || []).map(([sid, name], k) => {
           const here = vols.filter((b) => b.shelf === sid);
           return { kind: 'shelf', shelf: sid, label: T.shelf(name), html: `<h3>${esc(T.shelf(name))}</h3>`
@@ -640,26 +644,69 @@ function illuminate(body) {
   if (opening) opening.classList.add('opening');
 }
 
-function bind(body) { // the book's spread: two columns that scroll a spread at a time
-  body.innerHTML = `<div class="pages">${body.innerHTML}</div>
-<nav class="pager" aria-label="${T.pages}"><button type="button" data-turn="-1" aria-label="${T.prevPage}">\u2039</button><span class="folio"></span><button type="button" data-turn="1" aria-label="${T.nextPage}">\u203a</button></nav>`;
+/** The text cut into pages that fit: blocks are measured one by one in a page of the spread;
+ *  a list may break between items, a heading (or a year's ornament) keeps with what follows.
+ *  Returns the pages' HTML. */
+function paginate(src, probe) {
+  const seq = []; // blocks: { el, list (its ul, for an item), keep }
+  const walk = (el) => [...el.children].forEach((n) => {
+    if (n.matches('.ledger-year')) { // between two years, a fleuron on a rule; it keeps with the year
+      if (n.previousElementSibling && n.previousElementSibling.matches('.ledger-year')) {
+        const orn = document.createElement('div'); orn.className = 'year-orn'; orn.setAttribute('aria-hidden', 'true');
+        seq.push({ el: orn, keep: true });
+      }
+      walk(n);
+    } else if (n.matches('ul, ol')) [...n.children].forEach((li) => seq.push({ el: li, list: n }));
+    else seq.push({ el: n, keep: n.matches('h3, .ledger-prog, .entry-head, .orn-band, .card-title') });
+  });
+  walk(src);
+  const H = probe.clientHeight; const pages = []; let page; let ul = null; let listOf = null;
+  const fresh = () => { page = document.createElement('div'); probe.replaceChildren(page); pages.push(page); ul = null; listOf = null; };
+  const fits = (spare = 0) => page.offsetHeight <= H - spare - 2; // the content's height (scrollHeight never drops below H)
+  const place = (a) => {
+    if (a.list) {
+      if (!ul || listOf !== a.list) { ul = a.list.cloneNode(false); listOf = a.list; page.append(ul); }
+      return ul.appendChild(a.el.cloneNode(true));
+    }
+    ul = null; listOf = null;
+    return page.appendChild(a.el.cloneNode(true));
+  };
+  const unplace = (node) => { const parent = node.parentElement; node.remove(); if (parent !== page && !parent.children.length) parent.remove(); };
+  fresh();
+  seq.forEach((a) => {
+    let node = place(a);
+    // a heading needs room for a few lines after it, or it goes over to the next page
+    if (!fits(a.keep ? 70 : 0) && page.childElementCount + (ul ? ul.childElementCount : 0) > 1) { unplace(node); fresh(); node = place(a); }
+  });
+  probe.replaceChildren();
+  return pages.map((pg) => pg.outerHTML); // with the wrapper they were measured in
+}
+
+function bind(body) { // the book's spread: two pages side by side, filled from paginate()
+  const src = document.createElement('div');
+  src.innerHTML = body.innerHTML;
+  card.bookSrc = body.innerHTML;
+  card.classList.remove('one-leaf'); // measured at the full page height
+  body.innerHTML = `<div class="spread"><div class="page"></div><div class="page"></div></div>
+<nav class="pager" aria-label="${T.pages}"><button type="button" data-turn="-1" aria-label="${T.prevPage}">‹</button><span class="folio"></span><button type="button" data-turn="1" aria-label="${T.nextPage}">›</button></nav>`;
+  card.bookPages = paginate(src, body.querySelector('.page'));
+  card.bookAt = 0;
+  card.classList.toggle('one-leaf', card.bookPages.length === 1);
 }
 function turn(dir) {
-  const pages = card.querySelector('.pages');
-  if (!pages) return;
-  const step = pages.clientWidth + parseFloat(getComputedStyle(pages).columnGap || 0);
-  const n = Math.max(1, Math.round(pages.scrollWidth / step));
-  const at = Math.max(0, Math.min(n - 1, Math.round(pages.scrollLeft / step) + dir));
-  pages.scrollLeft = at * step;
-  card.querySelector('.folio').textContent = `${ROMAN(at * 2 + 1)} \u00b7 ${ROMAN(at * 2 + 2)}  (${at + 1}/${n})`;
-  card.querySelector('[data-turn="-1"]').disabled = at === 0;
-  card.querySelector('[data-turn="1"]').disabled = at === n - 1;
-  const last = pages.lastElementChild; // a short text: a single leaf, no spread
-  card.classList.toggle('one-leaf', n === 1 && last && last.getBoundingClientRect().right <= pages.getBoundingClientRect().left + pages.clientWidth / 2 + 2);
+  const pgs = card.bookPages;
+  if (!pgs || !card.classList.contains('as-book')) return;
+  const n = Math.ceil(pgs.length / 2);
+  card.bookAt = Math.max(0, Math.min(n - 1, card.bookAt + dir));
+  const [left, right] = card.querySelectorAll('.page');
+  left.innerHTML = pgs[card.bookAt * 2]; right.innerHTML = pgs[card.bookAt * 2 + 1] || '';
+  card.querySelector('.folio').textContent = `${ROMAN(card.bookAt * 2 + 1)} · ${ROMAN(card.bookAt * 2 + 2)}  (${card.bookAt + 1}/${n})`;
+  card.querySelector('[data-turn="-1"]').disabled = card.bookAt === 0;
+  card.querySelector('[data-turn="1"]').disabled = card.bookAt === n - 1;
 }
 card.addEventListener('click', (e) => { const b = e.target.closest('[data-turn]'); if (b) turn(Number(b.dataset.turn)); });
 card.addEventListener('keydown', (e) => {
-  if (!card.querySelector('.pages') || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+  if (!card.querySelector('.spread') || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
   e.preventDefault(); turn(e.key === 'ArrowLeft' ? -1 : 1);
 });
 
@@ -671,11 +718,17 @@ function openCard(i, from) {
   illuminate(body);
   const book = BOOKISH.has(it.kind) && root.getAttribute('data-theme') === 'hours';
   card.classList.toggle('as-book', book); card.classList.remove('one-leaf');
-  if (book) bind(body);
   card.dataset.kind = it.kind;
   card.setAttribute('aria-label', it.label);
   card.hidden = false;
-  if (book) turn(0);
+  if (book) { // pages are measured, so the card is shown first; again once its fonts have loaded
+    bind(body); turn(0);
+    const src = card.bookSrc;
+    document.fonts.ready.then(() => {
+      if (card.hidden || card.bookSrc !== src) return;
+      const at = card.bookAt; body.innerHTML = src; bind(body); card.bookAt = 0; turn(at);
+    });
+  }
   const r = from.getBoundingClientRect();
   const cw = card.offsetWidth; const ch = card.offsetHeight;
   const top0 = document.querySelector('.msgline').getBoundingClientRect().bottom + 12;
