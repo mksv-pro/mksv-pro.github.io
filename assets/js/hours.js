@@ -196,30 +196,65 @@ uuuuuuuuuuuuu..w...
 
   // the countryside's animals (h brown, b black, t fawn, q white, a grey, k outline, g gold)
   const HORSE = [`
-.........bbbb...........
-........bhhhhhhhhhhhhh..
-.......bhhhhhhhhhhhhhhh.
-......bhhhhhhhhhhhhhhhhb
-.....bhhhhhhhhhhhhhhhhhbb
-....bhh.hhhhhhhhhhhhhh.bb
-...bhh..hhhhhhhhhhhhhh..b
-..bhh...oo.oo....oo.oo..b
-.hhh....oo.oo....oo.oo...
-hhkh....oo.oo....oo.oo...
-hhh.....oo.oo....oo.oo...
-.hh.....kk.kk....kk.kk...`, `
-.........bbbb...........
-........bhhhhhhhhhhhhh..
-.......bhhhhhhhhhhhhhhh.
-......bhhhhhhhhhhhhhhhhb
-.....bhhhhhhhhhhhhhhhhhb.
-....bhh.hhhhhhhhhhhhhh.b.
-...bhh..hhhhhhhhhhhhhh.b.
-..bhh...oo.oo....oo.oo.b.
-.hhh....oo.oo....oo.oo..b
-hhkh....oo.oo....oo.oo...
-hhh.....oo.oo....oo.oo...
-.hh.....kk.kk....kk.kk...`];
+.........................................
+..............hhhhhhhhhhhhhhhhhhh........
+.............hhhhhhhhhhhhhhhhhhhhhh..bb..
+............bhhhhhhhhhhhhhhhhhhhhhhh.bb..
+...........bhhhhhhhhhhhhhhhhhhhhhhhh.bb..
+..........bhhhhhhhhhhhhhhhhhhhhhhhhh.bb..
+.........bhhhhhhhhhhhhhhhhhhhhhhhhhh.bb..
+........bhhhhhhhhhhhhhhhhhhhhhhhhhhhhbb..
+.......bhhhhhhhhhhhhhhhhhhhhhhhhhhhhh.bb.
+......bhhhhhh.hhhhhhhhhhhhhhhhhhhhhhh.bb.
+.....bbhhhhhh.hhhhhhhhhhhhhhhhhhhhhhh.bb.
+.....bhhhhhh...hhhhhhhhhhhhhhhhhhhhhh.bb.
+....hhhhhhh.....oo.oo.........hhhhhh..bb.
+...hhhhhhhh.....oo.oo..........hhhhh..bb.
+..bhhhhhhh......oo.oo..........hhhhh...bb
+.bhhhhhhh.......oo.oo..........oohoo...bb
+..hhhhhhh.......oo.oo..........oo.oo...bb
+.hhhhhhh........oo.oo..........oo.oo...bb
+.hhhhh..........oo.oo..........oo.oo...bb
+.hhhkh..........oo.oo..........oo.oo.....
+.hhhhh..........oo.oo..........oo.oo.....
+hhhhhh..........oo.oo..........oo.oo.....
+hhhhh...........oo.oo..........oo.oo.....
+hhhhh...........oo.oo..........oo.oo.....
+.hhhh...........oo.oo..........oo.oo.....
+.hhhh...........oo.oo..........oo.oo.....
+................oo.oo..........oo.oo.....
+................kk.kk..........kk.kk.....
+.........................................`,
+`
+.........................................
+..............hhhhhhhhhhhhhhhhhhh........
+.............hhhhhhhhhhhhhhhhhhhhhh..bb..
+............bhhhhhhhhhhhhhhhhhhhhhhh.bb..
+...........bhhhhhhhhhhhhhhhhhhhhhhhh.bb..
+..........bhhhhhhhhhhhhhhhhhhhhhhhhh.bb..
+.........bhhhhhhhhhhhhhhhhhhhhhhhhhh.bb..
+........bhhhhhhhhhhhhhhhhhhhhhhhhhhhhbb..
+.......bhhhhhhhhhhhhhhhhhhhhhhhhhhhhh.bb.
+......bhhhhhh.hhhhhhhhhhhhhhhhhhhhhhh..bb
+.....bbhhhhhh.hhhhhhhhhhhhhhhhhhhhhhh..bb
+.....bhhhhhh...hhhhhhhhhhhhhhhhhhhhhh..bb
+....hhhhhhh.....oo.oo.........hhhhhh...bb
+...hhhhhhhh.....oo.oo..........hhhhh...bb
+..bhhhhhhh......oo.oo..........hhhhh....b
+.bhhhhhhh.......oo.oo..........oohoo....b
+..hhhhhhh.......oo.oo..........oo.oo....b
+.hhhhhhh........oo.oo..........oo.oo....b
+.hhhhh..........oo.oo..........oo.oo....b
+.hhhkh..........oo.oo..........oo.oo.....
+.hhhhh..........oo.oo..........oo.oo.....
+hhhhhh..........oo.oo..........oo.oo.....
+hhhhh...........oo.oo..........oo.oo.....
+hhhhh...........oo.oo..........oo.oo.....
+.hhhh...........oo.oo..........oo.oo.....
+.hhhh...........oo.oo..........oo.oo.....
+................oo.oo..........oo.oo.....
+................kk.kk..........kk.kk.....
+.........................................`];
   const DEER = [`
 .........t..
 ........ttt.
@@ -564,13 +599,17 @@ nNnnnn..
 
     // west of the castle, on the near range: a watchtower on the crest (its signal fire burns at night)
     const crestAt = (x) => { for (let y = 0; y < H; y += 1) if (get(x, y, L.NEAR) !== CLEAR) return y; return H; };
+    // far off, it is a silhouette in the range's own colours (the haze is on it too), standing on
+    // the highest point near its place, its foot sunk in the rock
     const watch = { x: M + Math.round(0.17 * Ws) };
+    for (let x = watch.x - 10; x <= watch.x + 10; x += 1) if (crestAt(x) < crestAt(watch.x)) watch.x = x;
     {
       const yb = crestAt(watch.x) + 3; const x0 = watch.x - 2;
-      rect(x0, yb - 11, 5, 11, I.WALL); rect(x0, yb - 11, 1, 11, I.WALL_HI); rect(x0 + 4, yb - 11, 1, 11, I.WALL_SH);
-      for (let k = 0; k < 5; k += 2) set(x0 + k, yb - 12, I.WALL); // its crenels
-      set(x0 + 2, yb - 8, I.WIN_DARK); set(x0 + 2, yb - 4, I.WIN_DARK);
-      watch.y = yb - 13; // where the fire burns
+      rect(x0, yb - 9, 4, 10, I.ROCK_SH); rect(x0, yb - 9, 1, 10, I.ROCK); rect(x0 + 3, yb - 9, 1, 10, I.ROCK_DK); // shaft, lit on the west
+      rect(x0 - 1, yb - 1, 6, 2, I.ROCK_SH); set(x0 - 1, yb - 1, I.ROCK); // its footing in the rock
+      set(x0, yb - 10, I.ROCK_SH); set(x0 + 2, yb - 10, I.ROCK_SH); set(x0 + 3, yb - 10, I.ROCK_DK); // merlons
+      set(x0 + 1, yb - 6, I.ROCK_DK); // a loophole
+      watch.y = yb - 11; // where the fire burns
     }
     const VINES = { autumn: month >= 9 ? [I.VINE_AUT, I.RUST_HI] : [I.VINE, I.GRAPE], summer: [I.VINE, month === 7 ? I.GRAPE : I.VINE],
       spring: [I.VINE, I.OAK_HI], winter: [I.BARK, I.BARK] }[season];
@@ -619,22 +658,23 @@ nNnnnn..
 
     // behind the hamlet the forest gives way to a vineyard on the gentle slope: rows of vines
     // across it, green, then grapes in late summer, red-gold in October, bare stakes in winter
-    {
-      const xa = M + Math.round(0.035 * Ws); const xb = M + Math.round(0.235 * Ws);
-      const top0 = (x) => Math.round(yl0 - 0.12 * H + (tn(x / 40) - 0.5) * 0.06 * H) + 3;
-      const y1 = yl0 - 9; // the hamlet's roofs below
-      for (let x = xa; x < xb; x += 1) {
-        const ragged = (x - xa < 4 || xb - x < 4) && bayer(x, 3) < 0.5; // the ends fray into the forest
-        for (let y = top0(x); y < y1; y += 1) {
-          if (ragged && y < top0(x) + 2) continue;
-          const row = (y - top0(x)) % 3;
-          if (row === 2) set(x, y, (x % 4 === 0) ? I.BARK : I.HILL); // the path between rows, a stake now and then
-          else if (season === 'winter') set(x, y, x % 4 === 0 ? I.BARK : I.HILL_SH);
-          else { // leaves in clumps along the row, its shadow under them
-            const leaf = row === 0 && (x + Math.floor(y / 3)) % 4 !== 0;
-            set(x, y, !leaf ? I.HILL_SH : (x * 7 + y * 3) % 7 === 0 ? VINES[1] : (x * 5 + y) % 3 === 0 ? I.VINE : VINES[0]);
-          }
+    { // a small plot: rows of separate vine stocks over bare earth, wider down the slope, framed by trees
+      const xa = M + Math.round(0.06 * Ws); const xb = M + Math.round(0.19 * Ws);
+      const top0 = (x) => Math.round(yl0 - 0.12 * H + (tn(x / 40) - 0.5) * 0.06 * H) + 6;
+      for (let rw = 0; rw < 4; rw += 1) {
+        const inset = (3 - rw) * 3 + Math.round(rng() * 2);
+        for (let x = xa + inset; x < xb - inset; x += 1) {
+          const y = top0(x) + rw * 3; const k = x - xa;
+          if (y + 2 >= yl0 - 9) continue; // the hamlet's roofs below
+          set(x, y + 2, I.FURROW_SH);
+          if (k % 3 === 2) { set(x, y, I.HILL_SH); set(x, y + 1, I.FURROW_SH); continue; } // between two stocks
+          const leaf = season === 'winter' ? I.BARK : (k * 5 + rw) % 7 === 0 ? VINES[1] : (k + rw) % 3 === 0 ? I.VINE : VINES[0];
+          set(x, y, leaf); set(x, y + 1, season === 'winter' ? I.FURROW_SH : (k % 3 === 0 ? I.VINE_AUT === leaf ? I.VINE : leaf : leaf));
         }
+      }
+      for (let x = xa - 3; x < xb + 4; x += 4 + Math.floor(rng() * 4)) { // small conifers along its top
+        const h = 5 + Math.floor(rng() * 4); const b = top0(x) - 1;
+        for (let rr = 0; rr < h; rr += 1) { const half = Math.round((h - rr) * 0.3); for (let dx = -half; dx <= half; dx += 1) set(x + dx, b - rr, dx < 0 ? I.PINE : I.PINE_SH); }
       }
     }
 
@@ -1160,21 +1200,34 @@ nNnnnn..
       blob(x, y, 3 + Math.floor(rng() * 2), 2 + Math.floor(rng() * 2), [I.BUSH_HI, I.BUSH, I.BUSH_SH]);
     }
 
-    // a willow on the near bank, east of the bridge: its strands hang to the water
+    // a great oak on the near bank, east of the bridge: a crown of clumps, each lit from the
+    // west and each its own shade of the season (no single block of colour); bare in winter
     {
-      const wy = yg + 5; let wx = M + Math.round(0.84 * Ws);
-      while (Math.abs(wx - pathX[wy]) < pathW[wy] + 16 && wx < M + Ws) wx += 2; // clear of the path
-      {
-        const P = season === 'autumn' ? [I.LEAF2, I.WILLOW_HI, I.WILLOW] : season === 'winter' ? [I.WHEAT_SH, I.BARK, I.BARK] : [I.WILLOW_HI, I.WILLOW, I.WILLOW_SH];
-        const th = Math.round(0.09 * H); const R = Math.max(5, Math.round(0.065 * H)); const span = Math.round(R * 1.4);
-        rect(wx - 1, wy - th, 3, th, I.BARK); set(wx - 1, wy - th + 2, I.DIRT_SH);
-        for (let dx = -span; dx <= span; dx += 1) {
-          const f = dx / span; const topY = wy - th - 1 - Math.round(R * Math.sqrt(Math.max(0, 1 - f * f)));
-          const len = Math.round(R * 0.6 + R * 0.9 * (1 - Math.abs(f)) + rng() * 3);
-          if (season === 'winter' && dx % 2) continue;
-          for (let k = 0; k < len; k += 1) set(wx + dx + (k > len * 0.6 ? Math.sign(dx) : 0), topY + k, k === 0 ? P[0] : (dx + k) % 3 === 0 ? P[2] : P[1]);
-        }
+      const wy = yg + 6; let wx = M + Math.round(0.84 * Ws);
+      while (Math.abs(wx - pathX[wy]) < pathW[wy] + 18 && wx < M + Ws) wx += 2; // clear of the path
+      const h = Math.round(0.19 * H); const trunk = Math.round(h * 0.42);
+      rect(wx - 1, wy - trunk, 3, trunk, I.BARK); set(wx - 1, wy - trunk, I.DIRT_SH); set(wx - 2, wy, I.BARK); set(wx + 2, wy, I.BARK);
+      [[-1, 0.62], [1, 0.58]].forEach(([dir, f]) => { for (let k = 0; k < h * 0.22; k += 1) set(wx + dir * (1 + k), Math.round(wy - trunk - k * 0.9 + h * 0.08 * f), I.BARK); });
+      const PAL = season === 'autumn' ? [[I.RUST_HI, I.RUST, I.RUST_SH], [I.LEAF2, I.RUST_HI, I.RUST], [I.OAK_HI, I.OAK, I.OAK_SH], [I.RUST_HI, I.RUST, I.RUST_SH]]
+        : [[I.OAK_HI, I.OAK, I.OAK_SH]];
+      const clumps = [[0, -0.92, 0.15], [-0.2, -0.84, 0.14], [0.21, -0.83, 0.14], [-0.36, -0.68, 0.13], [0.37, -0.67, 0.13],
+        [-0.12, -0.7, 0.15], [0.12, -0.72, 0.15], [-0.42, -0.52, 0.11], [0.43, -0.53, 0.11], [-0.2, -0.53, 0.13], [0.22, -0.54, 0.12], [0, -0.57, 0.14]];
+      if (season === 'winter') {
+        clumps.forEach(([fx, fy]) => { for (let k = 0; k < 6; k += 1) set(wx + Math.round(fx * h * (k / 5)), Math.round(wy - trunk - (fy * -h - trunk) * (k / 5) * 0.9), I.BARK); });
+      } else {
+        clumps.forEach(([fx, fy, fr], j) => {
+          const P = PAL[j % PAL.length]; const R = fr * h; const cx0 = wx + fx * h; const cy0 = wy + fy * h;
+          for (let dy = -Math.ceil(R); dy <= R; dy += 1) for (let dx = -Math.ceil(R); dx <= R; dx += 1) {
+            const x = Math.round(cx0 + dx); const y = Math.round(cy0 + dy); const q = (dx * dx + dy * dy) / (R * R);
+            if (q + (bayer(x, y) - 0.5) * 0.35 > 1) continue;
+            let c = dx + dy < -R * 0.45 ? P[0] : dx + dy > R * 0.35 || q > 0.75 && dy > 0 ? P[2] : P[1];
+            if (bayer(x * 3, y * 5) < 0.12) c = c === P[1] ? P[2] : P[1]; // leaves, not a flat fill
+            if (season === 'spring' && bayer(x, y) < 0.08) c = I.BLOSSOM;
+            set(x, y, c);
+          }
+        });
       }
+      for (let x = -9; x <= 9; x += 1) if (bayer(x, 1) < 0.5) set(wx + x, wy + 1, I.GRASS_SH); // its shade
     }
 
     // the bonfire: scorched ground, a ring of stones, a sword driven into the coals
@@ -1215,9 +1268,11 @@ nNnnnn..
     }
 
     // the knight's horse grazes east of the fire (tail swishing, see draw), clear of the path
-    const horse = { x: fire.x + 36, y: fire.y + 8 - SPRITES.horse[0].h };
-    while (horse.x > fire.x + 24 && Math.abs(horse.x + 12 - pathX[clamp(fire.y + 6, 0, H - 1)]) < pathW[clamp(fire.y + 6, 0, H - 1)] + 16) horse.x -= 1;
-    for (let x = -12; x <= 12; x += 1) if (bayer(x, 0) < 0.6) set(horse.x + 12 + x, fire.y + 8, I.GRASS_SH);
+    // (east of the cat if the path leaves room, else west of the wizard)
+    const hsp = SPRITES.horse[0]; const hpy = clamp(fire.y + 6, 0, H - 1);
+    const horse = { x: fire.x + 28, y: fire.y + 9 - hsp.h };
+    if (horse.x + hsp.w > pathX[hpy] - pathW[hpy] - 3) horse.x = wizard.x - hsp.w - 4;
+    for (let x = 2; x < hsp.w - 2; x += 1) if (bayer(x, 0) < 0.6) set(horse.x + x, fire.y + 8, I.GRASS_SH); // its shadow
     // deer come out at the forest's edge at dawn and dusk (west, on the meadow's far rim)
     const deer = [0.1, 0.155].map((f, k) => ({ x: M + Math.round(f * Ws), y: yg + 6 + k * 3, ph: k * 2.3 }));
 
@@ -1346,7 +1401,7 @@ nNnnnn..
       birds: null, dragon: null, nextDragon: null,
       // the countryside (see draw and step)
       watch, mill, chimneys, horse, deer, owl, month,
-      heron: (() => { const x = M + Math.round(0.88 * Ws); return { x, y: riverTop(x) + 4 - SPRITES.heron.h }; })(),
+      heron: (() => { const x = M + Math.round(0.74 * Ws); return { x, y: riverTop(x) + 4 - SPRITES.heron.h }; })(),
       ducks: [0, 1, 2].map((k) => ({ x: pathX[yl0 + 4] + 20 + k * 9, a: pathX[yl0 + 4] + 16, b: M + Math.round(0.92 * Ws), dir: k % 2 ? 1 : -1, ph: k })),
       geese: null, swallows: null, meteors: [], millAngle: 0,
     };
