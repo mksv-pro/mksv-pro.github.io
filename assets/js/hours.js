@@ -74,7 +74,7 @@
     ['PLASTER_HI', '#e2d6b8', 0], ['PLASTER', '#cdbf9e', 0], ['PLASTER_SH', '#ad9e7e', 0],
     ['LIME_HI', '#ece8dc', 0], ['LIME', '#d8d2c2', 0], ['LIME_SH', '#b8b0a0', 0],
     ['BRICK_HI', '#a85a40', 0], ['BRICK', '#8a4632', 0], ['BRICK_SH', '#6a3426', 0],
-    ['CORK', '#d0a46a', 0], ['CORK_SH', '#9a7046', 0], ['CANDLE_GLOW', '#ffd27a', 0], ['SLATEB', '#2b312d', 0], ['SLATEB_HI', '#3a423c', 0],
+    ['CORK', '#d0a46a', 0], ['CORK_SH', '#9a7046', 0], ['SLATEB', '#2b312d', 0], ['SLATEB_HI', '#3a423c', 0],
   ];
   // sprite materials: letter -> [name, highlight, mid, shadow]; _tools/icons.py shades the icons
   // with the same rule and colours
@@ -1641,27 +1641,7 @@ hhhhhh.
       windowArch(S(0.06), Math.round(H * 0.14), Math.max(10, S(0.1)), Math.round(H * 0.26));
       cat('thin', a - 6, floorY(0.4));
     }
-    // the doors to the next rooms, at the ends of the room: west and north on the left, east and
-    // south on the right; each a round-headed door, ajar, a little plaque over it
-    const sides = { l: [], r: [] };
-    (doorsOf(id) || []).forEach((d) => sides[d.dir === 'w' || d.dir === 'n' ? 'l' : 'r'].push(d));
-    Object.entries(sides).forEach(([side, list]) => list.forEach((d, k) => {
-      const dw = 9; const dh = Math.min(22, yf - 12); const x0 = side === 'l' ? 2 + k * 13 : W - dw - 2 - k * 13; const y0 = yf - dh;
-      for (let y = -2; y < dh; y += 1) for (let x = -2; x < dw + 2; x += 1) {
-        const ax = (x + 0.5 - dw / 2) / (dw / 2); const ay = (y - dw / 2) / (dw / 2);
-        const inside = y >= dw / 2 ? x >= 0 && x < dw : ax * ax + ay * ay <= 1 && y >= 0;
-        const frame = y >= dw / 2 - 1 ? x >= -2 && x < dw + 2 : ax * ax * 0.8 + ay * ay <= 1.6;
-        if (inside) { // a planked door, ajar: a slit of the next room's light down its opening edge
-          const slit = side === 'l' ? x === dw - 2 : x === 1;
-          const plank = (x % 3 === 0) ? I.TIMBER_SH : I.TIMBER;
-          set(x0 + x, y0 + y, slit ? (y > 1 ? I.CANDLE_GLOW : I.OUTLINE) : (y === Math.round(dh * 0.35) || y === Math.round(dh * 0.75)) ? I.ARM_SH : plank);
-        } else if (frame) set(x0 + x, y0 + y, (x + y) % 5 === 0 ? I.ROCK_SH : I.ROCK_HI);
-      }
-      set(side === 'l' ? x0 + dw - 3 : x0 + 2, y0 + Math.round(dh * 0.55), I.GOLD); // the ring
-      rect(x0 + 1, y0 - 6, dw - 2, 3, I.GOLD_SH); rect(x0 + 2, y0 - 5, dw - 4, 1, I.GOLD_HI); // the plaque
-      extra.push({ t: d, b: box(x0 - 2, y0 - 7, dw + 4, dh + 7) });
-    }));
-    extra.forEach(({ t, b }) => { slots[things.length] = b; things.push(t); }); // hangings and doors can be looked at too
+    extra.forEach(({ t, b }) => { slots[things.length] = b; things.push(t); }); // the hangings can be looked at too
     } else { // a project page: the workshop, its text on the blueprint on the easel
       easelUnder(bot);
       const hx = s(0.05); const hw = Math.max(18, s(0.32)); const hy = yf - 24;
@@ -1740,7 +1720,7 @@ hhhhhh.
   let view = { state: 'scene', id: null, t0: 0 }; // scene | in | room | out | swap
   let hoverId = null; let pendingRoom = null; let pendingHoist = false;
   let heraldry = { own: 'silva', tapestry: [] }; let say = () => {}; let rumour = () => '';
-  let itemsOf = () => []; let spotsTo = () => {}; let descendTo = () => {}; let doorsOf = () => []; let hl = -1; // the room's things, their hotspots, the one pointed at
+  let itemsOf = () => []; let spotsTo = () => {}; let descendTo = () => {}; let hl = -1; // the room's things, their hotspots, the one pointed at
   let scene = null; let look = null; let skyFn; let reduce = false; let px = 3;
   let running = false; let visible = true; let raf = 0; let last = 0; let tick = 0;
   let bodies = null; let label0 = ''; let castUntil = 0;
@@ -2736,7 +2716,7 @@ hhhhhh.
       if (canvas) return;
       plate = o.plate; skyFn = o.sky; reduce = o.reduceMotion;
       heraldry = o.heraldry || heraldry; say = o.say || say; rumour = o.rumour || rumour;
-      itemsOf = o.items || itemsOf; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo; doorsOf = o.doors || doorsOf;
+      itemsOf = o.items || itemsOf; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo;
       pendingRoom = root.dataset.room || null;
       label0 = plate.getAttribute('aria-label');
       canvas = document.createElement('canvas');
