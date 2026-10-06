@@ -376,6 +376,9 @@ nNnnnn..
     if (SPRITES.knight) return;
     SPRITES.knight = shadeSprite(KNIGHT);
     SPRITES.wizard = shadeSprite(WIZARD);
+    // the schoolmaster: not the wizard of the camp, a doctor in a red gown and a black cap, his
+    // staff a plain pointer with a gilt knob
+    SPRITES.master = shadeSprite(WIZARD.replace(/[uv]/g, 'r').replace(/p/g, 'b').replace(/y/g, 'g').replace(/\*/g, 'g'));
     // the body from row 6 of the frame: the raised wing behind it, the lowered one over its belly
     const body = `${'.\n'.repeat(6)}${DRAGON_BODY.trim()}`;
     SPRITES.dragon = [shadeSprite(overlay(body, WING_UP, 0, true)), shadeSprite(overlay(body, WING_DOWN, 13, false))];
@@ -970,11 +973,11 @@ nNnnnn..
     const knight = { x: fire.x - 9 - kn.w, y: fire.y + 4 - kn.h };
     const wizard = { x: knight.x - wz.w - 2, y: fire.y + 6 - wz.h };
     const C = SPRITES.cats; const low = (dy, s0) => Math.min(H - 1, fire.y + dy) - s0.h;
-    const cats = [ // [sprite, x, y]: by the fire, at the knight's feet, by the wizard, in front
+    // each cat lives in one place: these two by the fire; the thin black one in the observatory,
+    // the white one in the library
+    const cats = [ // [sprite, x, y]: by the fire, at the knight's feet
       [C.blackLoaf, fire.x + 13, low(6, C.blackLoaf)],
       [C.spotted, knight.x + 16, low(12, C.spotted)],
-      [C.thin, wizard.x - 9, low(8, C.thin)],
-      [C.whiteTabby, fire.x - 10, low(14, C.whiteTabby)],
     ].map(([sp, x, y], k) => ({ sp, x, y, ph: k * 1.7 }));
     for (let y = -2; y <= 2; y += 1) {
       for (let x = -13; x <= 13; x += 1) {
@@ -1633,7 +1636,6 @@ f11111f2.
       spread(half, S(0), S(0.41), 20).forEach(({ k, row, xc }) => { const [t, i] = ch[k]; slots[i] = charter(xc, Math.round(H * 0.14) + row * 26, t.arms); });
       spread(ch.length - half, S(0.59), S(0.81), 20).forEach(({ k, row, xc }) => { const [t, i] = ch[half + k]; slots[i] = charter(xc, Math.round(H * 0.14) + row * 26, t.arms); });
       const shX = S(box3d ? 0.83 : 0.8); const shTop = Math.round(H * 0.3); shelf(shX, shTop, Math.max(16, BR - shX - 2), yf - shTop);
-      cat('blackLoaf', shX + 1, shTop);
       rug(S(0.3), floorY(0.6), Math.round((BR - BL) * 0.36));
     } else if (kind === 'research') { // the observatory: the labs' reports, rolled and sealed, on the chart table
       for (let y = 4; y < Math.round(H * 0.42); y += 1) {
@@ -1665,7 +1667,6 @@ f11111f2.
       deco.push({ type: 'gear', x: S(0.88), y: Math.round(H * 0.45), r: 4, sp: 0.8 }, { type: 'gear', x: S(0.88) + 8, y: Math.round(H * 0.45) + 4, r: 3, sp: -1.1 });
       lantern(S(0.93), Math.round(H * 0.2));
       const ax = S(0.3); rect(ax, floorY(0.4) - 9, 12, 3, I.ARM_HI); rect(ax, floorY(0.4) - 9, 12, 1, I.BLADE); rect(ax + 3, floorY(0.4) - 6, 6, 3, I.ARM_SH); rect(ax + 2, floorY(0.4) - 3, 8, 3, I.ARM_SH);
-      cat('spotted', S(0.22), floorY(0.6));
     } else if (kind === 'publications') { // the library: each work face out on the display shelf
       // the two bookcases: each shelf a subject (site.toml [library]), each catalogued volume a gilt spine on it
       const rx = S(0.76);
@@ -1793,8 +1794,7 @@ f11111f2.
           rect(xc - 6, fy - 4, 12, 1, I.TIMBER_SH); rect(xc - 6, fy - 1, 1, 1, I.OUTLINE); rect(xc + 5, fy - 1, 1, 1, I.OUTLINE);
         }
       });
-      { const wz = SPRITES.wizard; const wx = bl - wz.w + 4; const wy = yf + 3 - wz.h; stamp(wz, wx, wy);
-        lights.push({ x: wx + ORB[0], y: wy + ORB[1], r: 0.18 * H }); } // the orb glows on the board
+      { const ms = SPRITES.master; stamp(ms, bl - ms.w + 4, yf + 3 - ms.h); }
       [bl + 12, bl + Math.round((br - bl) * 0.3)].forEach((x) => { rect(x, yf + 9, 5, 2, I.SLATEB); rect(x, yf + 8, 5, 1, I.TIMBER); });
       { const gx0 = dx + Math.round(dw / 2); const gy = yf - 16; // a globe on the master's desk
         for (let y = -3; y <= 3; y += 1) for (let x = -3; x <= 3; x += 1) if (x * x + y * y <= 10) set(gx0 + x, gy + y, (x + y * 2) % 4 === 0 ? I.FERN : I.WATER);
@@ -1832,7 +1832,6 @@ f11111f2.
       });
       candle(tb.r - 2, tb.back, true);
       windowArch(S(0.06), Math.round(H * 0.14), Math.max(10, Sw(0.1)), Math.round(H * 0.26));
-      cat('thin', a - 6, floorY(0.4));
     }
     doorList.forEach((e) => extra.push(e));
     extra.forEach(({ t, b }) => { slots[things.length] = b; things.push(t); }); // the hangings and the doors can be looked at too
@@ -1848,7 +1847,6 @@ f11111f2.
       for (let k = 0; k < 6; k += 1) { const tx = s(0.48) + k * Math.max(3, s(0.07)); rect(tx, Math.round(H * 0.28) + 1, 1, 6 + (k % 3) * 2, k % 2 ? I.ARM_SH : I.TIMBER); rect(tx - 1, Math.round(H * 0.28) + 6 + (k % 3) * 2, 3, 2, I.ARM_HI); }
       deco.push({ type: 'gear', x: s(0.78), y: Math.round(H * 0.5), r: 4, sp: 0.8 }, { type: 'gear', x: s(0.78) + 8, y: Math.round(H * 0.5) + 4, r: 3, sp: -1.1 });
       lantern(s(0.9), Math.round(H * 0.18));
-      cat('spotted', s(0.36), floorY(0.6)); // warming by the forge
     }
     return { id, W, H, idx, out, lights, flames, stars, motes, blinks, camps, deco, pools, yf, slots: things ? slots : [], things: things || [], cells: new Float32Array(9 * 14) };
   }
@@ -2702,8 +2700,6 @@ f11111f2.
   const CAT_SAYS = {
     blackLoaf: 'The big black cat purrs, one eye on the fire.',
     spotted: 'The spotted cat ignores you, as is proper.',
-    thin: "The thin black cat winds round the wizard's staff.",
-    whiteTabby: 'The white cat with tabby patches rolls over to warm the other side.',
   };
   const WIZARD_SAYS = [
     'The wizard taps his staff: "Choose a door, traveller."',

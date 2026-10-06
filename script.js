@@ -107,6 +107,12 @@ const T = {
 <p>You explored ${k} of ${n} rooms in ${mins}, and leave with your sanity intact.</p>
 <p class="dim">Goodbye, traveller.</p>`,
   emptyHanded: '<p>You leave empty-handed.</p>',
+  pickTitle: 'Two ways in',
+  pick: `<p>The same site, two ways to walk it. You can switch at any time with the button at the bottom right.</p>
+<div class="pick">
+  <button type="button" data-pick="hours"><b>[the castle]</b><span>a pixel-art landscape under the real sky of Paris; each section is a room to explore</span></button>
+  <button type="button" data-pick="dark"><b>[the terminal]</b><span>a text console, quick to read: every section one key away</span></button>
+</div>`,
   minutes: (m) => (m < 1 ? 'under a minute' : m === 1 ? 'one minute' : `${m} minutes`),
 };
 
@@ -552,6 +558,8 @@ dialog.className = 'scroll';
 dialog.setAttribute('aria-labelledby', 'dlg-h');
 document.body.append(dialog);
 dialog.addEventListener('click', (e) => {
+  const pick = e.target.closest('[data-pick]');
+  if (pick) { dialog.close(); applyTheme(pick.dataset.pick, true); return; }
   const use = e.target.closest('[data-use]');
   if (use) { dialog.close(); useItem(use.dataset.use); return; }
   if (e.target.closest('.map a')) { // let the link navigate, out of the descent too
@@ -566,6 +574,13 @@ function showDialog(titleHtml, bodyHtml) {
 <p class="dlg-foot"><button type="button" data-close>${T.close}</button></p>`;
   if (dialog.open) dialog.close();
   dialog.showModal();
+}
+
+/* First visit on a wide screen, no choice stored: offer the two themes (the castle is drawn behind).
+   Narrow screens have the terminal only, so nothing to choose. */
+if (WIDE.matches && !qTheme && !store('theme')) {
+  showDialog(T.pickTitle, T.pick);
+  dialog.addEventListener('close', () => { if (!store('theme')) store('theme', root.getAttribute('data-theme')); }, { once: true });
 }
 
 const showHelp = () => showDialog(T.helpTitle, T.help(document.querySelectorAll('.tabs a').length));

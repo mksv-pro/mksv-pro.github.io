@@ -471,6 +471,13 @@ dialog.scroll {
 dialog.scroll::backdrop { background: color-mix(in srgb, var(--bg) 80%, transparent); }
 dialog.scroll h2 { margin: 0 0 1rem; font: 400 1rem/1.4 var(--ui); color: var(--hi); }
 dialog.scroll h3 { margin: 1.25rem 0 .5rem; font: 400 .9rem/1.4 var(--ui); color: var(--accent); }
+dialog.scroll .pick { display: grid; gap: .75rem; margin: 1rem 0 0; }
+dialog.scroll .pick button {
+  display: grid; gap: .25rem; padding: .75rem 1rem; text-align: left; cursor: pointer;
+  font: inherit; color: var(--ink); background: transparent; border: 1px solid var(--rule);
+}
+dialog.scroll .pick button:hover, dialog.scroll .pick button:focus-visible { border-color: var(--accent); color: var(--hi); }
+dialog.scroll .pick b { color: var(--accent); font-weight: 400; }
 dialog.scroll .keys { margin: 0; }
 dialog.scroll .keys div { display: grid; grid-template-columns: 14ch 1fr; gap: 1ch; }
 dialog.scroll .keys dt { color: var(--hi); }
