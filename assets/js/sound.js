@@ -144,10 +144,24 @@
   function cue(name) {
     if (!ac || !state().on) return;
     ({
-      page: () => burst(2000, 0.35, 0.09, { sweep: 2.5 }), // a page turned
-      card: () => burst(1400, 0.22, 0.06, { sweep: 1.8 }), // a sheet unrolled
-      seal: () => { burst(2600, 0.05, 0.14, { type: 'highpass' }); burst(300, 0.12, 0.1, { type: 'lowpass', at: 0.03 }); }, // wax breaking
-      door: () => { tone(190, 140, 0.9, 0.05, { type: 'sawtooth', filter: 420, vibrato: 9 }); burst(120, 0.25, 0.18, { type: 'lowpass', at: 0.85, echo: true }); }, // a creak, then the thud
+      page: () => { // a leaf lifted, flapping over, laid down: three rustles and a soft slap
+        burst(1800, 0.18, 0.32, { sweep: 2.4 }); burst(3200, 0.12, 0.22, { type: 'highpass', at: 0.12 });
+        burst(2400, 0.22, 0.28, { sweep: 0.5, at: 0.2 }); burst(500, 0.06, 0.25, { type: 'lowpass', at: 0.4 });
+      },
+      card: () => { // a sheet of vellum unrolled: a dry crackle along it
+        for (let k = 0; k < 5; k += 1) burst(1600 + k * 500, 0.09, 0.22, { at: k * 0.05 });
+        burst(900, 0.25, 0.18, { sweep: 2, at: 0.05 });
+      },
+      seal: () => { // the wax snaps, its pieces fall, then the letter opens
+        burst(3000, 0.04, 0.45, { type: 'highpass' }); burst(250, 0.1, 0.4, { type: 'lowpass', at: 0.02 });
+        burst(5000, 0.02, 0.18, { type: 'highpass', at: 0.09 }); burst(4200, 0.02, 0.14, { type: 'highpass', at: 0.16 });
+        for (let k = 0; k < 4; k += 1) burst(1600 + k * 400, 0.08, 0.18, { at: 0.3 + k * 0.05 });
+      },
+      door: () => { // a long creak of hinges, then the heavy door shuts
+        tone(230, 150, 1.1, 0.16, { type: 'sawtooth', filter: 520, vibrato: 9 });
+        tone(460, 300, 1.1, 0.06, { type: 'sawtooth', filter: 900, vibrato: 7 });
+        burst(110, 0.45, 0.6, { type: 'lowpass', at: 1.05, echo: true }); burst(700, 0.08, 0.2, { at: 1.05 });
+      },
       neigh: () => { // rising, then the long shaking fall
         tone(700, 1150, 0.35, 0.05, { type: 'sawtooth', filter: 1400, vibrato: 11 });
         tone(1150, 520, 0.7, 0.045, { type: 'sawtooth', filter: 1100, vibrato: 13, at: 0.35 });
