@@ -147,6 +147,9 @@ function run(line) {
     case 'keys':
       setKeys(arg ? arg !== 'off' : !keysOn);
       return print(T.keysSet(keysOn));
+    case 'photo': case 'p':
+      closeCmd();
+      return togglePhoto(true);
     case 'quit': case 'q': case 'exit':
       return showEnd();
     case 'clear': case 'cls':
@@ -174,7 +177,7 @@ cmdForm.addEventListener('submit', (e) => {
 /* Tab completes the word under the cursor: a command or a room first, then what that command
    takes; one match is completed, several are completed to their common start and listed. */
 const COMMANDS = ['help', 'look', 'ls', 'map', 'cd', 'take', 'inventory', 'use', 'rumour', 'descend',
-  'cv', 'mail', 'github', 'theme', 'sky', 'weather', 'keys', 'quit', 'clear', 'go'];
+  'cv', 'mail', 'github', 'theme', 'sky', 'weather', 'photo', 'keys', 'quit', 'clear', 'go'];
 const roomWords = () => ROOM_IDS.map((id) => WORLD[id].label.toLowerCase());
 const ARGS = {
   cd: roomWords, open: roomWords, go: () => ['north', 'south', 'east', 'west'], walk: () => ['north', 'south', 'east', 'west'],

@@ -83,6 +83,7 @@ const T = {
   <div><dt>1&ndash;${nTabs}</dt><dd>open a section</dd></div>
   <div><dt>&larr; &rarr; &uarr; &darr;</dt><dd>move through the menu, Enter to open</dd></div>
   <div><dt>m</dt><dd>map of the place</dd></div>
+  <div><dt>p</dt><dd>photo mode: the landscape alone, to look at or save (castle theme)</dd></div>
   <div><dt>i &middot; ,</dt><dd>inventory &middot; pick up what lies here</dd></div>
   <div><dt>&gt;</dt><dd>descend: walk the site in first person</dd></div>
   <div><dt>:</dt><dd>command line</dd></div>
@@ -113,6 +114,8 @@ const T = {
 <p>You explored ${k} of ${n} rooms in ${mins}, and leave with your sanity intact.</p>
 <p class="dim">Goodbye, traveller.</p>`,
   emptyHanded: '<p>You leave empty-handed.</p>',
+  photoSave: '[save the picture]', photoClose: '[back \u00b7 p or Esc]',
+  photoOnly: 'Photo mode is for the castle: switch theme first.',
   curiosFound: (k, n) => `You found ${k} of the land's ${n} curiosities:`,
   allCurios: 'You know every curiosity of this land. The wizard nods, impressed.',
   pickTitle: 'Two ways in',
@@ -283,6 +286,44 @@ async function copyFrom(href) {
     return false;
   }
 }
+
+/* ---- photo mode (p): the landscape alone; the picture of the moment can be saved ----- */
+
+const photoBar = document.createElement('div');
+photoBar.className = 'photo-bar';
+photoBar.hidden = true;
+photoBar.innerHTML = `<button type="button" data-photo="save">${T.photoSave}</button> <button type="button" data-photo="close">${T.photoClose}</button>`;
+document.body.append(photoBar);
+function togglePhoto(on = !root.classList.contains('photo')) {
+  if (on && root.getAttribute('data-theme') !== 'hours') { say(T.photoOnly); return; }
+  root.classList.toggle('photo', on);
+  photoBar.hidden = !on;
+  if (on) photoBar.querySelector('button').focus();
+}
+function savePhoto() { // the scene's own pixels, enlarged without blur
+  const src = document.querySelector('.plate-img canvas');
+  if (!src) return;
+  const k = Math.max(1, Math.round(1920 / src.width));
+  const out = document.createElement('canvas');
+  out.width = src.width * k; out.height = src.height * k;
+  const g = out.getContext('2d');
+  g.imageSmoothingEnabled = false;
+  g.drawImage(src, 0, 0, out.width, out.height);
+  out.toBlob((blob) => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `castle-${new Date().toISOString().slice(0, 16).replace(':', 'h')}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  });
+}
+photoBar.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-photo]');
+  if (b) { if (b.dataset.photo === 'save') savePhoto(); else togglePhoto(false); }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && root.classList.contains('photo')) { e.preventDefault(); togglePhoto(false); }
+});
 
 /* ---- curiosities: the things of the hours landscape that answer a click (this session) ---- */
 
@@ -764,7 +805,7 @@ document.addEventListener('keydown', (e) => {
   if (konamiAt === KONAMI.length) { konamiAt = 0; toggleWizard(); return; }
 
   const act = {
-    ':': openCmd, '?': showHelp, m: showMap, i: showInventory, '>': descend,
+    ':': openCmd, '?': showHelp, m: showMap, i: showInventory, '>': descend, p: togglePhoto,
     ',': () => say(here ? pickUp(here) : T.nothingHere),
   }[e.key];
   if (act) { e.preventDefault(); act(); return; }
