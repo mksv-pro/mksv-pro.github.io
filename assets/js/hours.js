@@ -1178,6 +1178,41 @@ hhhhhh.
 ..hh...
 ..hh...`];
 
+  // pupils seen from behind, seated: 1 hair, 2 tunic (filled in per pupil); the last one has a question
+  const PUPIL = [`
+..111..
+.11111.
+1111111
+1111111
+f11111f
+.11111.
+..1f1..
+.22222.
+2222222
+2222222
+2222222
+2222222`, `
+........f
+..111...2
+.11111..2
+1111111.2
+1111111.2
+f11111f2.
+.11111.2.
+..1f1.2..
+.222222..
+2222222..
+2222222..
+2222222..`];
+  const HAIR = ['h', 'b', 't', 'g', 'h', 'b'];
+  const TUNIC = ['r', 'u', 'd', 'p', 'u', 'r'];
+  const pupilCache = {};
+  const pupil = (k) => {
+    const key = `${k % 6}${k === 4 ? 'q' : ''}`; // the fifth asks a question
+    pupilCache[key] ||= shadeSprite(PUPIL[k === 4 ? 1 : 0].replace(/1/g, HAIR[k % 6]).replace(/2/g, TUNIC[(k * 5 + 1) % 6]));
+    return pupilCache[key];
+  };
+
   function generateInterior(id, W, H, Wi, sup) {
     const rng = mulberry32(id.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 7));
     const idx = new Uint8Array(W * H); const out = new Uint8Array(W * H);
@@ -1433,18 +1468,20 @@ hhhhhh.
         if (k % 3 === 1 && k !== Math.floor(w / 2)) set(x + k, y - 2 - hump, I.BEARD_SH); // lines of text
       }
     }
-    function shelf(x, y, w, h) { // a bookcase standing on the floor, top at y
+    function shelf(x, y, w, h) { // a bookcase standing on the floor, top at y; returns its shelves
       rect(x, y, w, h, I.TIMBER_SH); rect(x, y, w, 1, I.TIMBER_HI); rect(x, y, 1, h, I.TIMBER_HI);
+      const rows = [];
       for (let sy = y + 9; sy < y + h; sy += 9) {
         rect(x + 1, sy - 8, w - 2, 8, I.OUTLINE);
         books(x + 2, sy, Math.floor((w - 4) / 2.2), rng() < 0.5);
         rect(x + 1, sy, w - 2, 1, I.TIMBER);
+        rows.push({ x: x + 1, y: sy - 8, w: w - 2, h: 9 });
       }
+      return rows;
     }
     function rug(x, y, w) {
       for (let r = 0; r < 4; r += 1) for (let k = 0; k < w; k += 1) set(x + k, y + r, r === 0 || r === 3 || k === 0 || k === w - 1 ? I.GOLD_SH : (k + r) % 4 === 0 ? I.GOLD : I.CLOTH_SH);
     }
-    function bench(x, w, dy = 4) { rect(x, yf + dy, w, 1, I.TIMBER_HI); rect(x, yf + dy + 1, w, 1, I.TIMBER_SH); rect(x + 1, yf + dy + 2, 1, 3, I.TIMBER_SH); rect(x + w - 2, yf + dy + 2, 1, 3, I.TIMBER_SH); }
     function lantern(x, y) { set(x, y - 1, I.OUTLINE); rect(x - 1, y, 3, 3, I.ARM_SH); set(x, y + 1, I.WIN_LIT); flames.push({ x, y: y + 1, small: true }); lights.push({ x, y: y + 1, r: 0.3 * H }); }
 
     /* the text's holder stands where the text is (`sup`: its box, from the page, in this room's
@@ -1634,11 +1671,23 @@ hhhhhh.
       const ax = S(0.3); rect(ax, floorY(0.4) - 9, 12, 3, I.ARM_HI); rect(ax, floorY(0.4) - 9, 12, 1, I.BLADE); rect(ax + 3, floorY(0.4) - 6, 6, 3, I.ARM_SH); rect(ax + 2, floorY(0.4) - 3, 8, 3, I.ARM_SH);
       cat('spotted', S(0.22), floorY(0.6));
     } else if (kind === 'publications') { // the library: each work face out on the display shelf
-      shelf(S(0) + 2, 7, Math.max(16, Sw(0.22)), yf - 7);
-      const rx = S(0.76); shelf(rx, 7, Math.max(16, BR - rx - 2), yf - 7);
-      const l = S(0.32); const r = S(0.68); const fit = Math.max(1, Math.floor((r - l) / 13)); const rows = Math.ceil(n / fit) || 1;
+      // the two bookcases: each shelf a subject (site.toml [library]), each catalogued volume a gilt spine on it
+      const rx = S(0.76);
+      const shelfRows = [...shelf(S(0) + 2, 7, Math.max(16, Sw(0.22)), yf - 7), ...shelf(rx, 7, Math.max(16, BR - rx - 2), yf - 7)];
+      const rowOf = {};
+      of('shelf').forEach(([t, i], k) => { if (shelfRows[k]) { slots[i] = box(shelfRows[k].x, shelfRows[k].y, shelfRows[k].w, shelfRows[k].h); rowOf[t.shelf] = shelfRows[k]; } });
+      const onShelf = {};
+      of('volume').forEach(([t, i]) => {
+        const sr = rowOf[t.shelf]; if (!sr) return;
+        const j = onShelf[t.shelf] = (onShelf[t.shelf] || 0) + 1; const x = sr.x + sr.w - 1 - j * 4;
+        if (x < sr.x + 1) return; // a full shelf: the rest are in the catalogue only
+        rect(x, sr.y + 1, 3, 7, I.CLOTH_SH); rect(x, sr.y + 2, 3, 1, I.GOLD_HI); rect(x, sr.y + 6, 3, 1, I.GOLD); set(x + 1, sr.y + 4, I.GOLD);
+        slots[i] = box(x - 1, sr.y, 5, 9);
+      });
+      const pubs = of('book'); const np = pubs.length;
+      const l = S(0.32); const r = S(0.68); const fit = Math.max(1, Math.floor((r - l) / 13)); const rows = Math.ceil(np / fit) || 1;
       for (let row = 0; row < rows; row += 1) { const y = Math.round(H * 0.5) - row * 17; rect(l - 2, y, r - l + 4, 2, I.TIMBER_HI); rect(l - 2, y + 2, r - l + 4, 1, I.TIMBER_SH); }
-      spread(n, l, r, 13).forEach(({ k, row, xc }) => { slots[k] = bookFace(xc, Math.round(H * 0.5) - row * 17, k); });
+      spread(np, l, r, 13).forEach(({ k, row, xc }) => { slots[pubs[k][1]] = bookFace(xc, Math.round(H * 0.5) - row * 17, k); });
       if (rows < 2) windowArch(S(0.5) - 6, 7, 12, Math.round(H * 0.24));
       const lx = S(0.5) - 4; rect(lx + 3, yf - 13, 2, 13, I.TIMBER_SH); rect(lx + 1, yf - 1, 6, 1, I.TIMBER_SH); // a lectern before them
       for (let k = 0; k < 9; k += 1) set(lx + k, yf - 14 + Math.floor(k / 3), I.TIMBER_HI);
@@ -1727,13 +1776,34 @@ hhhhhh.
       });
       const dx = S(0.86); const dw = Math.max(10, BR - dx - 2); desk(dx, yf - 10, dw); candle(dx + dw - 3, yf - 11, true);
       for (let k = 0; k < 5; k += 1) set(dx + 3 + k * 2, yf - 12, k % 2 ? I.CAP : I.GOLD); rect(dx + 2, yf - 13, 11, 1, I.TIMBER_SH);
-      bench(bl - 2, Math.round((br - bl) * 0.45)); bench(bl + Math.round((br - bl) * 0.55), Math.round((br - bl) * 0.47)); bench(bl + 6, Math.round((br - bl) * 0.4), 11);
-      [bl + 4, bl + 14, bl + Math.round((br - bl) * 0.6), bl + Math.round((br - bl) * 0.75)].forEach((x) => { rect(x, yf + 2, 5, 2, I.SLATEB); rect(x, yf + 1, 5, 1, I.TIMBER); }); // the pupils' slates
+      // the class: two rows, each a long desk, the pupils on their chairs before it (we see their
+      // backs: they face the board); the master at the board's left, his staff on the equations
+      const rowAt = [yf + 7, Math.min(H - 2, yf + 16)];
+      let pk = 0;
+      rowAt.forEach((fy, row) => {
+        const l = bl - 4 - row * 5; const r = (row ? br + 2 : br - 4); const seats = Math.max(2, Math.floor((r - l) / 19));
+        const dt = fy - 11; // the desk's top, beyond the pupils
+        rect(l, dt, r - l, 1, I.TIMBER_HI); rect(l, dt + 1, r - l, 2, I.TIMBER); rect(l, dt + 3, r - l, 1, I.TIMBER_SH); set(l, dt, I.OUTLINE); set(r - 1, dt, I.OUTLINE);
+        for (let x = l + 1; x < r; x += Math.max(8, Math.floor((r - l - 2) / 3))) rect(Math.min(x, r - 2), dt + 4, 1, 6, I.OUTLINE); // its legs
+        for (let k = 0; k < seats; k += 1) {
+          const xc = Math.round(l + ((k + 0.5) * (r - l)) / seats);
+          rect(xc + 5, dt - 1, 5, 1, I.SLATEB); rect(xc + 5, dt - 2, 5, 1, I.TIMBER); // a slate on the desk, an inkpot
+          set(xc - 8, dt - 1, I.OUTLINE); set(xc - 8, dt - 2, I.ARM_SH);
+          const sp = pupil(pk); pk += 1;
+          stamp(sp, xc - 4, fy - 5 - sp.h + 2);
+          // the chair's back, between us and the pupil: posts, top rail, a slat; the seat's edge below
+          rect(xc - 6, fy - 11, 2, 11, I.TIMBER_SH); rect(xc + 4, fy - 11, 2, 11, I.TIMBER_SH); set(xc - 6, fy - 11, I.TIMBER_HI);
+          rect(xc - 6, fy - 11, 12, 2, I.TIMBER); rect(xc - 6, fy - 11, 12, 1, I.TIMBER_HI); rect(xc - 4, fy - 7, 8, 1, I.TIMBER);
+          rect(xc - 6, fy - 4, 12, 1, I.TIMBER_SH); rect(xc - 6, fy - 1, 1, 1, I.OUTLINE); rect(xc + 5, fy - 1, 1, 1, I.OUTLINE);
+        }
+      });
+      { const wz = SPRITES.wizard; const wx = bl - wz.w + 4; const wy = yf + 3 - wz.h; stamp(wz, wx, wy);
+        lights.push({ x: wx + ORB[0], y: wy + ORB[1], r: 0.18 * H }); } // the orb glows on the board
       [bl + 12, bl + Math.round((br - bl) * 0.3)].forEach((x) => { rect(x, yf + 9, 5, 2, I.SLATEB); rect(x, yf + 8, 5, 1, I.TIMBER); });
       { const gx0 = dx + Math.round(dw / 2); const gy = yf - 16; // a globe on the master's desk
         for (let y = -3; y <= 3; y += 1) for (let x = -3; x <= 3; x += 1) if (x * x + y * y <= 10) set(gx0 + x, gy + y, (x + y * 2) % 4 === 0 ? I.FERN : I.WATER);
         rect(gx0, gy + 4, 1, 2, I.GOLD_SH); rect(gx0 - 2, gy + 5, 5, 1, I.GOLD); set(gx0 - 4, gy, I.GOLD_SH); set(gx0 + 4, gy, I.GOLD_SH); }
-      [[2, I.CLOTH], [1, I.ROBE], [3, I.FERN_SH]].forEach(([w, c], k) => rect(br - 2 - w, yf + 4 - k * 2, 8 + w, 2, c)); // books stacked on the floor
+      [[2, I.CLOTH], [1, I.ROBE], [3, I.FERN_SH]].forEach(([w, c], k) => rect(dx + 2, yf + 2 - k * 2, 4 + w, 2, c)); // books stacked under the master's desk
       rect(bl + 3, bb + 2, 4, 1, I.CLOTH_SH); // the duster on the ledge
     } else if (kind === 'news') { // the rookery: each piece of news a letter pinned on the cork
       const cl = S(0.64); const cr = S(0.97); const ct = Math.round(H * 0.18);
@@ -2422,8 +2492,9 @@ hhhhhh.
     // a discreet hint: a glint passes from one thing to the next, as candlelight would catch it
     if (hl < 0 && !reduce && interior.slots.length) {
       const P = 2.6; const k = Math.floor(t / P) % interior.slots.length; const ph = (t % P) / 0.6;
-      if (ph < 1) {
-        const g = interior.slots[k]; const gx = g.x + g.w - 2; const gy = g.y + 1; const a = Math.sin(ph * Math.PI);
+      const g = interior.slots[k]; // (a thing with no room to be drawn has no slot)
+      if (ph < 1 && g) {
+        const gx = g.x + g.w - 2; const gy = g.y + 1; const a = Math.sin(ph * Math.PI);
         blend(gx, gy, [255, 255, 240], a);
         [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => blend(gx + dx, gy + dy, [255, 236, 170], a * 0.7));
         if (a > 0.6) [[2, 0], [-2, 0], [0, 2], [0, -2]].forEach(([dx, dy]) => blend(gx + dx, gy + dy, [255, 236, 170], a * 0.35));
@@ -2515,7 +2586,7 @@ hhhhhh.
     const wide = plate && getComputedStyle(plate.parentElement).position === 'fixed';
     if (!on || !wide || !interior || !interior.slots.length) { spotsTo([], []); return; }
     const r = plate.getBoundingClientRect(); const k = px * 2;
-    spotsTo(interior.slots.map((b) => ({ l: Math.round(r.left + b.x * k), t: Math.round(r.top + b.y * k), w: Math.round(b.w * k), h: Math.round(b.h * k) })), interior.things);
+    spotsTo(Array.from(interior.slots, (b) => b && ({ l: Math.round(r.left + b.x * k), t: Math.round(r.top + b.y * k), w: Math.round(b.w * k), h: Math.round(b.h * k) })), interior.things);
   }
   const travelling = (on) => root.classList.toggle('travelling', on);
 

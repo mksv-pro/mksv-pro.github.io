@@ -210,7 +210,7 @@ def site_json():
     bib = next((p["bib"] for p in DATA["publications"] if p.get("bib")), None)
     doc = {"world": ROOMS, "links": LINKS, "email": DATA["site"]["email"],
            "github": DATA["site"]["github"], "bib": bib and f"assets/bib/{bib}",
-           "heraldry": DATA["heraldry"]}
+           "heraldry": DATA["heraldry"], "library": DATA.get("library", {})}
     return json.dumps(doc, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
 
 

@@ -55,6 +55,9 @@ const T = {
   lookHint: '(What glints can be looked at: point at it, or Tab, then Enter.)',
   charter: 'A charter of enrolment, sealed with the arms of the school.',
   register: 'The register by the door',
+  shelf: (name) => `Shelf: ${name}`,
+  shelfEmpty: 'Its catalogue is still to be written.',
+  source: 'where to read it',
   themeSet: (name) => `The lamp turns: ${name}.`,
   skySet: (s) => (s === 'now' ? 'The sky keeps the true hour again.' : `The sky turns to ${s}.`),
   skyHint: 'sky dawn|noon|dusk|night|now (seen in the hours theme)',
@@ -408,7 +411,22 @@ function roomItems(id) {
     }
     case 'research': return of('.entry', 'scroll', (el) => ({ arms: el.dataset.arms, label: text(el.querySelector('h3')), html: el.innerHTML }));
     case 'projects': return of('article.project', 'model', (el) => ({ model: el.id, label: text(el.querySelector('h3')), html: el.innerHTML }));
-    case 'publications': return of('.pub', 'book', (el) => ({ label: text(el.querySelector('.pub-title')), html: el.innerHTML }));
+    case 'publications': { // the works face out on the ledge; then the shelves, and the volumes on them
+      const lib = DATA.library || {}; const vols = lib.volumes || [];
+      const volume = (b) => `<b>${b.url ? `<a href="${esc(b.url)}" rel="noopener">${esc(b.title)}</a>` : esc(b.title)}</b>`
+        + `, ${esc(b.author)}${b.year ? ` (${esc(b.year)})` : ''}${b.note ? `<br><span class="dim">${esc(b.note)}</span>` : ''}`;
+      return [
+        ...of('.pub', 'book', (el) => ({ label: text(el.querySelector('.pub-title')), html: el.innerHTML })),
+        ...(lib.shelves || []).map(([sid, name]) => {
+          const here = vols.filter((b) => b.shelf === sid);
+          return { kind: 'shelf', shelf: sid, label: T.shelf(name), html: `<h3>${esc(T.shelf(name))}</h3>`
+            + (here.length ? `<ul>${here.map((b) => `<li>${volume(b)}</li>`).join('')}</ul>` : `<p>${T.shelfEmpty}</p>`) };
+        }),
+        ...vols.map((b) => ({ kind: 'volume', shelf: b.shelf, label: b.title, html: `<h3>${esc(b.title)}</h3>`
+          + `<p>${esc(b.author)}${b.year ? `, ${esc(b.year)}` : ''}</p>${b.note ? `<p class="dim">${esc(b.note)}</p>` : ''}`
+          + (b.url ? `<p><a href="${esc(b.url)}" rel="noopener">${T.source}</a></p>` : '') })),
+      ];
+    }
     case 'news': return of('.news li', 'letter', (el) => ({ label: text(el.querySelector('time')), html: el.innerHTML }));
     case 'talks': return of('.entry', 'banner', (el) => ({ label: text(el.querySelector('h3')), html: el.innerHTML }));
     case 'teaching': return of('.entry', 'course', (el) => ({ label: text(el.querySelector('h3')), html: el.innerHTML }));
@@ -440,7 +458,8 @@ let spotItems = []; let cardFrom = null;
 function setSpots(rects, items) {
   spotItems = items;
   closeCard(false);
-  spots.replaceChildren(...rects.map((r, i) => {
+  spots.replaceChildren(...rects.flatMap((r, i) => { // (no rect: the thing found no room in the picture)
+    if (!r) return [];
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'spot';
@@ -453,7 +472,7 @@ function setSpots(rects, items) {
     b.addEventListener('focus', () => lit(true));
     b.addEventListener('blur', () => lit(false));
     b.addEventListener('click', () => openCard(i, b));
-    return b;
+    return [b];
   }));
 }
 /** The doors out of room `id`, from the section's exits: { dir: n|e|s|w, label, go }. */

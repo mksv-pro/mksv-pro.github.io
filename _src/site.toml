@@ -236,6 +236,27 @@ actions = [
   { label = "code", href = "{{url:report_code}}" },
 ]
 
+# ---- the library (hours theme): each shelf of the two bookcases on the back wall is a subject,
+# left bookcase top to bottom, then the right one; a click shows the shelf's volumes. A volume:
+#   [[library.volumes]]
+#   shelf = "stochastic"        # an id from `shelves`
+#   title = "…"
+#   author = "…"
+#   year = 2024                 # optional, as are `url` (a legal source) and `note`
+# Each one is a gilt spine on its shelf, and can be clicked on its own.
+
+[library]
+shelves = [
+  ["statphys", "Statistical physics"], ["stochastic", "Stochastic processes"],
+  ["complex", "Complex systems"], ["dynamics", "Dynamical systems and chaos"],
+  ["rmt", "Random matrices"], ["quantum", "Quantum mechanics"],
+  ["qinfo", "Quantum information"], ["fields", "Statistical field theory"],
+  ["proba", "Probability"], ["analysis", "Analysis and PDEs"],
+  ["geometry", "Geometry"], ["ml", "Machine learning"],
+  ["mlphys", "Machine learning for physics"], ["mfg", "Mean-field games"],
+  ["econo", "Econophysics and finance"], ["social", "Agent-based and social models"],
+]
+
 # ---- news (the newest one's `msg` is the index's message line; all go to feed.xml) -----
 
 [[news]]
