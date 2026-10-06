@@ -110,6 +110,7 @@ const T = {
   <div><dt>sky &lt;hour&gt;</dt><dd>dawn, noon, dusk, night or now, in the hours theme</dd></div>
   <div><dt>weather &lt;kind&gt;</dt><dd>clear, rain, snow, fog, storm... or now</dd></div>
   <div><dt>photo</dt><dd>the landscape alone, to save as a picture</dd></div>
+  <div><dt>music &middot; volume 0-10</dt><dd>the lute on or off &middot; how loud (sound on, castle theme)</dd></div>
   <div><dt>quit</dt><dd>end the visit</dd></div>
 </dl>`,
   mapTitle: 'Map',
@@ -120,6 +121,7 @@ const T = {
 <p>You explored ${k} of ${n} rooms in ${mins}, and leave with your sanity intact.</p>
 <p class="dim">Goodbye, traveller.</p>`,
   emptyHanded: '<p>You leave empty-handed.</p>',
+  volume: 'Volume of the sound', musicSet: (on) => `The lute ${on ? 'plays again' : 'falls silent'}.`, volumeSet: (v) => `Volume ${v} of 10.`,
   photoSave: '[save the picture]', photoClose: '[back \u00b7 p or Esc]',
   photoOnly: 'Photo mode is for the castle: switch theme first.',
   curiosFound: (k, n) => `You found ${k} of the land's ${n} curiosities:`,
@@ -299,24 +301,38 @@ async function copyFrom(href) {
 const soundBtn = $('sound-toggle');
 let soundOn = store('sound') === 'on'; let soundLoading = null;
 function soundState() {
+  const r = root.dataset.room || null; const room = r && WORLD[r] && WORLD[r].page ? 'workshop' : r; // project pages: the workshop
   return {
     on: soundOn && root.getAttribute('data-theme') === 'hours' && !document.hidden,
-    wx: currentWx(), night: root.getAttribute('data-sky') === 'night', inside: Boolean(root.dataset.room),
+    wx: currentWx(), night: root.getAttribute('data-sky') === 'night', room,
+    echo: ['talks', 'research', 'contact', 'projects', 'workshop'].includes(room), // the stone rooms
     summer: [5, 6, 7].includes(new Date().getMonth()),
   };
 }
+/** A sound for something that just happened (when the sound is on). */
+const cue = (name) => { if (soundOn && window.Sound) window.Sound.cue(name); };
 function setSound(on) {
   soundOn = on;
   store('sound', on ? 'on' : 'off');
   soundBtn.setAttribute('aria-pressed', String(on));
+  root.classList.toggle('sound-on', on);
   soundBtn.querySelector('b').textContent = on ? T.on : T.off;
   if (!on) { if (window.Sound) window.Sound.stop(); return; }
   soundLoading ||= new Promise((resolve, reject) => {
     const s = document.createElement('script'); s.src = SOUND_SRC; s.onload = resolve; s.onerror = reject; document.head.append(s);
   });
-  soundLoading.then(() => window.Sound.start(soundState));
+  soundLoading.then(() => { window.Sound.setMusic(musicOn); applyVolume(); window.Sound.start(soundState); });
 }
 soundBtn.addEventListener('click', () => setSound(!soundOn));
+const volume = document.createElement('input'); // its volume, beside it while the sound is on
+Object.assign(volume, { type: 'range', min: 0, max: 10, step: 1, className: 'sound-volume' });
+volume.setAttribute('aria-label', T.volume);
+volume.value = String(Math.round(Number(store('volume') ?? 6)));
+soundBtn.after(volume);
+const applyVolume = () => { store('volume', volume.value); if (window.Sound) window.Sound.setVolume(Number(volume.value) / 10); };
+volume.addEventListener('input', applyVolume);
+let musicOn = store('music') !== 'off';
+function setMusic(on) { musicOn = on; store('music', on ? 'on' : 'off'); if (window.Sound) window.Sound.setMusic(on); }
 if (soundOn) {
   soundBtn.setAttribute('aria-pressed', 'true'); soundBtn.querySelector('b').textContent = T.on;
   const wake = () => { setSound(true); removeEventListener('pointerdown', wake); removeEventListener('keydown', wake); };
@@ -448,6 +464,7 @@ function openWindow(hash, { userAction, animate = userAction }) {
     if (hint) session('hinted', '1');
     say([win.dataset.look, empty && empty.textContent.trim(), hint].filter(Boolean).join(' '));
   }
+  if (target && userAction && root.getAttribute('data-theme') === 'hours') cue('door'); // into a room
   if (window.Hours) window.Hours.room(target ? win.id : null, { animate });
   else root.classList.toggle('room-ready', Boolean(target)); // no castle (yet): show the text at once
   if (!userAction) return;
@@ -721,6 +738,7 @@ function turn(dir) {
   const n = Math.ceil(pgs.length / 2);
   const was = card.bookAt;
   card.bookAt = Math.max(0, Math.min(n - 1, card.bookAt + dir));
+  if (dir && card.bookAt !== was) cue('page');
   if (dir && card.bookAt !== was && !reduceMotion) { // a leaf turning over the gutter, in a few steps
     const leaf = document.createElement('div');
     leaf.className = `leaf-turn ${dir > 0 ? 'to-left' : 'to-right'}`;
@@ -761,6 +779,7 @@ function openCard(i, from) {
   card.querySelectorAll(':scope > .deco').forEach((d) => d.remove());
   const deco = { letter: ['wax'], charter: ['hang-seal'], hanging: ['hang-seal'], scroll: ['roll at-top', 'roll at-bottom'] }[it.kind] || [];
   deco.forEach((c) => card.insertAdjacentHTML('beforeend', `<span class="deco ${c}" aria-hidden="true"></span>`));
+  cue(it.kind === 'letter' ? 'seal' : 'card');
   if (book) { // pages are measured, so the card is shown first; again once its fonts have loaded
     bind(body); turn(0);
     const src = card.bookSrc;
@@ -1122,7 +1141,7 @@ function tick() {
   updateSky();
   if (lastHour && ph.hour !== lastHour && window.Hours) { // the castle bell marks the turn of the hour
     window.Hours.ring();
-    if (window.Sound) window.Sound.bell();
+    cue('bell');
     if (root.getAttribute('data-theme') === 'hours') say(T.bell(ph.hour));
   }
   lastHour = ph.hour;

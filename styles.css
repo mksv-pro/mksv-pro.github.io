@@ -1139,3 +1139,6 @@ html.og { --msg-h: 0px; --status-h: 0px; } /* the scene takes the whole frame */
 [data-theme="hours"] .card .leaf-turn.to-right { left: 0; transform-origin: right center; animation-name: leaf-turn-back; }
 @keyframes leaf-turn { from { transform: translateX(0) scaleX(1); } 50% { transform: translateX(-2.2rem) scaleX(.12); } to { transform: translateX(calc(-100% - 4.4rem)) scaleX(1); opacity: 0; } }
 @keyframes leaf-turn-back { from { transform: translateX(0) scaleX(1); } 50% { transform: translateX(2.2rem) scaleX(.12); } to { transform: translateX(calc(100% + 4.4rem)) scaleX(1); opacity: 0; } }
+/* the volume, beside sound:on (castle theme) */
+.sound-volume { display: none; width: 5rem; min-height: 24px; accent-color: var(--accent); vertical-align: middle; }
+html.sound-on[data-theme="hours"] .sound-volume { display: inline-block; }

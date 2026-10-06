@@ -3464,8 +3464,10 @@ f11111f2.
     if (inBox(wizard.x + go, wizard.y, SPRITES.wizard.w, SPRITES.wizard.h)) return { kind: 'wizard' };
     return null;
   }
+  const sfx = (name) => { if (window.Sound) window.Sound.cue(name); }; // (silent unless the sound is on)
   function talk(hit) {
     found(hit.kind); // the curiosity hunt (script.js)
+    sfx({ horse: 'neigh', cat: 'meow', owl: 'owl' }[hit.kind]);
     if (hit.kind === 'cat') say(CAT_SAYS[hit.name] || 'A cat looks at you.');
     else if (hit.kind === 'knight' && look.night > 0.7) say('The knight is asleep by the fire. Best not to wake him.');
     else if (hit.kind === 'knight') { const r = rumour(); say(`The knight looks up from the fire: "${r[0].toUpperCase()}${r.slice(1)}"`); }
@@ -3563,6 +3565,7 @@ f11111f2.
         f.y -= 3.5;
         if (f.y > f.top) return true;
         const c = [[255, 90, 90], [255, 220, 110], [120, 210, 255], [200, 130, 255], [140, 255, 150]][Math.floor(Math.random() * 5)];
+        if (window.Sound) window.Sound.cue('boom');
         for (let k = 0; k < 26; k += 1) { const a = (k / 26) * 2 * Math.PI; const v = 1 + Math.random() * 0.6; sparksOut.push({ x: f.x, y: f.y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, age: 0, life: 22 + Math.random() * 10, c }); }
         return false;
       }

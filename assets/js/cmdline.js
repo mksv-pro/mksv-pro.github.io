@@ -144,6 +144,15 @@ function run(line) {
       showWeather();
       return print(esc(T.wxSet(arg)));
     }
+    case 'music':
+      setMusic(arg ? arg !== 'off' : !musicOn);
+      return print(esc(T.musicSet(musicOn)));
+    case 'volume': {
+      const v = Math.max(0, Math.min(10, Math.round(Number(arg))));
+      if (!Number.isFinite(v)) return print(esc(T.volumeSet(volume.value)));
+      volume.value = String(v); applyVolume();
+      return print(esc(T.volumeSet(v)));
+    }
     case 'keys':
       setKeys(arg ? arg !== 'off' : !keysOn);
       return print(T.keysSet(keysOn));
@@ -177,12 +186,12 @@ cmdForm.addEventListener('submit', (e) => {
 /* Tab completes the word under the cursor: a command or a room first, then what that command
    takes; one match is completed, several are completed to their common start and listed. */
 const COMMANDS = ['help', 'look', 'ls', 'map', 'cd', 'take', 'inventory', 'use', 'rumour', 'descend',
-  'cv', 'mail', 'github', 'theme', 'sky', 'weather', 'photo', 'keys', 'quit', 'clear', 'go'];
+  'cv', 'mail', 'github', 'theme', 'sky', 'weather', 'photo', 'music', 'volume', 'keys', 'quit', 'clear', 'go'];
 const roomWords = () => ROOM_IDS.map((id) => WORLD[id].label.toLowerCase());
 const ARGS = {
   cd: roomWords, open: roomWords, go: () => ['north', 'south', 'east', 'west'], walk: () => ['north', 'south', 'east', 'west'],
   theme: () => ['terminal', 'hours'], sky: () => Object.keys(SKY_ALT).concat('now'), keys: () => ['on', 'off'],
-  weather: () => WX_KINDS.concat('now'),
+  weather: () => WX_KINDS.concat('now'), music: () => ['on', 'off'],
   use: () => pack().map((_, i) => LETTERS[i]),
 };
 
