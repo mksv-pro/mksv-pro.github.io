@@ -971,3 +971,6 @@ dialog.dungeon canvas {
   .room { text-align: left; }
   a[href^="http"]::after { content: " <" attr(href) ">"; font-size: 8pt; color: #444; }
 }
+
+/* the curiosity hunt is the castle's: no counter in the terminal */
+[data-theme="dark"] #st-curios { display: none; }

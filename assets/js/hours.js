@@ -2254,7 +2254,7 @@ f11111f2.
   let view = { state: 'scene', id: null, t0: 0 }; // scene | in | room | out | swap
   let hoverId = null; let pendingRoom = null; let pendingHoist = false;
   let heraldry = { own: 'silva', tapestry: [] }; let say = () => {}; let rumour = () => '';
-  let itemsOf = () => []; let spotsTo = () => {}; let descendTo = () => {}; let doorsOf = () => []; let hl = -1; // the room's things, their hotspots, the one pointed at
+  let found = () => {}; let itemsOf = () => []; let spotsTo = () => {}; let descendTo = () => {}; let doorsOf = () => []; let hl = -1; // the room's things, their hotspots, the one pointed at
   let scene = null; let look = null; let skyFn; let reduce = false; let px = 3;
   let running = false; let visible = true; let raf = 0; let last = 0; let tick = 0;
   let bodies = null; let label0 = ''; let castUntil = 0;
@@ -3372,6 +3372,7 @@ f11111f2.
     if (scene.meteors.some((m) => Math.hypot(x - m.x, y - m.y) < 6)) return { kind: 'meteor' };
     const an = scene.angler; if (look.night < 0.5 && inBox(an.x - scene.M + groundOff(an.y + 6), an.y, SPRITES.angler.w + 6, SPRITES.angler.h)) return { kind: 'angler' };
     const hs = scene.horse; if (inBox(hs.x + go, hs.y, SPRITES.horse[0].w, SPRITES.horse[0].h)) return { kind: 'horse' };
+    const hr = scene.heron; if (inBox(hr.x - scene.M + shift(RATE[L.MID]), hr.y, SPRITES.heron.w, SPRITES.heron.h)) return { kind: 'heron' };
     const ow = scene.owl; const fo = shift(RATE[L.FG]) - scene.M;
     if (look.night > 0.5 && inBox(ow.x + fo - 1, ow.y - 1, SPRITES.owl.w + 2, SPRITES.owl.h + 2)) return { kind: 'owl' };
     const [mhx, mhy] = scene.mill.hub; const mmx = mhx - scene.M + shift(RATE[L.MID]); const ml = scene.mill.len;
@@ -3380,6 +3381,7 @@ f11111f2.
     return null;
   }
   function talk(hit) {
+    found(hit.kind); // the curiosity hunt (script.js)
     if (hit.kind === 'cat') say(CAT_SAYS[hit.name] || 'A cat looks at you.');
     else if (hit.kind === 'knight' && look.night > 0.7) say('The knight is asleep by the fire. Best not to wake him.');
     else if (hit.kind === 'knight') { const r = rumour(); say(`The knight looks up from the fire: "${r[0].toUpperCase()}${r.slice(1)}"`); }
@@ -3390,6 +3392,7 @@ f11111f2.
     } else if (hit.kind === 'shield') say("On the knight's shield: azure, an armillary sphere or, over a bell curve argent.");
     else if (hit.kind === 'cellar') { say('A low door in the rock. Stone steps go down into the dark.'); descendTo(); }
     else if (hit.kind === 'horse') say("The knight's horse crops the grass and flicks its tail at you.");
+    else if (hit.kind === 'heron') say('The heron stands on one leg and pretends you are not there.');
     else if (hit.kind === 'meteor') say('You catch the shooting star and make a wish. It is yours to keep.');
     else if (hit.kind === 'angler') say(['The angler raises a finger to his lips. The fish are listening.', 'The angler shows you an empty basket and a patient smile.', '"They bite at dawn," says the angler, "and never when you watch."'][Math.floor(Math.random() * 3)]);
     else if (hit.kind === 'owl') say('The owl turns its head right round and hoots: "Who-oo?"');
@@ -3640,7 +3643,7 @@ f11111f2.
       if (canvas) return;
       plate = o.plate; skyFn = o.sky; reduce = o.reduceMotion; clockFn = o.clock || clockFn;
       heraldry = o.heraldry || heraldry; say = o.say || say; rumour = o.rumour || rumour;
-      itemsOf = o.items || itemsOf; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo; doorsOf = o.doors || doorsOf;
+      itemsOf = o.items || itemsOf; found = o.found || found; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo; doorsOf = o.doors || doorsOf;
       pendingRoom = root.dataset.room || null;
       label0 = plate.getAttribute('aria-label');
       canvas = document.createElement('canvas');

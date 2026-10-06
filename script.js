@@ -113,6 +113,8 @@ const T = {
 <p>You explored ${k} of ${n} rooms in ${mins}, and leave with your sanity intact.</p>
 <p class="dim">Goodbye, traveller.</p>`,
   emptyHanded: '<p>You leave empty-handed.</p>',
+  curiosFound: (k, n) => `You found ${k} of the land's ${n} curiosities:`,
+  allCurios: 'You know every curiosity of this land. The wizard nods, impressed.',
   pickTitle: 'Two ways in',
   pick: `<p>The same site, two ways to walk it. You can switch at any time with the button at the bottom right.</p>
 <div class="pick">
@@ -211,6 +213,7 @@ function applyTheme(theme, persist) {
       descend, // the cellar door in the rock
       doors: roomDoors, // the doors in the rooms' side walls
       clock: skyNow, // the instant shown: dawn mist, the night's meteor shower
+      found: findCurio, // a curiosity of the landscape, clicked
     })).then(() => { if (session('ended')) window.Hours.hoist(true); showWeather(); });
   }
 }
@@ -280,6 +283,34 @@ async function copyFrom(href) {
     return false;
   }
 }
+
+/* ---- curiosities: the things of the hours landscape that answer a click (this session) ---- */
+
+const CURIOS = {
+  wizard: 'the wizard', knight: 'the knight', shield: "the knight's arms", fire: 'the fire', cat: 'the cats',
+  horse: "the knight's horse", cellar: 'the cellar door', mill: 'the windmill', heron: 'the heron',
+  angler: 'the patient angler', owl: 'the owl (by night)', meteor: 'a wish on a falling star (clear nights)',
+};
+const curios = () => sessionList('curios');
+function showCurios() {
+  const el = $('st-curios');
+  if (!el) return;
+  el.hidden = !curios().length;
+  el.querySelector('b').textContent = `${curios().length}/${Object.keys(CURIOS).length}`;
+}
+function findCurio(kind) {
+  const c = curios();
+  if (!CURIOS[kind] || c.includes(kind)) return;
+  c.push(kind);
+  session('curios', JSON.stringify(c));
+  showCurios();
+  if (c.length === Object.keys(CURIOS).length) setTimeout(() => say(T.allCurios), 2500);
+}
+function curiosHtml() {
+  const c = curios();
+  return c.length ? `<p>${T.curiosFound(c.length, Object.keys(CURIOS).length)} ${c.map((k) => esc(CURIOS[k])).join(', ')}.</p>` : '';
+}
+showCurios();
 
 /* ---- rooms visited (this browser session) ------------------------------ */
 
@@ -597,7 +628,7 @@ function showEnd() {
   const mins = Math.floor((Date.now() - Number(session('since') || Date.now())) / 60000);
   showDialog(
     T.endTitle,
-    T.end(lootHtml() || T.emptyHanded, visited().length, ROOM_IDS.length, T.minutes(mins)),
+    T.end((lootHtml() || T.emptyHanded) + curiosHtml(), visited().length, ROOM_IDS.length, T.minutes(mins)),
   );
 }
 
