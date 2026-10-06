@@ -252,6 +252,25 @@ def feed():
 """
 
 
+def coursework():
+    """The book of courses: every course followed, grouped by year, then by school (no grades)."""
+    years = {}
+    for e in DATA.get("coursework", []):
+        years.setdefault(e["years"], []).append(e)
+    n = sum(len(e["courses"]) for e in DATA.get("coursework", []))
+    out = []
+    for y, progs in years.items():
+        body = "".join(f"""
+                <p class="ledger-prog">{e["school"]} &middot; {e["programme"]}</p>
+                <ul class="flow">{" ".join(f"<li>{c}</li>" for c in e["courses"])}</ul>""" for e in progs)
+        out.append(f"""              <section class="ledger-year">
+                <h3>{y}</h3>{body}
+              </section>""")
+    return (f"""          <details class="ledger" id="coursework">
+            <summary>The book of courses <span class="meta">({n} courses, no grades)</span></summary>
+""" + "\n".join(out) + "\n          </details>")
+
+
 BLOCKS = {
     "list:research": lambda: entries("research"),
     "list:talks": lambda: entries("talks"),
@@ -264,6 +283,7 @@ BLOCKS = {
     "jsonld": jsonld,
     "studying": lambda: "\n".join(f"              <span data-arms=\"{x['arms']}\">{x['degree']}</span>"
                                   for x in DATA["person"]["studying"]),
+    "coursework": coursework,
     "drawn_to": lambda: "\n".join(f"                <li>{x}</li>" for x in DATA["person"]["drawn_to"]),
 }
 

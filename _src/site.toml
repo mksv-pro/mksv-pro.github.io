@@ -235,6 +235,115 @@ actions = [
   { label = "code", href = "{{url:report_code}}" },
 ]
 
+# ---- coursework: every course followed, by year and school, newest first (no grades). It is
+# "the book of courses": open on the library's lectern (hours theme), a fold in About (terminal).
+
+[[coursework]]
+years = "2026–2027"
+school = "Université Paris-Saclay"
+programme = "MSc Physics of Complex Systems (M2), in progress"
+courses = ["Statistical Field Theory", "Stochastic Processes", "Nonlinear Physics and Dynamical Systems", "Computational Science"]
+
+[[coursework]]
+years = "2026–2027"
+school = "Sorbonne Université"
+programme = "MSc Quantum Information (M2), in progress"
+courses = ["Quantum Optics", "Quantum Algorithms", "Atomic Physics", "Quantum Cryptography", "Quantum Information Theory"]
+
+[[coursework]]
+years = "2026–2027"
+school = "Université Paris Dauphine-PSL"
+programme = "MSc Economics & Finance (M2), in progress"
+courses = ["Derivatives", "Portfolio Management", "Macroeconomics", "Time Series Econometrics", "Business Plans"]
+
+[[coursework]]
+years = "2025–2026"
+school = "Université Paris Cité"
+programme = "MSc Fundamental Physics (M1)"
+courses = ["Statistical Physics I & II", "Quantum Mechanics I & II", "Condensed Matter", "Subatomic Physics",
+  "Computational Physics", "Advanced Quantum Physics", "Particle Physics", "Nonlinear Physics and Dynamical Systems",
+  "Quantum Information", "Advanced Condensed Matter", "Research internship (IJCLab)"]
+
+[[coursework]]
+years = "2025–2026"
+school = "Université Paris Dauphine-PSL"
+programme = "Economics & Finance"
+courses = ["Financial Products and Markets", "Portfolio Management", "Computing for Finance (Python, VBA)",
+  "Mathematical Tools for Finance", "Mathematics for Economics", "Statistics", "Econometrics", "Microeconomics",
+  "Macroeconomics", "Industrial Economics", "Advanced Accounting", "Insurance", "Technical Analysis", "English"]
+
+[[coursework]]
+years = "2024–2025"
+school = "Sorbonne Université"
+programme = "MSc Mathematics (M1)"
+courses = ["Advanced Probability", "Statistics", "Functional Analysis", "Advanced Functional Analysis",
+  "Martingales and Stochastic Control", "Numerical Probability", "Elliptic PDEs",
+  "Numerical Optimisation and Data Science", "Career development", "English"]
+
+[[coursework]]
+years = "2024–2025"
+school = "Sorbonne Université"
+programme = "MSc Physics (M1, distance learning)"
+courses = ["Quantum Mechanics", "Classical Field Theory", "Computational Physics", "Algorithmic Complexity",
+  "Atomic and Molecular Physics", "Nuclear and Particle Physics", "Project"]
+
+[[coursework]]
+years = "2024–2025"
+school = "Université Paris 1 Panthéon-Sorbonne"
+programme = "Magistère of Economics (L3)"
+courses = ["Probability and Statistics", "Advanced Mathematics", "Microeconomics",
+  "Microeconomics: Organisational Theory and Markets", "Econometric Methods", "Economic Growth",
+  "International Trade", "International Monetary Economics", "Economic Policy",
+  "Economics of Public Policy (ENS)", "History of Economic Thought", "Research dissertation", "English"]
+
+[[coursework]]
+years = "2023–2024"
+school = "Sorbonne Université"
+programme = "BSc Mathematics & Physics (L3)"
+courses = ["Topology and Differential Calculus", "Measure Theory and Probability", "Probability 2",
+  "Functional Analysis", "Numerical Analysis", "Algebra and Arithmetic", "Quantum Physics 1", "Quantum Physics 2",
+  "Thermal and Statistical Physics", "Optics and Electromagnetism", "Experimental and Numerical Physics",
+  "Career development", "English"]
+
+[[coursework]]
+years = "2023–2024"
+school = "Université Paris 1 Panthéon-Sorbonne"
+programme = "BA Economics & Political Science (L2)"
+courses = ["Macroeconomics: Closed Economy", "Macroeconomics: Open Economy",
+  "Microeconomics: Competitive Equilibrium and Market Failures", "Microeconomics: Market Structures and Strategy",
+  "Money, Banking and Finance", "Mathematics: Matrix Calculus and Optimisation", "Statistics",
+  "International Economics: the European Economy", "Introduction to European Politics",
+  "Comparative Political Institutions", "History of Political Ideas", "Sociology of the State",
+  "Sociology of Political Organisations", "Sociology of International Conflicts", "Introduction to Gender Studies",
+  "English"]
+
+[[coursework]]
+years = "2022–2023"
+school = "Sorbonne Université"
+programme = "BSc Mathematics & Physics (L2), with the health option"
+courses = ["Topology and Differential Calculus", "Numerical Series and Series of Functions", "Linear Algebra I",
+  "Linear Algebra II", "Lebesgue Integration", "Probability 1", "Linear Differential Equations",
+  "Mathematical Tools", "Mechanics and Waves", "Advanced Mechanics", "Waves and Electromagnetism",
+  "Experimental Physics", "English", "Biochemistry", "Biophysics", "Biology"]
+
+[[coursework]]
+years = "2022–2023"
+school = "Université Paris 1 Panthéon-Sorbonne"
+programme = "BA Economics & Political Science (L1)"
+courses = ["Introduction to Economics", "Contemporary Economic Problems", "Mathematics for Economics",
+  "Microeconomics", "Macroeconomics", "Statistics", "Introduction to Sociology",
+  "General Sociology and Applied Statistics", "Sociology of Political Behaviour", "History of Political Life",
+  "History of Political Life since 1968", "Constitutional Law 1", "Constitutional Law 2",
+  "Major Contemporary Political Problems", "Institutions: Social Protection", "English"]
+
+[[coursework]]
+years = "2021–2022"
+school = "Sorbonne Université"
+programme = "BSc Sciences (L1), with the health option"
+courses = ["Mathematics 1", "Mathematics 2", "Mathematics 3", "Mechanics and Physics 1", "Mechanics and Physics 2",
+  "Computer Science 1", "Supervised research workshop", "Career development", "English", "Anatomy 1", "Anatomy 2",
+  "Physiology", "Pharmacology"]
+
 # ---- the library (hours theme): each shelf of the two bookcases on the back wall is a subject,
 # left bookcase top to bottom, then the right one; a click shows the shelf's volumes. A volume:
 #   [[library.volumes]]

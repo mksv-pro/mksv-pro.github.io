@@ -66,6 +66,7 @@ const T = {
   shelfEmpty: ['Its catalogue is still to be written.', 'The labels on this shelf are still blank.',
     'No one has catalogued this shelf yet.', 'Dust, and books waiting for their entry in the catalogue.'],
   source: 'where to read it',
+  ledger: 'The book of courses',
   themeSet: (name) => `The lamp turns: ${name}.`,
   skySet: (s) => (s === 'now' ? 'The sky keeps the true hour again.' : `The sky turns to ${s}.`),
   skyHint: 'sky dawn|noon|dusk|night|now (seen in the hours theme)',
@@ -544,6 +545,12 @@ function roomItems(id) {
           return { kind: 'shelf', shelf: sid, label: T.shelf(name), html: `<h3>${esc(T.shelf(name))}</h3>`
             + (here.length ? `<ul>${here.map((b) => `<li>${volume(b)}</li>`).join('')}</ul>` : `<p>${T.shelfEmpty[k % T.shelfEmpty.length]}</p>`) };
         }),
+        ...(() => { // the book of courses, open on the lectern (its text lives in About)
+          const led = document.getElementById('coursework');
+          if (!led) return [];
+          const body = [...led.querySelectorAll('.ledger-year')].map((y) => y.outerHTML).join('');
+          return [{ kind: 'ledger', label: T.ledger, html: `<h3>${T.ledger}</h3><p class="dim">${esc(text(led.querySelector('summary .meta')))}</p>${body}` }];
+        })(),
         ...vols.map((b) => ({ kind: 'volume', shelf: b.shelf, label: b.title, html: `<h3>${esc(b.title)}</h3>`
           + `<p>${esc(b.author)}${b.year ? `, ${esc(b.year)}` : ''}</p>${b.note ? `<p class="dim">${esc(b.note)}</p>` : ''}`
           + (b.url ? `<p><a href="${esc(b.url)}" rel="noopener">${T.source}</a></p>` : '') })),

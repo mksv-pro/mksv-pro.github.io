@@ -2031,6 +2031,8 @@ f11111f2.
       const lx = S(0.5) - 4; rect(lx + 3, yf - 13, 2, 13, I.TIMBER_SH); rect(lx + 1, yf - 1, 6, 1, I.TIMBER_SH); // a lectern before them
       for (let k = 0; k < 9; k += 1) set(lx + k, yf - 14 + Math.floor(k / 3), I.TIMBER_HI);
       openBook(lx, yf - 14, 9); candle(lx + 12, yf - 2, true);
+      set(lx + 4, yf - 15, I.CLOTH); set(lx + 4, yf - 14, I.CLOTH); set(lx + 4, yf - 13, I.CLOTH); // its ribbon: the book of courses
+      of('ledger').forEach(([, i]) => { slots[i] = box(lx - 1, yf - 19, 11, 8); });
       rug(S(0.3), floorY(0.55), Sw(0.4));
       cat('whiteTabby', S(0.36), floorY(0.55) + 4); // asleep on the rug, by the lectern
     } else if (kind === 'talks') { // the great hall: a banner on the pole for each talk; the tapestry

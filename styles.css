@@ -984,3 +984,12 @@ html.photo :is(.msgline, .host, .tabs, .status, .spots, .card, .leave, main, .cm
 .photo-bar[hidden] { display: none; }
 .photo-bar button { font: inherit; color: var(--accent); background: none; border: 0; cursor: pointer; min-height: 24px; }
 .photo-bar button:hover, .photo-bar button:focus-visible { color: var(--hi); }
+
+/* the book of courses: a fold in About (terminal); in the castle it lies open on the library's lectern */
+.ledger { margin: 1.25rem 0 0; }
+.ledger summary { cursor: pointer; color: var(--accent); min-height: 24px; }
+.ledger summary:hover { color: var(--hi); }
+.ledger-year h3, .card .ledger-year h3 { margin: 1rem 0 .2rem; font: inherit; color: var(--hi); }
+.ledger-prog { margin: .5rem 0 .15rem; color: var(--dim); }
+.ledger .flow li, .card .ledger-year .flow li { white-space: normal; } /* long titles wrap on narrow screens */
+[data-theme="hours"] .card[data-kind="ledger"]:not([hidden]) { width: min(46rem, 58vw); }
