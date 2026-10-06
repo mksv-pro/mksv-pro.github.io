@@ -1191,6 +1191,11 @@ hhhhhh.
     const yf = Math.round(H * 0.8); // the floor's edge
     const sn = fbm(rng, 3);
     const kind = roomOf(id);
+    // a room as a box (prototype: the scriptorium): the back wall between BL and BR, two side walls
+    // in perspective; sideBot(x) is where floor meets wall (the near edge at the bottom of the view)
+    const box3d = kind === 'about';
+    const BL = box3d ? Math.round(W * 0.17) : 0; const BR = W - BL;
+    const sideBot = (x) => (x < BL ? H - (H - yf) * (x / BL) : x >= BR ? H - (H - yf) * ((W - 1 - x) / BL) : yf);
     const noise2 = (x, y) => sn(x * 0.11 + y * 0.37) * 0.6 + sn(x * 0.31 - y * 0.13 + 50) * 0.4;
 
     /* walls: each room its own material, at a grain that reads at this size */
@@ -1243,7 +1248,7 @@ hhhhhh.
     for (let x = 0; x < W; x += 1) { set(x, yf - 1, I.TIMBER_SH); set(x, yf - 2, kind === 'talks' || kind === 'contact' ? I.ROCK_SH : I.TIMBER); } // skirting
 
     /* the floor in perspective: seams run to a vanishing point, rows close up with distance */
-    const vx = W * 0.42; const vy = yf - (H - yf) * 1.4;
+    const vx = box3d ? W / 2 : W * 0.42; const vy = yf - (H - yf) * 1.4;
     const flag = kind === 'talks' || kind === 'contact' || kind === 'research';
     for (let y = yf; y < H; y += 1) {
       const k = (y - yf) / (H - yf);
@@ -1259,6 +1264,58 @@ hhhhhh.
       }
     }
     const pools = []; // pale light under each window (lit in lightInterior, no dither)
+    const doorList = [];
+    if (box3d) { // the side walls: plaster over a panelled wainscot, receding; darker than the back wall
+      const wain = Math.round(H * 0.26); // the wainscot's height, in back-wall pixels
+      const stiles = []; for (let k = 1; k < 9; k += 1) stiles.push(Math.round(BL * (1 - 0.8 ** k))); // closer together with depth
+      for (let x = 0; x < W; x += 1) {
+        if (x >= BL && x < BR) continue;
+        const sx = x < BL ? x : W - 1 - x; const bot = sideBot(x); const k = bot / yf; // k: this column's scale
+        const yw = bot - wain * k; const left = x < BL;
+        for (let y = 0; y < bot; y += 1) {
+          let c;
+          if (y >= yw) {
+            const st = stiles.some((q) => Math.abs(sx - q) < 1);
+            const rail = Math.abs(y - yw) < 1 || Math.abs(y - (bot - 2 * k)) < 1;
+            c = st || rail ? I.TIMBER_HI : (noise2(x, y) > 0.55 ? I.TIMBER_SH : I.TIMBER);
+          } else c = noise2(x + 7, y) > 0.66 ? I.PLASTER_SH : left ? I.PLASTER : I.PLASTER_SH;
+          if (!left && c === I.TIMBER) c = I.TIMBER_SH; // the far side of the light
+          // the side walls turn away from the light: darker towards the near edge, by dither
+          if (bayer(x, y) < 0.55 * (1 - sx / BL) + (left ? 0 : 0.2)) c = c === I.PLASTER || c === I.PLASTER_HI ? I.PLASTER_SH : c === I.PLASTER_SH ? I.ROCK_SH : I.TIMBER_SH;
+          set(x, y, c);
+        }
+        set(x, Math.round(bot), I.TIMBER_SH); // the skirting
+      }
+      for (let y = 0; y < yf; y += 1) { set(BL, y, I.ROCK_SH); set(BR - 1, y, I.ROCK_SH); } // the corners
+      for (let x = 0; x < BL; x += 1) { // the cornice under the ceiling, falling towards us
+        const yc = Math.round(5 * (1 - x / BL)) - 1; set(x, yc + 4, I.TIMBER_SH); set(W - 1 - x, yc + 4, I.TIMBER_SH);
+        for (let y = 0; y < yc + 4; y += 1) { set(x, y, I.TIMBER); set(W - 1 - x, y, I.TIMBER_SH); }
+      }
+      // doors in the side walls: west and north on the left, east and south on the right
+      const sides = { l: [], r: [] };
+      (doorsOf(id) || []).forEach((d) => sides[d.dir === 'w' || d.dir === 'n' ? 'l' : 'r'].push(d));
+      const spans = [[0.12, 0.55], [0.64, 0.9]]; // near, far (fractions of the side wall's width)
+      Object.entries(sides).forEach(([side, list]) => list.slice(0, 2).forEach((d, n) => {
+        const [f0, f1] = spans[list.length === 1 ? 0 : n];
+        const xa0 = Math.round(BL * f0); const xb0 = Math.round(BL * f1);
+        const [xa, xb] = side === 'l' ? [xa0, xb0] : [W - 1 - xb0, W - 1 - xa0];
+        const dh = Math.round(yf * 0.62); let top = H; let bottom = 0;
+        for (let x = xa; x <= xb; x += 1) {
+          const bot = sideBot(x); const k = bot / yf; const yt = Math.round(bot - dh * k);
+          top = Math.min(top, yt); bottom = Math.max(bottom, Math.round(bot));
+          for (let y = yt; y < bot; y += 1) {
+            const edge = x === xa || x === xb || y === yt;
+            const band = Math.abs(y - (bot - dh * k * 0.3)) < 0.6 || Math.abs(y - (bot - dh * k * 0.75)) < 0.6;
+            set(x, y, edge ? I.OUTLINE : band ? I.ARM_SH : ((x - xa) % 3 === 0 ? I.TIMBER_SH : I.TIMBER));
+          }
+          set(x, yt - 1, I.ROCK_HI); // its lintel
+        }
+        const rx = side === 'l' ? xb - 2 : xa + 2; const rb = sideBot(rx); set(rx, Math.round(rb - dh * (rb / yf) * 0.45), I.GOLD); // the ring
+        const pm = Math.round((xa + xb) / 2); const pt = Math.round(sideBot(pm) - dh * (sideBot(pm) / yf)) - 4;
+        rect(pm - 3, pt, 7, 2, I.GOLD_SH); rect(pm - 2, pt, 5, 1, I.GOLD_HI); // its plaque
+        doorList.push({ t: d, b: { x: xa - 1, y: pt - 1, w: xb - xa + 3, h: bottom - pt + 1 } });
+      }));
+    }
 
     // pieces of furniture
     function windowArch(x0, y0, w, h) { // shows the sky and a line of far mountains
@@ -1362,7 +1419,7 @@ hhhhhh.
        (script.js lists them: `things`); laid out on a table seen from a little above, a shelf,
        a wall, a board; a second row when the first is full, so more content only means more
        things. slots[i]: where thing i is, for its hotspot. */
-    const S = (f) => Math.round(f * W);
+    const S = (f) => Math.round(BL + f * (BR - BL)); // fractions of the back wall
     const box = (x, y, w, h) => ({ x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) });
     const shadow = (xc, y, w) => { for (let x = -Math.floor(w / 2); x <= Math.floor(w / 2); x += 1) if (bayer(xc + x, y) < 0.7) set(xc + x, y, I.TIMBER_SH); };
     function table3d(xc, yTop, w, depth = 7) { // the top a trapezoid (we look down on it), then its edge and legs
@@ -1474,16 +1531,16 @@ hhhhhh.
     const of = (kind) => things.map((t, i) => [t, i]).filter(([t]) => t.kind === kind);
 
     if (kind === 'about') { // the scriptorium: a notebook open on the table, the charters of the schools on the wall
-      windowArch(S(0.04), Math.round(H * 0.16), Math.max(12, S(0.12)), Math.round(H * 0.34));
-      const tb = table3d(S(0.48), yf - 16, S(0.34));
+      windowArch(S(0.03), Math.round(H * 0.16), Math.max(10, Math.round((BR - BL) * 0.1)), Math.round(H * 0.34));
+      const tb = table3d(S(0.48), yf - 16, Math.round((BR - BL) * 0.34));
       of('desk-book').forEach(([, i]) => { openBook(S(0.48) - 9, tb.front, 18); slots[i] = box(S(0.48) - 10, tb.front - 6, 20, 7); });
       candle(tb.l - 1, tb.back, true); candle(tb.r + 1, tb.back, false);
       deco.push({ type: 'hourglass', x: tb.r - 4, y: tb.front - 10 });
       const ch = of('charter');
-      spread(ch.length, S(0.2), S(0.62), 21).forEach(({ k, row, xc }) => { const [t, i] = ch[k]; slots[i] = charter(xc, Math.round(H * 0.14) + row * 26, t.arms); });
-      const shX = S(0.8); const shTop = Math.round(H * 0.3); shelf(shX, shTop, Math.max(16, W - shX - 4), yf - shTop);
+      spread(ch.length, S(box3d ? 0.15 : 0.2), S(box3d ? 0.8 : 0.62), 20).forEach(({ k, row, xc }) => { const [t, i] = ch[k]; slots[i] = charter(xc, Math.round(H * 0.14) + row * 26, t.arms); });
+      const shX = S(box3d ? 0.83 : 0.8); const shTop = Math.round(H * 0.3); shelf(shX, shTop, Math.max(16, BR - shX - 2), yf - shTop);
       cat('blackLoaf', shX + 1, shTop);
-      rug(S(0.3), floorY(0.6), S(0.36));
+      rug(S(0.3), floorY(0.6), Math.round((BR - BL) * 0.36));
     } else if (kind === 'research') { // the observatory: the labs' reports, rolled and sealed, on the chart table
       for (let y = 4; y < Math.round(H * 0.42); y += 1) {
         const half = Math.sqrt(Math.max(0, 1 - ((Math.round(H * 0.42) - y) / (H * 0.4)) ** 2)) * W * 0.5;
@@ -1641,7 +1698,8 @@ hhhhhh.
       windowArch(S(0.06), Math.round(H * 0.14), Math.max(10, S(0.1)), Math.round(H * 0.26));
       cat('thin', a - 6, floorY(0.4));
     }
-    extra.forEach(({ t, b }) => { slots[things.length] = b; things.push(t); }); // the hangings can be looked at too
+    doorList.forEach((e) => extra.push(e));
+    extra.forEach(({ t, b }) => { slots[things.length] = b; things.push(t); }); // the hangings and the doors can be looked at too
     } else { // a project page: the workshop, its text on the blueprint on the easel
       easelUnder(bot);
       const hx = s(0.05); const hw = Math.max(18, s(0.32)); const hy = yf - 24;
@@ -1720,7 +1778,7 @@ hhhhhh.
   let view = { state: 'scene', id: null, t0: 0 }; // scene | in | room | out | swap
   let hoverId = null; let pendingRoom = null; let pendingHoist = false;
   let heraldry = { own: 'silva', tapestry: [] }; let say = () => {}; let rumour = () => '';
-  let itemsOf = () => []; let spotsTo = () => {}; let descendTo = () => {}; let hl = -1; // the room's things, their hotspots, the one pointed at
+  let itemsOf = () => []; let spotsTo = () => {}; let descendTo = () => {}; let doorsOf = () => []; let hl = -1; // the room's things, their hotspots, the one pointed at
   let scene = null; let look = null; let skyFn; let reduce = false; let px = 3;
   let running = false; let visible = true; let raf = 0; let last = 0; let tick = 0;
   let bodies = null; let label0 = ''; let castUntil = 0;
@@ -2716,7 +2774,7 @@ hhhhhh.
       if (canvas) return;
       plate = o.plate; skyFn = o.sky; reduce = o.reduceMotion;
       heraldry = o.heraldry || heraldry; say = o.say || say; rumour = o.rumour || rumour;
-      itemsOf = o.items || itemsOf; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo;
+      itemsOf = o.items || itemsOf; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo; doorsOf = o.doors || doorsOf;
       pendingRoom = root.dataset.room || null;
       label0 = plate.getAttribute('aria-label');
       canvas = document.createElement('canvas');

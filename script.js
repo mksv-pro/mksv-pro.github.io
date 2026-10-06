@@ -190,6 +190,7 @@ function applyTheme(theme, persist) {
       spots: setSpots, // and where those things ended up
       rumour: () => T.rumour(RUMOURS[Math.floor(Math.random() * RUMOURS.length)]),
       descend, // the cellar door in the rock
+      doors: roomDoors, // the doors in the rooms' side walls
     })).then(() => { if (session('ended')) window.Hours.hoist(true); });
   }
 }
@@ -454,8 +455,20 @@ function setSpots(rects, items) {
     return b;
   }));
 }
+/** The doors out of room `id`, from the section's exits: { dir: n|e|s|w, label, go }. */
+function roomDoors(id) {
+  const sec = document.getElementById(id);
+  return sec ? [...sec.querySelectorAll('.exits li')].map((li) => {
+    const a = li.querySelector('a'); const dir = li.querySelector('.dir').textContent.trim();
+    const href = a.getAttribute('href'); // '#research', or a project page's path
+    const go = ROOM_IDS.find((r) => href === `#${r}` || (WORLD[r].page && href.endsWith(WORLD[r].page))) || null;
+    return { kind: 'door', dir: dir[0], label: `${dir}: ${a.textContent.trim()}`, go, html: '' };
+  }).filter((d) => d.go) : [];
+}
+
 function openCard(i, from) {
   const it = spotItems[i];
+  if (it.go) { goTo(it.go); return; } // a door: through it
   card.querySelector('.card-body').innerHTML = it.html;
   card.dataset.kind = it.kind;
   card.setAttribute('aria-label', it.label);
