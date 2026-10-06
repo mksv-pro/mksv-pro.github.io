@@ -22,6 +22,7 @@ une entrée là, rien d'autre.
 | `[world]` dans `site.toml` | la grille des salles : les « Obvious exits » (thème terminal), la carte `m` et la descente en dérivent (JSON injecté dans chaque page) |
 | `assets/bib/*.bib` | une entrée BibTeX par publication (le lien `[bib]` la copie) |
 | `assets/fonts/` | polices auto-hébergées (aucune requête tierce) ; Departure Mono, IBM Plex Mono (entière : Reserved Font Name) |
+| `_tools/cv.py` | le CV PDF, depuis `site.toml` (formation `[[education]]`, champs `cv_*` des expériences et projets, `[cv]`, langues) : écrit `_cv/cv.tex`, compile avec latexmk, copie dans `assets/Mike_Silva_CV.pdf` ; ensuite `build.py` |
 | `_tools/build.py` | génère les pages, `sitemap.xml`, `robots.txt`, `feed.xml` (Atom des news), les `?v=` anti-cache (`{{v:chemin}}`) ; CI : `.github/workflows/check.yml` (build inchangé, check, lint) |
 | `_tools/check.py` | liens, ancres, ids, alt, placeholders, contraste ; `--external`, `--shots DIR` |
 | `_config.yml` | dit à GitHub Pages (Jekyll) de ne pas publier README, `deno.json`, `pyproject.toml` ; `_src/` et `_tools/` sont déjà ignorés (préfixe `_`) |
@@ -34,6 +35,7 @@ une entrée là, rien d'autre.
 
 ```bash
 python3 _tools/build.py && python3 _tools/check.py          # après chaque modification
+python3 _tools/cv.py && python3 _tools/build.py             # après un changement du CV (site.toml)
 deno lint && uvx ruff check _tools                            # lint (config : deno.json, pyproject.toml)
 python3 -m http.server 8765 --bind 127.0.0.1                # aperçu local
 git add -A && git commit -m "…" && git push                   # publier (en ligne 1 à 2 min après)

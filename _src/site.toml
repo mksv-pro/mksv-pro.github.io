@@ -18,6 +18,7 @@ role = "Graduate student in physics"
 place = "Paris"
 email = "pro.mikesilva@gmail.com"
 github = "https://github.com/mksv-pro"
+linkedin = "https://www.linkedin.com/in/mkesilva/"
 
 [urls]
 report = "https://github.com/mksv-pro/Mike-M1-Internship-IJCLab-2026/blob/main/docs/memoire_M1.pdf"
@@ -31,21 +32,74 @@ knows_about = ["Computational physics", "Nuclear reactions", "Reduced-order mode
 drawn_to = ["complex systems", "quantum information", "stochastic processes",
   "machine learning for physics", "agent-based and mean-field models", "quantitative finance"]
 alumni_of = ["Université Paris Cité", "Sorbonne Université", "Université Paris 1 Panthéon-Sorbonne"]
+languages = [["French", "native"], ["English", "fluent"], ["Portuguese", "basic"], ["German", "basic"]]
 
-[[person.studying]]
-degree = "MSc Physics of Complex Systems, Paris-Saclay"
+# ---- education, newest first: the CV's list; `now` entries (with their `arms`) are the About
+# sheet's "Studying" and the JSON-LD affiliations. Text fields are HTML, as elsewhere.
+
+[[education]]
 school = "Université Paris-Saclay"
+city = "Orsay, France"
+degree = "MSc Physics of Complex Systems"
+dates = "2026–2027 (expected)"
+coursework = "stochastic processes, statistical field theory, disordered systems, random matrices, machine learning."
+now = true
 arms = "saclay"
+about = "MSc Physics of Complex Systems, Paris-Saclay"
 
-[[person.studying]]
-degree = "MSc Quantum Information, Sorbonne Université"
+[[education]]
 school = "Sorbonne Université"
+city = "Paris, France"
+degree = "MSc Quantum Information"
+dates = "2026–2027 (expected)"
+coursework = "quantum algorithms, quantum information theory, quantum optics, quantum metrology, ultracold atoms."
+now = true
 arms = "sorbonne"
+about = "MSc Quantum Information, Sorbonne Université"
 
-[[person.studying]]
-degree = "MSc Economics &amp; Finance, Paris Dauphine-PSL"
+[[education]]
 school = "Université Paris Dauphine-PSL"
+city = "Paris, France"
+degree = "MSc Economics &amp; Finance, first year"
+dates = "2025–2027"
+coursework = "stochastic calculus, time-series econometrics, derivatives pricing, risk management, computational finance."
+now = true
 arms = "dauphine"
+about = "MSc Economics &amp; Finance, Paris Dauphine-PSL"
+
+[[education]]
+school = "Université Paris Cité"
+city = "Paris, France"
+degree = "MSc Fundamental Physics, first year, <i>mention Bien</i>"
+dates = "2025–2026"
+coursework = "statistical, high-energy, computational and nonlinear physics, quantum information, condensed matter physics."
+
+[[education]]
+school = "Sorbonne Université"
+city = "Paris, France"
+degree = "MSc Mathematics, first year; BSc Physics and Mathematics (double major)"
+dates = "2021–2025"
+coursework = "probability, stochastic control, jump processes, functional analysis, PDEs, numerical methods, statistical physics."
+
+[[education]]
+school = "Université Paris 1 Panthéon-Sorbonne"
+city = "Paris, France"
+degree = "BA Economics and Political Science"
+dates = "2022–2025"
+coursework = "econometric methods, macro- and microeconomics, monetary economics, political economy."
+
+# ---- the CV's own lines (_tools/cv.py renders the PDF from this file; the rest it takes from
+# education, research, projects and person)
+[cv]
+keywords = "computational physics, complex systems, nuclear reactions, reduced-order models, stochastic processes"
+skills = [
+  ["Programming", "Python (NumPy, SciPy, Numba, JAX, PyTorch), R; Git, pytest, CI, LaTeX"],
+  ["Numerics &amp; ML", "PDE solvers, reduced-order models, Monte Carlo, neural networks, reinforcement learning"],
+  ["Quantum", "quantum algorithms, quantum information theory, spin glasses, random matrices"],
+  ["Complex systems", "agent-based models, mean-field games, stochastic processes, fractal growth"],
+  ["Economics", "stochastic calculus, derivatives pricing, econometrics, general equilibrium"],
+]
+
 
 # ---- heraldry (hours theme) --------------------------------------------------------------
 # Arms drawn after each institution's emblem (_tools/arms.txt), not their logos. `own`: the
@@ -158,6 +212,17 @@ label = "teaching"
 
 [[research]]
 org = "IJCLab"
+cv_org = "IJCLab – Irène Joliot-Curie Laboratory (CNRS / Université Paris Cité)"
+city = "Orsay, France"
+cv_role = "Research Intern, supervised by Chloé Hebborn and Patrick McGlynn"
+cv_text = """Emulation of nuclear reaction models for uncertainty quantification on optical potentials.
+Thesis: <i>Computational Emulation of Nuclear Dynamics</i>, graded 18/20
+(<a href="{{url:report_code}}">report and code</a>)."""
+cv_bullets = [
+  "Developed a coupled-channel scattering solver based on the Direct Boundary Matching Method (DBMM), validated against an independent R-matrix calculation",
+  "Built two emulators (reduced basis method; learning reduced-order model, first coupled-channel extension) matching the solver within 5×10<sup>−3</sup> (median) on four systems with up to 8 coupled channels and 10 parameters",
+  "Benchmarked both against the solver: speed-ups grow with system size, and the learning model gains 1.3–1.9× more",
+]
 arms = "ijclab"
 from = "2026-06"
 to = "2026-07"
@@ -168,6 +233,15 @@ for nuclear reactions, benchmarked for large parameter-space exploration.
 
 [[research]]
 org = "CEREMADE"
+cv_org = "CEREMADE, Université Paris Dauphine-PSL"
+city = "Paris, France"
+cv_role = "Visiting Research Student, supervised by Pierre Cardaliaguet"
+cv_text = "Mean-field games applied to the propagation of monetary shocks in a general-equilibrium economy with sticky prices."
+cv_bullets = [
+  "Studied differential games and mean-field models of strategic interactions between heterogeneous agents",
+  "Analyzed the coupled Hamilton–Jacobi–Bellman and Fokker–Planck equations arising in dynamic economic models",
+  "Applied mathematical and computational tools to monetary policy and collective decision-making",
+]
 arms = "ceremade"
 from = "2024-09"
 to = "2025-01"
@@ -178,6 +252,10 @@ Hamilton–Jacobi–Bellman and Fokker–Planck equations."""
 
 [[research]]
 org = "Sciences Po Paris"
+cv_org = "Sciences Po"
+city = "Paris, France"
+cv_role = "Research Assistant, supervised by Julia Cagé"
+cv_text = "Built a large-scale dataset of French television broadcasts for a study of media ownership and content bias."
 arms = "sciencespo"
 from = "2023-06"
 to = "2023-08"
@@ -204,6 +282,10 @@ actions = [
 
 [[projects]]
 id = "urban-morphogenesis"
+cv_title = "Urban morphogenesis: diffusion-limited aggregation and Schelling's model"
+city = "Paris, France"
+cv_role = "Université Paris Cité, supervised by Raphael Raynaud"
+cv_text = "Agent-based model coupling Schelling segregation with diffusion-limited aggregation: emergent morphologies and fractal dimension; extension with reinforcement learning under way."
 title = "Urban morphogenesis"
 date = "2026-01"
 role = "With Raphael Raynaud · Université Paris Cité"
@@ -214,6 +296,10 @@ actions = [{ label = "page &amp; live DLA", href = "projects/urban-morphogenesis
 
 [[projects]]
 id = "n-body"
+cv_title = "Self-gravitating N-body systems"
+city = "Paris, France"
+cv_role = "Sorbonne Université, supervised by Lionel Foret"
+cv_text = "Direct-integration simulation of gravitational N-body dynamics and long-range collective effects."
 title = "Self-gravitating N-body systems"
 date = "2024-02"
 role = "With Lionel Foret · Sorbonne Université"
