@@ -312,6 +312,15 @@ uuuuwwgww
 .dd.dd...
 .dd.dd...
 .kk.kk...`;
+  const ANGLER = `
+..hh....
+.hhhh...
+..ff....
+..fk....
+.dddd.w.
+dddddw..
+.ddddd..
+.hhhhh..`;
   const SNOWMAN = `
 ...bbb...
 ..bbbbb..
@@ -541,6 +550,8 @@ nNnnnn..
     SPRITES.duckR = flip(SPRITES.duck);
     SPRITES.minstrel = shadeSprite(MINSTREL);
     SPRITES.snowman = shadeSprite(SNOWMAN);
+    SPRITES.angler = shadeSprite(ANGLER);
+    SPRITES.walkerL = SPRITES.peasant.map(flip);
   }
 
   /* ---- the scene: seven planes of palette indices, generated once per size ---- */
@@ -1430,7 +1441,9 @@ nNnnnn..
       butterflies: Array.from({ length: 3 }, (_, k) => ({ x: M + rng() * Math.min(W, Ws), y: yg + 6 + rng() * (H - yg - 12), ph: rng() * 6, c: [I.FL_WHITE, I.FL_YEL, I.FL_BLUE][k] })),
       birds: null, dragon: null, nextDragon: null,
       // the countryside (see draw and step)
-      watch, mill, chimneys, horse, deer, owl, month, hamlet: { doors, eaves, spire }, fireworks: [], notes: [],
+      watch, mill, chimneys, horse, deer, owl, month, hamlet: { doors, eaves, spire, x1: hamlet.x1 }, fireworks: [], notes: [],
+      pathX, pathW, top, walker: null, zzz: [], fish: null,
+      angler: (() => { const x = M + Math.round(0.135 * Ws); return { x, y: yg + 3 - SPRITES.angler.h, wy: riverBot(x + 6) - 1 }; })(),
       bonfires: [[mill.x + 16, Math.round(hill[clamp(mill.x + 16, 0, WE - 1)]) + 1, L.MID], [hamlet.x1 + 7, riverTop(hamlet.x1 + 7) - 3, L.MID],
         [M + Math.round(0.33 * Ws), crestAt(M + Math.round(0.33 * Ws)) + 1, L.NEAR]],
       heron: (() => { const x = M + Math.round(0.74 * Ws); return { x, y: riverTop(x) + 4 - SPRITES.heron.h }; })(),
@@ -2799,7 +2812,42 @@ f11111f2.
       }
     }
 
+    const wk = scene.walker; // a passer-by on the castle road, far part: a tiny figure on the hill
+    if (wk && wk.y < yg) {
+      const x = mx(Math.round(scene.pathX[Math.round(wk.y)])); const y = Math.round(wk.y);
+      put(x, y - 2, pal32[wk.kind === 'messenger' ? I.FLAG : I.CLOAK], false); put(x, y - 1, pal32[I.CLOAK_SH], false); put(x, y - 3, pal32[I.SKIN], false);
+      if (wk.kind === 'lantern') { put(x + 1, y - 2, pack([255, 214, 120]), false); halo(x + 1, y - 2, 3, [255, 190, 90], 0.4 * look.night); }
+    }
+    { // market day (Saturdays): two stalls with striped awnings by the hamlet, folk about them
+      const d = today();
+      if (d.getDay() === 6 && look.night < 0.3) {
+        const x0 = scene.hamlet.x1 + 1;
+        [[0, I.FLAG], [9, I.FLAG2]].forEach(([dx, c]) => {
+          const x = mx(x0 + dx); const y = scene.riverTop(x0 + dx) - 3;
+          for (let k = 0; k < 7; k += 1) { put(x + k, y - 6, k % 2 ? pal32[c] : pal32[I.FL_WHITE], false); put(x + k, y - 5, k % 2 ? pal32[c] : pal32[I.FL_WHITE], false); }
+          put(x, y - 4, pal32[I.TIMBER_SH], false); put(x + 6, y - 4, pal32[I.TIMBER_SH], false);
+          for (let k = 0; k < 7; k += 1) put(x + k, y - 2, pal32[I.TIMBER], false);
+          put(x + 1, y - 3, pal32[I.RUST_HI], false); put(x + 3, y - 3, pal32[I.GRASS_HI], false); put(x + 5, y - 3, pal32[I.FL_YEL], false); // the wares
+          const fx = x + 2 + Math.round(Math.sin(t * 0.5 + dx) * 2); // a buyer
+          put(fx, y - 1, pal32[I.ROBE], false); put(fx, y, pal32[I.ROBE_SH], false); put(fx, y - 2, pal32[I.SKIN], false);
+        });
+      }
+    }
+
     composite(L.GROUND);
+
+    { // the angler on the near bank, by day: his line in the water; now and then a fish jumps
+      const an = scene.angler; const ax = gx(an.x, an.y + 6);
+      if (look.night < 0.5) {
+        blit(SPRITES.angler, ax, an.y);
+        const tipX = ax + 13; const tipY = an.y - 6; // the rod, bending a little, then the line down
+        for (let k = 0; k <= 8; k += 1) put(ax + 6 + k * 0.9, an.y + 4 - k * 1.25 + (k * k) * 0.02, pal32[I.TIMBER_SH], false);
+        for (let y = tipY + 1; y < an.wy; y += 1) put(tipX, y, pack([200, 200, 200]), false);
+        if (!reduce && Math.floor(t * 1.2) % 2) put(tipX, an.wy, pal32[I.WATER_HI], false); // the float bobs
+      }
+      const f = scene.fish;
+      if (f) { const fx = mx(f.x); const fy = Math.round(f.y); put(fx, fy, pack([200, 210, 220]), false); put(fx + f.dir, fy - 1, pack([170, 180, 190]), false); if (f.age > 8) put(fx - f.dir, fy + 2, pal32[I.WATER_HI], false); }
+    }
 
     // cloud shadows drift over the land when the sun is out between clouds
     if (weather.cover > 0.12 && weather.cover < 0.85 && Math.asin(Math.sin(sun[2])) / deg > 6) {
@@ -2866,6 +2914,17 @@ f11111f2.
         put(x, y, pal32[I.FERN_SH], false); put(x, y - 1, pal32[I.FERN], false); put(x + 1, y - 2, pal32[I.FL_WHITE], false); put(x + 1, y - 1, pal32[I.FL_WHITE], false);
       });
     }
+    if (wk && wk.y >= yg) { // the passer-by, near: full size, walking
+      const sp = (wk.dir < 0 ? SPRITES.peasant : SPRITES.walkerL)[Math.floor(t * 4) % 2]; const y = Math.min(H - 1, Math.round(wk.y));
+      const x = Math.round(scene.pathX[y]) - M + groundOff(y) - 3;
+      blit(sp, x, y - sp.h);
+      if (wk.kind === 'lantern') { put(x + 6, y - sp.h + 4, pack([255, 214, 120]), false); halo(x + 6, y - sp.h + 4, 4, [255, 190, 90], 0.45 * look.night); }
+      if (wk.kind === 'messenger') { for (let k = 0; k < 7; k += 1) put(x + 1, y - sp.h - k, pal32[I.TIMBER_SH], false); put(x + 2, y - sp.h - 6, pal32[I.FLAG], false); put(x + 3, y - sp.h - 6, pal32[I.FLAG], false); put(x + 2, y - sp.h - 5, pal32[I.FLAG], false); }
+    }
+    scene.zzz.forEach((z) => { // the knight dozes after dark
+      const c = pack([220, 226, 255]); const x = Math.round(z.x); const y = Math.round(z.y);
+      put(x, y, c, false); put(x + 1, y, c, false); put(x + 1, y + 1, c, false); put(x, y + 2, c, false); put(x + 1, y + 2, c, false);
+    });
     if (scene.season === 'summer' && look.night < 0.3) { // swallows skimming the meadow and the water
       const sc = pack([34, 30, 52]);
       for (let k = 0; k < 4; k += 1) {
@@ -3310,6 +3369,8 @@ f11111f2.
     const c = scene.cellar; const cmx = c.x - scene.M + shift(RATE[L.MID]);
     if (inBox(cmx - 1, c.y - 1, c.w + 2, c.h + 1)) return { kind: 'cellar' };
     if (inBox(knight.x + go, knight.y, SPRITES.knight.w, SPRITES.knight.h)) return { kind: 'knight' };
+    if (scene.meteors.some((m) => Math.hypot(x - m.x, y - m.y) < 6)) return { kind: 'meteor' };
+    const an = scene.angler; if (look.night < 0.5 && inBox(an.x - scene.M + groundOff(an.y + 6), an.y, SPRITES.angler.w + 6, SPRITES.angler.h)) return { kind: 'angler' };
     const hs = scene.horse; if (inBox(hs.x + go, hs.y, SPRITES.horse[0].w, SPRITES.horse[0].h)) return { kind: 'horse' };
     const ow = scene.owl; const fo = shift(RATE[L.FG]) - scene.M;
     if (look.night > 0.5 && inBox(ow.x + fo - 1, ow.y - 1, SPRITES.owl.w + 2, SPRITES.owl.h + 2)) return { kind: 'owl' };
@@ -3320,6 +3381,7 @@ f11111f2.
   }
   function talk(hit) {
     if (hit.kind === 'cat') say(CAT_SAYS[hit.name] || 'A cat looks at you.');
+    else if (hit.kind === 'knight' && look.night > 0.7) say('The knight is asleep by the fire. Best not to wake him.');
     else if (hit.kind === 'knight') { const r = rumour(); say(`The knight looks up from the fire: "${r[0].toUpperCase()}${r.slice(1)}"`); }
     else if (hit.kind === 'wizard') { say(WIZARD_SAYS[Math.floor(Math.random() * WIZARD_SAYS.length)]); castUntil = now() + 0.8; sparkle(16); }
     else if (hit.kind === 'fire') {
@@ -3328,6 +3390,8 @@ f11111f2.
     } else if (hit.kind === 'shield') say("On the knight's shield: azure, an armillary sphere or, over a bell curve argent.");
     else if (hit.kind === 'cellar') { say('A low door in the rock. Stone steps go down into the dark.'); descendTo(); }
     else if (hit.kind === 'horse') say("The knight's horse crops the grass and flicks its tail at you.");
+    else if (hit.kind === 'meteor') say('You catch the shooting star and make a wish. It is yours to keep.');
+    else if (hit.kind === 'angler') say(['The angler raises a finger to his lips. The fish are listening.', 'The angler shows you an empty basket and a patient smile.', '"They bite at dawn," says the angler, "and never when you watch."'][Math.floor(Math.random() * 3)]);
     else if (hit.kind === 'owl') say('The owl turns its head right round and hoots: "Who-oo?"');
     else if (hit.kind === 'mill') {
       const w = Math.round(weather.wind);
@@ -3384,6 +3448,24 @@ f11111f2.
       scene.meteors.push({ x: Math.random() * W, y: Math.random() * yHor * 0.5, dx: dir * v, dy: v * (0.4 + Math.random() * 0.5), age: 0, life: 6 + Math.random() * 6 });
     }
     scene.meteors = scene.meteors.filter((m) => { m.x += m.dx; m.y += m.dy; m.age += 1; return m.age < m.life; });
+    // a passer-by on the castle road now and then: peasant or messenger by day, a lantern by night
+    if (!scene.walker && !reduce && Math.random() < 0.004) {
+      const up = Math.random() < 0.5;
+      scene.walker = { y: up ? H + 2 : scene.top + 1, dir: up ? -1 : 1, kind: look.night > 0.5 ? 'lantern' : Math.random() < 0.25 ? 'messenger' : 'peasant' };
+    }
+    if (scene.walker) {
+      const w = scene.walker; w.y += w.dir * (w.y >= yg ? 0.22 : 0.07); // slower far off: perspective
+      if (w.y < scene.top || w.y > H + 3) scene.walker = null;
+    }
+    if (!scene.fish && look.night < 0.6 && !reduce && Math.random() < 0.01) {
+      const x = M + Math.round(Math.random() * Ws); const y = Math.round((scene.riverTop(x) + scene.riverBot(x)) / 2);
+      scene.fish = { x, y0: y, y, age: 0, dir: Math.random() < 0.5 ? -1 : 1 };
+    }
+    if (scene.fish) { const f = scene.fish; f.age += 1; f.x += f.dir * 0.4; f.y = f.y0 - Math.sin((f.age / 12) * Math.PI) * 4; if (f.age > 12) scene.fish = null; }
+    if (look.night > 0.7 && !reduce && Math.random() < 0.025) {
+      const go0 = groundOff(fire.y) - M; scene.zzz.push({ x: scene.knight.x + go0 + 17, y: scene.knight.y + 2, age: 0 });
+    }
+    scene.zzz = scene.zzz.filter((z) => { z.y -= 0.25; z.x += 0.15; z.age += 1; return z.age < 40; });
     const fest = festival(today());
     if (fest && fest[0] === 'fireworks' && look.night > 0.4 && !reduce && Math.random() < 0.07) {
       scene.fireworks.push({ rocket: true, x: Math.round(W * (0.5 + Math.random() * 0.3)) + shift(RATE[L.MID]), y: scene.castleTop + 30, top: scene.castleTop - 10 - Math.random() * yHor * 0.4 });
