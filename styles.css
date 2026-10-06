@@ -481,6 +481,11 @@ dialog.scroll .keys dd { margin: 0; }
 
 /* ---- map (m) and the 404 tombstone ------------------------------------- */
 
+.realm { display: block; width: 100%; max-width: 480px; height: auto; margin: .5rem auto; image-rendering: pixelated; }
+.realm-key { list-style: none; padding: 0; margin: .5rem 0 0; columns: 2; font-size: .85rem; }
+.realm-key li { display: flex; align-items: center; gap: .5rem; margin-bottom: .25rem; break-inside: avoid; }
+.realm-key img { width: 20px; height: auto; image-rendering: pixelated; }
+
 .map, .rip {
   margin: 0;
   font: .85rem/1.25 var(--ui);
@@ -541,7 +546,7 @@ dialog.dungeon canvas {
 
 /* ---- wizard mode: the engraving turns to its negative ------------------ */
 
-.wizard .plate-img { filter: invert(1); }
+[data-theme="dark"].wizard .plate-img { filter: invert(1); }
 .wizard #st-dlvl, .wizard #st-align { color: var(--red); }
 
 /* ---- between pages: the frame stays, the pane changes (View Transitions; ignored where

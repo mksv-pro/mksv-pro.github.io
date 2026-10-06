@@ -74,7 +74,7 @@
     ['PLASTER_HI', '#e2d6b8', 0], ['PLASTER', '#cdbf9e', 0], ['PLASTER_SH', '#ad9e7e', 0],
     ['LIME_HI', '#ece8dc', 0], ['LIME', '#d8d2c2', 0], ['LIME_SH', '#b8b0a0', 0],
     ['BRICK_HI', '#a85a40', 0], ['BRICK', '#8a4632', 0], ['BRICK_SH', '#6a3426', 0],
-    ['CORK', '#d0a46a', 0], ['CORK_SH', '#9a7046', 0], ['SLATEB', '#2b312d', 0], ['SLATEB_HI', '#3a423c', 0],
+    ['CORK', '#d0a46a', 0], ['CORK_SH', '#9a7046', 0], ['CANDLE_GLOW', '#ffd27a', 0], ['SLATEB', '#2b312d', 0], ['SLATEB_HI', '#3a423c', 0],
   ];
   // sprite materials: letter -> [name, highlight, mid, shadow]; _tools/icons.py shades the icons
   // with the same rule and colours
@@ -523,6 +523,17 @@ nNnnnn..
       }
     }
 
+    // a cellar door cut into the rock, left of the stair: the way down (the descent, `>`)
+    const cellar = { x: Math.round(cx - castleW * 0.3), y: crest + Math.max(3, Math.round(rockH * 0.35)), w: 5, h: 6 };
+    for (let y = 0; y < cellar.h; y += 1) {
+      for (let x = 0; x < cellar.w; x += 1) {
+        const arch = y === 0 && (x === 0 || x === cellar.w - 1);
+        if (!arch) set(cellar.x + x, cellar.y + y, y > cellar.h - 3 && x === y - 2 ? I.ROCK_SH : I.OUTLINE); // dark, a step or two going down
+      }
+    }
+    for (let x = -1; x <= cellar.w; x += 1) set(cellar.x + x, cellar.y - 1, I.ROCK_HI); // its lintel
+    set(cellar.x - 1, cellar.y + 2, I.TIMBER); set(cellar.x - 1, cellar.y + 3, I.TIMBER_SH); // a post with a lamp hook
+
     // the path: from the bottom edge to the foot of the rock, then steps cut up to the gate
     const pathX = new Float32Array(H).fill(-99); const pathW = new Float32Array(H);
     for (let y = top; y < H; y += 1) {
@@ -788,8 +799,14 @@ nNnnnn..
     room('research', obs.x0 - 1, obs.t0 - obs.ww / 2 - 5, obs.ww + 2, crest - obs.t0 + obs.ww / 2 + 5);
     const castleTop = Math.round(crest - 56 * v - 15 * v - 4); // over the tallest spire
     const tall = tower(9, 8, 56, 15, { flag: I.FLAG2 });
+    // the belfry: an opening high in the tall tower, where the bell hangs (rung each planetary hour)
+    const bell = { x: tall.x0 + Math.floor(tall.ww / 2), y: tall.t0 + 2 };
+    rect(bell.x - 2, bell.y - 1, 5, 6, I.OUTLINE); set(bell.x - 2, bell.y - 1, I.WALL_SH); set(bell.x + 2, bell.y - 1, I.WALL_SH);
+    rect(bell.x - 3, bell.y + 5, 7, 1, I.WALL_HI);
+    const tallTip = flags.find((f) => f.c === I.FLAG2);
     room('talks', tall.x0 - 2, tall.t0 - 15 * v - 3, tall.ww + 4, (crest - tall.t0) * 0.55 + 15 * v + 3);
     const kp = keep(-2, 14, 37);
+    const keepTop = { x: kp.x0 + Math.floor(kp.ww / 2), y: kp.t0 - 3 }; // where the visitor's banner goes up
     room('about', kp.x0, kp.t0 - 3, kp.ww, crest - kp.t0 - 12 * v);
     const pep = tower(-8.5, 3.5, 44, 7, { slate: true }); // a pepperpot turret on the keep's corner
     room('news', pep.x0 - 2, pep.t0 - 7 * v - 3, pep.ww + 4, 7 * v + 10);
@@ -1078,6 +1095,8 @@ nNnnnn..
 
     return {
       W, H, Ws, WE, M, planes, rows, yHor, castleTop, rooms, yl0, yg, windows, flags, torches, sentries, chimney, stars, clouds,
+      bell, keepTop, tallTip: tallTip && { x: tallTip.x, y: tallTip.y }, cellar, riverTop, riverBot,
+      ferry: { x: M + 10, dir: 1, wait: 600 }, hoist: null, ringUntil: 0,
       fire, knight, wizard, blades, cats, field, season, shieldSp: null,
       peasant: field.none ? null : { x: Math.round((field.x0 + field.x1) / 2), dir: 1, seeds: [] },
       falling: Array.from({ length: Math.round(WE / 8) }, () => ({ x: rng() * WE, y: rng() * H, ph: rng() * 6, c: rng() < 0.5 })),
@@ -1123,6 +1142,19 @@ nNnnnn..
   // a 3x5 figure font, for the years woven into the tapestry
   const DIGITS = ['111101101101111', '010110010010111', '111001111100111', '111001111001111', '101101111001001',
     '111100111001111', '111100111101111', '111001010010010', '111101111101111', '111101111001111'];
+
+  // a 3x5 chalk hand for the schoolroom's equations
+  const GLYPHS = {
+    i: ['010', '000', '010', '010', '010'], 'ħ': ['100', '111', '100', '111', '101'], '∂': ['011', '001', '111', '101', '111'],
+    'ψ': ['101', '101', '111', '010', '010'], '/': ['001', '001', '010', '100', '100'], t: ['010', '111', '010', '010', '011'],
+    '=': ['000', '111', '000', '111', '000'], H: ['101', '101', '111', '101', '101'], 'ρ': ['000', '111', '101', '111', '100'],
+    D: ['110', '101', '101', '101', '110'], '∇': ['111', '101', '101', '010', '000'], '²': ['110', '010', '100', '110', '000'],
+    Z: ['111', '001', '010', '100', '111'], 'Σ': ['111', '100', '010', '100', '111'], e: ['000', '111', '111', '100', '111'],
+    '^': ['010', '101', '000', '000', '000'], '-': ['000', '000', '111', '000', '000'], 'β': ['010', '101', '110', '101', '110'],
+    E: ['111', '100', '110', '100', '111'], u: ['000', '101', '101', '101', '111'], '+': ['000', '010', '111', '010', '000'],
+    '(': ['010', '100', '100', '100', '010'], ')': ['010', '001', '001', '001', '010'], 0: ['111', '101', '101', '101', '111'],
+  };
+  const CHALK = ['iħ∂ψ/∂t=Hψ', '∂ρ/∂t=D∇²ρ', 'Z=Σe^-βE', '-∂u/∂t+H(∇u)=0'];
 
   // the labour of the month, as in a book of hours (sower in autumn, reaper in summer...)
   const SEASON = (m) => (m <= 1 || m === 11 ? 'winter' : m <= 4 ? 'spring' : m <= 7 ? 'summer' : 'autumn');
@@ -1562,6 +1594,15 @@ hhhhhh.
         while (x < br - 10) { const w = 2 + ((x * 7 + k) % 4); for (let c = 0; c < w; c += 1) set(x + c, y + ((c + k) % 3 === 0 ? -1 : 0), I.FL_WHITE); x += w + 2; }
         slots[k] = box(bl + 2, y - 3, br - bl - 4, 6);
       });
+      // under the courses, the board's standing equations, in chalk: Schrödinger, diffusion,
+      // the partition function, Hamilton-Jacobi-Bellman (the M1, the projects, the masters)
+      let ey = bt + 4 + things.length * 7;
+      CHALK.forEach((line) => {
+        if (ey + 5 > bb - 2) return;
+        const w = line.length * 4; let ex = Math.round(bl + (br - bl - w) / 2);
+        [...line].forEach((ch) => { const g = GLYPHS[ch]; if (g) g.forEach((row, ry) => [...row].forEach((b, rx) => { if (b === '1') set(ex + rx, ey + ry, (ex + ey + rx) % 7 ? I.FL_WHITE : I.PLASTER); })); ex += 4; });
+        ey += 8;
+      });
       windowArch(S(0.06), Math.round(H * 0.16), Math.max(10, S(0.12)), Math.round(H * 0.32));
       const dx = S(0.78); const dw = Math.max(14, W - dx - 4); desk(dx, yf - 10, dw); candle(dx + dw - 3, yf - 11, true);
       for (let k = 0; k < 5; k += 1) set(dx + 3 + k * 2, yf - 12, k % 2 ? I.CAP : I.GOLD); rect(dx + 2, yf - 13, 11, 1, I.TIMBER_SH);
@@ -1600,7 +1641,27 @@ hhhhhh.
       windowArch(S(0.06), Math.round(H * 0.14), Math.max(10, S(0.1)), Math.round(H * 0.26));
       cat('thin', a - 6, floorY(0.4));
     }
-    extra.forEach(({ t, b }) => { slots[things.length] = b; things.push(t); }); // the hangings can be looked at too
+    // the doors to the next rooms, at the ends of the room: west and north on the left, east and
+    // south on the right; each a round-headed door, ajar, a little plaque over it
+    const sides = { l: [], r: [] };
+    (doorsOf(id) || []).forEach((d) => sides[d.dir === 'w' || d.dir === 'n' ? 'l' : 'r'].push(d));
+    Object.entries(sides).forEach(([side, list]) => list.forEach((d, k) => {
+      const dw = 9; const dh = Math.min(22, yf - 12); const x0 = side === 'l' ? 2 + k * 13 : W - dw - 2 - k * 13; const y0 = yf - dh;
+      for (let y = -2; y < dh; y += 1) for (let x = -2; x < dw + 2; x += 1) {
+        const ax = (x + 0.5 - dw / 2) / (dw / 2); const ay = (y - dw / 2) / (dw / 2);
+        const inside = y >= dw / 2 ? x >= 0 && x < dw : ax * ax + ay * ay <= 1 && y >= 0;
+        const frame = y >= dw / 2 - 1 ? x >= -2 && x < dw + 2 : ax * ax * 0.8 + ay * ay <= 1.6;
+        if (inside) { // a planked door, ajar: a slit of the next room's light down its opening edge
+          const slit = side === 'l' ? x === dw - 2 : x === 1;
+          const plank = (x % 3 === 0) ? I.TIMBER_SH : I.TIMBER;
+          set(x0 + x, y0 + y, slit ? (y > 1 ? I.CANDLE_GLOW : I.OUTLINE) : (y === Math.round(dh * 0.35) || y === Math.round(dh * 0.75)) ? I.ARM_SH : plank);
+        } else if (frame) set(x0 + x, y0 + y, (x + y) % 5 === 0 ? I.ROCK_SH : I.ROCK_HI);
+      }
+      set(side === 'l' ? x0 + dw - 3 : x0 + 2, y0 + Math.round(dh * 0.55), I.GOLD); // the ring
+      rect(x0 + 1, y0 - 6, dw - 2, 3, I.GOLD_SH); rect(x0 + 2, y0 - 5, dw - 4, 1, I.GOLD_HI); // the plaque
+      extra.push({ t: d, b: box(x0 - 2, y0 - 7, dw + 4, dh + 7) });
+    }));
+    extra.forEach(({ t, b }) => { slots[things.length] = b; things.push(t); }); // hangings and doors can be looked at too
     } else { // a project page: the workshop, its text on the blueprint on the easel
       easelUnder(bot);
       const hx = s(0.05); const hw = Math.max(18, s(0.32)); const hy = yf - 24;
@@ -1677,9 +1738,9 @@ hhhhhh.
   let backBuf; let backIdx; let backKey = ''; // the still planes, composed (see draw)
   let ipal32; let interior = null; let ibase; let ibuf; let iprev;
   let view = { state: 'scene', id: null, t0: 0 }; // scene | in | room | out | swap
-  let hoverId = null; let pendingRoom = null;
+  let hoverId = null; let pendingRoom = null; let pendingHoist = false;
   let heraldry = { own: 'silva', tapestry: [] }; let say = () => {}; let rumour = () => '';
-  let itemsOf = () => []; let spotsTo = () => {}; let hl = -1; // the room's things, their hotspots, the one pointed at
+  let itemsOf = () => []; let spotsTo = () => {}; let descendTo = () => {}; let doorsOf = () => []; let hl = -1; // the room's things, their hotspots, the one pointed at
   let scene = null; let look = null; let skyFn; let reduce = false; let px = 3;
   let running = false; let visible = true; let raf = 0; let last = 0; let tick = 0;
   let bodies = null; let label0 = ''; let castUntil = 0;
@@ -1760,7 +1821,9 @@ hhhhhh.
     buf = new Uint32Array(W * H); ibuf = new Uint32Array(W * H); iprev = new Uint32Array(W * H); ibase = new Uint32Array(W * H);
     backBuf = new Uint32Array(W * H); backIdx = new Uint8Array(W * H); backKey = '';
     idxNow = new Uint8Array(W * H);
+    const hoisted = scene && scene.hoist;
     scene = generate(W, H, Ws);
+    if (hoisted || pendingHoist) { scene.hoist = { t0: -99 }; pendingHoist = false; }
     wizPx = null;
     anchorMenu(r);
     if (view.id) { interior = makeInterior(view.id); hl = -1; }
@@ -1913,8 +1976,9 @@ hhhhhh.
     // the dragon, high up: in front of the mountains, behind the trees and the castle
     const dg = scene.dragon;
     if (dg) {
-      const far = (x, y) => x >= 0 && x < W && y >= 0 && y < yl0 && idxNow[y * W + x] <= FAR;
-      const sp = (dg.dir > 0 ? SPRITES.dragon : SPRITES.dragonL)[Math.floor(tick / 3) % 2];
+      const sat = dg.land && dg.land.phase !== 'fly';
+      const far = (x, y) => x >= 0 && x < W && y >= 0 && y < yl0 && (sat || idxNow[y * W + x] <= FAR);
+      const sp = (dg.dir > 0 ? SPRITES.dragon : SPRITES.dragonL)[sat ? 1 : Math.floor(tick / 3) % 2];
       const x0 = Math.round(dg.x); const y0 = Math.round(dg.y);
       for (let y = 0; y < sp.h; y += 1) {
         for (let x = 0; x < sp.w; x += 1) {
@@ -1985,6 +2049,37 @@ hhhhhh.
       pz.seeds.forEach((q) => put(mx(q.x), q.y, pal32[f.season === 'summer' ? I.WHEAT : I.FL_YEL], false));
     }
 
+    { // the bell: still, or swinging (and its peal in rings) for a while after the hour turns
+      const b = scene.bell; const bx = mx(b.x); const ringing = t < scene.ringUntil;
+      const sw = ringing && !reduce ? Math.round(Math.sin(t * 9)) : 0;
+      put(bx, b.y, pal32[I.ARM_SH]);
+      [[0, 1], [-1, 2], [0, 2], [1, 2], [-1, 3], [0, 3], [1, 3]].forEach(([dx, dy]) => put(bx + dx + (dy > 1 ? sw : 0), b.y + dy, pal32[dy === 3 ? I.GOLD_SH : I.GOLD], false));
+      if (ringing) {
+        const r = 4 + Math.floor((t * 4) % 4);
+        for (let a = -0.9; a <= 0.9; a += 0.3) { blend(bx + Math.round(Math.cos(a) * r), b.y + 2 + Math.round(Math.sin(a) * r), [255, 240, 190], 0.5, true); blend(bx - Math.round(Math.cos(a) * r), b.y + 2 + Math.round(Math.sin(a) * r), [255, 240, 190], 0.5, true); }
+      }
+    }
+    if (scene.hoist) { // the visitor's banner, up the keep's pole once every room has been seen
+      const k = reduce ? 1 : clamp((t - scene.hoist.t0) / 3); const top = scene.keepTop; const x = mx(top.x);
+      for (let y = 0; y < 14; y += 1) put(x, top.y - y, pal32[I.TIMBER_SH], false); // the pole
+      put(x, top.y - 14, pal32[I.GOLD], false);
+      const rowsA = (window.ARMS || {})[heraldry.own];
+      if (rowsA) { // a small standard in the arms' two tinctures (the castle is too small for the whole coat)
+        const field = pal32[I[TINCT[rowsA[1][1]]]];
+        const charge = pal32[I[TINCT[[...rowsA.join('')].find((c) => c !== '.' && c !== rowsA[1][1]) || 'O']]];
+        const by = Math.round(top.y - 4 - k * 10); const wave = reduce ? 0 : Math.floor(t * 2) % 2;
+        for (let y = 0; y < 8; y += 1) for (let xx = 0; xx < 6; xx += 1) {
+          if (y === 7 && (xx === 2 || xx === 3)) continue; // swallow-tailed
+          const c = (xx >= 2 && xx <= 3 && y >= 2 && y <= 4) || (y === 3 && xx >= 1 && xx <= 4) ? charge : field;
+          if (by + y < top.y - 1) put(x + 1 + xx, by + y + (xx > 3 ? wave : 0), c, false);
+        }
+      }
+    }
+    if (look.night > 0.3) { // a lamp at the cellar door
+      const c = scene.cellar; const lx = mx(c.x - 1); const ly = c.y + 1;
+      put(lx, ly, pack([255, 214, 120])); halo(lx, ly, 3, [255, 190, 90], 0.35 * look.night);
+    }
+
     // the lake mirrors what stands above it, rippled, with a glint now and then
     const water = look.pal[I.WATER];
     for (let y = yl0; y < yg; y += 1) {
@@ -2005,6 +2100,21 @@ hhhhhh.
           if (x < 0 || x >= W || idxNow[y * W + x] !== I.WATER) continue;
           if (reduce ? bayer(x, y) < 0.3 : Math.sin(x * 3.1 + y * 7.7 + t * 4) > 0.55) blend(x, y, [240, 238, 210], 0.55 * look.night, false);
         }
+      }
+    }
+
+    { // the ferryman's boat crosses the river now and then; it shows only on the water
+      const f = scene.ferry; const fx = Math.round(f.x); const fy = scene.riverBot(fx) - 1; const sx = mx(fx);
+      const onWater = (x, y) => x >= 0 && x < W && y >= 0 && y < H && (idxNow[y * W + x] === I.WATER || idxNow[y * W + x] === I.WATER_HI);
+      const dot = (x, y, c) => { if (onWater(x, y)) buf[y * W + x] = c; };
+      if (f.wait <= 0) {
+        for (let x = -4; x <= 4; x += 1) { dot(sx + x, fy, pal32[I.TIMBER]); dot(sx + x, fy + 1, pal32[I.TIMBER_SH]); }
+        dot(sx - 5, fy - 1, pal32[I.TIMBER_HI]); dot(sx + 5, fy - 1, pal32[I.TIMBER_HI]);
+        const m = sx + f.dir; // the ferryman, his pole slanting back into the water
+        [[0, -1, I.CLOAK_SH], [0, -2, I.CLOAK], [0, -3, I.CLOAK], [0, -4, I.SKIN], [0, -5, I.HAT]].forEach(([dx, dy, c]) => dot(m + dx, fy + dy, pal32[c]));
+        for (let k = 0; k < 6; k += 1) dot(m - f.dir * (1 + k), fy - 4 + k, pal32[I.TIMBER_SH]);
+        if (!reduce && Math.floor(t * 3) % 2) dot(sx - f.dir * 6, fy + 1, pal32[I.WATER_HI]); // its wake
+        if (look.night > 0.3) { dot(sx + f.dir * 4, fy - 2, pack([255, 214, 120])); }
       }
     }
 
@@ -2372,6 +2482,46 @@ hhhhhh.
     if (!running) render(t);
   }
 
+  /* ---- the realm: Paris in pixels for the map dialog (lon, lat -> 240 x 150 px) ---- */
+  const REALM = { // where each school stands; Orsay is off the map, south-west
+    sorbonne: [2.3561, 48.8466], paris1: [2.3462, 48.8463], pariscite: [2.3405, 48.8510],
+    sciencespo: [2.3285, 48.8540], dauphine: [2.2737, 48.8706], ceremade: [2.2760, 48.8700],
+    saclay: [2.226, 48.818], ijclab: [2.232, 48.816],
+  };
+  const SEINE = [[2.47, 48.815], [2.41, 48.83], [2.37, 48.845], [2.35, 48.853], [2.33, 48.86], [2.30, 48.862],
+    [2.29, 48.857], [2.27, 48.849], [2.255, 48.838], [2.243, 48.832], [2.236, 48.845], [2.248, 48.868], [2.258, 48.889], [2.23, 48.905]];
+  function drawRealm(cv) {
+    const g = cv.getContext('2d'); const Wm = cv.width; const Hm = cv.height;
+    const P = (lon, lat) => [Math.round(((lon - 2.22) / 0.25) * Wm), Math.round(((48.905 - lat) / 0.09) * Hm)];
+    const rgb = (n) => { const c = DAYLIGHT[I[n]]; return c; };
+    g.fillStyle = '#efe2c2'; g.fillRect(0, 0, Wm, Hm);
+    for (let y = 0; y < Hm; y += 1) for (let x = 0; x < Wm; x += 1) if ((x * 7 + y * 13) % 29 === 0) { g.fillStyle = '#e2d2ac'; g.fillRect(x, y, 1, 1); } // its grain
+    const blob = (lon, lat, rx, ry, col) => { const [cx0, cy0] = P(lon, lat); g.fillStyle = col; for (let y = -ry; y <= ry; y += 1) for (let x = -rx; x <= rx; x += 1) if ((x / rx) ** 2 + (y / ry) ** 2 <= 1 && (x + y) % 3) g.fillRect(cx0 + x, cy0 + y, 1, 1); };
+    blob(2.25, 48.862, 9, 11, rgb('PINE_HI')); blob(2.435, 48.835, 12, 8, rgb('PINE_HI')); // the woods of Boulogne and Vincennes
+    for (let a = 0; a < 6.283; a += 0.02) { // the old walls' line (the boulevard ring), dotted
+      const [x, y] = P(2.345 + Math.cos(a) * 0.105, 48.858 + Math.sin(a) * 0.038);
+      if (Math.floor(a * 60) % 2) { g.fillStyle = rgb('WALL_SH'); g.fillRect(x, y, 1, 1); }
+    }
+    g.fillStyle = rgb('WATER'); // the Seine, three pixels wide
+    for (let k = 1; k < SEINE.length; k += 1) {
+      const [x0, y0] = P(...SEINE[k - 1]); const [x1, y1] = P(...SEINE[k]); const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+      for (let j = 0; j <= n; j += 1) { const x = Math.round(x0 + ((x1 - x0) * j) / n); const y = Math.round(y0 + ((y1 - y0) * j) / n); g.fillRect(x - 1, y - 1, 3, 3); }
+    }
+    const [ix, iy] = P(2.347, 48.8545); g.fillStyle = rgb('PATH'); g.fillRect(ix - 3, iy - 1, 7, 2); // the Île de la Cité
+    g.fillStyle = rgb('ROOF'); g.fillRect(ix, iy - 3, 1, 2);
+    Object.entries(REALM).forEach(([id, [lon, lat]], k) => { // a pennant in the school's field colour
+      if (!(window.ARMS || {})[id]) return;
+      let [x, y] = P(lon, lat); x = clamp(x, 3, Wm - 8); y = clamp(y + (k % 2) * 2, 8, Hm - 2);
+      const field = DAYLIGHT[I[TINCT[window.ARMS[id][1][1]]]];
+      g.fillStyle = '#16121c'; g.fillRect(x, y - 8, 1, 9);
+      g.fillStyle = field; g.fillRect(x + 1, y - 8, 4, 3); g.fillRect(x + 1, y - 5, 2, 1);
+      g.fillStyle = '#16121c'; g.fillRect(x - 1, y + 1, 3, 1);
+    });
+    g.fillStyle = '#16121c'; // Orsay, off the map: an arrow
+    [[4, Hm - 4], [5, Hm - 5], [6, Hm - 6], [4, Hm - 5], [4, Hm - 6], [5, Hm - 4], [6, Hm - 4]].forEach(([x, y]) => g.fillRect(x, y, 1, 1));
+    g.strokeStyle = '#8a6f2e'; g.lineWidth = 2; g.strokeRect(1, 1, Wm - 2, Hm - 2);
+  }
+
   /* ---- the camp answers a click: the cats, the knight, the wizard, the fire, the shield ---- */
 
   const CAT_SAYS = {
@@ -2397,6 +2547,8 @@ hhhhhh.
     const sh = scene.shieldSp;
     if (sh && inBox(knight.x + go + 1, fire.y + 7 - sh.h, sh.w, sh.h)) return { kind: 'shield' };
     if (inBox(fire.x + go - 7, fire.y - 18, 14, 22)) return { kind: 'fire' };
+    const c = scene.cellar; const cmx = c.x - scene.M + shift(RATE[L.MID]);
+    if (inBox(cmx - 1, c.y - 1, c.w + 2, c.h + 1)) return { kind: 'cellar' };
     if (inBox(knight.x + go, knight.y, SPRITES.knight.w, SPRITES.knight.h)) return { kind: 'knight' };
     if (inBox(wizard.x + go, wizard.y, SPRITES.wizard.w, SPRITES.wizard.h)) return { kind: 'wizard' };
     return null;
@@ -2409,6 +2561,7 @@ hhhhhh.
       say('The fire crackles and throws up sparks.');
       for (let k = 0; k < 24; k += 1) scene.embers.push({ x: scene.fire.x + (Math.random() - 0.5) * 8, y: scene.fire.y - 10, vy: -(0.8 + Math.random() * 1.4), ph: Math.random() * 6, age: 0, life: 20 + Math.random() * 30 });
     } else if (hit.kind === 'shield') say("On the knight's shield: azure, an armillary sphere or, over a bell curve argent.");
+    else if (hit.kind === 'cellar') { say('A low door in the rock. Stone steps go down into the dark.'); descendTo(); }
   }
   const scenePoint = (e) => {
     const r = plate.getBoundingClientRect();
@@ -2487,6 +2640,14 @@ hhhhhh.
       if (scene.birds.every((b) => b.x < -5)) scene.birds = null;
     }
 
+    const fe = scene.ferry; // crosses, waits on the far bank, comes back
+    if (fe.wait > 0) fe.wait -= 1;
+    else {
+      fe.x += fe.dir * 0.25;
+      const lo = M + 6; const hi = M + span - 6;
+      if (fe.x < lo || fe.x > hi) { fe.x = clamp(fe.x, lo, hi); fe.dir = -fe.dir; fe.wait = 600 + Math.floor(Math.random() * 900); }
+    }
+
     // the dragon: every minute or so (every few seconds in wizard mode), across the sky
     const wiz = root.classList.contains('wizard');
     scene.nextDragon ??= t + 6;
@@ -2496,7 +2657,22 @@ hhhhhh.
       scene.dragon = { dir, x: dir > 0 ? -45 : span + 5, y: 0, y0: 3 + Math.random() * (high - 3), flames: [], breath: -1 };
     }
     const dg = scene.dragon;
-    if (dg) {
+    // in wizard mode it comes down onto the tall tower, sits a while, smoking, then flies on
+    const tip = scene.tallTip;
+    if (dg && wiz && tip && !dg.land) {
+      const sp = SPRITES.dragon[1]; const tx = tip.x - M + shift(RATE[L.MID]) - Math.round(sp.w / 2);
+      if (Math.abs(dg.x - tx) < 40) dg.land = { phase: 'down', t0: t, x0: dg.x, y0: dg.y, tx, ty: tip.y - sp.h + 4 };
+    }
+    if (dg && dg.land && dg.land.phase !== 'fly') {
+      const L0 = dg.land; const k = clamp((t - L0.t0) / 1.6);
+      if (L0.phase === 'down') {
+        dg.x = L0.x0 + (L0.tx - L0.x0) * k; dg.y = L0.y0 + (L0.ty - L0.y0) * k * k;
+        if (k >= 1) { L0.phase = 'sit'; L0.t0 = t; }
+      } else if (L0.phase === 'sit') {
+        if (!reduce && Math.random() < 0.15) scene.fumes.push({ x: dg.x - shift(RATE[L.MID]) + M + (dg.dir > 0 ? DRAGON_MOUTH[0] : SPRITES.dragon[0].w - DRAGON_MOUTH[0]), y: dg.y + DRAGON_MOUTH[1] - 2, r: 1, age: 0, life: 40 });
+        if (t - L0.t0 > 10) { L0.phase = 'fly'; dg.y0 = dg.y - 20; }
+      }
+    } else if (dg) {
       dg.x += dg.dir * 1.4;
       dg.y = dg.y0 + Math.sin(dg.x * 0.05) * 4;
       if (dg.breath < 0 && Math.random() < (wiz ? 0.08 : 0.006)) dg.breath = 14;
@@ -2560,7 +2736,7 @@ hhhhhh.
       if (canvas) return;
       plate = o.plate; skyFn = o.sky; reduce = o.reduceMotion;
       heraldry = o.heraldry || heraldry; say = o.say || say; rumour = o.rumour || rumour;
-      itemsOf = o.items || itemsOf; spotsTo = o.spots || spotsTo;
+      itemsOf = o.items || itemsOf; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo; doorsOf = o.doors || doorsOf;
       pendingRoom = root.dataset.room || null;
       label0 = plate.getAttribute('aria-label');
       canvas = document.createElement('canvas');
@@ -2600,6 +2776,12 @@ hhhhhh.
     },
     /** Into the room of section `id`, or back out (null); script.js calls it as the hash changes. */
     room(id, { animate = true } = {}) { goRoom(id, animate); },
+    /** Draw the realm (the map dialog's Paris) into a 240x150 canvas. */
+    realm(cv) { if (cv) drawRealm(cv); },
+    /** The hour has turned: the bell swings a few seconds. */
+    ring() { if (scene) scene.ringUntil = now() + 5; },
+    /** Every room seen: the visitor's banner goes up the keep (`instant`: already up). */
+    hoist(instant) { if (scene && !scene.hoist) scene.hoist = { t0: instant ? -99 : now() }; else if (!scene) pendingHoist = true; },
     /** Light the thing at index i (hotspot hovered or focused); -1 for none. */
     highlight(i) { hl = i; if (!running && interior && isOn()) render(now()); },
   };

@@ -46,6 +46,9 @@ const T = {
   rooms: 'Rooms',
   nothing: 'Nothing happens.',
   themeName: { dark: 'terminal', hours: 'hours' },
+  bell: (h) => `The castle bell rings: the hour of ${h}.`,
+  realmTitle: 'The realm',
+  realmLabel: 'A pixel map of Paris: the Seine, and a pennant where each of the schools stands.',
   narrowTheme: 'The castle needs a wider window: hours opens on screens from 1200 px.',
   leave: '[leave the room \u00b7 Esc]',
   notebook: 'The notebook on the desk',
@@ -186,7 +189,9 @@ function applyTheme(theme, persist) {
       items: roomItems, // what each room holds, to be drawn as things
       spots: setSpots, // and where those things ended up
       rumour: () => T.rumour(RUMOURS[Math.floor(Math.random() * RUMOURS.length)]),
-    }));
+      descend, // the cellar door in the rock
+      doors: roomDoors, // and the rooms' doors to one another
+    })).then(() => { if (session('ended')) window.Hours.hoist(true); });
   }
 }
 
@@ -275,6 +280,7 @@ function enterRoom(id, quiet = false) {
   explored.querySelector('b').textContent = `${v.length}/${ROOM_IDS.length}`;
   if (v.length === ROOM_IDS.length && !session('ended')) {
     session('ended', '1');
+    if (window.Hours) window.Hours.hoist(false); // your banner goes up the keep
     say(T.explored, showEnd);
     return;
   }
@@ -449,8 +455,20 @@ function setSpots(rects, items) {
     return b;
   }));
 }
+/** The doors out of room `id`, from the section's exits: { dir: n|e|s|w, label, go }. */
+function roomDoors(id) {
+  const sec = document.getElementById(id) || document.querySelector('main > section:not([hidden])');
+  return sec ? [...sec.querySelectorAll('.exits li')].map((li) => {
+    const a = li.querySelector('a'); const dir = li.querySelector('.dir').textContent.trim();
+    const href = a.getAttribute('href'); // '#research', or a project page's path
+    const go = ROOM_IDS.find((r) => href === `#${r}` || (WORLD[r].page && href.endsWith(WORLD[r].page))) || null;
+    return { kind: 'door', dir: dir[0], label: `${dir}: ${a.textContent.trim()}`, go, html: '' };
+  }).filter((d) => d.go) : [];
+}
+
 function openCard(i, from) {
   const it = spotItems[i];
+  if (it.go) { goTo(it.go); return; } // a door: through it
   card.querySelector('.card-body').innerHTML = it.html;
   card.dataset.kind = it.kind;
   card.setAttribute('aria-label', it.label);
@@ -581,7 +599,23 @@ function mapHtml(at) {
   }
   return `<pre class="map" aria-label="Map of the rooms; visited rooms are links">${out.replace(/[ \n]+$/, '')}</pre>`;
 }
-const showMap = () => showDialog(T.mapTitle, mapHtml(here));
+/* In the hours theme the map goes on with the realm: Paris in pixels, the Seine, a pennant in
+   each school's colours where it stands (hours.js draws it), the arms in the key below. */
+const REALM_NAMES = {
+  sorbonne: 'Sorbonne Université', paris1: 'Paris 1 Panthéon-Sorbonne', pariscite: 'Université Paris Cité',
+  sciencespo: 'Sciences Po', dauphine: 'Paris Dauphine-PSL', ceremade: 'CEREMADE (at Dauphine)',
+  saclay: 'Université Paris-Saclay (Orsay, off the map)', ijclab: 'IJCLab (Orsay, off the map)',
+};
+function realmHtml() {
+  const ids = [...new Set((DATA.heraldry.tapestry || []).map(([id]) => id))].filter((id) => REALM_NAMES[id]);
+  return `<h3>${T.realmTitle}</h3><canvas class="realm" width="240" height="150" role="img" aria-label="${T.realmLabel}"></canvas>
+<ul class="realm-key">${ids.map((id) => `<li><img src="${new URL(`assets/img/arms/${id}.svg`, SITE).href}" alt="" width="13" height="15"> ${REALM_NAMES[id]}</li>`).join('')}</ul>`;
+}
+function showMap() {
+  const realm = root.getAttribute('data-theme') === 'hours' && window.Hours;
+  showDialog(T.mapTitle, mapHtml(here) + (realm ? realmHtml() : ''));
+  if (realm) window.Hours.realm(dialog.querySelector('canvas.realm'));
+}
 
 /* ---- the descent (>): first person, loaded on demand ------------------- */
 
@@ -1087,7 +1121,13 @@ function tick() {
   $('st-hour').textContent = T.stHour(ph.hour);
   $('st-moon').textContent = T.stMoon(m.waxing);
   updateSky();
+  if (lastHour && ph.hour !== lastHour && window.Hours) { // the castle bell marks the turn of the hour
+    window.Hours.ring();
+    if (root.getAttribute('data-theme') === 'hours') say(T.bell(ph.hour));
+  }
+  lastHour = ph.hour;
 }
+let lastHour = null;
 
 tick();
 setTimeout(() => { tick(); setInterval(tick, 60000); }, (60 - new Date().getSeconds()) * 1000);
