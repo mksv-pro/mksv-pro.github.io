@@ -2218,6 +2218,13 @@ f11111f2.
       spread(ch.length - half, S(0.59), S(0.81), 20).forEach(({ k, row, xc }) => { const [t, i] = ch[half + k]; slots[i] = charter(xc, Math.round(H * 0.14) + row * 26, t.arms); });
       const shX = S(box3d ? 0.83 : 0.8); const shTop = Math.round(H * 0.3); shelf(shX, shTop, Math.max(16, BR - shX - 2), yf - shTop);
       rug(S(0.3), floorY(0.6), Math.round((BR - BL) * 0.36));
+      { // the great book of courses, open on a lectern left of the desk (gilt edges, a red ribbon)
+        const lx = S(0.14) - 8; rect(lx + 7, yf - 13, 3, 13, I.TIMBER_SH); rect(lx + 3, yf - 1, 11, 1, I.TIMBER_SH);
+        for (let k = 0; k < 17; k += 1) set(lx + k, yf - 14 + Math.floor(k / 6), I.TIMBER_HI);
+        rect(lx - 1, yf - 16, 19, 1, I.GOLD_SH); openBook(lx, yf - 16, 17);
+        for (let k = 0; k < 4; k += 1) set(lx + 8, yf - 17 + k, I.CLOTH);
+        of('ledger').forEach(([, i]) => { slots[i] = box(lx - 2, yf - 22, 21, 10); });
+      }
     } else if (kind === 'research') { // the observatory: the labs' reports, rolled and sealed, on the chart table
       for (let y = 4; y < Math.round(H * 0.42); y += 1) {
         const half = Math.sqrt(Math.max(0, 1 - ((Math.round(H * 0.42) - y) / (H * 0.4)) ** 2)) * W * 0.5; // (over the side walls too: the dome caps the whole tower)
@@ -2280,14 +2287,8 @@ f11111f2.
       for (let row = 0; row < rows; row += 1) { const y = Math.round(H * 0.5) - row * 17; rect(l - 2, y, r - l + 4, 2, I.TIMBER_HI); rect(l - 2, y + 2, r - l + 4, 1, I.TIMBER_SH); }
       spread(np, l, r, 13).forEach(({ k, row, xc }) => { slots[pubs[k][1]] = bookFace(xc, Math.round(H * 0.5) - row * 17, k); });
       if (rows < 2) windowArch(S(0.5) - 6, 7, 12, Math.round(H * 0.24));
-      // a lectern before them, the great book of courses open on it (gilt edges, a red ribbon)
-      const lx = S(0.5) - 8; rect(lx + 7, yf - 13, 3, 13, I.TIMBER_SH); rect(lx + 3, yf - 1, 11, 1, I.TIMBER_SH);
-      for (let k = 0; k < 17; k += 1) set(lx + k, yf - 14 + Math.floor(k / 6), I.TIMBER_HI);
-      rect(lx - 1, yf - 16, 19, 1, I.GOLD_SH); openBook(lx, yf - 16, 17); candle(lx + 21, yf - 2, true);
-      for (let k = 0; k < 4; k += 1) set(lx + 8, yf - 17 + k, I.CLOTH);
-      of('ledger').forEach(([, i]) => { slots[i] = box(lx - 2, yf - 22, 21, 10); });
       rug(S(0.3), floorY(0.55), Sw(0.4));
-      cat('whiteTabby', S(0.36), floorY(0.55) + 4); // asleep on the rug, by the lectern
+      cat('whiteTabby', S(0.36), floorY(0.55) + 4); // asleep on the rug
     } else if (kind === 'talks') { // the great hall: a banner on the pole for each talk; the tapestry
       // the schools' hangings along the wall, each on its own rod (one row; spread when there is room)
       const gap = clamp(Math.floor((BR - BL - 6) / Math.max(1, hangs.length)), 21, 24); const tw = hangs.length * gap; const narrow = BR - (tw + S(0.05) + 10) < 72;

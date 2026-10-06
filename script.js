@@ -553,7 +553,13 @@ function roomItems(id) {
       const sheet = sec.querySelector('.sheet').cloneNode(true);
       [...sheet.children].forEach((d) => { if (d.querySelector('[data-arms]')) d.remove(); });
       return [{ kind: 'desk-book', label: T.notebook, html: `<h3>${T.notebook}</h3>${sec.querySelector('.lede').outerHTML}${sheet.outerHTML}` },
-        ...of('.sheet span[data-arms]', 'charter', (el) => ({ arms: el.dataset.arms, label: text(el), html: `<h3>${esc(text(el))}</h3><p>${T.charter}</p>` }))];
+        ...of('.sheet span[data-arms]', 'charter', (el) => ({ arms: el.dataset.arms, label: text(el), html: `<h3>${esc(text(el))}</h3><p>${T.charter}</p>` })),
+        ...(() => { // the book of courses, open on its lectern by the desk
+          const led = document.getElementById('coursework');
+          if (!led) return [];
+          const body = [...led.querySelectorAll('.ledger-year')].map((y) => y.outerHTML).join('');
+          return [{ kind: 'ledger', label: T.ledger, html: `<h3>${T.ledger}</h3><p class="dim">${esc(text(led.querySelector('summary .meta')))}</p>${body}` }];
+        })()];
     }
     case 'research': return of('.entry', 'scroll', (el) => ({ arms: el.dataset.arms, label: text(el.querySelector('h3')), html: el.innerHTML }));
     case 'projects': return of('article.project', 'model', (el) => ({ model: el.id, label: text(el.querySelector('h3')), html: el.innerHTML }));
@@ -573,12 +579,6 @@ function roomItems(id) {
           return { kind: 'shelf', shelf: sid, label: T.shelf(name), html: `<h3>${esc(T.shelf(name))}</h3>`
             + (here.length ? `<ul>${here.map((b) => `<li>${volume(b)}</li>`).join('')}</ul>` : `<p>${T.shelfEmpty[k % T.shelfEmpty.length]}</p>`) };
         }),
-        ...(() => { // the book of courses, open on the lectern (its text lives in About)
-          const led = document.getElementById('coursework');
-          if (!led) return [];
-          const body = [...led.querySelectorAll('.ledger-year')].map((y) => y.outerHTML).join('');
-          return [{ kind: 'ledger', label: T.ledger, html: `<h3>${T.ledger}</h3><p class="dim">${esc(text(led.querySelector('summary .meta')))}</p>${body}` }];
-        })(),
         ...vols.map((b) => ({ kind: 'volume', shelf: b.shelf, label: b.title, html: `<h3>${esc(b.title)}</h3>`
           + `<p>${esc(b.author)}${b.year ? `, ${esc(b.year)}` : ''}</p>${b.note ? `<p class="dim">${esc(b.note)}</p>` : ''}`
           + (b.url ? `<p><a href="${esc(b.url)}" rel="noopener">${T.source}</a></p>` : '') })),

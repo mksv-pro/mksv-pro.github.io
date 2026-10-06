@@ -322,7 +322,7 @@ actions = [
 ]
 
 # ---- coursework: every course followed, by year and school, newest first (no grades). It is
-# "the book of courses": open on the library's lectern (hours theme), a fold in About (terminal).
+# "the book of courses": open on a lectern in the scriptorium (About, hours theme), a fold in About (terminal).
 
 [[coursework]]
 years = "2026–2027"
