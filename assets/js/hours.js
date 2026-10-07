@@ -2351,6 +2351,13 @@ f11111f2.
         }
       }
       rect(S(0.86), floorY(0.1) - 6, 13, 1, I.TIMBER_HI); rect(S(0.87), floorY(0.1) - 5, 1, 6, I.TIMBER_SH); rect(S(0.86) + 11, floorY(0.1) - 5, 1, 6, I.TIMBER_SH);
+      { // Foucault's pendulum from the dome's apex, its ring of pegs on the floor
+        const px0 = S(0.4); const fy = floorY(0.45); const rx = Math.max(10, Sw(0.09)); const ry = 4;
+        for (let a = 0; a < 6.28; a += 0.1) set(px0 + Math.round(Math.cos(a) * (rx + 1)), fy + Math.round(Math.sin(a) * (ry + 1)), I.TIMBER_SH); // the rail
+        set(px0, 4, I.GOLD); set(px0 - 1, 4, I.GOLD_SH); set(px0 + 1, 4, I.GOLD_SH); // the mount
+        deco.push({ type: 'foucault', x: px0, top: 5, fy, rx, ry });
+        extra.push({ t: { kind: 'foucault', label: "Foucault's pendulum", get html() { return cards.foucault(); } }, b: box(px0 - rx - 2, fy - 14, 2 * rx + 4, 18) });
+      }
       cat('thin', S(0.04), floorY(0.5));
     } else if (kind === 'projects') { // the workshop: a working model of each project on the bench
       const hx = S(0.03); const hw = Math.max(18, S(0.2)); const hy = yf - 24;
@@ -2385,6 +2392,19 @@ f11111f2.
       spread(np, l, r, 13).forEach(({ k, row, xc }) => { slots[pubs[k][1]] = bookFace(xc, Math.round(H * 0.5) - row * 17, k); });
       if (rows < 2) windowArch(S(0.5) - 6, 7, 12, Math.round(H * 0.24));
       rug(S(0.3), floorY(0.55), Sw(0.4));
+      { // the game of life on a board on an easel, where the lectern stood
+        const lw = 22; const lh = 14; const lx = S(0.5) - lw / 2; const ly = yf - 24;
+        rect(lx - 2, ly - 2, lw + 4, lh + 4, I.TIMBER); rect(lx - 2, ly - 2, lw + 4, 1, I.TIMBER_HI);
+        rect(lx + 2, ly + lh + 2, 1, 9, I.TIMBER_SH); rect(lx + lw - 3, ly + lh + 2, 1, 9, I.TIMBER_SH); rect(lx + lw / 2, ly + lh + 2, 1, 7, I.TIMBER_SH);
+        deco.push({ type: 'life', x: lx, y: ly, w: lw, h: lh });
+        extra.push({ t: { kind: 'life', label: 'The game of life', get html() { return cards.life(); } }, b: box(lx - 2, ly - 2, lw + 4, lh + 4) });
+      }
+      { // Buffon's needles on the floorboards, right of the rug
+        const bx = S(0.6); const bw = Math.max(16, Sw(0.14)); const by = floorY(0.3); const bh = floorY(0.8) - by;
+        for (let y = 0; y < bh; y += 1) for (let x = 0; x < bw; x += 1) set(bx + x, by + y, y % 4 === 0 ? I.TIMBER_SH : (x + y * 3) % 11 === 0 ? I.TIMBER : I.TIMBER_HI);
+        deco.push({ type: 'buffon', x: bx, y: by, w: bw, h: bh });
+        extra.push({ t: { kind: 'buffon', label: "Buffon's needles", get html() { return cards.buffon(); } }, b: box(bx, by, bw, bh) });
+      }
       cat('whiteTabby', S(0.36), floorY(0.55) + 4); // asleep on the rug
     } else if (kind === 'talks') { // the great hall: a banner on the pole for each talk; the tapestry
       // the schools' hangings along the wall, each on its own rod (one row; spread when there is room)
@@ -2480,6 +2500,24 @@ f11111f2.
         [...line].forEach((ch) => { const g = GLYPHS[ch]; if (g) g.forEach((row, ry) => [...row].forEach((b, rx) => { if (b === '1') set(ex + rx, ey + ry, (ex + ey + rx) % 7 ? I.FL_WHITE : I.PLASTER); })); ex += 4; });
         ey += 8;
       });
+      { // under them, Langton's ant at work in chalk
+        const gx0 = bl + 4; const gy0 = ey + 1; const gw = Math.min(br - bl - 8, 72) & ~1; const gh = bb - 3 - gy0;
+        if (gh >= 8) {
+          deco.push({ type: 'langton', x: gx0, y: gy0, w: gw, h: gh });
+          extra.push({ t: { kind: 'langton', label: "Langton's ant", get html() { return cards.langton(); } }, b: box(gx0, gy0, gw, gh) });
+        }
+      }
+      { // a Galton board on the wall over the master's desk: pegs in a triangle, bins below
+        const gw = 17; const dx0 = S(0.86); const gx0 = Math.round(dx0 + (Math.max(10, BR - dx0 - 2) - gw) / 2); const gy0 = yf - 54;
+        if (gx0 > br + 4 && gx0 + gw < BR - 1) {
+          rect(gx0 - 1, gy0 - 1, gw + 2, 36, I.TIMBER); rect(gx0, gy0, gw, 34, I.PLASTER_HI);
+          for (let r = 0; r < 7; r += 1) for (let k = 0; k <= r; k += 1) set(gx0 + 8 - r + 2 * k, gy0 + 3 + r * 2, I.ARM_SH); // the pegs
+          for (let k = 0; k <= 8; k += 1) rect(gx0 + 2 * k, gy0 + 19, 1, 15, I.TIMBER_SH); // the bins' walls
+          set(gx0 + 8, gy0 - 3, I.ARM_SH); set(gx0 + 7, gy0 - 2, I.ARM_SH); set(gx0 + 9, gy0 - 2, I.ARM_SH); // its nail and cord
+          deco.push({ type: 'galton', x: gx0, y: gy0 });
+          extra.push({ t: { kind: 'galton', label: 'The Galton board', get html() { return cards.galton(); } }, b: box(gx0 - 1, gy0 - 1, gw + 2, 36) });
+        }
+      }
       const dx = S(0.86); const dw = Math.max(10, BR - dx - 2); desk(dx, yf - 10, dw); candle(dx + dw - 3, yf - 11, true);
       for (let k = 0; k < 5; k += 1) set(dx + 3 + k * 2, yf - 12, k % 2 ? I.CAP : I.GOLD); rect(dx + 2, yf - 13, 11, 1, I.TIMBER_SH);
       // the class: two rows, each a long desk, the pupils on their chairs before it (we see their
@@ -2658,6 +2696,81 @@ f11111f2.
     }
     return loom;
   }
+  /* ---- the rooms' other experiments: Foucault's pendulum (observatory), Langton's ant and a Galton
+     board (schoolroom), Conway's Life and Buffon's needles (library). State kept between visits. */
+  const LAT_PARIS = 48.8566;
+  const foucaultRate = 15 * Math.sin((LAT_PARIS * Math.PI) / 180); // deg an hour: the plane's turn here
+  let ant = null; let galton = null; let life = null; let buffon = null;
+  function antOf(w, h) {
+    if (!ant || ant.w !== w || ant.h !== h) ant = { w, h, g: new Uint8Array(w * h), x: w >> 1, y: h >> 1, d: 0, steps: 0 };
+    return ant;
+  }
+  function antStep(n) { // white cell: turn right, black: left; flip it; step (on a torus)
+    const a = ant;
+    for (let k = 0; k < n; k += 1) {
+      const i = a.y * a.w + a.x; a.d = (a.d + (a.g[i] ? 3 : 1)) % 4; a.g[i] ^= 1;
+      a.x = (a.x + [0, 1, 0, -1][a.d] + a.w) % a.w; a.y = (a.y + [-1, 0, 1, 0][a.d] + a.h) % a.h; a.steps += 1;
+    }
+    if (a.steps > 30000) { a.g.fill(0); a.steps = 0; a.x = a.w >> 1; a.y = a.h >> 1; a.d = 0; }
+  }
+  function galtonOf(rows) {
+    if (!galton || galton.rows !== rows) galton = { rows, bins: new Array(rows + 1).fill(0), ball: null, n: 0 };
+    return galton;
+  }
+  function galtonStep() { // one ball, a row a frame: left or right at each peg
+    const g = galton;
+    if (!g.ball) g.ball = { r: 0, k: 0 };
+    else if (g.ball.r < g.rows) { g.ball.k += Math.random() < 0.5 ? 0 : 1; g.ball.r += 1; }
+    else { g.bins[g.ball.k] += 1; g.n += 1; g.ball = null; if (Math.max(...g.bins) > 12) { g.bins.fill(0); } }
+  }
+  function lifeOf(w, h) {
+    if (!life || life.w !== w || life.h !== h) life = { w, h, g: Uint8Array.from({ length: w * h }, () => (Math.random() < 0.35 ? 1 : 0)), gen: 0, seen: new Map() };
+    return life;
+  }
+  function lifeStep() { // B3/S23 on a torus; a fresh soup when it settles or repeats
+    const L = life; const { w, h, g } = L; const n = new Uint8Array(w * h);
+    for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) {
+      let c = 0;
+      for (let dy = -1; dy <= 1; dy += 1) for (let dx = -1; dx <= 1; dx += 1) if (dx || dy) c += g[((y + dy + h) % h) * w + ((x + dx + w) % w)];
+      n[y * w + x] = c === 3 || (c === 2 && g[y * w + x]) ? 1 : 0;
+    }
+    L.g = n; L.gen += 1;
+    const key = n.join('');
+    if (L.seen.has(key) || L.gen > 400) { life = null; lifeOf(w, h); return; }
+    L.seen.set(key, L.gen); if (L.seen.size > 60) L.seen.delete(L.seen.keys().next().value);
+  }
+  function buffonOf(d, l) {
+    if (!buffon) buffon = { d, l, n: 0, hits: 0, recent: [] };
+    return buffon;
+  }
+  function buffonDrop(w, h) { // a needle of length l over boards d apart: it crosses a seam with p = 2l/(pi d)
+    const b = buffon; const y = Math.random() * h; const a = Math.random() * Math.PI; const x = Math.random() * (w - 2 * b.l) + b.l;
+    const y1 = y - (Math.sin(a) * b.l) / 2; const y2 = y + (Math.sin(a) * b.l) / 2;
+    const hit = Math.floor(y1 / b.d) !== Math.floor(y2 / b.d);
+    b.n += 1; if (hit) b.hits += 1;
+    b.recent.push({ x, y, a, hit }); if (b.recent.length > 40) b.recent.shift();
+  }
+  const cards = {
+    foucault: () => {
+      const hrs = (Date.now() / 3600e3) % 1e6; const phi = ((hrs * foucaultRate) % 360 + 360) % 360;
+      return '<h3>Foucault\'s pendulum</h3><p>A heavy bob on a long wire, set swinging once and left alone. The Earth turns under it: '
+        + `here in Paris its plane of swing turns ${foucaultRate.toFixed(1)}&deg; an hour (15&deg; &times; sin of the latitude, 48.9&deg;), clockwise, a full turn in ${(360 / foucaultRate).toFixed(1)}&nbsp;h.</p>`
+        + `<p>The pegs round the floor fall one by one as the plane comes round to them. Its heading now: ${phi.toFixed(0)}&deg;.</p><p class="dim">Paris, Panth&eacute;on, 1851.</p>`;
+    },
+    langton: () => `<h3>Langton's ant</h3><p>On the board, an ant in chalk: on a bare square it turns right, on a chalked one left; it flips the square and steps on. Three rules, and for ten thousand steps a mess; then, out of nowhere, a straight highway. (Here the board wraps round, so the highway runs into its own past.)</p><p>Step ${ant ? ant.steps : 0}.</p>`,
+    galton: () => {
+      const g = galton; const tot = g ? g.bins.reduce((a, v) => a + v, 0) : 0;
+      const C = (n, k) => { let c = 1; for (let j = 0; j < k; j += 1) c = (c * (n - j)) / (j + 1); return c; };
+      return '<h3>The Galton board</h3><p>Each ball meets a peg at every row and goes left or right, even odds. The bins fill as the binomial law says, and, for many rows, as the bell curve: the central limit theorem, in beech and lead shot.</p>'
+        + (g && tot ? `<p>This run: ${g.bins.join(' &middot; ')} (expected, out of ${tot}: ${g.bins.map((_, k) => ((tot * C(g.rows, k)) / 2 ** g.rows).toFixed(1)).join(' &middot; ')}).</p>` : '');
+    },
+    life: () => `<h3>The game of life</h3><p>On this board each square lives or dies by its eight neighbours: born with three, surviving with two or three (Conway, 1970). A random soup boils down to blocks, blinkers and gliders; when it settles, a new soup is poured.</p><p>Generation ${life ? life.gen : 0}, ${life ? life.g.reduce((a, v) => a + v, 0) : 0} alive.</p>`,
+    buffon: () => {
+      const b = buffon; const est = b && b.hits ? (2 * b.l * b.n) / (b.d * b.hits) : null;
+      return '<h3>Buffon\'s needles</h3><p>Needles dropped at random on floorboards: one shorter than a board is wide crosses a seam with probability 2l/(&pi;d). Count the crossings, and &pi; falls out (Buffon, 1777).</p>'
+        + (b ? `<p>${b.n} needles, ${b.hits} across a seam: &pi; &asymp; ${est ? est.toFixed(3) : '?'}.</p>` : '');
+    },
+  };
   function loomCard() {
     const lm = loom; const T = loomT(); const t = weather.temp;
     const m = Math.abs(lm.s.reduce((a, v) => a + v, 0)) / lm.s.length;
@@ -4138,6 +4251,13 @@ f11111f2.
 
   function stepInterior() {
     if (loom && !reduce && interior.deco.some((d) => d.type === 'ising')) loomSweep();
+    interior.tk = (interior.tk || 0) + 1; const tk = interior.tk;
+    if (!reduce) interior.deco.forEach((d) => {
+      if (d.type === 'langton' && ant) antStep(12);
+      else if (d.type === 'galton' && galton) galtonStep();
+      else if (d.type === 'life' && life && tk % 6 === 0) lifeStep();
+      else if (d.type === 'buffon' && buffon && tk % 4 === 0) buffonDrop(d.w, d.h);
+    });
     interior.flames.forEach((f) => { if (f.hearth) stepCells(interior.cells, 9, 14); });
     interior.motes.forEach((m) => { m.x += Math.sin(now() * 0.4 + m.ph) * 0.15; m.y += Math.cos(now() * 0.3 + m.ph) * 0.1; });
   }
@@ -4197,6 +4317,34 @@ f11111f2.
           const a = (reduce ? k : t * w) + k * 2;
           put(d.x + Math.round(Math.cos(a) * r), d.y + Math.round(Math.sin(a) * r * 0.45), P(c));
         });
+      } else if (d.type === 'foucault') { // the bob swings along a plane that turns with the hours; pegs knocked down so far today
+        const hrs = Date.now() / 3600e3; const phi = -((hrs * foucaultRate) % 360) * (Math.PI / 180);
+        const now0 = new Date(); const today0 = (now0.getHours() + now0.getMinutes() / 60) * foucaultRate;
+        for (let k = 0; k < 16; k += 1) { // pegs on the rail
+          const a = (k / 16) * 6.283; const down = ((k * 22.5) % 180) < today0 % 180 || today0 >= 180;
+          const x = d.x + Math.round(Math.cos(a) * d.rx); const y = d.fy + Math.round(Math.sin(a) * d.ry);
+          put(x, y, P(down ? 'TIMBER_SH' : 'FL_RED')); if (!down) put(x, y - 1, P('FL_RED'));
+        }
+        const sw = reduce ? 0.7 : Math.cos(t * (2 * Math.PI / 4)); // a 4 s period (it would be 16 s for a 67 m wire)
+        const bx = d.x + Math.cos(phi) * d.rx * 0.85 * sw; const by = d.fy - 3 + Math.sin(phi) * d.ry * 0.85 * sw;
+        const n = Math.max(1, Math.round(by - d.top));
+        for (let k = 0; k < n; k += 1) put(d.x + ((bx - d.x) * k) / n, d.top + k, P('ARM_SH'));
+        put(bx, by, P('GOLD')); put(bx + 1, by, P('GOLD_SH')); put(bx, by + 1, P('GOLD_SH')); put(bx - 1, by, P('GOLD_HI')); put(bx, by + 2, P('ARM_SH'));
+        put(d.x + Math.cos(phi) * d.rx * 0.85 * sw, d.fy + Math.sin(phi) * d.ry * 0.85 * sw, P('TIMBER_SH')); // its shadow
+      } else if (d.type === 'langton') {
+        const a = antOf(d.w, d.h);
+        for (let y = 0; y < d.h; y += 1) for (let x = 0; x < d.w; x += 1) if (a.g[y * d.w + x]) put(d.x + x, d.y + y, P((x + y) % 5 ? 'FL_WHITE' : 'PLASTER'));
+        put(d.x + a.x, d.y + a.y, P('FL_RED'));
+      } else if (d.type === 'galton') {
+        const g = galtonOf(7);
+        g.bins.forEach((c, k) => { for (let j = 0; j < c; j += 1) put(d.x + 1 + 2 * k, d.y + 33 - j, P('ARM_SH')); });
+        if (g.ball) put(d.x + 8 - g.ball.r + 2 * g.ball.k, d.y + 2 + g.ball.r * 2, P('ARM_HI'));
+      } else if (d.type === 'life') {
+        const L = lifeOf(d.w, d.h);
+        for (let y = 0; y < d.h; y += 1) for (let x = 0; x < d.w; x += 1) put(d.x + x, d.y + y, L.g[y * d.w + x] ? P('CREAM') : P((x + y) % 2 ? 'OUTLINE' : 'SLATEB'));
+      } else if (d.type === 'buffon') {
+        const b = buffonOf(4, 3);
+        b.recent.forEach((q) => { const dx = Math.cos(q.a) * b.l / 2; const dy = Math.sin(q.a) * b.l / 2; for (let k = -2; k <= 2; k += 1) put(d.x + q.x + (dx * k) / 2, d.y + q.y + (dy * k) / 2, P(q.hit ? 'FL_RED' : 'ARM_HI')); });
       } else if (d.type === 'ising') { // red up, blue down, every other stitch a shade darker
         const lm = loomOf(d.w, d.h); const up = unpack(P('FLAG')); const dn = unpack(P('FLAG2'));
         for (let y = 0; y < d.h; y += 1) {
