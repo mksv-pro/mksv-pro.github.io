@@ -4259,12 +4259,21 @@ f11111f2.
       blit(c.sp, c.x + go, c.y, H, (y) => (y < 3 ? breathe : 0));
       c.breathe = breathe;
     });
-    { // now and then the knight reaches down and strokes Blanc Blanc (awake, by day and evening)
-      const bb = scene.cats[1]; const ph = (t % 40) / 40; const on = !reduce && look.night < 0.7 && ph < 0.09;
+    { // now and then (6 s in every 30, by day and evening) the knight reaches down and strokes Blanc
+      // Blanc: an arm in his red sleeve comes down from the shoulder, in front of his shin, to the cat's back
+      const bb = scene.cats[1]; const ph = t % 30; const on = !reduce && look.night < 0.7 && ph < 6;
       if (on) {
-        const x = bb.x + go + 5 + Math.round(Math.sin(ph * 40 * Math.PI) * 1.5); const y = bb.y + 3;
-        put(x, y, pal32[I.SKIN], false); put(x + 1, y, pal32[I.SKIN], false); put(x - 1, y - 1, pal32[I.ARM_SH], false); put(x - 2, y - 2, pal32[I.ARM], false); put(x - 3, y - 3, pal32[I.ARM], false);
-        if (!scene.purred) { scene.purred = true; sfx('purr'); }
+        const reach = Math.min(1, ph / 0.8, (6 - ph) / 0.8); // it comes down, strokes, goes back up
+        const ex = knight.x + go + 17; const ey = knight.y + 13; // the shoulder
+        const hx0 = bb.x + go + 6 + Math.round(Math.sin(ph * 2 * Math.PI / 1.4) * 2); const hy0 = bb.y + 3; // along his back, behind the head
+        const hx = Math.round(ex + (hx0 - ex) * reach); const hy = Math.round(ey + (hy0 - ey) * reach);
+        const n = Math.max(1, Math.max(Math.abs(hx - ex), Math.abs(hy - ey)));
+        for (let k = 0; k <= n; k += 1) { // the sleeve, two pixels wide, an outline on the far side
+          const x = ex + ((hx - ex) * k) / n; const y = ey + ((hy - ey) * k) / n;
+          put(x - 1, y, pal32[I.OUTLINE], false); put(x, y, pal32[I.CLOTH], false); put(x + 1, y, pal32[I.CLOTH_SH], false); put(x + 2, y, pal32[I.OUTLINE], false);
+        }
+        put(hx - 1, hy, pal32[I.OUTLINE], false); put(hx, hy, pal32[I.SKIN], false); put(hx + 1, hy, pal32[I.SKIN], false); put(hx + 2, hy, pal32[I.OUTLINE], false); put(hx, hy + 1, pal32[I.SKIN_SH], false); put(hx + 1, hy + 1, pal32[I.SKIN_SH], false); // the hand
+        if (!scene.purred && reach >= 1) { scene.purred = true; sfx('purr'); }
       } else scene.purred = false;
     }
     { // the knight's blue butterfly, wandering round his helm
