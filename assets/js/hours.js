@@ -525,6 +525,41 @@ nNnnnn..
     return ds.length ? ds.reduce((a, d) => a + d, 0) / ds.length : null;
   }
 
+  /* ---- the ferryman: tabular Q-learning (Watkins 1989) of a river crossing. State: the row
+     reached (0..L) and the drift from the jetty's line (-X..X); action: an oar stroke to either
+     side or none; the current, set by the real wind, pushes him each row, with some chop
+     (tested offline: mean landing error 2.7 px over the first ten crossings, 0.6 after eighty).
+     Reward: minus the landing error at the far jetty, minus a little per stroke. One table for
+     both ways (the current pushes the same way); a constant step size so he re-learns when the
+     wind turns. ---- */
+  const FX = 8; // the drift he can be off by, either side
+  function ferryNew(L) { // his prior: the jetty is where to be (Q = -|drift|); the current he must learn
+    const Q = new Float32Array((L + 1) * (2 * FX + 1) * 3);
+    for (let i = 0; i < Q.length; i += 1) Q[i] = -Math.abs((Math.floor(i / 3) % (2 * FX + 1)) - FX);
+    return { L, Q, r: 0, dx: 0, px: 0, dir: 1, wait: 60, errs: [], n: 0 };
+  }
+  const fq = (f, r, dx, a) => f.Q[((r * (2 * FX + 1)) + dx + FX) * 3 + a];
+  function ferryChoose(f) {
+    const eps = Math.max(0.05, 0.5 * 0.95 ** f.n);
+    if (Math.random() < eps) return Math.floor(Math.random() * 3);
+    let best = 0; for (let a = 1; a < 3; a += 1) if (fq(f, f.r, f.dx, a) > fq(f, f.r, f.dx, best)) best = a;
+    return best;
+  }
+  /** The current, in px a row: the real wind's west-east part, held under what one stroke undoes. */
+  const ferryCurrent = () => clamp(windX() * 0.6, -0.9, 0.9);
+  /** One row of the crossing: act, drift, learn. Returns the landing error when he lands. */
+  function ferryRow(f, current) {
+    const a = ferryChoose(f); const drift = current + (Math.random() - 0.5) * 1.2;
+    const dx2 = clamp(Math.round(f.dx + (a - 1) + drift), -FX, FX); const r2 = f.r + 1;
+    const cost = a === 1 ? 0 : 0.05; const i = ((f.r * (2 * FX + 1)) + f.dx + FX) * 3 + a;
+    let target; let landed = null;
+    if (r2 >= f.L) { landed = Math.abs(dx2); target = -cost - landed; }
+    else target = -cost + Math.max(fq(f, r2, dx2, 0), fq(f, r2, dx2, 1), fq(f, r2, dx2, 2));
+    f.Q[i] += 0.3 * (target - f.Q[i]);
+    f.r = r2; f.dx = dx2; f.last = a;
+    return landed;
+  }
+
   /* ---- the Saturday market's crowd: a stationary mean-field game (Lasry & Lions 2007) on a line
      of N places along the bank. Cost of standing at x: the crush there (kappa N m(x)) less the
      stalls' pull; eps per step taken; entropy sigma (each villager a little whimsical); discount
@@ -1664,7 +1699,7 @@ nNnnnn..
     return {
       W, H, Ws, WE, M, planes, rows, yHor, castleTop, rooms, yl0, yg, windows, flags, torches, sentries, chimney, stars, clouds,
       bell, keepTop, tallTip: tallTip && { x: tallTip.x, y: tallTip.y }, cellar, riverTop, riverBot,
-      ferry: { x: M + 10, dir: 1, wait: 600 }, hoist: null, ringUntil: 0,
+      ferry: null, hoist: null, ringUntil: 0,
       fire, knight, wizard, blades, cats, field, season, shieldSp: null,
       peasant: field.none ? null : { x: Math.round((field.x0 + field.x1) / 2), dir: 1, seeds: [] },
       falling: Array.from({ length: Math.round(WE / 8) }, () => ({ x: rng() * WE, y: rng() * H, ph: rng() * 6, c: rng() < 0.5 })),
@@ -3625,19 +3660,21 @@ f11111f2.
       }
     }
 
-    { // the ferryman's boat crosses the river now and then; it shows only on the water
-      const f = scene.ferry; const fx = Math.round(f.x); const fy = scene.riverBot(fx) - 1; const sx = mx(fx);
-      const onWater = (x, y) => x >= 0 && x < W && y >= 0 && y < H && (idxNow[y * W + x] === I.WATER || idxNow[y * W + x] === I.WATER_HI);
-      const dot = (x, y, c) => { if (onWater(x, y)) buf[y * W + x] = c; };
-      if (f.wait <= 0) {
-        for (let x = -4; x <= 4; x += 1) { dot(sx + x, fy, pal32[I.TIMBER]); dot(sx + x, fy + 1, pal32[I.TIMBER_SH]); }
-        dot(sx - 5, fy - 1, pal32[I.TIMBER_HI]); dot(sx + 5, fy - 1, pal32[I.TIMBER_HI]);
-        const m = sx + f.dir; // the ferryman, his pole slanting back into the water
-        [[0, -1, I.CLOAK_SH], [0, -2, I.CLOAK], [0, -3, I.CLOAK], [0, -4, I.SKIN], [0, -5, I.HAT]].forEach(([dx, dy, c]) => dot(m + dx, fy + dy, pal32[c]));
-        for (let k = 0; k < 6; k += 1) dot(m - f.dir * (1 + k), fy - 4 + k, pal32[I.TIMBER_SH]);
-        if (!reduce && Math.floor(t * 3) % 2) dot(sx - f.dir * 6, fy + 1, pal32[I.WATER_HI]); // its wake
-        if (look.night > 0.3) { dot(sx + f.dir * 4, fy - 2, pack([255, 214, 120])); }
-      }
+    { // the ferryman crosses the river, the current pushing him off his line (see step); the jetties
+      const J = M + Math.round(0.52 * scene.Ws); const top = scene.riverTop(J); const bot = scene.riverBot(J);
+      scene.ferry ||= Object.assign(ferryNew(Math.max(4, bot - top - 3)), { J, top, bot });
+      const f = scene.ferry;
+      [[top - 1, 1], [bot + 1, -1]].forEach(([y]) => { for (let x = -2; x <= 2; x += 1) put(mx(J + x), y, pal32[x % 2 ? I.TIMBER : I.TIMBER_HI], false); put(mx(J - 2), y + 1, pal32[I.TIMBER_SH], false); put(mx(J + 2), y + 1, pal32[I.TIMBER_SH], false); });
+      const prog = f.wait > 0 ? 0 : clamp((f.tick || 0) / 8); // between two rows
+      const row = f.r + (f.wait > 0 ? 0 : prog); const y = Math.round(f.dir > 0 ? top + 1 + row : bot - 1 - row);
+      const x = mx(J + f.px);
+      for (let k = -3; k <= 3; k += 1) { put(x + k, y, pal32[I.TIMBER], false); put(x + k, y + 1, pal32[I.TIMBER_SH], false); }
+      put(x - 4, y - 1, pal32[I.TIMBER_HI], false); put(x + 4, y - 1, pal32[I.TIMBER_HI], false);
+      [[0, -1, I.CLOAK_SH], [0, -2, I.CLOAK], [0, -3, I.SKIN], [0, -4, I.HAT]].forEach(([dx, dy, c]) => put(x + dx, y + dy, pal32[c], false));
+      const oar = f.last === 0 ? -1 : f.last === 2 ? 1 : 0; // the stroke he took, an oar out to that side
+      if (oar && f.wait <= 0) { put(x + oar * 2, y - 1, pal32[I.TIMBER_SH], false); put(x + oar * 3, y, pal32[I.TIMBER_SH], false); }
+      if (!reduce && f.wait <= 0) put(x - Math.sign(ferryCurrent() || 1) * 5, y + 1, pal32[I.WATER_HI], false); // the wash
+      if (look.night > 0.3) put(x + 2, y - 2, pack([255, 214, 120]), false);
     }
 
     { // the heron in the shallows; the ducks paddle up and down the reach east of the bridge
@@ -4264,6 +4301,7 @@ f11111f2.
     if (inBox(knight.x + go, knight.y, SPRITES.knight.w, SPRITES.knight.h)) return { kind: 'knight' };
     const lmx = shift(RATE[L.MID]) - scene.M;
     const lmx2 = shift(RATE[L.MID]) - scene.M;
+    const fr = scene.ferry; if (fr && Math.abs(x - (fr.J + fr.px + lmx2)) < 6 && y > fr.top - 7 && y < fr.bot + 2) return { kind: 'ferry' };
     if (Math.hypot(x - (scene.wmill.x + lmx2), y - scene.wmill.y) < 6) return { kind: 'wmill' };
     const qy = scene.quarry; if (inBox(qy.x + lmx2, qy.y - 7, qy.w + 9, 8)) return { kind: 'quarry' };
     const fl = scene.falls; if (inBox(fl.x - scene.M + shift(RATE[L.NEAR]) - 3, fl.y0, 7, fl.len)) return { kind: 'falls' };
@@ -4308,7 +4346,14 @@ f11111f2.
     } else if (hit.kind === 'meteor') say('You catch the shooting star and make a wish. It is yours to keep.');
     else if (hit.kind === 'angler') say(['The angler raises a finger to his lips. The fish are listening.', 'The angler shows you an empty basket and a patient smile.', '"They bite at dawn," says the angler, "and never when you watch."'][Math.floor(Math.random() * 3)]);
     else if (hit.kind === 'watch') towerTo(true);
-    else if (hit.kind === 'wmill') {
+    else if (hit.kind === 'ferry') {
+      const f = scene.ferry; const e = f.errs; const BARS = '▁▂▃▄▅▆▇█';
+      const mean = (a) => (a.length ? (a.reduce((p, v) => p + v, 0) / a.length).toFixed(1) : '-');
+      const w = Math.round(weather.wind); const c = ferryCurrent(); const side = c > 0.1 ? `west, ${c.toFixed(1)} px a row` : c < -0.1 ? `east, ${(-c).toFixed(1)} px a row` : 'nowhere much'; // (we face south: +x is west)
+      say(`The ferryman learns his crossing by trial and error (Q-learning): today's wind, ${w} km/h over Paris, sets the current, which pushes him ${side}. `
+        + `${f.n} crossings so far. How far off the jetty he landed, the last ones: ${e.slice(-24).map((v) => BARS[Math.min(7, v)]).join('') || '(none yet)'} `
+        + `(mean ${mean(e.slice(-10))} px; at first ${mean(e.slice(0, 10))}).`);
+    } else if (hit.kind === 'wmill') {
       const r7 = weather.rain7; const frozen = (weather.frost ?? 9) <= -4;
       say(frozen ? 'The mill wheel is held fast in the ice; the miller waits for the thaw.'
         : `The water mill grinds the market's flour. ${r7 == null ? 'The stream runs as it always does.' : r7 > 35 ? `${Math.round(r7)} mm of rain this week: the wheel races.` : `${Math.round(r7)} mm of rain this week over Paris: the wheel turns at its ease.`}`);
@@ -4492,12 +4537,18 @@ f11111f2.
       if (scene.birds.every((b) => b.x < -5)) scene.birds = null;
     }
 
-    const fe = scene.ferry; // crosses, waits on the far bank, comes back
-    if (fe.wait > 0) fe.wait -= 1;
-    else {
-      fe.x += fe.dir * 0.25;
-      const lo = M + 6; const hi = M + span - 6;
-      if (fe.x < lo || fe.x > hi) { fe.x = clamp(fe.x, lo, hi); fe.dir = -fe.dir; fe.wait = 600 + Math.floor(Math.random() * 900); }
+    const fe = scene.ferry; // a row every 8 frames; a pause at each jetty, then back
+    if (fe && !reduce) {
+      if (fe.wait > 0) fe.wait -= 1;
+      else {
+        fe.tick = (fe.tick || 0) + 1;
+        if (fe.tick >= 8) {
+          fe.tick = 0;
+          const landed = ferryRow(fe, ferryCurrent());
+          fe.px = fe.dx;
+          if (landed !== null) { fe.errs.push(landed); if (fe.errs.length > 60) fe.errs.shift(); fe.n += 1; fe.r = 0; fe.dx = 0; fe.px = 0; fe.dir = -fe.dir; fe.wait = 30; }
+        }
+      }
     }
 
     // the dragon: every minute or so (every few seconds in wizard mode), across the sky

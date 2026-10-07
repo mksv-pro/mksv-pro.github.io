@@ -387,7 +387,7 @@ const CURIOS = {
   horse: "the knight's horse", cellar: 'the cellar door', mill: 'the windmill', heron: 'the heron',
   angler: 'the patient angler', owl: 'the owl (by night)', meteor: 'a wish on a falling star (clear nights)',
   lichen: 'the lichen on the rock', watch: 'the view from the watchtower', planet: 'a planet (twilight, night)',
-  wmill: 'the water mill', quarry: 'the quarry', falls: 'the waterfall', bees: 'the bees', orchard: 'the orchard', market: 'the market crowd (close up, on market days)',
+  ferry: 'the ferryman', wmill: 'the water mill', quarry: 'the quarry', falls: 'the waterfall', bees: 'the bees', orchard: 'the orchard', market: 'the market crowd (close up, on market days)',
 };
 const curios = () => sessionList('curios');
 function showCurios() {
