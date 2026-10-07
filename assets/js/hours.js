@@ -3534,6 +3534,26 @@ f11111f2.
   /** Each market day its two stalls and their pull through the day: [wares, morning, afternoon]. */
   const STALLS = { 3: [['bread', 1, 0.4], ['cloth', 0.4, 1]], 5: [['fish', 1.2, 0.2], ['cheese', 0.5, 0.8]],
     6: [['fruit', 0.8, 0.7], ['cloth', 0.5, 1]], 0: [['bread', 1, 0.6], ['flowers', 0.6, 0.6]] };
+  /* The market's game is solved off the main thread (~40 ms, once an hour, would stall a frame):
+     a Worker made from marketGame's own source; without one, solved here as before. */
+  let solver; let solving = null;
+  function solverOf() {
+    if (solver === undefined) {
+      try {
+        const src = `${marketGame.toString()}\nonmessage = (e) => postMessage({ key: e.data.key, g: marketGame(e.data.pull) });`;
+        solver = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+        solver.onmessage = (e) => { if (solving && e.data.key === solving.key) { settleMarket(solving, e.data.g); solving = null; } };
+      } catch { solver = null; }
+    }
+    return solver;
+  }
+  function settleMarket(job, g) {
+    const { h, day, N, x0, sa, sb } = job; const mk = scene.market;
+    const draw1 = () => { let r = Math.random(); let x = 0; while (x < N - 1 && (r -= g.m[x]) > 0) x += 1; return x; };
+    const COATS = [I.ROBE, I.CLOAK, I.FLAG, I.FLAG2, I.RUST, I.TIMBER];
+    const folk = mk && mk.folk.length ? mk.folk : Array.from({ length: 14 }, (_, k) => { const x = draw1(); return { pos: x, to: x, c: COATS[k % COATS.length], k }; });
+    scene.market = { h, day, x0, N, folk, wares: [sa[0], sb[0]], ...g };
+  }
   function marketOf(h) {
     const mk = scene.market; const day = today().getDay();
     if (mk && mk.h === h && mk.day === day) return mk;
@@ -3541,12 +3561,12 @@ f11111f2.
     const late = clamp((h - 9) / 8); const [sa, sb] = STALLS[day] || STALLS[3];
     const A0 = sa[1] + (sa[2] - sa[1]) * late; const A1 = sb[1] + (sb[2] - sb[1]) * late;
     const pull = Array.from({ length: N }, (_, x) => A0 * Math.exp(-(((x - s0) / 2.5) ** 2)) + A1 * Math.exp(-(((x - s1) / 2.5) ** 2)) - (0.16 * Math.abs(x - (s0 + s1) / 2)) / N);
-    const g = marketGame(pull);
-    const draw1 = () => { let r = Math.random(); let x = 0; while (x < N - 1 && (r -= g.m[x]) > 0) x += 1; return x; };
-    const COATS = [I.ROBE, I.CLOAK, I.FLAG, I.FLAG2, I.RUST, I.TIMBER];
-    const folk = mk ? mk.folk : Array.from({ length: 14 }, (_, k) => { const x = draw1(); return { pos: x, to: x, c: COATS[k % COATS.length], k }; });
-    scene.market = { h, day, x0, N, folk, wares: [sa[0], sb[0]], ...g };
-    return scene.market;
+    const job = { key: `${day}-${h}`, h, day, N, x0, sa, sb };
+    const w = solverOf();
+    if (!w) { settleMarket(job, marketGame(pull)); return scene.market; }
+    if (!solving || solving.key !== job.key) { solving = job; w.postMessage({ key: job.key, pull }); }
+    // meanwhile: the last hour's crowd, or, the first time, everyone standing still where they are
+    return mk || { h: -1, day, x0, N, folk: [], wares: [sa[0], sb[0]], m: new Float64Array(N), pol: new Float64Array(N * 3).map((_, i) => (i % 3 === 1 ? 1 : 0)), gap: 0, rounds: 0 };
   }
   function draw(t) {
     const { W, H, M, fire, fw, fh, cells, yl0, yg, yHor } = scene;
