@@ -386,7 +386,8 @@ const CURIOS = {
   wizard: 'the wizard', knight: 'the knight', shield: "the knight's arms", fire: 'the fire', cat: 'the cats',
   horse: "the knight's horse", cellar: 'the cellar door', mill: 'the windmill', heron: 'the heron',
   angler: 'the patient angler', owl: 'the owl (by night)', meteor: 'a wish on a falling star (clear nights)',
-  lichen: 'the lichen on the rock', watch: 'the view from the watchtower', market: 'the market crowd (close up, on market days)',
+  lichen: 'the lichen on the rock', watch: 'the view from the watchtower', planet: 'a planet (twilight, night)',
+  wmill: 'the water mill', quarry: 'the quarry', falls: 'the waterfall', bees: 'the bees', orchard: 'the orchard', market: 'the market crowd (close up, on market days)',
 };
 const curios = () => sessionList('curios');
 function showCurios() {
@@ -1159,7 +1160,8 @@ let lastHour = null;
    The almanac says it; the castle's sky shows it. ?weather=<kind> or `:weather <kind>` previews one. */
 
 const WX_URL = 'https://api.open-meteo.com/v1/forecast?latitude=48.8566&longitude=2.3522'
-  + '&current=temperature_2m,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m&timezone=Europe%2FParis';
+  + '&current=temperature_2m,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m&timezone=Europe%2FParis'
+  + '&daily=precipitation_sum,temperature_2m_min&past_days=7&forecast_days=1'; // the week behind: the river's level, its ice
 const WX_KINDS = ['clear', 'cloudy', 'overcast', 'fog', 'drizzle', 'showers', 'rain', 'snow', 'storm'];
 const WX_MS = 30 * 60e3;
 let wxNow = null;
@@ -1184,8 +1186,11 @@ function wxKind(code) {
 /** The weather shown: a previewed kind, else the real one (null before the first answer). */
 function currentWx() {
   const forced = session('weather');
-  return WX_KINDS.includes(forced)
+  const w = WX_KINDS.includes(forced)
     ? { kind: forced, cover: { clear: 0.1, cloudy: 0.5, showers: 0.6 }[forced] ?? 0.95, wind: 18, dir: 250, temp: null } : wxNow;
+  const q = new URLSearchParams(location.search); // ?rain7=60&frost=-6: a wet week, a hard frost (previews)
+  const extra = Object.fromEntries(['rain7', 'frost', 'temp'].filter((k) => q.has(k)).map((k) => [k, Number(q.get(k))]));
+  return w && Object.keys(extra).length ? { ...w, ...extra } : w;
 }
 
 function showWeather() {
@@ -1201,8 +1206,10 @@ async function fetchWeather() {
     if (c && Date.now() - c.t < WX_MS) { wxNow = c.w; showWeather(); return; }
     const res = await fetch(WX_URL);
     if (!res.ok) return;
-    const { current: k } = await res.json();
-    wxNow = { kind: wxKind(k.weather_code), cover: k.cloud_cover / 100, wind: k.wind_speed_10m, dir: k.wind_direction_10m, temp: Math.round(k.temperature_2m) };
+    const { current: k, daily: dy } = await res.json();
+    const past = (a) => (a || []).slice(0, -1).filter((v) => v != null); // the seven days before today
+    wxNow = { kind: wxKind(k.weather_code), cover: k.cloud_cover / 100, wind: k.wind_speed_10m, dir: k.wind_direction_10m, temp: Math.round(k.temperature_2m),
+      rain7: past(dy && dy.precipitation_sum).reduce((a, v) => a + v, 0), frost: Math.min(9, ...past(dy && dy.temperature_2m_min).slice(-3)) };
     session('wx', JSON.stringify({ t: Date.now(), w: wxNow }));
     showWeather();
   } catch { /* offline: the sky stays as drawn, the almanac says nothing */ }

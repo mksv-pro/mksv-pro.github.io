@@ -1589,6 +1589,65 @@ nNnnnn..
       clouds.push({ m, w: cw, h: 3, x: rng() * (W + cw), y: Math.round(yHor * (0.55 + rng() * 0.3)), v: 0.25 });
     }
 
+    // more of the countryside (their moving parts in draw and step):
+    on(L.MID);
+    // a water mill past the market, its wheel in the river
+    const wmill = { x: hamlet.x1 + 40, y: 0 };
+    {
+      const x0 = wmill.x - 10; const yb = Math.min(riverTop(x0), riverTop(x0 + 8)) - 2;
+      for (let y = yb - 6; y <= yb; y += 1) for (let x = x0; x < x0 + 8; x += 1) set(x, y, x === x0 ? I.WALL_HI : x === x0 + 7 ? I.WALL_SH : (y - yb) % 3 === 0 ? I.WALL_SH : I.WALL);
+      for (let k = 0; k < 3; k += 1) for (let x = x0 - 1 + k; x <= x0 + 8 - k; x += 1) set(x, yb - 7 - k, k === 2 || x > x0 + 4 ? I.THATCH_SH : I.THATCH);
+      set(x0 + 2, yb - 1, I.TIMBER_SH); set(x0 + 2, yb - 2, I.TIMBER_SH); windows.push({ pts: [[x0 + 5, yb - 4]], lit: true });
+      rect(x0 + 8, yb - 4, 2, 1, I.TIMBER_SH); // the axle
+      wmill.y = yb - 3; wmill.x = x0 + 12;
+    }
+    // a quarry cut into the hill left of the castle rock: a pale face, blocks squared and stacked
+    const quarry = { x: Math.round(cx - castleW / 2 - 16 * u), y: 0 };
+    {
+      const x0 = quarry.x; const yb = Math.round(hill[clamp(x0, 0, WE - 1)]) + 8; const w = Math.round(12 * u); const h = 6;
+      for (let y = 0; y < h; y += 1) for (let x = 0; x < w - y; x += 1) set(x0 + x, yb - h + y, y === 0 ? I.STONE_HI : (x + (y % 2) * 2) % 4 === 0 || y % 2 === 0 && x % 4 === 2 ? I.STONE_SH : I.STONE);
+      for (let k = 0; k < 3; k += 1) { rect(x0 + w + k * 3, yb - 2, 2, 2, I.STONE_HI); set(x0 + w + k * 3 + 1, yb - 1, I.STONE_SH); }
+      rect(x0 + w + 1, yb - 4, 2, 2, I.STONE); set(x0 + w + 2, yb - 3, I.STONE_SH);
+      quarry.y = yb; quarry.w = w;
+    }
+    // a waterfall down the near range, east of the watchtower (drawn where the rock shows)
+    const falls = { x: M + Math.round(0.42 * Ws), y0: 0, len: Math.round(0.11 * H) };
+    for (let x = falls.x - 8; x <= falls.x + 8; x += 1) if (crestAt(x) > crestAt(falls.x)) falls.x = x; // in a gully
+    falls.y0 = crestAt(falls.x) + 4;
+    // an orchard in the meadow, west: apple trees for the season, two straw hives under them
+    on(L.GROUND);
+    const orchard = { trees: [], skeps: [] };
+    {
+      const nearG = (y) => clamp((y - yg) / (H - yg));
+      [[0.17, 0.42], [0.225, 0.3], [0.265, 0.48]].forEach(([fx, fy], j) => {
+        const x = M + Math.round(fx * Ws); const yb = Math.round(yg + fy * (H - yg)); const h = Math.round(H * (0.06 + 0.05 * nearG(yb)));
+        const r = Math.max(4, Math.round(h * 0.42)); const trunk = Math.round(h * 0.4); const cy0 = yb - trunk - r + 2;
+        rect(x - 1, yb - trunk, 2, trunk + 1, I.BARK); set(x - 2, yb, I.BARK); set(x + 1, yb, I.BARK);
+        for (let k = 1; k < r * 0.7; k += 1) { set(x - k, yb - trunk - Math.round(k * 0.7), I.BARK); set(x + k, yb - trunk - Math.round(k * 0.8), I.BARK); }
+        if (season !== 'winter') {
+          const P = season === 'autumn' && j === 1 ? [I.LEAF2, I.RUST_HI, I.RUST] : [I.OAK_HI, I.OAK, I.OAK_SH];
+          for (let dy = -r; dy <= r; dy += 1) for (let dx = -r - 2; dx <= r + 2; dx += 1) {
+            const q = (dx / (r + 2)) ** 2 + (dy / r) ** 2; const X = x + dx; const Y = cy0 + dy;
+            if (q + (bayer(X, Y) - 0.5) * 0.3 > 1) continue;
+            let c = dx + dy < -r * 0.4 ? P[0] : dx + dy > r * 0.4 ? P[2] : P[1];
+            if (season === 'spring' && bayer(X * 3, Y * 7) < 0.3) c = (X + Y) % 3 ? I.BLOSSOM : I.FL_WHITE;
+            if ((season === 'summer' || season === 'autumn') && bayer(X * 5, Y * 3) < 0.06) c = season === 'autumn' ? I.FL_RED : I.GRASS_LT; // apples
+            set(X, Y, c);
+          }
+          if (season === 'autumn') for (let k = 0; k < 3; k += 1) set(x - r + k * r, yb + 1 + (k % 2), I.FL_RED); // fallen ones
+        }
+        orchard.trees.push({ x, yb, r, cy0 });
+      });
+      const t0 = orchard.trees[1]; const sx0 = t0.x + 6; const sy0 = t0.yb + 2; // the bench and its hives
+      rect(sx0 - 1, sy0, 12, 1, I.TIMBER); set(sx0, sy0 + 1, I.TIMBER_SH); set(sx0 + 9, sy0 + 1, I.TIMBER_SH);
+      [0, 6].forEach((dx) => {
+        const hx = sx0 + dx;
+        for (let k = 0; k < 4; k += 1) for (let x = -2 + Math.floor(k / 3); x <= 2 - Math.floor(k / 3); x += 1) set(hx + 2 + x, sy0 - 1 - k, k % 2 ? I.THATCH_SH : I.THATCH);
+        set(hx + 2, sy0 - 5, I.THATCH_SH); set(hx + 2, sy0 - 1, I.OUTLINE); // the top, the bees' door
+        orchard.skeps.push({ x: hx + 2, y: sy0 - 3 });
+      });
+    }
+
     // the lichen's patches on the rock, grown part-way now (see step)
     const lichen = lichenInit(planes[L.MID], WE, H, crest, yl0, rng, new Set([I.ROCK_HI, I.ROCK, I.ROCK_SH, I.ROCK_DK]));
     lichen.max = reduce ? 130 : 45; for (let k = 0; k < 40; k += 1) lichenGrow(lichen, 3000); lichen.max = 130;
@@ -1621,7 +1680,8 @@ nNnnnn..
         [M + Math.round(0.33 * Ws), crestAt(M + Math.round(0.33 * Ws)) + 1, L.NEAR]],
       heron: (() => { const x = M + Math.round(0.74 * Ws); return { x, y: riverTop(x) + 4 - SPRITES.heron.h }; })(),
       ducks: [0, 1, 2].map((k) => ({ x: pathX[yl0 + 4] + 20 + k * 9, a: pathX[yl0 + 4] + 16, b: M + Math.round(0.92 * Ws), dir: k % 2 ? 1 : -1, ph: k })),
-      geese: null, swallows: null, meteors: [], millAngle: 0, lichen,
+      geese: null, swallows: null, meteors: [], millAngle: 0, lichen, wmill, quarry, falls, orchard, wheel: 0, bridgeK: 0,
+      gate: { x: gx, w: gw, h: gh, crest },
     };
   }
 
@@ -3229,6 +3289,38 @@ f11111f2.
       backBuf.set(buf); backIdx.set(idxNow); backKey = key;
     } else { buf.set(backBuf); idxNow.set(backIdx); }
 
+    { // the waterfall, where the near range shows: streaks running down; still ice in a hard frost
+      const f = scene.falls; const x0 = f.x - M + shift(RATE[L.NEAR]); const frozen = (weather.frost ?? 9) <= -4;
+      const NEARS = [I.MT_NEAR, I.MT_NEAR_SH];
+      for (let y = f.y0; y < f.y0 + f.len; y += 1) {
+        const w = 1 + Math.round((y - f.y0) / f.len * 1.5); const wob = Math.round(Math.sin(y * 0.35) * 0.8); // (it follows the rock)
+        for (let dx = 0; dx <= w; dx += 1) {
+          const x = x0 + dx - Math.floor(w / 2) + wob; if (x < 0 || x >= W || !NEARS.includes(idxNow[y * W + x])) continue;
+          const run = frozen || reduce ? (dx + y) % 3 : Math.floor(y - t * 9 + dx * 2) % 4;
+          put(x, y, frozen ? (run ? pal32[I.WATER_HI] : pal32[I.SNOWFIELD]) : run < 2 ? pal32[I.WATER_HI] : pal32[I.CLOUD]);
+        }
+      }
+      if (!frozen && !reduce) for (let k = 0; k < 5; k += 1) { const y = f.y0 + f.len - 1 - (k % 2); const x = x0 - 2 + k; if (x >= 0 && x < W && NEARS.includes(idxNow[y * W + x])) blend(x, y - Math.round(Math.sin(t * 3 + k)), unpack(pal32[I.CLOUD]), 0.5); }
+    }
+    { // the drawbridge: raised for the night (it rises as the dusk deepens), lowered at dawn
+      const g = scene.gate; const k = scene.bridgeK; const hgt = Math.round(k * g.h); const x0 = mx(g.x);
+      for (let y = 0; y < hgt; y += 1) for (let x = 0; x < g.w; x += 1) put(x0 + x, g.crest - 1 - y, pal32[y % 3 === 1 ? I.ARM_SH : x % 2 ? I.TIMBER_SH : I.TIMBER]);
+      if (hgt > 1) for (let j = 0; j < 3; j += 1) { put(x0 - 1, g.crest - hgt - j, pal32[I.ARM_SH]); put(x0 + g.w, g.crest - hgt - j, pal32[I.ARM_SH]); } // the chains
+    }
+    { // the river: ice after days of hard frost, its banks overrun after a wet week
+      const frost = weather.frost ?? 9; const flood = clamp(((weather.rain7 ?? 0) - 35) / 30);
+      if (frost <= -3 || flood > 0) {
+        const off = shift(RATE[L.MID]) - M; const BANK = [I.GRASS, I.GRASS_SH, I.GRASS_HI, I.MUD, I.REED, I.REED_SH, I.HILL, I.HILL_SH];
+        for (let x = 0; x < W; x += 1) {
+          const X = x - off; const top = scene.riverTop(X); const bot = scene.riverBot(X);
+          if (frost <= -3) { // the whole breadth, the reflections dimmed under it; cracks here and there
+            const ice = mix(unpack(pal32[I.SNOWFIELD]), unpack(pal32[I.WATER_HI]), 0.35);
+            for (let y = top; y <= bot; y += 1) { const i = y * W + x; if (idxNow[i] < N_SKY) continue; buf[i] = pack(mix(unpack(buf[i]), (x * 7 + y * 13) % 29 === 0 ? unpack(pal32[I.WATER]) : ice, bayer(x, y) < 0.2 ? 0.6 : 0.82)); }
+          }
+          else for (let y = top - Math.round(flood * 2); y < top; y += 1) { const i = y * W + x; if (BANK.includes(idxNow[i])) buf[i] = pal32[bayer(x, y) < 0.3 ? I.WATER_HI : I.WATER]; }
+        }
+      }
+    }
     { // the lichen on the rock: the newest cells, at the rim, are the palest
       const ROCKS = [I.ROCK_HI, I.ROCK, I.ROCK_SH, I.ROCK_DK];
       scene.lichen.patches.forEach((p) => {
@@ -3601,7 +3693,31 @@ f11111f2.
       }
     }
 
+    { // the water mill's wheel turning in the stream (faster in spate), its spray
+      const wm = scene.wmill; const x0 = mx(wm.x); const y0 = wm.y; const a0 = scene.wheel; const R = 4;
+      for (let a = 0; a < 6.28; a += 0.25) put(x0 + Math.round(Math.cos(a) * R), y0 + Math.round(Math.sin(a) * R), pal32[I.TIMBER]);
+      for (let k = 0; k < 8; k += 1) { const a = a0 + (k * Math.PI) / 4; put(x0 + Math.round(Math.cos(a) * R), y0 + Math.round(Math.sin(a) * R), pal32[I.TIMBER_HI]); put(x0 + Math.round(Math.cos(a) * 2), y0 + Math.round(Math.sin(a) * 2), pal32[I.TIMBER_SH]); }
+      put(x0, y0, pal32[I.ARM_SH]);
+      if (!reduce) for (let k = 0; k < 3; k += 1) blend(x0 + R + 1 + k, y0 + R - 1 - ((Math.floor(t * 6) + k) % 2), [255, 255, 255], 0.5, false);
+    }
+    if (look.night < 0.4) { // the quarryman at the face, his hammer rising and falling
+      const q = scene.quarry; const x = mx(q.x + q.w - 2); const y = q.y - 1; const up = !reduce && Math.floor(t * 2.5) % 2;
+      put(x, y, pal32[I.CLOAK_SH], false); put(x, y - 1, pal32[I.RUST], false); put(x, y - 2, pal32[I.SKIN], false);
+      put(x - 1, y - 2 - (up ? 1 : 0), pal32[I.TIMBER_SH], false); put(x - 2, y - 2 - (up ? 2 : 0), pal32[I.ARM_SH], false);
+      if (!up && Math.floor(t * 2.5) % 4 === 0) put(x - 3, y - 1, pack([255, 240, 200]), false); // a spark off the stone
+    }
+
     composite(L.GROUND);
+
+    { // bees about the hives in the orchard, on warm days
+      const o = scene.orchard; const warm = (weather.temp ?? 15) >= 10 && scene.season !== 'winter' && look.night < 0.3 && !WET[weather.kind];
+      if (warm && !reduce) o.skeps.forEach((h, j) => {
+        for (let k = 0; k < 4; k += 1) {
+          const a = t * (1.5 + k * 0.4) + k * 1.7 + j; const x = gx(h.x, h.y) + Math.round(Math.cos(a) * (3 + k)); const y = h.y - 2 + Math.round(Math.sin(a * 1.3) * 2);
+          put(x, y, pal32[(k + Math.floor(t * 8)) % 2 ? I.FL_YEL : I.OUTLINE], false);
+        }
+      });
+    }
 
     { // the angler on the near bank, by day: his line in the water; now and then a fish jumps
       const an = scene.angler; const ax = gx(an.x, an.y + 6);
@@ -4147,6 +4263,12 @@ f11111f2.
     if (inBox(cmx - 1, c.y - 1, c.w + 2, c.h + 1)) return { kind: 'cellar' };
     if (inBox(knight.x + go, knight.y, SPRITES.knight.w, SPRITES.knight.h)) return { kind: 'knight' };
     const lmx = shift(RATE[L.MID]) - scene.M;
+    const lmx2 = shift(RATE[L.MID]) - scene.M;
+    if (Math.hypot(x - (scene.wmill.x + lmx2), y - scene.wmill.y) < 6) return { kind: 'wmill' };
+    const qy = scene.quarry; if (inBox(qy.x + lmx2, qy.y - 7, qy.w + 9, 8)) return { kind: 'quarry' };
+    const fl = scene.falls; if (inBox(fl.x - scene.M + shift(RATE[L.NEAR]) - 3, fl.y0, 7, fl.len)) return { kind: 'falls' };
+    if (scene.orchard.skeps.some((h) => inBox(h.x + go - 3, h.y - 3, 7, 6))) return { kind: 'bees' };
+    if (scene.orchard.trees.some((tr) => Math.hypot(x - (tr.x + go), y - tr.cy0) < tr.r + 2)) return { kind: 'orchard' };
     const wt = scene.watch; const wtx = wt.x - scene.M + shift(RATE[L.NEAR]);
     if (inBox(wtx - 3, wt.y - 1, 7, 15)) return { kind: 'watch' };
     const hm = scene.hamlet; const vy = scene.riverTop(hm.x1);
@@ -4186,6 +4308,14 @@ f11111f2.
     } else if (hit.kind === 'meteor') say('You catch the shooting star and make a wish. It is yours to keep.');
     else if (hit.kind === 'angler') say(['The angler raises a finger to his lips. The fish are listening.', 'The angler shows you an empty basket and a patient smile.', '"They bite at dawn," says the angler, "and never when you watch."'][Math.floor(Math.random() * 3)]);
     else if (hit.kind === 'watch') towerTo(true);
+    else if (hit.kind === 'wmill') {
+      const r7 = weather.rain7; const frozen = (weather.frost ?? 9) <= -4;
+      say(frozen ? 'The mill wheel is held fast in the ice; the miller waits for the thaw.'
+        : `The water mill grinds the market's flour. ${r7 == null ? 'The stream runs as it always does.' : r7 > 35 ? `${Math.round(r7)} mm of rain this week: the wheel races.` : `${Math.round(r7)} mm of rain this week over Paris: the wheel turns at its ease.`}`);
+    } else if (hit.kind === 'quarry') say(look.night < 0.4 ? 'The quarryman squares a block for the castle wall. Tap, tap: every stone up there came from here.' : 'The quarry is quiet; the blocks wait, squared, for morning.');
+    else if (hit.kind === 'falls') say((weather.frost ?? 9) <= -4 ? 'The waterfall has frozen into a column of blue ice.' : 'A waterfall comes down the gully from the snows. Its roar reaches the meadow on quiet evenings.');
+    else if (hit.kind === 'bees') say((weather.temp ?? 15) >= 10 && scene.season !== 'winter' ? 'The bees come and go. A forager back from a good patch dances on the comb: the angle of her run is the flowers\' bearing from the sun, its length their distance.' : 'The hives are quiet: too cold for the bees, who keep each other warm inside, around their queen.');
+    else if (hit.kind === 'orchard') say({ spring: 'The apple trees are in blossom.', summer: 'Small green apples swell on the branches.', autumn: 'Apples, red and ready: some have already dropped into the grass.', winter: 'Bare apple trees, pruned for the spring.' }[scene.season]);
     else if (hit.kind === 'village') {
       zoomTo(true);
       const open = marketDay(today()) && look.night < 0.3;
@@ -4279,6 +4409,8 @@ f11111f2.
       let r = Math.random(); let a = 0; while (a < 2 && (r -= mk.pol[f.to * 3 + a]) > 0) a += 1;
       f.to = clamp(f.to + a - 1, 0, mk.N - 1);
     });
+    if (!reduce) scene.wheel += 0.05 * (1 + clamp(((weather.rain7 ?? 0) - 10) / 30, 0, 1.5)) * ((weather.frost ?? 9) <= -4 ? 0 : 1);
+    scene.bridgeK += ((look.night > 0.55 ? 1 : 0) - scene.bridgeK) * (reduce ? 1 : 0.01);
     if (!reduce && tick % 2 === 0) lichenGrow(scene.lichen, 150); // (some three minutes to full size)
     scene.zzz = scene.zzz.filter((z) => { z.y -= 0.25; z.x += 0.15; z.age += 1; return z.age < 40; });
     const fest = festival(today());
