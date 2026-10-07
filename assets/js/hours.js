@@ -4254,28 +4254,23 @@ f11111f2.
     blit(SPRITES.wizard, wizard.x + go, wizard.y);
     const shield = scene.shieldSp || (scene.shieldSp = armsSprite(heraldry.own)); // the knight's arms, leant on the log
     if (shield) blit(shield, knight.x + go + 1, fire.y + 7 - shield.h);
+    { // Blanc Blanc's home is at the knight's feet; now and then (by day and evening, a minute in
+      // 45 s, from 4 s after the page opens) he hops up into the knight's lap, curls there, purrs,
+      // and hops back down to his place
+      const bb = scene.cats[1]; bb.hx ??= bb.x; bb.hy ??= bb.y;
+      const lapX = knight.x + 14; const lapY = knight.y + 11; // on his thighs
+      const p = !reduce && look.night < 0.7 && t > 4 ? (t - 4) % 45 : 99;
+      const hop = (k, a, b) => { const e = k * k * (3 - 2 * k); return [a[0] + (b[0] - a[0]) * e, a[1] + (b[1] - a[1]) * e - Math.sin(k * Math.PI) * 6]; };
+      const home = [bb.hx, bb.hy]; const lap = [lapX, lapY];
+      const [x, y] = p < 1 ? hop(p, home, lap) : p < 12 ? lap : p < 13 ? hop(p - 12, lap, home) : home;
+      bb.x = Math.round(x); bb.y = Math.round(y);
+      if (p >= 1 && p < 12) { if (!scene.purred) { scene.purred = true; sfx('purr'); } } else scene.purred = false;
+    }
     scene.cats.forEach((c) => { // they blink now and then; the black one by the fire breathes
       const breathe = c.sp === SPRITES.cats.blackLoaf && !reduce ? Math.floor(t / 2.1 + c.ph) % 2 : 0;
       blit(c.sp, c.x + go, c.y, H, (y) => (y < 3 ? breathe : 0));
       c.breathe = breathe;
     });
-    { // now and then (6 s in every 30, by day and evening) the knight reaches down and strokes Blanc
-      // Blanc: an arm in his red sleeve comes down from the shoulder, in front of his shin, to the cat's back
-      const bb = scene.cats[1]; const ph = t % 30; const on = !reduce && look.night < 0.7 && ph < 6;
-      if (on) {
-        const reach = Math.min(1, ph / 0.8, (6 - ph) / 0.8); // it comes down, strokes, goes back up
-        const ex = knight.x + go + 17; const ey = knight.y + 13; // the shoulder
-        const hx0 = bb.x + go + 6 + Math.round(Math.sin(ph * 2 * Math.PI / 1.4) * 2); const hy0 = bb.y + 3; // along his back, behind the head
-        const hx = Math.round(ex + (hx0 - ex) * reach); const hy = Math.round(ey + (hy0 - ey) * reach);
-        const n = Math.max(1, Math.max(Math.abs(hx - ex), Math.abs(hy - ey)));
-        for (let k = 0; k <= n; k += 1) { // the sleeve, two pixels wide, an outline on the far side
-          const x = ex + ((hx - ex) * k) / n; const y = ey + ((hy - ey) * k) / n;
-          put(x - 1, y, pal32[I.OUTLINE], false); put(x, y, pal32[I.CLOTH], false); put(x + 1, y, pal32[I.CLOTH_SH], false); put(x + 2, y, pal32[I.OUTLINE], false);
-        }
-        put(hx - 1, hy, pal32[I.OUTLINE], false); put(hx, hy, pal32[I.SKIN], false); put(hx + 1, hy, pal32[I.SKIN], false); put(hx + 2, hy, pal32[I.OUTLINE], false); put(hx, hy + 1, pal32[I.SKIN_SH], false); put(hx + 1, hy + 1, pal32[I.SKIN_SH], false); // the hand
-        if (!scene.purred && reach >= 1) { scene.purred = true; sfx('purr'); }
-      } else scene.purred = false;
-    }
     { // the knight's blue butterfly, wandering round his helm
       const hx = knight.x + go + 13; const hy = knight.y + 4;
       const bx = hx + Math.round(10 * Math.sin(t * 0.8)); const by = hy - 3 + Math.round(5 * Math.sin(t * 1.7) * Math.cos(t * 0.45));
