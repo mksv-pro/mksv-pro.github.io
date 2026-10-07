@@ -46,6 +46,13 @@
       map[py * size[0] + px] = 2;
       plaques.set(py * size[0] + px, id);
     });
+    // the cellar's racks along the corridors (3): a wall cell beside a corridor floor, one in five
+    let k = 0;
+    for (let y = 1; y < size[1] - 1; y += 1) for (let x = 1; x < size[0] - 1; x += 1) {
+      if (map[y * size[0] + x] !== 1 || roomAt(x, y)) continue;
+      const nb = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([dx, dy]) => map[(y + dy) * size[0] + x + dx] === 0 && !roomAt(x + dx, y + dy));
+      if (nb.length && (k += 1) % 5 === 0) map[y * size[0] + x] = 3;
+    }
   }
 
   const cellAt = (x, y) => (x < 0 || y < 0 || x >= size[0] || y >= size[1] ? 1 : map[y * size[0] + x]);
@@ -80,6 +87,17 @@
         const mortar = y % 16 === 0 || xs % 32 === 0;
         v[y * 64 + x] = mortar ? 0.12 : shade[(row * 4 + (xs >> 5)) % 32] - 0.08 * rand();
       }
+    }
+    return { v, accent: new Uint8Array(64 * 64) };
+  }
+
+  /** A wine rack: a timber frame, bottle ends in rows, the glass catching the light. */
+  function rack() {
+    const v = new Float32Array(64 * 64); const rand = rng(11);
+    for (let y = 0; y < 64; y += 1) for (let x = 0; x < 64; x += 1) {
+      const frame = x % 16 < 2 || y % 16 < 2;
+      const cx = (x % 16) - 9; const cy = (y % 16) - 9; const r = Math.hypot(cx, cy);
+      v[y * 64 + x] = frame ? 0.42 : r < 5 ? (r < 2 && cx < 0 && cy < 0 ? 0.12 : 0.62 + 0.05 * rand()) : 0.95; // (high = ink: dark cavities, the glass a shade lighter, a glint)
     }
     return { v, accent: new Uint8Array(64 * 64) };
   }
@@ -188,7 +206,7 @@
       }
       const dist = side === 0 ? sdx - ddx : sdy - ddy;
       const cell = cellAt(mx, my);
-      const tex = cell === 2 ? textures.get(plaques.get(my * size[0] + mx)) : textures.get('stone');
+      const tex = cell === 2 ? textures.get(plaques.get(my * size[0] + mx)) : cell === 3 ? textures.get('rack') : textures.get('stone');
       let wx = side === 0 ? py + dist * ry : px + dist * rx;
       wx -= Math.floor(wx);
       let tx = Math.floor(wx * 64);
@@ -225,7 +243,8 @@
         msg.textContent = 'A dark corridor.';
       }
     }
-    hint.textContent = `Facing ${FACING[face]}.${ahead ? ` A plaque: ${opts.world[ahead].name}. Enter to go in.` : ''}`;
+    const racked = cellAt(gx + DX[face], gy + DY[face]) === 3;
+    hint.textContent = `Facing ${FACING[face]}.${ahead ? ` A plaque: ${opts.world[ahead].name}. Enter to go in.` : racked ? ' A rack of dusty bottles. Enter to read the labels.' : ''}`;
   }
 
   function animate(toPos, toAngle) {
@@ -262,6 +281,11 @@
 
   function act() {
     const x = gx + DX[face]; const y = gy + DY[face];
+    if (cellAt(x, y) === 3) { // a rack: the vintages are the years of study (script.js)
+      const v = opts.vintages(); const n = v.length ? v[(x * 7 + y * 13) % v.length] : null;
+      msg.textContent = n ? `A bottle labelled ${n}` : 'The labels have faded.';
+      return;
+    }
     if (cellAt(x, y) !== 2) { hint.textContent = 'There is nothing to read here.'; return; }
     const id = plaques.get(y * size[0] + x);
     close();
@@ -303,7 +327,7 @@
   <button type="button" data-k="m">[map]</button>
   <button type="button" data-k="<">[climb]</button>
 </div>
-<p class="dg-keys">arrows or WASD &middot; Q E strafe &middot; Enter reads a plaque &middot; m map &middot; Esc or &lt; climbs back</p>`;
+<p class="dg-keys">arrows or WASD &middot; Q E strafe &middot; Enter reads a plaque or a label &middot; m map &middot; Esc or &lt; climbs back</p>`;
     document.body.append(dlg);
     canvas = dlg.querySelector('canvas');
     ctx = canvas.getContext('2d');
@@ -331,7 +355,7 @@
       opts = o;
       if (!dlg) {
         build(o.world, o.links);
-        textures = new Map([['stone', stone()]]);
+        textures = new Map([['stone', stone()], ['rack', rack()]]);
         Object.keys(o.world).forEach((id) => textures.set(id, plaque(id)));
         makeDialog();
       }

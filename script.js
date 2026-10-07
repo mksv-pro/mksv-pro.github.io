@@ -972,6 +972,11 @@ function descend() {
     map: (id) => showDialog(T.mapTitle, mapHtml(id)),
     inventory: showInventory,
     read: (id) => goTo(id),
+    vintages: () => [...document.querySelectorAll('#coursework .ledger-year')].map((y) => { // a year of study, as a wine
+      const n = y.querySelectorAll('li').length; const progs = [...y.querySelectorAll('.ledger-prog')].map((p) => p.textContent.split('\u00b7')[0].trim());
+      const body = n > 14 ? 'full-bodied' : n > 8 ? 'well-structured' : n > 4 ? 'light and lively' : 'a rare small cuvée';
+      return `"${y.querySelector('h3').textContent}", from ${progs.join(' and ')}: ${body}, ${n} courses in the blend.`;
+    }),
   }));
 }
 $('descend').addEventListener('click', descend);
