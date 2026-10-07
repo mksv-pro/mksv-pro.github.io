@@ -227,6 +227,8 @@ function applyTheme(theme, persist) {
       doors: roomDoors, // the doors in the rooms' side walls
       clock: skyNow, // the instant shown: dawn mist, the night's meteor shower
       found: findCurio, // a curiosity of the landscape, clicked
+      curios: () => ({ found: curios(), all: CURIOS }), // for the gatehouse's cabinet
+      now: nowHtml, // the tavern's slate: what is going on, from the page itself
     })).then(() => { if (session('ended')) window.Hours.hoist(true); showWeather(); fetchKp(); });
   }
 }
@@ -574,7 +576,8 @@ function roomItems(id) {
         ...of('.pub', 'book', (el) => { // its title becomes the book's heading
           const c = el.cloneNode(true); const t = c.querySelector('.pub-title');
           if (t) t.outerHTML = `<h3>${t.innerHTML}</h3>`;
-          return { label: text(el.querySelector('.pub-title')), html: c.innerHTML };
+          const fig = /nuclear-emulators/.test(el.innerHTML) ? '<figure class="pub-fig"><canvas width="260" height="80"></canvas><figcaption>A wave packet meets a nuclear barrier: part goes through, part comes back (computed as you watch).</figcaption></figure>' : '';
+          return { label: text(el.querySelector('.pub-title')), html: c.innerHTML + fig };
         }),
         ...(lib.shelves || []).map(([sid, name], k) => {
           const here = vols.filter((b) => b.shelf === sid);
@@ -598,7 +601,9 @@ function roomItems(id) {
         return { kind: { email: 'letterbox', code: 'lodestone', based: 'map' }[k] || 'note', label: k, html: `<h3>${esc(k)}</h3><p>${d.querySelector('dd').innerHTML}</p>` };
       });
       const col = sec.querySelector('.colophon');
-      if (col) things.push({ kind: 'register', label: T.register, html: `<h3>${T.register}</h3>${col.outerHTML}` });
+      const mail = sec.querySelector('a[href^="mailto:"]');
+      const sign = mail ? `<p><a href="${mail.getAttribute('href')}?subject=${encodeURIComponent("The castle's guestbook")}&amp;body=${encodeURIComponent('Name:\nFrom:\n\nA word for the register:\n')}">[sign the guestbook]</a> <span class="dim">(it opens a letter; I copy the kind ones in by hand)</span></p>` : '';
+      if (col) things.push({ kind: 'register', label: T.register, html: `<h3>${T.register}</h3>${col.outerHTML}${sign}` });
       return things;
     }
     default: return [];
@@ -615,6 +620,69 @@ card.setAttribute('role', 'dialog');
 card.innerHTML = `<button type="button" class="card-close" aria-label="${T.close}">&times;</button><div class="card-body"></div>`;
 document.body.append(card);
 let spotItems = []; let cardFrom = null;
+
+/** What is going on, gathered from the page: the studies under way, the last news, the projects. */
+function nowHtml() {
+  const txt = (el) => (el ? el.textContent.replace(/\s+/g, ' ').trim() : '');
+  const studying = [...document.querySelectorAll('#about .sheet dd')][0];
+  const news = document.querySelector('#news .news li');
+  const projects = [...document.querySelectorAll('#projects article.project h3')].map(txt);
+  return `<h3>On the tavern's slate</h3><p class="dim">What is going on, chalked up by the landlord.</p>`
+    + (studying ? `<p><b>Studying:</b> ${txt(studying)}</p>` : '') + (news ? `<p><b>Latest news:</b> ${txt(news)}</p>` : '')
+    + (projects.length ? `<p><b>At the workbench:</b> ${projects.join('; ')}.</p>` : '');
+}
+
+/* The report's figure, alive: a wave packet meets a nuclear barrier (Woods-Saxon), part through,
+   part back; |psi|^2 by Crank-Nicolson on a 1D grid (hbar = m = 1). The dynamics the emulators
+   in the report learn to reproduce, not one of its results. */
+function waveFig(canvas) {
+  const N = 220; const dx = 0.25; const dt = 0.05; const L = N * dx;
+  const V = Array.from({ length: N }, (_, j) => { const x = j * dx - L * 0.55; return 1.3 / (1 + Math.exp((Math.abs(x) - 2.2) / 0.35)); });
+  let re; let im;
+  const reset = () => {
+    re = new Float64Array(N); im = new Float64Array(N);
+    for (let j = 0; j < N; j += 1) { const x = j * dx - L * 0.25; const g = Math.exp(-(x * x) / 4); re[j] = g * Math.cos(1.5 * x); im[j] = g * Math.sin(1.5 * x); }
+  };
+  reset();
+  const step = () => { // (1 + iH dt/2) psi' = (1 - iH dt/2) psi, Thomas algorithm on the complex tridiagonal system
+    const a = dt / (4 * dx * dx); const br = new Float64Array(N); const bi = new Float64Array(N);
+    for (let j = 0; j < N; j += 1) {
+      const l = j ? j - 1 : j; const r = j < N - 1 ? j + 1 : j; const d = 2 * a + (dt / 2) * V[j];
+      // rhs = psi - i (dt/2) H psi, with (dt/2) H psi = -a (psi_r + psi_l) + d psi
+      const hr = -a * (re[r] + re[l]) + d * re[j]; const hi = -a * (im[r] + im[l]) + d * im[j];
+      br[j] = re[j] + hi; bi[j] = im[j] - hr;
+    }
+    const cr = new Float64Array(N); const ci = new Float64Array(N); const dr = new Float64Array(N); const di = new Float64Array(N);
+    // matrix: diag 1 + i d_j, off-diag -i a
+    for (let j = 0; j < N; j += 1) {
+      let mRe = 1; let mIm = 2 * a + (dt / 2) * V[j]; let rRe = br[j]; let rIm = bi[j]; // the diagonal, 1 + i d_j; the rhs
+      if (j) { // m -= (-i a) * c[j-1]; r -= (-i a) * d[j-1]
+        mRe -= a * ci[j - 1]; mIm += a * cr[j - 1]; rRe -= a * di[j - 1]; rIm += a * dr[j - 1];
+      }
+      const den = mRe * mRe + mIm * mIm;
+      cr[j] = (-a * mIm) / den; ci[j] = (-a * mRe) / den; // c = (-i a) / m
+      dr[j] = (rRe * mRe + rIm * mIm) / den; di[j] = (rIm * mRe - rRe * mIm) / den;
+    }
+    for (let j = N - 1; j >= 0; j -= 1) {
+      if (j < N - 1) { dr[j] -= cr[j] * re[j + 1] - ci[j] * im[j + 1]; di[j] -= cr[j] * im[j + 1] + ci[j] * re[j + 1]; }
+      re[j] = dr[j]; im[j] = di[j];
+    }
+  };
+  let tick = 0;
+  const draw = () => {
+    if (!canvas.isConnected) return;
+    for (let k = 0; k < 4; k += 1) step();
+    if ((tick += 1) > 260) { reset(); tick = 0; }
+    const g = canvas.getContext('2d'); const w = canvas.width; const h = canvas.height; const ink = getComputedStyle(canvas).color;
+    g.clearRect(0, 0, w, h); g.strokeStyle = ink; g.globalAlpha = 0.35; g.beginPath();
+    V.forEach((v, j) => { const x = (j / N) * w; const y = h - 4 - v * h * 0.5; if (j) g.lineTo(x, y); else g.moveTo(x, y); }); g.stroke();
+    g.globalAlpha = 1; g.beginPath();
+    for (let j = 0; j < N; j += 1) { const x = (j / N) * w; const y = h - 4 - (re[j] ** 2 + im[j] ** 2) * h * 0.8; if (j) g.lineTo(x, y); else g.moveTo(x, y); }
+    g.stroke();
+    if (!reduceMotion) requestAnimationFrame(draw);
+  };
+  draw();
+}
 
 /** hours.js hands over where the objects are (viewport px) and what they are. */
 function setSpots(rects, items) {
@@ -786,6 +854,8 @@ function openCard(i, from) {
   const deco = { letter: ['wax'], charter: ['hang-seal'], hanging: ['hang-seal'], scroll: ['roll at-top', 'roll at-bottom'] }[it.kind] || [];
   deco.forEach((c) => card.insertAdjacentHTML('beforeend', `<span class="deco ${c}" aria-hidden="true"></span>`));
   cue(it.kind === 'letter' ? 'seal' : 'card');
+  const runFigs = () => card.querySelectorAll('.pub-fig canvas').forEach((cv) => { if (!cv.running) { cv.running = true; waveFig(cv); } }); // (a property: the pages are clones)
+  runFigs(); setTimeout(runFigs, 400); setTimeout(runFigs, 1500); // (and again once a book has been paginated)
   if (book) { // pages are measured, so the card is shown first; again once its fonts have loaded
     bind(body); turn(0);
     const src = card.bookSrc;

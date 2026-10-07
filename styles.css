@@ -975,6 +975,10 @@ dialog.dungeon canvas {
 /* the curiosity hunt is the castle's: no counter in the terminal */
 [data-theme="dark"] :is(#st-curios, .sound-toggle) { display: none; }
 
+/* a figure alive in a card (script.js waveFig) */
+.pub-fig { margin: .8rem 0; } .pub-fig canvas { display: block; width: 100%; max-width: 26rem; height: auto; color: var(--ink); image-rendering: auto; }
+.pub-fig figcaption { font-size: .8rem; opacity: .8; }
+
 /* the village close up (hours.js): the landscape only, and the way back */
 html.village :is(.host, .tabs, .spots) { visibility: hidden; }
 .village-back {

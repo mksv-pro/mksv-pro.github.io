@@ -2628,6 +2628,21 @@ f11111f2.
       });
       candle(tb.r - 2, tb.back, true);
       windowArch(S(0.06), Math.round(H * 0.14), Math.max(10, Sw(0.1)), Math.round(H * 0.26));
+      { // the cabinet of curiosities: a shelf-place for each thing of the landscape found so far
+        const cw = 15; const cx0 = Math.min(BR - cw - 2, S(0.72) + 24); const ch = 30; const cy0 = yf - ch;
+        if (cx0 > b + 8) {
+          rect(cx0, cy0, cw, ch, I.TIMBER); rect(cx0, cy0, cw, 1, I.TIMBER_HI); rect(cx0 + 1, cy0 + 2, cw - 2, ch - 4, I.OUTLINE);
+          for (let k = 1; k < 4; k += 1) rect(cx0 + 1, cy0 + 2 + k * 7, cw - 2, 1, I.TIMBER_SH); // the shelves
+          rect(cx0 + Math.floor(cw / 2), cy0 + 2, 1, ch - 4, I.TIMBER); // the doors' meeting
+          deco.push({ type: 'cabinet', x: cx0 + 1, y: cy0 + 2, w: cw - 2 });
+          extra.push({ t: { kind: 'cabinet', label: 'The cabinet of curiosities', get html() {
+            const { found: f, all } = curiosOf(); const miss = Object.keys(all).filter((k) => !f.includes(k));
+            return `<h3>The cabinet of curiosities</h3><p>A keepsake for each thing of the landscape that answered you (this visit).</p>`
+              + (f.length ? `<ul>${f.map((k) => `<li>${all[k]}</li>`).join('')}</ul>` : '<p class="dim">Its shelves are bare: click about the landscape.</p>')
+              + `<p class="dim">${miss.length} still to find${miss.some((k) => /\(/.test(all[k])) ? `, among them ${miss.filter((k) => /\(/.test(all[k])).map((k) => all[k]).slice(0, 3).join('; ')}` : ''}.</p>`;
+          } }, b: box(cx0, cy0, cw, ch) });
+        }
+      }
     }
     doorList.forEach((e) => extra.push(e));
     seasonal();
@@ -2709,6 +2724,7 @@ f11111f2.
   let view = { state: 'scene', id: null, t0: 0 }; // scene | in | room | out | swap
   let hoverId = null; let pendingRoom = null; let pendingHoist = false;
   let heraldry = { own: 'silva', tapestry: [] }; let say = () => {}; let rumour = () => '';
+  let curiosOf = () => ({ found: [], all: {} }); let nowOf = () => '';
   let found = () => {}; let itemsOf = () => []; let spotsTo = () => {}; let descendTo = () => {}; let doorsOf = () => []; let hl = -1; // the room's things, their hotspots, the one pointed at
   let scene = null; let look = null; let skyFn; let reduce = false; let px = 3;
   let running = false; let visible = true; let raf = 0; let last = 0; let tick = 0;
@@ -3186,6 +3202,10 @@ f11111f2.
     const pick = (a) => a[Math.floor(Math.random() * a.length)];
     const who = (zoom.actors || []).find((a) => Math.abs(x - a.sx) <= 3 && y < (a.y - zoom.vy + 1) * zoom.Z && y > (a.y - zoom.vy) * zoom.Z - 14);
     if (who) { say(pick(LINES[who.role])); return; }
+    const tv = scene.hamlet.places.tavern; const lm0 = shift(RATE[L.MID]) - scene.M;
+    if (tv && Math.abs(x - (tv.x + tv.w + 1.5 + lm0 - zoom.vx) * zoom.Z) < 6 && Math.abs(y - (tv.yb - 4.5 - zoom.vy) * zoom.Z) < 8) { // the sign: the landlord's slate
+      const div = document.createElement('div'); div.innerHTML = nowOf(); say(div.textContent.replace(/\s+/g, ' ').trim()); return;
+    }
     const mk = scene.market; const lm = shift(RATE[L.MID]) - scene.M;
     if (mk && marketDay(today()) && look.night < 0.3) {
       const f = mk.folk.find((q) => Math.abs(x - ((mk.x0 + q.pos + lm - zoom.vx) * zoom.Z + zoom.Z / 2)) <= 3 && Math.abs(y - (scene.riverTop(Math.round(mk.x0 + q.pos)) - 4 - zoom.vy) * zoom.Z) < 10);
@@ -4411,6 +4431,10 @@ f11111f2.
           const a = (reduce ? k : t * w) + k * 2;
           put(d.x + Math.round(Math.cos(a) * r), d.y + Math.round(Math.sin(a) * r * 0.45), P(c));
         });
+      } else if (d.type === 'cabinet') { // a keepsake per curiosity found, four to a shelf
+        const KEEP = ['GOLD', 'FL_RED', 'ARM_HI', 'FL_BLUE', 'GRASS_HI', 'CREAM', 'RUST_HI', 'FL_VIOLET'];
+        curiosOf().found.forEach((k, j) => { const row = Math.floor(j / 4) % 4; const col = j % 4; const x = d.x + 1 + col * 3; const y = d.y + 5 + row * 7;
+          put(x, y, P(KEEP[(k.length + j) % KEEP.length])); put(x, y - 1, P(KEEP[(k.charCodeAt(0) + j) % KEEP.length])); });
       } else if (d.type === 'slits') {
         slits ||= { hits: [] };
         slits.hits.forEach(([x, y]) => put(d.x + x, d.y + y, P('CREAM')));
@@ -5076,7 +5100,7 @@ f11111f2.
       if (canvas) return;
       plate = o.plate; skyFn = o.sky; reduce = o.reduceMotion; clockFn = o.clock || clockFn;
       heraldry = o.heraldry || heraldry; say = o.say || say; rumour = o.rumour || rumour;
-      itemsOf = o.items || itemsOf; found = o.found || found; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo; doorsOf = o.doors || doorsOf;
+      itemsOf = o.items || itemsOf; found = o.found || found; curiosOf = o.curios || curiosOf; nowOf = o.now || nowOf; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo; doorsOf = o.doors || doorsOf;
       pendingRoom = root.dataset.room || null;
       label0 = plate.getAttribute('aria-label');
       canvas = document.createElement('canvas');
