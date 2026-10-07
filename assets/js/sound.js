@@ -106,6 +106,35 @@
     }
   }
 
+  /** The chapel's bell: smaller and higher than the castle's, struck `at` seconds from now. */
+  function chapelBell(at) {
+    [[1, 0.12], [2.1, 0.06], [2.7, 0.05], [3.4, 0.03], [4.9, 0.015]].forEach(([r, v]) => {
+      const o = ac.createOscillator(); const g = ac.createGain(); const t = t0() + at;
+      o.frequency.value = 660 * r; g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 4.5 / r ** 0.4);
+      o.connect(g).connect(out(true)); o.start(t); o.stop(t + 5);
+    });
+  }
+  /** The angelus (7 am, noon, 7 pm): three strokes three times, a pause between, then nine. */
+  function angelus() {
+    let at = 0;
+    for (let g = 0; g < 3; g += 1) { for (let k = 0; k < 3; k += 1) { chapelBell(at); at += 2.4; } at += 4; }
+    for (let k = 0; k < 9; k += 1) { chapelBell(at); at += 1.6; }
+  }
+  /** Birds for the season and the hour: a dawn chorus in spring and summer (blackbird, robin,
+   *  wren), the cuckoo in spring, the nightingale on May and June nights, a sparrow in winter. */
+  function birds(s) {
+    const m = s.month; const r = Math.random();
+    const blackbird = () => { let f = 1600 + Math.random() * 800; for (let k = 0; k < 4 + Math.floor(Math.random() * 4); k += 1) { const f2 = f * (0.85 + Math.random() * 0.4); tone(f, f2, 0.14, 0.035, { at: k * 0.16 }); f = f2; } };
+    const robin = () => { for (let k = 0; k < 6; k += 1) tone(3200 + Math.random() * 2400, 2600 + Math.random() * 3000, 0.07, 0.025, { at: k * 0.09 }); };
+    const wren = () => { for (let k = 0; k < 14; k += 1) tone(4200 + (k % 2) * 900, 4400, 0.035, 0.02, { at: k * 0.045 }); };
+    if (s.night) { if ((m === 4 || m === 5) && r < 0.05) for (let k = 0; k < 8; k += 1) tone(1800 + (k % 3) * 700, 1500 + (k % 2) * 1600, 0.1, 0.03, { at: k * 0.13 }); return; } // the nightingale
+    const spring = m >= 2 && m <= 6; const chorus = s.dawn && spring ? 4 : 1;
+    if (m === 11 || m <= 1) { if (r < 0.02) for (let k = 0; k < 3; k += 1) tone(3000, 2600, 0.06, 0.03, { at: k * 0.15 }); return; } // a sparrow
+    if (r < 0.012 * chorus) blackbird(); else if (r < 0.022 * chorus) robin(); else if (spring && r < 0.028 * chorus) wren();
+    if (m >= 3 && m <= 5 && Math.random() < 0.004) { tone(690, 680, 0.3, 0.05); tone(580, 570, 0.4, 0.05, { at: 0.42 }); } // the cuckoo
+  }
+  let lastAngelus = '';
+
   /* ---- the rooms: what each sounds like (s.room: the section shown, or a project page) */
   function roomSounds(room) {
     const r = Math.random();
@@ -130,14 +159,21 @@
     set(beds.rain.g.gain, 0.16 * wet0 * outW);
     set(beds.river.g.gain, inside ? 0 : 0.035); set(beds.river.f.frequency, 700 + Math.random() * 500, 0.6); // the river's murmur
     if (!s.on) return;
+    const ak = `${s.day}-${s.hour}`; // the angelus, once, in the minute it is due
+    if ([7, 12, 19].includes(s.hour) && s.minute === 0 && ak !== lastAngelus && !inside) { lastAngelus = ak; angelus(); }
+    if (s.place === 'tower') { set(beds.wind.g.gain, Math.min(0.2, 0.05 + (wx.wind || 0) / 160)); set(beds.river.g.gain, 0); if (Math.random() < 0.006) tone(2400, 1500, 0.9, 0.035, { vibrato: 12 }); } // up high: the wind, a buzzard
+    if (s.place === 'village') {
+      set(beds.crowd.g.gain, s.market ? 0.05 : 0); set(beds.river.g.gain, 0.05);
+      if (s.market && Math.random() < 0.08) { const f = 180 + Math.random() * 160; tone(f, f * (0.8 + Math.random() * 0.4), 0.18 + Math.random() * 0.2, 0.02, { type: 'sawtooth', filter: 1100 }); } // voices
+      if (s.forge && Math.random() < 0.05) [0, 0.4].forEach((at) => chime([1180, 2640, 3910], 0.035, 0.7, true, at)); // the smith's hammer
+      if (s.tavern && Math.random() < 0.03) for (let k = 0; k < 3; k += 1) tone(320 + Math.random() * 120, 260, 0.12, 0.02, { type: 'square', filter: 900, at: k * 0.14 }); // laughter at the tavern
+    } else set(beds.crowd.g.gain, 0);
     if (music) compose();
     if (Math.random() < 0.5) burst(1500 + Math.random() * 3000, 0.02 + Math.random() * 0.04, 0.12 * room); // the fire crackles
     if (wx.kind === 'storm' && Math.random() < 0.012) burst(90, 3, 0.5 * outW, { type: 'lowpass' }); // thunder far off
     if (inside) { roomSounds(s.room); return; }
     if ((wx.wind || 0) > 6 && Math.random() < Math.min(0.06, wx.wind / 600)) tone(160, 120, 0.7, 0.03, { type: 'sawtooth', filter: 300, vibrato: 7 }); // the mill creaks
-    if (!s.night && wx.kind !== 'storm' && wet0 < 0.7 && Math.random() < 0.03) { // a bird: two or three quick chirps
-      const f = 2500 + Math.random() * 2000; for (let k = 0; k < 2 + Math.floor(Math.random() * 2); k += 1) tone(f, f * 1.4, 0.07, 0.04, { at: k * 0.12 });
-    }
+    if (wx.kind !== 'storm' && wet0 < 0.7) birds(s);
     if (!s.night && Math.random() < 0.01) for (let k = 0; k < 2; k += 1) tone(420, 360, 0.12, 0.04, { type: 'square', filter: 700, at: k * 0.18 }); // ducks
     if (s.night && Math.random() < 0.006) cue('owl');
     if (s.night && s.summer && Math.random() < 0.3) for (let k = 0; k < 3; k += 1) tone(4400, 4300, 0.03, 0.012, { at: k * 0.05, type: 'square' }); // crickets
@@ -192,7 +228,7 @@
         wet = ac.createGain(); wet.gain.value = 0.55; const rv = reverb(2.6); wet.connect(rv).connect(master); wet.connect(master);
         noise = noiseBuffer();
         beds.fire = bed('lowpass', 500, 0.5); beds.wind = bed('bandpass', 500, 0.8); beds.rain = bed('bandpass', 1800, 0.4);
-        beds.river = bed('bandpass', 900, 1.6);
+        beds.river = bed('bandpass', 900, 1.6); beds.crowd = bed('bandpass', 420, 0.7); // (the market's murmur)
         RECORDED.forEach((n) => fetch(new URL(`${n}.mp3`, SND)).then((r) => r.arrayBuffer()).then((b) => ac.decodeAudioData(b))
           .then((buf) => { takes[n] = buf; }).catch(() => {})); // (the synthesised sound stays if a file fails)
       }

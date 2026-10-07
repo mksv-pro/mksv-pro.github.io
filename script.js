@@ -315,6 +315,15 @@ function soundState() {
     wx: currentWx(), night: root.getAttribute('data-sky') === 'night', room,
     echo: ['talks', 'research', 'contact', 'projects', 'workshop'].includes(room), // the stone rooms
     summer: [5, 6, 7].includes(new Date().getMonth()),
+    ...(() => { // where, close up; the hour in Paris (the angelus, the birds); what goes on in the village
+      const d = skyNow(); const p = new Date(d.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
+      const h = p.getHours(); const wd = p.getDay(); const alt = Math.asin(skyAt(d).sun[2]) / rad;
+      return {
+        place: root.classList.contains('village') ? 'village' : root.classList.contains('lookout') ? 'tower' : null,
+        hour: h, minute: p.getMinutes(), day: p.toDateString(), month: p.getMonth(), dawn: alt > -6 && alt < 10 && h < 12,
+        market: [0, 3, 5, 6].includes(wd) && alt > 0, forge: wd !== 0 && h >= 7 && h < 18, tavern: h >= 18 || h < 1,
+      };
+    })(),
   };
 }
 /** A sound for something that just happened (when the sound is on). */
