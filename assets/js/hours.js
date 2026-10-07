@@ -2902,7 +2902,9 @@ f11111f2.
   }
   const t0 = performance.now();
   const now = () => (performance.now() - t0) / 1000;
-  const isOn = () => root.getAttribute('data-theme') === 'hours';
+  // on, as the castle theme or as the narrow screens' banner (the landscape only: no rooms, no close-ups)
+  const banner = () => root.getAttribute('data-theme') !== 'hours' && root.classList.contains('banner');
+  const isOn = () => root.getAttribute('data-theme') === 'hours' || root.classList.contains('banner');
   const SCENE_LABEL = 'Pixel-art landscape under the sky over Paris at this hour: a castle with an observatory on a '
     + 'rock above a river, mountains and a forest; in front, a knight resting by a bonfire with a sword driven '
     + 'into its coals, and a wizard with a glowing staff, in tall grass.';
@@ -2979,7 +2981,7 @@ f11111f2.
     // ~200 scene rows whatever the screen, so the watchers keep their size; integer scales, even
     // from 4 up, so the interface's pixels (--upx, half as big) stay on the same grid
     const raw = r.height / 200;
-    px = raw < 2.5 ? 2 : raw < 3.5 ? 3 : raw < 5 ? 4 : raw < 7 ? 6 : 8;
+    px = raw < 1.5 ? 1 : raw < 2.5 ? 2 : raw < 3.5 ? 3 : raw < 5 ? 4 : raw < 7 ? 6 : 8; // (1: a phone's banner, 11rem tall)
     root.style.setProperty('--px', `${px}px`);
     root.style.setProperty('--upx', `${Math.max(2, Math.round(px / 2))}px`);
     const W = Math.ceil(r.width / px); const H = Math.ceil(r.height / px);
@@ -3089,6 +3091,7 @@ f11111f2.
   backBtn.type = 'button'; backBtn.className = 'village-back'; backBtn.textContent = '[step back · Esc]';
   backBtn.addEventListener('click', () => zoomTo(false));
   function zoomTo(on) {
+    if (on && banner()) return;
     if (!scene || (on && zoom && zoom.on) || (!on && !zoom)) return;
     zoom = { on, t0: now() - (zoom && !reduce ? Math.max(0, ZOOM_S - (now() - zoom.t0)) : 0), done: false };
     if (on) { parTarget = 0; if (!backBtn.isConnected) document.body.append(backBtn); }
@@ -3237,6 +3240,7 @@ f11111f2.
   towerBar.innerHTML = '<button type="button" data-turn="-1">[◄]</button> <button type="button" data-turn="0">[step down · Esc]</button> <button type="button" data-turn="1">[►]</button>';
   towerBar.addEventListener('click', (e) => { const b = e.target.closest('[data-turn]'); if (!b) return; const k = Number(b.dataset.turn); if (k) turnTower(k); else towerTo(false); });
   function towerTo(on) {
+    if (on && banner()) return;
     if (!scene || (on && tower && tower.on) || (!on && !tower)) return;
     if (on) { if (!pano || pano.W !== scene.W || pano.H !== scene.H) pano = makePano(scene.W, scene.H); tower = { on: true, t0: now(), yaw: 2, to: 2 }; document.body.append(towerBar); }
     else tower = { ...tower, on: false, t0: now() };
@@ -5113,7 +5117,7 @@ f11111f2.
       addEventListener('resize', redraw);
       new IntersectionObserver(([e]) => { visible = e.isIntersecting; sync(); }).observe(plate);
       document.addEventListener('visibilitychange', sync);
-      new MutationObserver(sync).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+      new MutationObserver(sync).observe(root, { attributes: true, attributeFilter: ['data-theme', 'class'] });
       // parallax follows a mouse, not a finger; the menu box moves with the wizard
       if (!reduce) {
         addEventListener('pointermove', (e) => {
@@ -5150,7 +5154,7 @@ f11111f2.
       if (!running && isOn()) render(now());
     },
     /** Into the room of section `id`, or back out (null); script.js calls it as the hash changes. */
-    room(id, { animate = true } = {}) { goRoom(id, animate); },
+    room(id, { animate = true } = {}) { if (banner()) { root.classList.toggle('room-ready', Boolean(id)); return; } goRoom(id, animate); },
     /** Draw the realm (the map dialog's Paris) into a 240x150 canvas. */
     realm(cv) { if (cv) drawRealm(cv); },
     /** The hour has turned: the bell swings a few seconds. */

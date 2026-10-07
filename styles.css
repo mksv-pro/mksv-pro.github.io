@@ -639,7 +639,12 @@ dialog.dungeon canvas {
 [data-theme="hours"] .plate-img { position: relative; background: #2c3b58; }
 [data-theme="hours"][data-sky="day"] .plate-img { background: #8cc9f4; }
 .plate-img canvas { display: none; position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
-[data-theme="hours"] .plate-img canvas { display: block; }
+[data-theme="hours"] .plate-img canvas, .banner .plate-img canvas { display: block; }
+.banner .plate-img { position: relative; } /* (the narrow screens' landscape, over the engraving) */
+.cap-banner { display: none; }
+.banner .cap-banner { display: inline; }
+.banner .cap-dark { display: none; }
+@media (max-width: 36rem) { .banner .plate-img { height: 11rem; } }
 [data-theme="hours"] .term { max-width: none; margin: 0; padding: 0; width: auto; }
 [data-theme="hours"] .msgline, [data-theme="hours"] .status { border-color: var(--gold); }
 
@@ -974,6 +979,10 @@ dialog.dungeon canvas {
 
 /* the curiosity hunt is the castle's: no counter in the terminal */
 [data-theme="dark"] :is(#st-curios, .sound-toggle) { display: none; }
+
+/* the map's places in the landscape */
+.domain button { font: inherit; color: var(--accent); background: none; border: 0; cursor: pointer; padding: 0 .2rem; min-height: 24px; }
+.domain button:hover, .domain button:focus-visible { color: var(--hi); }
 
 /* a figure alive in a card (script.js waveFig) */
 .pub-fig { margin: .8rem 0; } .pub-fig canvas { display: block; width: 100%; max-width: 26rem; height: auto; color: var(--ink); image-rendering: auto; }

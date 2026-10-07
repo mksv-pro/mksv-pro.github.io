@@ -206,7 +206,9 @@ function applyTheme(theme, persist) {
   $('theme-next').textContent = `[${T.themeName[nextTheme()]}]`;
   themeColor.setAttribute('content', getComputedStyle(root).getPropertyValue('--bar').trim());
   if (persist) store('theme', theme);
-  if (theme === 'hours') {
+  // narrow screens: the terminal, under a banner of the living landscape (unless `banner off`)
+  root.classList.toggle('banner', !WIDE.matches && store('banner') !== 'off' && theme !== 'hours');
+  if (theme === 'hours' || root.classList.contains('banner')) {
     const load = (src) => new Promise((resolve, reject) => {
       const s = document.createElement('script');
       s.src = src;
@@ -923,6 +925,14 @@ dialog.addEventListener('click', (e) => {
   if (pick) { dialog.close(); applyTheme(pick.dataset.pick, true); return; }
   const use = e.target.closest('[data-use]');
   if (use) { dialog.close(); useItem(use.dataset.use); return; }
+  const go = e.target.closest('[data-go]'); // the map's places in the landscape
+  if (go) {
+    dialog.close(); const k = go.dataset.go;
+    if (k === 'cellar') { descend(); return; }
+    if (root.dataset.room) leaveRoom();
+    setTimeout(() => { if (window.Hours) window.Hours[k === 'tower' ? 'tower' : 'village'](); }, root.dataset.room ? 900 : 0);
+    return;
+  }
   if (e.target.closest('.map a')) { // let the link navigate, out of the descent too
     document.querySelectorAll('dialog[open]').forEach((d) => d.close());
     return;
@@ -1014,7 +1024,9 @@ function realmHtml() {
 }
 function showMap() {
   const realm = root.getAttribute('data-theme') === 'hours' && window.Hours;
-  showDialog(T.mapTitle, mapHtml(here) + (realm ? realmHtml() : ''));
+  const domain = realm ? `<h3>The domain</h3><p class="domain">${[['village', 'the village and its market'], ['tower', 'up the watchtower'], ['cellar', 'down to the cellar']]
+    .map(([k, l]) => `<button type="button" data-go="${k}">[${l}]</button>`).join(' ')}</p>` : '';
+  showDialog(T.mapTitle, mapHtml(here) + domain + (realm ? realmHtml() : ''));
   if (realm) window.Hours.realm(dialog.querySelector('canvas.realm'));
 }
 
