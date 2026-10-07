@@ -1290,7 +1290,9 @@ nNnnnn..
       const chimney = (chx, yb, h, rh) => { rect(chx, yb - h - rh - 1, 1, rh, I.WALL_SH); chimneys.push({ x: chx, y: yb - h - rh - 2 }); };
       const WALLS = [I.WALL_HI, I.WALL, I.WALL_SH]; const STONE3 = [I.ROCK_HI, I.ROCK, I.ROCK_SH];
       const THATCH = [I.THATCH, I.THATCH_SH]; const TILES = [I.ROOF_HI, I.ROOF_SH]; const SLATES = [I.SLATE_HI, I.SLATE_SH];
+      const places = {};
       function building(x, yb, w, h, kind, j) {
+        if (!places[kind]) places[kind] = { x, yb, w };
         if (kind === 'well') { // a stone ring, two posts, a little roof, the bucket
           set(x, yb - 1, I.ROCK_HI); set(x + 1, yb - 1, I.OUTLINE); set(x + 2, yb - 1, I.ROCK_SH);
           set(x, yb, I.ROCK); set(x + 1, yb, I.ROCK); set(x + 2, yb, I.ROCK_SH);
@@ -1354,7 +1356,7 @@ nNnnnn..
           building(x, baseAt(x, w), w, h, kind, j);
           x += w + (kind === 'tavern' ? 4 : 2); // (room for the tavern's sign)
         });
-      hamlet.x1 = x;
+      hamlet.x1 = x; hamlet.places = places;
     }
 
     // pines on the hill, smaller and sparser with distance
@@ -1708,14 +1710,14 @@ nNnnnn..
       butterflies: Array.from({ length: 3 }, (_, k) => ({ x: M + rng() * Math.min(W, Ws), y: yg + 6 + rng() * (H - yg - 12), ph: rng() * 6, c: [I.FL_WHITE, I.FL_YEL, I.FL_BLUE][k] })),
       birds: null, dragon: null, nextDragon: null,
       // the countryside (see draw and step)
-      watch, mill, chimneys, horse, deer, owl, month, hamlet: { doors, eaves, spire, x0: hamlet.x0, x1: hamlet.x1 }, fireworks: [], notes: [],
+      watch, mill, chimneys, horse, deer, owl, month, hamlet: { doors, eaves, spire, x0: hamlet.x0, x1: hamlet.x1, places: hamlet.places }, fireworks: [], notes: [],
       pathX, pathW, top, walker: null, zzz: [], fish: null,
       angler: (() => { const x = M + Math.round(0.135 * Ws); return { x, y: yg + 3 - SPRITES.angler.h, wy: riverBot(x + 6) - 1 }; })(),
       bonfires: [[mill.x + 16, Math.round(hill[clamp(mill.x + 16, 0, WE - 1)]) + 1, L.MID], [hamlet.x1 + 7, riverTop(hamlet.x1 + 7) - 3, L.MID],
         [M + Math.round(0.33 * Ws), crestAt(M + Math.round(0.33 * Ws)) + 1, L.NEAR]],
       heron: (() => { const x = M + Math.round(0.74 * Ws); return { x, y: riverTop(x) + 4 - SPRITES.heron.h }; })(),
       ducks: [0, 1, 2].map((k) => ({ x: pathX[yl0 + 4] + 20 + k * 9, a: pathX[yl0 + 4] + 16, b: M + Math.round(0.92 * Ws), dir: k % 2 ? 1 : -1, ph: k })),
-      geese: null, swallows: null, meteors: [], millAngle: 0, lichen, wmill, quarry, falls, orchard, wheel: 0, bridgeK: 0,
+      geese: null, swallows: null, meteors: [], millAngle: 0, lichen, wmill, quarry, falls, orchard, wheel: 0, bridgeK: 0, hill, flock: null,
       gate: { x: gx, w: gw, h: gh, crest },
     };
   }
@@ -2929,8 +2931,7 @@ f11111f2.
   }
   function villageView(t) {
     const { W, H, M } = scene; const { vx, vy, Z } = zoom; const lm = shift(RATE[L.MID]) - M;
-    const d = today();
-    if (!marketDay(d) || look.night >= 0.3) return;
+    const d = today(); const market = marketDay(d) && look.night < 0.3;
     const ox = (X) => (X + lm - vx) * Z; const oy = (Y) => (Y - vy) * Z;
     const P = (n) => pal32[I[n]];
     const shade = (c, a) => pack(mix(unpack(c), [0, 0, 0], a));
@@ -2952,8 +2953,8 @@ f11111f2.
       put(x0 + 1 - (walk ? 1 : 0), feet, leg); put(x0 + 3 + (walk ? 1 : 0), feet, leg);
       if (f.k % 3 === 0) { const bx = dir > 0 ? x0 + 5 : x0 - 2; rect(bx, top + 7, 2, 2, P('TIMBER_HI')); put(bx + (dir > 0 ? 0 : 1), top + 6, P('TIMBER_SH')); } // a basket
     }
-    const x0 = scene.hamlet.x1 + 1; const mk = market(d.getHours());
-    [[0, I.FLAG, 'bread'], [9, I.FLAG2, 'cloth']].forEach(([dx, c, kind], s) => {
+    const x0 = scene.hamlet.x1 + 1; const mk = market ? marketOf(d.getHours()) : { folk: [], m: [], N: 0, x0: 0 };
+    if (market) [[0, I.FLAG, 'bread'], [9, I.FLAG2, 'cloth']].forEach(([dx, c, kind], s) => {
       const X = x0 + dx; const L0 = ox(X); const Y = scene.riverTop(X) - 3; const w = 7 * Z;
       const ground = oy(Y) + Z - 1; const counter = oy(Y - 2); const aw = oy(Y - 6);
       // the vendor, behind the counter, turning now and then
@@ -2974,15 +2975,46 @@ f11111f2.
         else rect(wx, counter - 3, 3, 3, [P('FLAG'), P('FL_YEL'), P('GRASS_HI'), P('FLAG2')][i]);
       }
     });
-    if (scene.marketShow > t) mk.m.forEach((v, k) => { // the equilibrium density, a bar per place
+    if (market && scene.marketShow > t) mk.m.forEach((v, k) => { // the equilibrium density, a bar per place
       const X = mk.x0 + k; const base = oy(scene.riverTop(X) - 10);
       for (let j = 0; j < Math.round(v * mk.N * 1.5 * Z); j += 1) for (let i = 0; i < Z - 1; i += 1) blend(ox(X) + i, base - j, [255, 244, 214], 0.55);
+    });
+    const life = villageLife(d, t);
+    zoom.actors = life.map((a) => ({ ...a, sx: Math.round(ox(a.x) + Z / 2) }));
+    zoom.actors.forEach((a) => {
+      const fy = oy(a.y) + Z - 1 - (a.hop ? 2 : 0);
+      if (a.small) { // a child: smaller, bareheaded
+        const x0 = a.sx - 1; rect(x0, fy - 7, 3, 2, P('TIMBER')); rect(x0, fy - 5, 3, 2, P('SKIN')); rect(x0, fy - 3, 3, 2, pal32[a.c]); put(x0, fy - 1, P('CLOAK_SH')); put(x0 + 2, fy - 1, P('CLOAK_SH')); put(x0, fy, P('CLOAK_SH')); put(x0 + 2, fy, P('CLOAK_SH'));
+        return;
+      }
+      person(a.sx, fy, a, a.role !== 'faithful');
+      if (a.role === 'smith') { // the hammer up and down, sparks off the anvil
+        const up = !reduce && Math.floor(t * 3) % 2; put(a.sx - 3, fy - 7 - (up ? 2 : 0), P('ARM_SH')); put(a.sx - 3, fy - 6 - (up ? 2 : 0), P('TIMBER_SH'));
+        if (!up) for (let k = 0; k < 3; k += 1) put(a.sx - 4 - k, fy - 4 - ((k + Math.floor(t * 6)) % 3), pack([255, 220, 140]));
+      }
+      if (a.role === 'minstrel') { rect(a.sx + 2, fy - 6, 2, 3, P('TIMBER_HI')); put(a.sx + 4, fy - 7, P('TIMBER_SH')); if (!reduce) put(a.sx + 3, fy - 12 - (Math.floor(t * 2) % 4), P('CREAM')); }
+      if (a.role === 'drinker') { rect(a.sx + 2 * (a.dir || 1), fy - 5, 2, 2, P('GOLD_SH')); } // a mug
     });
     mk.folk.forEach((f) => { // the villagers, walking by the game's policy
       const X = mk.x0 + f.pos; const feet = oy(scene.riverTop(Math.round(X)) - 3) + Z - 1;
       f.dir = f.to > f.pos ? 1 : f.to < f.pos ? -1 : (f.dir || 1);
       person(Math.round(ox(X) + Z / 2), feet, f, Math.abs(f.to - f.pos) < 0.01);
     });
+  }
+  /** Close up, a click: a villager answers (a line for their role), else the market explains itself. */
+  function villageClick(x, y) {
+    if (!zoom || !zoom.done) return;
+    const pick = (a) => a[Math.floor(Math.random() * a.length)];
+    const who = (zoom.actors || []).find((a) => Math.abs(x - a.sx) <= 3 && y < (a.y - zoom.vy + 1) * zoom.Z && y > (a.y - zoom.vy) * zoom.Z - 14);
+    if (who) { say(pick(LINES[who.role])); return; }
+    const mk = scene.market; const lm = shift(RATE[L.MID]) - scene.M;
+    if (mk && marketDay(today()) && look.night < 0.3) {
+      const f = mk.folk.find((q) => Math.abs(x - ((mk.x0 + q.pos + lm - zoom.vx) * zoom.Z + zoom.Z / 2)) <= 3 && Math.abs(y - (scene.riverTop(Math.round(mk.x0 + q.pos)) - 4 - zoom.vy) * zoom.Z) < 10);
+      if (f) { say(pick(LINES.buyer)); return; }
+      const st = [5, 14].find((c) => Math.abs(x - ((mk.x0 + c + lm - zoom.vx) * zoom.Z)) < 8 && Math.abs(y - (scene.riverTop(mk.x0 + c) - 5 - zoom.vy) * zoom.Z) < 8);
+      if (st !== undefined) { say(pick(LINES.vendor)); return; }
+    }
+    if (villageHit(x, y)) talk({ kind: 'market' });
   }
   /** Close up, is canvas pixel (x, y) on the market (the stalls and the bank around them)? */
   function villageHit(x, y) {
@@ -3263,9 +3295,39 @@ f11111f2.
     if (!tower.on && e >= 1) { tower = null; towerBar.remove(); if (!running && isOn()) render(now()); }
   }
 
+  /** Who is about in the village at instant d (plane x, feet y, coat, what they do): the smith
+   *  at his forge on working days, drinkers at the tavern's door at night (and a minstrel on
+   *  Fridays, Saturdays and feast days), the faithful at the chapel on Sunday morning, children
+   *  on the bank on warm dry afternoons. */
+  function villageLife(d, t) {
+    const pl = scene.hamlet.places; const h = d.getHours() + d.getMinutes() / 60; const day = d.getDay(); const out = [];
+    const feet = (x) => scene.riverTop(x) - 3;
+    const add = (x, c, role, k, extra = {}) => out.push({ x, y: feet(Math.round(x)), c, role, k, ...extra });
+    if (pl.forge && day !== 0 && h >= 7 && h < 18) add(pl.forge.x + 7, I.RUST_SH, 'smith', 7, { dir: -1 });
+    if (pl.tavern && (h >= 18 || h < 1)) {
+      add(pl.tavern.x + pl.tavern.w + 1, I.ROBE, 'drinker', 1, { dir: -1 }); add(pl.tavern.x - 2, I.FLAG2, 'drinker', 2, { dir: 1 });
+      if (day === 5 || day === 6 || festival(d)) add(pl.tavern.x + pl.tavern.w + 3, I.FLAG, 'minstrel', 5, { dir: -1 });
+    }
+    if (pl.chapel && day === 0 && h >= 9 && h < 11.5) [-5, -3, 6, 8].forEach((dx, k) => add(pl.chapel.x + dx, [I.CLOAK, I.ROBE, I.RUST, I.TIMBER][k], 'faithful', k, { dir: dx < 0 ? 1 : -1 }));
+    const warm = (weather.temp ?? 15) >= 15 && !WET[weather.kind] && weather.kind !== 'snow';
+    if (pl.well && warm && h >= 14 && h < 19 && look.night < 0.3) [0, 1].forEach((k) => {
+      const x = pl.well.x + 1 + Math.sin(t * (0.9 + k * 0.3) + k * 2) * 6; add(x, k ? I.FL_YEL : I.GRASS_HI, 'child', 9 + k, { small: true, dir: Math.cos(t * (0.9 + k * 0.3) + k * 2) > 0 ? 1 : -1, hop: Math.abs(Math.sin(t * 5 + k)) > 0.7 });
+    });
+    return out;
+  }
+  const LINES = {
+    smith: ['"Iron wants a hot fire and a patient arm."', '"The castle\'s gate hinges? Mine. Every one."', '"Mind the sparks, traveller."'],
+    drinker: ['"Another round, and a song if the minstrel is sober."', '"They say the ferryman finally learned the river."', '"Rain tomorrow. My knee says so."'],
+    minstrel: ['"A ballad of the dragon, three verses and a chorus. Coin optional, applause compulsory."', '"I know the old tunes and the new; the new are the old ones, faster."'],
+    faithful: ['"The bell rang late again. The bell-ringer counts in his own hours."', '"Good morrow."'],
+    child: ['"You can\'t catch me!"', '"I saw a fish as long as my arm!"', '"Is it true the wizard is a thousand years old?"'],
+    buyer: ['"The bread is better on Wednesdays."', '"I came for cloth and I am leaving with apples."', '"Too many people at the bread stall; I\'ll wait."', '"Everyone queues where everyone queues."'],
+    vendor: ['"Fresh this morning!"', '"Two for the price of three. No, wait."', '"Finest cloth this side of the mountains."'],
+  };
+
   /** The market's equilibrium for hour h (bread in the morning, cloth after noon), solved once an
    *  hour, and its villagers: x0, the bank's first place (MID plane); folk at places (floats). */
-  function market(h) {
+  function marketOf(h) {
     const mk = scene.market;
     if (mk && mk.h === h) return mk;
     const N = 32; const x0 = scene.hamlet.x1 - 1; const s0 = 5; const s1 = 14; // (clear of the houses; the stalls' middles, see draw)
@@ -3302,6 +3364,7 @@ f11111f2.
         }
       }
     };
+    const rect2 = (x0, y0, w, h, c) => { for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) put(x0 + x, y0 + y, c, false); };
     const blit = (s, x0, y0, maxY = H, sh = null) => {
       for (let y = 0; y < s.h; y += 1) {
         const yy = y0 + y + (sh ? sh(y) : 0);
@@ -3706,6 +3769,7 @@ f11111f2.
       const x = mx(Math.round(scene.pathX[Math.round(wk.y)])); const y = Math.round(wk.y);
       put(x, y - 2, pal32[wk.kind === 'messenger' ? I.FLAG : I.CLOAK], false); put(x, y - 1, pal32[I.CLOAK_SH], false); put(x, y - 3, pal32[I.SKIN], false);
       if (wk.kind === 'lantern') { put(x + 1, y - 2, pack([255, 214, 120]), false); halo(x + 1, y - 2, 3, [255, 190, 90], 0.4 * look.night); }
+      if (wk.kind === 'peddler') { put(x - wk.dir, y - 1, pal32[I.TIMBER], false); put(x - 2 * wk.dir, y - 1, pal32[I.FL_RED], false); put(x - wk.dir, y, pal32[I.OUTLINE], false); } // his barrow
     }
     { // market day (see marketDay): two stalls with striped awnings by the hamlet, folk about them
       const d = today(); const close = zoom && zoom.done; // (close up, villageView draws them)
@@ -3718,7 +3782,7 @@ f11111f2.
           for (let k = 0; k < 7; k += 1) put(x + k, y - 2, pal32[I.TIMBER], false);
           put(x + 1, y - 3, pal32[I.RUST_HI], false); put(x + 3, y - 3, pal32[I.GRASS_HI], false); put(x + 5, y - 3, pal32[I.FL_YEL], false); // the wares
         });
-        const mk = market(d.getHours());
+        const mk = marketOf(d.getHours());
         if (!close && scene.marketShow > t) mk.m.forEach((v, k) => { // its density, shown a while on a click
           const x = mx(mk.x0 + k); const y = scene.riverTop(mk.x0 + k) - 11; // (over the awnings)
           for (let j = 0; j < Math.round(v * mk.m.length * 3); j += 1) blend(x, y - j, [255, 244, 214], 0.7, false);
@@ -3730,6 +3794,42 @@ f11111f2.
       }
     }
 
+    { // the shepherd's flock on the hill east of the path (high in summer, low in winter), or, on the
+      // first Sunday of the month, a tournament there instead
+      const d = today(); const h = d.getHours();
+      if (d.getDay() === 0 && d.getDate() <= 7 && h >= 10 && h < 17 && look.night < 0.3) {
+        const jt = scene.joust ||= (() => { const x0 = M + Math.round(0.74 * scene.Ws); return { x0, y: Math.round(scene.hill[x0] + 6), len: 26 }; })();
+        const y = jt.y; for (let k = 0; k < jt.len; k += 1) put(mx(jt.x0 + k), y, pal32[k % 4 ? I.TIMBER : I.TIMBER_SH], false); // the tilt
+        [[-4, I.FLAG], [jt.len + 3, I.FLAG2]].forEach(([dx, c]) => { const x = mx(jt.x0 + dx); for (let r = 0; r < 4; r += 1) for (let q = -r; q <= r; q += 1) put(x + q, y - 4 + r, pal32[(q + r) % 2 ? c : I.FL_WHITE], false); }); // pavilions
+        const ph = reduce ? 0.3 : (t % 6) / 6; const run = clamp(ph * 1.25);
+        [[jt.x0 + run * jt.len, 1, I.FLAG, -1], [jt.x0 + jt.len - run * jt.len, -1, I.FLAG2, 1]].forEach(([X, dir, c, side]) => {
+          const x = mx(Math.round(X)); const yy = y + side * 2;
+          put(x, yy, pal32[I.TIMBER_SH], false); put(x + 1, yy, pal32[I.TIMBER_SH], false); put(x - 1, yy, pal32[I.TIMBER_SH], false); put(x + dir, yy - 1, pal32[I.TIMBER_SH], false); // the horse
+          put(x, yy - 1, pal32[c], false); put(x, yy - 2, pal32[I.ARM_HI], false); // the knight
+          for (let k = 1; k <= 3; k += 1) put(x + dir * k, yy - 2, pal32[I.TIMBER_HI], false); // the lance
+        });
+        if (Math.abs(run - 0.5) < 0.04) put(mx(Math.round(jt.x0 + jt.len / 2)), y - 3, pal32[I.CREAM], false); // a lance splinters
+      } else if (look.night < 0.5) {
+        const fl = scene.flock ||= (() => {
+          const summer = [5, 6, 7, 8].includes(d.getMonth()); const x0 = M + Math.round(0.78 * scene.Ws);
+          const yOf = (x) => Math.round(scene.hill[clamp(Math.round(x), 0, scene.WE - 1)] + (summer ? 3 : 9));
+          return { summer, yOf, sh: { x: x0, tx: x0 }, dog: { a: 0 }, sheep: Array.from({ length: 9 }, (_, k) => ({ x: x0 + (k % 5) * 3 - 6, dy: (k % 3) - 1, vx: 0 })) };
+        })();
+        fl.sheep.forEach((q) => { const x = mx(Math.round(q.x)); const y = fl.yOf(q.x) + q.dy; put(x, y, pal32[I.FL_WHITE], false); put(x + 1, y, pal32[I.FL_WHITE], false); put(x + (q.vx < 0 ? -1 : 2), y, pal32[I.OUTLINE], false); });
+        const sx = mx(Math.round(fl.sh.x)); const sy = fl.yOf(fl.sh.x) + 1;
+        put(sx, sy, pal32[I.CLOAK_SH], false); put(sx, sy - 1, pal32[I.TIMBER], false); put(sx, sy - 2, pal32[I.SKIN], false);
+        put(sx + 1, sy - 1, pal32[I.TIMBER_SH], false); put(sx + 1, sy - 2, pal32[I.TIMBER_SH], false); put(sx + 1, sy - 3, pal32[I.TIMBER_SH], false); put(sx + 2, sy - 3, pal32[I.TIMBER_SH], false); // the crook
+        const dgx = fl.sh.x + Math.cos(fl.dog.a) * 9; const dgy = fl.yOf(dgx) + Math.round(Math.sin(fl.dog.a) * 2);
+        put(mx(Math.round(dgx)), dgy, pal32[I.OUTLINE], false); put(mx(Math.round(dgx)) + 1, dgy, pal32[I.TIMBER_SH], false);
+      }
+    }
+    if (!(zoom && zoom.done)) villageLife(today(), t).forEach((a) => { // the villagers' day, small from here
+      const x = mx(Math.round(a.x)); const y = a.y - (a.hop ? 1 : 0);
+      if (a.small) { put(x, y, pal32[a.c], false); put(x, y - 1, pal32[I.SKIN], false); return; }
+      put(x, y, pal32[I.CLOAK_SH], false); put(x, y - 1, pal32[a.c], false); put(x, y - 2, pal32[I.SKIN], false);
+      if (a.role === 'smith' && !reduce && Math.floor(t * 3) % 2) put(x + a.dir, y - 1, pack([255, 220, 150]), false);
+      if (a.role === 'minstrel' && !reduce && Math.floor(t) % 3 === 0) put(x + 1, y - 4 - (Math.floor(t * 2) % 3), pal32[I.CREAM], false);
+    });
     { // the water mill's wheel turning in the stream (faster in spate), its spray
       const wm = scene.wmill; const x0 = mx(wm.x); const y0 = wm.y; const a0 = scene.wheel; const R = 4;
       for (let a = 0; a < 6.28; a += 0.25) put(x0 + Math.round(Math.cos(a) * R), y0 + Math.round(Math.sin(a) * R), pal32[I.TIMBER]);
@@ -3839,6 +3939,11 @@ f11111f2.
       const x = Math.round(scene.pathX[y]) - M + groundOff(y) - 3;
       blit(sp, x, y - sp.h);
       if (wk.kind === 'lantern') { put(x + 6, y - sp.h + 4, pack([255, 214, 120]), false); halo(x + 6, y - sp.h + 4, 4, [255, 190, 90], 0.45 * look.night); }
+      if (wk.kind === 'peddler') { // his cart behind him, laden
+        const cx0 = x + (wk.dir < 0 ? 8 : -8); rect2(cx0, y - 6, 7, 4, pal32[I.TIMBER]); rect2(cx0, y - 7, 7, 1, pal32[I.TIMBER_HI]);
+        put(cx0 + 1, y - 8, pal32[I.FL_RED], false); put(cx0 + 3, y - 8, pal32[I.FL_YEL], false); put(cx0 + 5, y - 8, pal32[I.CLOTH], false); put(cx0 + 2, y - 9, pal32[I.FL_RED], false);
+        [[1, 0], [0, 1], [1, 1], [2, 1], [1, 2]].forEach(([dx, dy]) => put(cx0 + 2 + dx, y - 3 + dy, pal32[I.OUTLINE], false)); // a wheel
+      }
       if (wk.kind === 'messenger') { for (let k = 0; k < 7; k += 1) put(x + 1, y - sp.h - k, pal32[I.TIMBER_SH], false); put(x + 2, y - sp.h - 6, pal32[I.FLAG], false); put(x + 3, y - sp.h - 6, pal32[I.FLAG], false); put(x + 2, y - sp.h - 5, pal32[I.FLAG], false); }
     }
     scene.zzz.forEach((z) => { // the knight dozes after dark
@@ -4301,6 +4406,9 @@ f11111f2.
     if (inBox(knight.x + go, knight.y, SPRITES.knight.w, SPRITES.knight.h)) return { kind: 'knight' };
     const lmx = shift(RATE[L.MID]) - scene.M;
     const lmx2 = shift(RATE[L.MID]) - scene.M;
+    const jt = scene.joust; const dd = today();
+    if (jt && dd.getDay() === 0 && dd.getDate() <= 7 && inBox(jt.x0 + lmx2 - 6, jt.y - 6, jt.len + 12, 10)) return { kind: 'joust' };
+    const fk = scene.flock; if (fk && look.night < 0.5 && fk.sheep.some((q) => Math.abs(x - (q.x + lmx2)) < 3 && Math.abs(y - fk.yOf(q.x)) < 4)) return { kind: 'flock' };
     const fr = scene.ferry; if (fr && Math.abs(x - (fr.J + fr.px + lmx2)) < 6 && y > fr.top - 7 && y < fr.bot + 2) return { kind: 'ferry' };
     if (Math.hypot(x - (scene.wmill.x + lmx2), y - scene.wmill.y) < 6) return { kind: 'wmill' };
     const qy = scene.quarry; if (inBox(qy.x + lmx2, qy.y - 7, qy.w + 9, 8)) return { kind: 'quarry' };
@@ -4346,6 +4454,8 @@ f11111f2.
     } else if (hit.kind === 'meteor') say('You catch the shooting star and make a wish. It is yours to keep.');
     else if (hit.kind === 'angler') say(['The angler raises a finger to his lips. The fish are listening.', 'The angler shows you an empty basket and a patient smile.', '"They bite at dawn," says the angler, "and never when you watch."'][Math.floor(Math.random() * 3)]);
     else if (hit.kind === 'watch') towerTo(true);
+    else if (hit.kind === 'joust') say('The first Sunday of the month: a tournament on the hill. Two knights ride at each other along the tilt; a broken lance scores, an unhorsing wins.');
+    else if (hit.kind === 'flock') say(scene.flock.summer ? 'The shepherd has taken the flock up the hill for the summer grass; his dog keeps the stragglers in.' : 'The flock grazes low on the hill this season, near the village and the barn. Nine sheep: the shepherd counts them every evening.');
     else if (hit.kind === 'ferry') {
       const f = scene.ferry; const e = f.errs; const BARS = '▁▂▃▄▅▆▇█';
       const mean = (a) => (a.length ? (a.reduce((p, v) => p + v, 0) / a.length).toFixed(1) : '-');
@@ -4433,7 +4543,7 @@ f11111f2.
     // a passer-by on the castle road now and then: peasant or messenger by day, a lantern by night
     if (!scene.walker && !reduce && Math.random() < 0.004) {
       const up = Math.random() < 0.5;
-      scene.walker = { y: up ? H + 2 : scene.top + 1, dir: up ? -1 : 1, kind: look.night > 0.5 ? 'lantern' : Math.random() < 0.25 ? 'messenger' : 'peasant' };
+      scene.walker = { y: up ? H + 2 : scene.top + 1, dir: up ? -1 : 1, kind: look.night > 0.5 ? 'lantern' : Math.random() < 0.25 ? 'messenger' : Math.random() < 0.3 ? 'peddler' : 'peasant' };
     }
     if (scene.walker) {
       const w = scene.walker; w.y += w.dir * (w.y >= yg ? 0.22 : 0.07); // slower far off: perspective
@@ -4537,6 +4647,17 @@ f11111f2.
       if (scene.birds.every((b) => b.x < -5)) scene.birds = null;
     }
 
+    const fl = scene.flock; // the shepherd ambles; the sheep keep near him and apart; the dog circles
+    if (fl && !reduce) {
+      if (Math.abs(fl.sh.x - fl.sh.tx) < 0.3) fl.sh.tx = M + scene.Ws * (0.7 + Math.random() * 0.16); else fl.sh.x += Math.sign(fl.sh.tx - fl.sh.x) * 0.03;
+      fl.dog.a += 0.04;
+      fl.sheep.forEach((q, k) => {
+        let ax = (fl.sh.x - q.x) * 0.002 + (Math.random() - 0.5) * 0.04;
+        fl.sheep.forEach((o, j) => { if (j !== k && Math.abs(o.x - q.x) < 2 && o.dy === q.dy) ax += Math.sign(q.x - o.x || 1) * 0.02; });
+        q.vx = clamp(q.vx * 0.9 + ax, -0.12, 0.12); q.x += q.vx;
+        if (Math.random() < 0.002) q.dy = clamp(q.dy + (Math.random() < 0.5 ? -1 : 1), -2, 2);
+      });
+    }
     const fe = scene.ferry; // a row every 8 frames; a pause at each jetty, then back
     if (fe && !reduce) {
       if (fe.wait > 0) fe.wait -= 1;
@@ -4668,7 +4789,7 @@ f11111f2.
       document.addEventListener('focusin', (e) => { const a = pointed(e); hoverId = roomIn(a); if (a) castUntil = now() + 1.2; });
       document.addEventListener('click', (e) => { if (pointed(e)) { castUntil = now() + 0.6; sparkle(24); } });
       // close up, only the market answers (out: the button, or Esc)
-      canvas.addEventListener('click', (e) => { if (tower) return; if (zoom) { if (villageHit(...scenePoint(e))) talk({ kind: 'market' }); return; } const h = isOn() && hitAt(...scenePoint(e)); if (h) talk(h); });
+      canvas.addEventListener('click', (e) => { if (tower) return; if (zoom) { villageClick(...scenePoint(e)); return; } const h = isOn() && hitAt(...scenePoint(e)); if (h) talk(h); });
       document.addEventListener('keydown', (e) => {
         if (tower && tower.on) {
           if (e.key === 'Escape') { e.preventDefault(); towerTo(false); }
@@ -4679,7 +4800,7 @@ f11111f2.
         if (e.key === 'Escape') { e.preventDefault(); zoomTo(false); }
         else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); e.stopImmediatePropagation(); zoom.pan = (zoom.pan || 0) + (e.key === 'ArrowLeft' ? -8 : 8); }
       }, true);
-      canvas.addEventListener('pointermove', (e) => { canvas.style.cursor = isOn() && (zoom ? villageHit(...scenePoint(e)) : hitAt(...scenePoint(e))) ? 'pointer' : ''; });
+      canvas.addEventListener('pointermove', (e) => { canvas.style.cursor = isOn() && (zoom ? zoom.done : hitAt(...scenePoint(e))) ? 'pointer' : ''; });
       sync();
     },
     /** New minute, or another hour asked for with `sky`: relight the same scene. */
