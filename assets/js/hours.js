@@ -4060,17 +4060,31 @@ f11111f2.
         });
         if (Math.abs(run - 0.5) < 0.04) put(mx(Math.round(jt.x0 + jt.len / 2)), y - 3, pal32[I.CREAM], false); // a lance splinters
       } else if (look.night < 0.5) {
-        const fl = scene.flock ||= (() => {
-          const summer = [5, 6, 7, 8].includes(d.getMonth()); const x0 = M + Math.round(0.78 * scene.Ws);
-          const yOf = (x) => Math.round(scene.hill[clamp(Math.round(x), 0, scene.WE - 1)] + (summer ? 3 : 9));
-          return { summer, yOf, sh: { x: x0, tx: x0 }, dog: { a: 0 }, sheep: Array.from({ length: 9 }, (_, k) => ({ x: x0 + (k % 5) * 3 - 6, dy: (k % 3) - 1, vx: 0 })) };
+        const fl = scene.flock ||= (() => { // the pasture: the widest open stretch of grass on the east hill
+          const summer = [5, 6, 7, 8].includes(d.getMonth()); const mid = scene.planes[L.MID]; const WE = scene.WE;
+          const GRASS = new Set([I.HILL_HI, I.HILL, I.HILL_SH, I.GRASS, I.GRASS_HI, I.GRASS_SH, I.GRASS_LT]);
+          const top = (x) => Math.round(scene.hill[clamp(Math.round(x), 0, WE - 1)]) + (summer ? 2 : 5); // higher in summer
+          const open = (x) => { for (let y = top(x); y < top(x) + 9; y += 1) if (!GRASS.has(mid[y * WE + x])) return false; return true; };
+          let best = [0, 0]; let run = 0;
+          for (let x = M + Math.round(0.58 * scene.Ws); x < M + Math.round(0.95 * scene.Ws); x += 1) { run = open(x) ? run + 1 : 0; if (run > best[1] - best[0]) best = [x - run + 1, x + 1]; }
+          const [a, b] = best[1] - best[0] >= 24 ? best : [M + Math.round(0.74 * scene.Ws), M + Math.round(0.84 * scene.Ws)];
+          const mid0 = (a + b) / 2;
+          return { summer, top, a, b, sh: { x: mid0, tx: mid0 }, dog: { a: 0 },
+            sheep: Array.from({ length: 9 }, (_, k) => ({ x: a + 3 + ((k * 7) % Math.max(4, b - a - 8)), dy: 1 + ((k * 5) % 6), vx: 0, dir: k % 2 ? 1 : -1, graze: k * 0.7 })) };
         })();
-        fl.sheep.forEach((q) => { const x = mx(Math.round(q.x)); const y = fl.yOf(q.x) + q.dy; put(x, y, pal32[I.FL_WHITE], false); put(x + 1, y, pal32[I.FL_WHITE], false); put(x + (q.vx < 0 ? -1 : 2), y, pal32[I.OUTLINE], false); });
-        const sx = mx(Math.round(fl.sh.x)); const sy = fl.yOf(fl.sh.x) + 1;
-        put(sx, sy, pal32[I.CLOAK_SH], false); put(sx, sy - 1, pal32[I.TIMBER], false); put(sx, sy - 2, pal32[I.SKIN], false);
-        put(sx + 1, sy - 1, pal32[I.TIMBER_SH], false); put(sx + 1, sy - 2, pal32[I.TIMBER_SH], false); put(sx + 1, sy - 3, pal32[I.TIMBER_SH], false); put(sx + 2, sy - 3, pal32[I.TIMBER_SH], false); // the crook
-        const dgx = fl.sh.x + Math.cos(fl.dog.a) * 9; const dgy = fl.yOf(dgx) + Math.round(Math.sin(fl.dog.a) * 2);
-        put(mx(Math.round(dgx)), dgy, pal32[I.OUTLINE], false); put(mx(Math.round(dgx)) + 1, dgy, pal32[I.TIMBER_SH], false);
+        [...fl.sheep].sort((p, q) => p.dy - q.dy).forEach((q) => { // a woolly back, a black face, four legs as two
+          const x = mx(Math.round(q.x)); const y = fl.top(q.x) + q.dy; const f = q.dir; const down = !reduce && Math.sin(t * 0.7 + q.graze * 3) > 0.3; // grazing
+          put(x - 1, y - 1, pal32[I.FL_WHITE], false); put(x, y - 1, pal32[I.FL_WHITE], false); put(x + 1, y - 1, pal32[I.CREAM], false);
+          put(x - 1, y, pal32[I.CREAM], false); put(x, y, pal32[I.CREAM], false); put(x + 1, y, pal32[I.CREAM], false);
+          put(x + 2 * f, y - (down ? 0 : 1), pal32[I.OUTLINE], false); // the head
+          put(x - 1, y + 1, pal32[I.OUTLINE], false); put(x + 1, y + 1, pal32[I.OUTLINE], false); // the legs
+        });
+        const sx = mx(Math.round(fl.sh.x)); const sy = fl.top(fl.sh.x) + 3; // the shepherd and his crook
+        put(sx, sy, pal32[I.CLOAK_SH], false); put(sx, sy - 1, pal32[I.TIMBER], false); put(sx, sy - 2, pal32[I.TIMBER], false); put(sx, sy - 3, pal32[I.SKIN], false); put(sx, sy - 4, pal32[I.HAT], false);
+        for (let k = 0; k < 5; k += 1) put(sx + 2, sy - k, pal32[I.TIMBER_SH], false); put(sx + 3, sy - 5, pal32[I.TIMBER_SH], false); put(sx + 3, sy - 4, pal32[I.TIMBER_SH], false);
+        const cx0 = fl.sheep.reduce((acc, q) => acc + q.x, 0) / fl.sheep.length; // the dog keeps them together, running round them
+        const dgx = cx0 + Math.cos(fl.dog.a) * ((fl.b - fl.a) / 2 + 3); const dgy = fl.top(dgx) + 4 + Math.round(Math.sin(fl.dog.a) * 3);
+        put(mx(Math.round(dgx)), dgy, pal32[I.OUTLINE], false); put(mx(Math.round(dgx)) + 1, dgy, pal32[I.OUTLINE], false); put(mx(Math.round(dgx)) + (Math.sin(fl.dog.a) > 0 ? 2 : -1), dgy - 1, pal32[I.OUTLINE], false); put(mx(Math.round(dgx)), dgy + 1, pal32[I.FL_WHITE], false);
       }
     }
     if (scene.burn) { // the St John's fire running through the dry grass of the field
@@ -4743,7 +4757,7 @@ f11111f2.
     if (((weather.rain7 ?? 0) > 10 || WET[weather.kind]) && scene.seeps.some((sp) => Math.abs(x - (sp.x + lmx2)) < 3 && y > sp.y - 4 && y < sp.y + 6)) return { kind: 'seep' };
     const jt = scene.joust; const dd = today();
     if (jt && dd.getDay() === 0 && dd.getDate() <= 7 && inBox(jt.x0 + lmx2 - 6, jt.y - 6, jt.len + 12, 10)) return { kind: 'joust' };
-    const fk = scene.flock; if (fk && look.night < 0.5 && fk.sheep.some((q) => Math.abs(x - (q.x + lmx2)) < 3 && Math.abs(y - fk.yOf(q.x)) < 4)) return { kind: 'flock' };
+    const fk = scene.flock; if (fk && look.night < 0.5 && fk.sheep.some((q) => Math.abs(x - (q.x + lmx2)) < 3 && Math.abs(y - (fk.top(q.x) + q.dy)) < 3)) return { kind: 'flock' };
     const fr = scene.ferry; if (fr && Math.abs(x - (fr.J + fr.px + lmx2)) < 6 && y > fr.top - 7 && y < fr.bot + 2) return { kind: 'ferry' };
     if (Math.hypot(x - (scene.wmill.x + lmx2), y - scene.wmill.y) < 6) return { kind: 'wmill' };
     const qy = scene.quarry; if (inBox(qy.x + lmx2, qy.y - 7, qy.w + 9, 8)) return { kind: 'quarry' };
@@ -5068,15 +5082,16 @@ f11111f2.
         if (S0.nodes.every((n) => n.s !== 1)) { S0.nodes.forEach((n) => { n.s = 0; }); S0.nodes[Math.floor(Math.random() * N)].s = 1; S0.day = 0; } // and another comes along
       }
     }
-    const fl = scene.flock; // the shepherd ambles; the sheep keep near him and apart; the dog circles
+    const fl = scene.flock; // the shepherd ambles; the sheep graze, drift, keep apart and near him; the dog runs round
     if (fl && !reduce) {
-      if (Math.abs(fl.sh.x - fl.sh.tx) < 0.3) fl.sh.tx = M + scene.Ws * (0.7 + Math.random() * 0.16); else fl.sh.x += Math.sign(fl.sh.tx - fl.sh.x) * 0.03;
-      fl.dog.a += 0.04;
+      if (Math.abs(fl.sh.x - fl.sh.tx) < 0.3) fl.sh.tx = fl.a + 4 + Math.random() * (fl.b - fl.a - 8); else fl.sh.x += Math.sign(fl.sh.tx - fl.sh.x) * 0.02;
+      fl.dog.a += 0.03;
       fl.sheep.forEach((q, k) => {
-        let ax = (fl.sh.x - q.x) * 0.002 + (Math.random() - 0.5) * 0.04;
-        fl.sheep.forEach((o, j) => { if (j !== k && Math.abs(o.x - q.x) < 2 && o.dy === q.dy) ax += Math.sign(q.x - o.x || 1) * 0.02; });
-        q.vx = clamp(q.vx * 0.9 + ax, -0.12, 0.12); q.x += q.vx;
-        if (Math.random() < 0.002) q.dy = clamp(q.dy + (Math.random() < 0.5 ? -1 : 1), -2, 2);
+        let ax = (fl.sh.x - q.x) * 0.0006 + (Math.random() - 0.5) * 0.02;
+        fl.sheep.forEach((o, j) => { if (j !== k && Math.abs(o.x - q.x) < 4 && Math.abs(o.dy - q.dy) < 3) ax += Math.sign(q.x - o.x || (k - j)) * 0.01; });
+        q.vx = clamp(q.vx * 0.92 + ax, -0.06, 0.06); q.x = clamp(q.x + q.vx, fl.a + 2, fl.b - 3);
+        if (Math.abs(q.vx) > 0.02) q.dir = Math.sign(q.vx);
+        if (Math.random() < 0.003) q.dy = clamp(q.dy + (Math.random() < 0.5 ? -1 : 1), 1, 7);
       });
     }
     const fe = scene.ferry; // a row every 8 frames; a pause at each jetty, then back
