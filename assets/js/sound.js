@@ -208,6 +208,13 @@
         tone(460, 300, 1.1, 0.06, { type: 'sawtooth', filter: 900, vibrato: 7 });
         burst(110, 0.45, 0.6, { type: 'lowpass', at: 1.05, echo: true }); burst(700, 0.08, 0.2, { at: 1.05 });
       },
+      purr: () => { // a cat's purr: low noise, pulsing twenty-five times a second, for a few seconds
+        const g = ac.createGain(); g.gain.value = 0; const src = ac.createBufferSource(); src.buffer = noise; src.loop = true;
+        const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 180; const t = t0();
+        const lfo = ac.createOscillator(); lfo.frequency.value = 25; const depth = ac.createGain(); depth.gain.value = 0.05;
+        lfo.connect(depth).connect(g.gain); g.gain.setValueAtTime(0.05, t);
+        src.connect(f).connect(g).connect(out(false)); src.start(t); lfo.start(t); src.stop(t + 3.4); lfo.stop(t + 3.4);
+      },
       neigh: () => { // rising, then the long shaking fall
         tone(700, 1150, 0.35, 0.05, { type: 'sawtooth', filter: 1400, vibrato: 11 });
         tone(1150, 520, 0.7, 0.045, { type: 'sawtooth', filter: 1100, vibrato: 13, at: 0.35 });

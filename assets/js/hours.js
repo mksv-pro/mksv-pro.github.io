@@ -1504,6 +1504,15 @@ nNnnnn..
       [C.blackLoaf, fire.x + 13, low(6, C.blackLoaf)],
       [C.spotted, knight.x + 16, low(12, C.spotted)],
     ].map(([sp, x, y], k) => ({ sp, x, y, ph: k * 1.7 }));
+    { // in memory of Blanc Blanc (the spotted cat, d. night of 6-7 October 2026): forget-me-nots
+      // around him, in every season; he himself is left exactly as he was
+      const bb = cats[1]; const yb = bb.y + bb.sp.h;
+      [[-3, -1], [-5, 1], [bb.sp.w + 1, -2], [bb.sp.w + 3, 0], [3, 2], [7, 3]].forEach(([dx, dy]) => {
+        const x = bb.x + dx; const y = yb + dy;
+        set(x, y + 1, I.GRASS_SH); set(x, y + 2, I.GRASS_SH); // the stem
+        set(x, y, I.FL_YEL); set(x - 1, y, I.FL_BLUE); set(x + 1, y, I.FL_BLUE); set(x, y - 1, I.FL_BLUE); set(x, y + 1, I.FL_BLUE);
+      });
+    }
     for (let y = -2; y <= 2; y += 1) {
       for (let x = -13; x <= 13; x += 1) {
         if ((x / 13) ** 2 + (y / 2) ** 2 < 1 && bayer(x, y) < 0.5) {
@@ -2638,7 +2647,7 @@ f11111f2.
           deco.push({ type: 'cabinet', x: cx0 + 1, y: cy0 + 2, w: cw - 2 });
           extra.push({ t: { kind: 'cabinet', label: 'The cabinet of curiosities', get html() {
             const { found: f, all } = curiosOf(); const miss = Object.keys(all).filter((k) => !f.includes(k));
-            return `<h3>The cabinet of curiosities</h3><p>A keepsake for each thing of the landscape that answered you (this visit).</p>`
+            return `<h3>The cabinet of curiosities</h3><p>A keepsake for each thing of the landscape that answered you (this visit). On the top shelf, always, a little white cat with black patches: Blanc Blanc, who loved to hide in places like this one.</p>`
               + (f.length ? `<ul>${f.map((k) => `<li>${all[k]}</li>`).join('')}</ul>` : '<p class="dim">Its shelves are bare: click about the landscape.</p>')
               + `<p class="dim">${miss.length} still to find${miss.some((k) => /\(/.test(all[k])) ? `, among them ${miss.filter((k) => /\(/.test(all[k])).map((k) => all[k]).slice(0, 3).join('; ')}` : ''}.</p>`;
           } }, b: box(cx0, cy0, cw, ch) });
@@ -3663,6 +3672,15 @@ f11111f2.
       });
     }
 
+    if (look.stars > 0.2) { // Blanc Blanc's star, rising each night over the fire where he sleeps
+      const sx0 = scene.cats[1].x - M + groundOff(fire.y) + 3; const sy0 = Math.round(yHor * 0.3);
+      const a = look.stars * (reduce ? 1 : 0.85 + 0.15 * Math.sin(t * 1.3));
+      const warm = [255, 240, 200]; // (a little warmer and larger than the others: his)
+      if (a > 0.6) put(sx0, sy0, pack([255, 253, 240]), true); else blend(sx0, sy0, [255, 255, 245], a, true);
+      [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => { blend(sx0 + dx, sy0 + dy, warm, a * 0.75, true); blend(sx0 + 2 * dx, sy0 + 2 * dy, warm, a * 0.35, true); });
+      [[1, 1], [-1, 1], [1, -1], [-1, -1]].forEach(([dx, dy]) => blend(sx0 + dx, sy0 + dy, warm, a * 0.2, true));
+      scene.bbStar = [sx0, sy0];
+    } else scene.bbStar = null;
     // stars
     if (look.stars > 0) {
       scene.stars.forEach((s) => {
@@ -4241,6 +4259,14 @@ f11111f2.
       blit(c.sp, c.x + go, c.y, H, (y) => (y < 3 ? breathe : 0));
       c.breathe = breathe;
     });
+    { // now and then the knight reaches down and strokes Blanc Blanc (awake, by day and evening)
+      const bb = scene.cats[1]; const ph = (t % 40) / 40; const on = !reduce && look.night < 0.7 && ph < 0.09;
+      if (on) {
+        const x = bb.x + go + 5 + Math.round(Math.sin(ph * 40 * Math.PI) * 1.5); const y = bb.y + 3;
+        put(x, y, pal32[I.SKIN], false); put(x + 1, y, pal32[I.SKIN], false); put(x - 1, y - 1, pal32[I.ARM_SH], false); put(x - 2, y - 2, pal32[I.ARM], false); put(x - 3, y - 3, pal32[I.ARM], false);
+        if (!scene.purred) { scene.purred = true; sfx('purr'); }
+      } else scene.purred = false;
+    }
     { // the knight's blue butterfly, wandering round his helm
       const hx = knight.x + go + 13; const hy = knight.y + 4;
       const bx = hx + Math.round(10 * Math.sin(t * 0.8)); const by = hy - 3 + Math.round(5 * Math.sin(t * 1.7) * Math.cos(t * 0.45));
@@ -4462,7 +4488,10 @@ f11111f2.
         });
       } else if (d.type === 'cabinet') { // a keepsake per curiosity found, four to a shelf
         const KEEP = ['GOLD', 'FL_RED', 'ARM_HI', 'FL_BLUE', 'GRASS_HI', 'CREAM', 'RUST_HI', 'FL_VIOLET'];
-        curiosOf().found.forEach((k, j) => { const row = Math.floor(j / 4) % 4; const col = j % 4; const x = d.x + 1 + col * 3; const y = d.y + 5 + row * 7;
+        { const x = d.x + d.w - 5; const y = d.y + 5; // Blanc Blanc, a little white cat with black patches, always on the top shelf
+          put(x, y - 2, P('FL_WHITE')); put(x + 2, y - 2, P('OUTLINE')); put(x, y - 1, P('FL_WHITE')); put(x + 1, y - 1, P('FL_WHITE')); put(x + 2, y - 1, P('FL_WHITE'));
+          put(x, y, P('FL_WHITE')); put(x + 1, y, P('OUTLINE')); put(x + 2, y, P('FL_WHITE')); put(x + 3, y, P('FL_WHITE')); }
+        curiosOf().found.forEach((k, j) => { const row = Math.floor(j / 4) % 4; const col = row === 0 ? Math.min(j % 4, 1) : j % 4; const x = d.x + 1 + col * 3; const y = d.y + 5 + row * 7;
           put(x, y, P(KEEP[(k.length + j) % KEEP.length])); put(x, y - 1, P(KEEP[(k.charCodeAt(0) + j) % KEEP.length])); });
       } else if (d.type === 'slits') {
         slits ||= { hits: [] };
@@ -4680,7 +4709,7 @@ f11111f2.
 
   const CAT_SAYS = {
     blackLoaf: 'The big black cat purrs, one eye on the fire.',
-    spotted: 'The spotted cat ignores you, as is proper.',
+    spotted: 'Blanc Blanc, who loved to hide everywhere: calm, affectionate, and easily frightened. He died in the night of 6 to 7 October 2026. He still keeps the knight\'s feet, and his heart, warm.',
   };
   const WIZARD_SAYS = [
     'The wizard taps his staff: "Choose a door, traveller."',
@@ -4722,6 +4751,7 @@ f11111f2.
     const hm = scene.hamlet; const vy = scene.riverTop(hm.x1);
     if (inBox(hm.x0 + lmx - 2, vy - 16, hm.x1 + 28 - hm.x0, 16)) return { kind: 'village' };
     if (scene.lichen.patches.some((p) => Math.hypot(x - (p.x + lmx), y - p.y) <= p.r + 2)) return { kind: 'lichen' };
+    if (scene.bbStar && Math.hypot(x - scene.bbStar[0], y - scene.bbStar[1]) < 4) return { kind: 'bbstar' };
     if (scene.meteors.some((m) => Math.hypot(x - m.x, y - m.y) < 6)) return { kind: 'meteor' };
     const pl = bodies && bodies.planets.find((p) => p.at[2] > 0 && bodies.sun[2] < -2 * deg && Math.hypot(x - p.at[0], y - p.at[1]) < 4);
     if (pl) return { kind: 'planet', name: pl.name, dist: pl.dist };
@@ -4767,6 +4797,7 @@ f11111f2.
     else if (hit.kind === 'cellar') { say('A low door in the rock. Stone steps go down into the dark.'); descendTo(); }
     else if (hit.kind === 'horse') say("The knight's horse crops the grass and flicks its tail at you.");
     else if (hit.kind === 'heron') say('The heron stands on one leg and pretends you are not there.');
+    else if (hit.kind === 'bbstar') say('Blanc Blanc\'s star, over the fire where he slept. It comes back every night.');
     else if (hit.kind === 'planet') {
       const NOTE = { Mercury: 'quick and low, never far from the Sun', Venus: 'the shepherd\'s star, brightest of all', Mars: 'red, the colour of rust', Jupiter: 'steady and bright, four moons too small to see from here', Saturn: 'pale gold; its rings want a telescope' };
       say(`${hit.name}, ${NOTE[hit.name]}: ${hit.dist.toFixed(2)} au from us tonight (${Math.round(hit.dist * 8.317)} light-minutes).`);
