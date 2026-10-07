@@ -2388,6 +2388,38 @@ f11111f2.
       spread(n, tb.l, tb.r, 17).forEach(({ k, row, xc }) => { slots[k] = model(xc, row ? tb.back : tb.front, things[k].model); });
       deco.push({ type: 'gear', x: S(0.88), y: Math.round(H * 0.45), r: 4, sp: 0.8 }, { type: 'gear', x: S(0.88) + 8, y: Math.round(H * 0.45) + 4, r: 3, sp: -1.1 });
       lantern(S(0.93), Math.round(H * 0.2));
+      { // the map of the realm on the wall: a region for each project
+        const mx0 = S(0.4); const mw = Math.max(24, Sw(0.18)); const my0 = Math.round(H * 0.36); const mh = Math.round(H * 0.15);
+        const models = things.filter((tt) => tt.kind === 'model');
+        for (let y = 0; y < mh; y += 1) for (let x = 0; x < mw; x += 1) {
+          const edge = x === 0 || y === 0 || x === mw - 1 || y === mh - 1;
+          if (edge && (x * 7 + y * 3) % 5 === 0) continue; // a worn edge
+          set(mx0 + x, my0 + y, edge ? I.PLASTER : I.PLASTER_HI);
+        }
+        const TINT = [I.T_GULES, I.T_AZURE, I.T_VERT, I.T_OR, I.T_PRUNE];
+        const seeds = models.map((_, k) => [mx0 + Math.round(((k + 0.5) / Math.max(1, models.length)) * mw), my0 + Math.round(mh * (0.35 + 0.3 * (k % 2)))]);
+        for (let y = 2; y < mh - 2; y += 1) for (let x = 2; x < mw - 2; x += 1) { // Voronoi regions, their borders dotted
+          const X = mx0 + x; const Y = my0 + y; let best = 0; let d1 = 1e9; let d2 = 1e9;
+          seeds.forEach(([sx, sy], k) => { const d = (X - sx) ** 2 + ((Y - sy) * 1.6) ** 2; if (d < d1) { d2 = d1; d1 = d; best = k; } else if (d < d2) d2 = d; });
+          if (Math.sqrt(d2) - Math.sqrt(d1) < 1.2) { if ((x + y) % 2) set(X, Y, I.TIMBER_SH); } else if ((x * 3 + y * 5) % 4 === 0) set(X, Y, TINT[best % TINT.length]);
+        }
+        for (let x = 2; x < mw - 2; x += 1) set(mx0 + x, my0 + Math.round(mh * 0.75 + Math.sin(x * 0.4) * 1.5), I.WATER); // a river across it
+        seeds.forEach(([sx, sy]) => { set(sx, sy, I.OUTLINE); set(sx, sy - 1, I.FLAG); }); // the capitals
+        set(mx0 + mw - 4, my0 + 3, I.OUTLINE); set(mx0 + mw - 4, my0 + 2, I.FLAG); set(mx0 + mw - 5, my0 + 3, I.TIMBER_SH); set(mx0 + mw - 3, my0 + 3, I.TIMBER_SH); set(mx0 + mw - 4, my0 + 4, I.TIMBER_SH); // a compass
+        const regions = models.map((m) => { const href = (m.html.match(/href="([^"]+)"/) || [])[1]; return href ? `<a href="${href}">${m.label}</a>` : m.label; });
+        extra.push({ t: { kind: 'realm', label: 'The map of the realm', html: cards.realm(regions) }, b: box(mx0, my0, mw, mh) });
+      }
+      { // Young's slits on the wall: a faint lamp, a plate with two slits, the screen where hits gather
+        const sx0 = S(0.4) + Math.max(24, Sw(0.18)) + 6; const sy0 = Math.round(H * 0.36); const sh = Math.round(H * 0.15);
+        if (sx0 + 26 < S(0.88) - 8) {
+          rect(sx0, sy0 + Math.round(sh / 2) - 1, 3, 3, I.ARM_SH); set(sx0 + 1, sy0 + Math.round(sh / 2), I.WIN_LIT); // the lamp
+          for (let y = 0; y < sh; y += 1) if (Math.abs(y - sh / 2) > 2 || Math.abs(y - sh / 2) < 1) set(sx0 + 10, sy0 + y, I.OUTLINE); // the two slits
+          rect(sx0 + 20, sy0 - 1, 8, sh + 2, I.TIMBER); rect(sx0 + 21, sy0, 6, sh, I.OUTLINE); // the screen
+          rect(sx0 - 1, sy0 + sh + 1, 30, 1, I.TIMBER_SH); // its shelf
+          deco.push({ type: 'slits', x: sx0 + 21, y: sy0, w: 6, h: sh });
+          extra.push({ t: { kind: 'slits', label: "Young's slits", get html() { return cards.slits(); } }, b: box(sx0 - 1, sy0 - 1, 30, sh + 3) });
+        }
+      }
       const ax = S(0.3); rect(ax, floorY(0.4) - 9, 12, 3, I.ARM_HI); rect(ax, floorY(0.4) - 9, 12, 1, I.BLADE); rect(ax + 3, floorY(0.4) - 6, 6, 3, I.ARM_SH); rect(ax + 2, floorY(0.4) - 3, 8, 3, I.ARM_SH);
     } else if (kind === 'publications') { // the library: each work face out on the display shelf
       // the two bookcases: each shelf a subject (site.toml [library]), each catalogued volume a gilt spine on it
@@ -2767,7 +2799,20 @@ f11111f2.
     b.n += 1; if (hit) b.hits += 1;
     b.recent.push({ x, y, a, hit }); if (b.recent.length > 40) b.recent.shift();
   }
+  let slits = null;
+  /** One photon through Young's two slits: where it lands on the screen (0..h), drawn from
+   *  I(y) ~ cos^2(pi y / fringe) sinc^2(pi y / envelope), by rejection. */
+  function slitsHit(h) {
+    const c = h / 2;
+    for (;;) {
+      const y = Math.random() * h; const u = (y - c) / h;
+      const sinc = u === 0 ? 1 : Math.sin(Math.PI * u * 1.6) / (Math.PI * u * 1.6);
+      if (Math.random() < Math.cos(Math.PI * u * 9) ** 2 * sinc ** 2) return y;
+    }
+  }
   const cards = {
+    slits: () => `<h3>Young's slits, one photon at a time</h3><p>A lamp so faint that one photon at a time crosses two slits to the screen. Each lands at one spot, at random; no single one interferes. Only the count shows the stripes: each photon went through both slits (Taylor 1909; Tonomura's electrons, 1989).</p><p>${slits ? slits.hits.length : 0} on the screen.</p>`,
+    realm: (regions) => `<h3>The map of the realm</h3><p>Each project, a region of its own; a road from one to the next where they share a method.</p><ul>${regions.map((r) => `<li>${r}</li>`).join('')}</ul>`,
     foucault: () => {
       const hrs = (Date.now() / 3600e3) % 1e6; const phi = ((hrs * foucaultRate) % 360 + 360) % 360;
       return '<h3>Foucault\'s pendulum</h3><p>A heavy bob on a long wire, set swinging once and left alone. The Earth turns under it: '
@@ -4305,6 +4350,7 @@ f11111f2.
       else if (d.type === 'galton' && galton) galtonStep();
       else if (d.type === 'life' && life && tk % 6 === 0) lifeStep();
       else if (d.type === 'buffon' && buffon && tk % 4 === 0) buffonDrop(d.w, d.h);
+      else if (d.type === 'slits' && slits && tk % 2 === 0) { slits.hits.push([Math.floor(Math.random() * d.w), Math.floor(slitsHit(d.h))]); if (slits.hits.length > 500) slits.hits = []; }
     });
     interior.flames.forEach((f) => { if (f.hearth) stepCells(interior.cells, 9, 14); });
     interior.motes.forEach((m) => { m.x += Math.sin(now() * 0.4 + m.ph) * 0.15; m.y += Math.cos(now() * 0.3 + m.ph) * 0.1; });
@@ -4365,6 +4411,9 @@ f11111f2.
           const a = (reduce ? k : t * w) + k * 2;
           put(d.x + Math.round(Math.cos(a) * r), d.y + Math.round(Math.sin(a) * r * 0.45), P(c));
         });
+      } else if (d.type === 'slits') {
+        slits ||= { hits: [] };
+        slits.hits.forEach(([x, y]) => put(d.x + x, d.y + y, P('CREAM')));
       } else if (d.type === 'foucault') { // the bob swings along a plane that turns with the hours; pegs knocked down so far today
         const hrs = Date.now() / 3600e3; const phi = -((hrs * foucaultRate) % 360) * (Math.PI / 180);
         const now0 = new Date(); const today0 = (now0.getHours() + now0.getMinutes() / 60) * foucaultRate;
