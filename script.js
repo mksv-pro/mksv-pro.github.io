@@ -227,7 +227,7 @@ function applyTheme(theme, persist) {
       doors: roomDoors, // the doors in the rooms' side walls
       clock: skyNow, // the instant shown: dawn mist, the night's meteor shower
       found: findCurio, // a curiosity of the landscape, clicked
-    })).then(() => { if (session('ended')) window.Hours.hoist(true); showWeather(); });
+    })).then(() => { if (session('ended')) window.Hours.hoist(true); showWeather(); fetchKp(); });
   }
 }
 
@@ -1103,7 +1103,9 @@ if (Object.hasOwn(SKY_ALT, skyParam || '')) session('sky', skyParam);
 
 /** The instant the sky shows: now, or the hour of today whose sun altitude is SKY_ALT[name],
  *  morning side for dawn, evening side for dusk and night (found by bisection). */
+const AT = new Date(new URLSearchParams(location.search).get('at') || ''); // ?at=2026-08-12T18:10Z: an instant to preview (eclipses)
 function skyNow() {
+  if (!Number.isNaN(AT.getTime())) return AT;
   const name = session('sky');
   const now = new Date();
   if (!Object.hasOwn(SKY_ALT, name || '')) return now;
@@ -1208,6 +1210,29 @@ async function fetchWeather() {
 showWeather();
 fetchWeather();
 setInterval(fetchWeather, WX_MS);
+
+/* Geomagnetic activity (NOAA SWPC planetary Kp, 3-hourly): aurorae over Paris want Kp >= 7, a few
+   nights a decade; the watchtower's north view shows them then. ?kp=8 previews. */
+const KP_URL = 'https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json';
+async function fetchKp() {
+  const forced = Number(new URLSearchParams(location.search).get('kp'));
+  if (forced) { if (window.Hours) window.Hours.weather({ kp: forced }); return; }
+  try {
+    const c = JSON.parse(session('kp') || 'null');
+    let kp = c && Date.now() - c.t < 3600e3 ? c.kp : null;
+    if (kp === null) {
+      const res = await fetch(KP_URL);
+      if (!res.ok) return;
+      const rows = await res.json(); const last = rows[rows.length - 1];
+      kp = Number(Array.isArray(last) ? last[1] : last.Kp); // (the feed has been both shapes)
+      if (!Number.isFinite(kp)) return;
+      session('kp', JSON.stringify({ t: Date.now(), kp }));
+    }
+    if (window.Hours) window.Hours.weather({ kp });
+  } catch { /* offline: no aurora */ }
+}
+fetchKp();
+setInterval(fetchKp, 3600e3);
 
 tick();
 setTimeout(() => { tick(); setInterval(tick, 60000); }, (60 - new Date().getSeconds()) * 1000);

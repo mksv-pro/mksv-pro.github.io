@@ -2528,7 +2528,7 @@ f11111f2.
   let found = () => {}; let itemsOf = () => []; let spotsTo = () => {}; let descendTo = () => {}; let doorsOf = () => []; let hl = -1; // the room's things, their hotspots, the one pointed at
   let scene = null; let look = null; let skyFn; let reduce = false; let px = 3;
   let running = false; let visible = true; let raf = 0; let last = 0; let tick = 0;
-  let bodies = null; let label0 = ''; let castUntil = 0;
+  let bodies = null; let lastEclipse = null; let label0 = ''; let castUntil = 0;
   let par = 0; let parTarget = 0; // pointer parallax, -1 (left) .. 1 (right)
   // the weather over Paris (script.js, from Open-Meteo): kind clear|cloudy|overcast|fog|drizzle|rain|snow|storm,
   // cover 0..1 (cloud cover), wind (km/h)
@@ -2632,6 +2632,16 @@ f11111f2.
     return [mid - (phi / (75 * deg)) * mid, yHor - (alt / (62 * deg)) * (yHor - Math.max(4, 0.06 * H)), alt];
   }
 
+  /** Which eclipse is on and visible from Paris, if any (sky.js gives the geometry). */
+  function eclipseNow(sky) {
+    if (sky.solar.sep < sky.solar.touch && sky.sun[2] > -0.01) return 'solar';
+    if (sky.lunar.sep < sky.lunar.umbra + sky.lunar.moonR && sky.moon[2] > -0.01) return 'lunar';
+    return null;
+  }
+  /** Fraction of the Sun's diameter covered (the eclipse's magnitude, 0..1). */
+  const solarCover = (sky) => clamp((sky.solar.touch - sky.solar.sep) / (2 * sky.sunR));
+  const PLANET_LOOK = { Mercury: [[200, 190, 170], 0], Venus: [[255, 252, 230], 2], Mars: [[240, 140, 100], 1], Jupiter: [[250, 236, 200], 2], Saturn: [[236, 214, 150], 1] };
+
   function relight() {
     const sky = skyFn();
     const elong0 = Math.acos(clamp(sky.sun[0] * sky.moon[0] + sky.sun[1] * sky.moon[1] + sky.sun[2] * sky.moon[2], -1, 1));
@@ -2649,7 +2659,12 @@ f11111f2.
     const sun = project(sky.sun); const moon = project(sky.moon);
     const elong = Math.acos(clamp(sky.sun[0] * sky.moon[0] + sky.sun[1] * sky.moon[1] + sky.sun[2] * sky.moon[2], -1, 1));
     const d = [sun[0] - moon[0], sun[1] - moon[1]]; const n = Math.hypot(...d) || 1;
-    bodies = { sun, moon, light: [(d[0] / n) * Math.sin(elong), (d[1] / n) * Math.sin(elong), -Math.cos(elong)] };
+    bodies = { sun, moon, light: [(d[0] / n) * Math.sin(elong), (d[1] / n) * Math.sin(elong), -Math.cos(elong)], sky,
+      planets: sky.planets.map((p) => ({ ...p, at: project(p.v) })), anti: project(sky.sun.map((c) => -c)) };
+    const ecl = eclipseNow(sky);
+    if (ecl && ecl !== lastEclipse) say(ecl === 'solar' ? `An eclipse of the Sun over Paris: the Moon covers ${Math.round(100 * solarCover(sky))}% of its disc.`
+      : 'An eclipse of the Moon: it passes through the Earth\'s shadow and turns the colour of copper.');
+    lastEclipse = ecl;
   }
 
   /** The stage: the part of the plate left of the text column (full-page layout), else all of it. */
@@ -2946,10 +2961,11 @@ f11111f2.
     }
     const hi = ridged([[6, 1], [13, 0.5], [29, 0.25], [61, 0.12]]); const lo = ridged([[5, 1], [11, 0.5], [23, 0.25], [53, 0.12]]);
     const south = (x) => near(x, 180, 65);
-    range((x) => yh - H * (0.05 + 0.06 * lo(x) + south(x) * (0.1 + 0.26 * clamp((hi(x) - 0.2) / 0.6) ** 1.3)), I.MT_FAR, I.MT_FAR_SH,
+    // (low away from the south: a sun or moon a few degrees up stays in sight over them)
+    range((x) => yh - H * ((0.015 + 0.04 * lo(x)) * (0.4 + 0.6 * south(x)) + south(x) * (0.1 + 0.26 * clamp((hi(x) - 0.2) / 0.6) ** 1.3)), I.MT_FAR, I.MT_FAR_SH,
       (x) => yh - H * ((winter ? 0.12 : 0.2) - 0.04 * (1 - south(x))), 4);
     const mid = ridged([[4, 1], [9, 0.5], [19, 0.25], [41, 0.12]]);
-    range((x) => yh - H * (0.015 + 0.04 * mid(x) + 0.05 * south(x) + 0.03 * near(x, 90, 30)), I.MT_NEAR, I.MT_NEAR_SH, winter ? (x) => yh - H * 0.06 + 0 * x : null, 8);
+    range((x) => yh - H * (0.01 + 0.025 * mid(x) + 0.05 * south(x) + 0.03 * near(x, 90, 30)), I.MT_NEAR, I.MT_NEAR_SH, winter ? (x) => yh - H * 0.06 + 0 * x : null, 8);
     const leaf = winter ? [I.TREES_FAR_SH, I.TREES_FAR_SH] : [I.TREES_FAR, I.TREES_FAR_SH];
     for (let x = 0; x < PW; x += 1) for (let y = yh + 2; y < yh + 7; y += 1) set(x, y, I.TREES_FAR_SH);
     for (let x = 0; x < PW; x += 2 + Math.floor(rng() * 2)) { // a fringe of small conifers
@@ -3076,16 +3092,36 @@ f11111f2.
       const q = Math.hypot(x, y);
       if (q <= 5) put(sun[0] + x, sun[1] + y, pack(look.sun), true); else if (q <= 8 && bayer(x + 8, y + 8) < 0.5 - (q - 5) / 8) blend(sun[0] + x, sun[1] + y, look.sun, 0.45, true);
     }
+    if (sun[2] > -3 * deg && sky.solar.sep < sky.solar.touch) { // an eclipse: the Moon's disc on the Sun
+      const k = 5 / sky.sunR; const dx = moon[0] - sun[0]; const dy = moon[1] - sun[1]; const n = Math.hypot(dx, dy) || 1;
+      const cx = sun[0] + (dx / n) * sky.solar.sep * k; const cy = sun[1] + (dy / n) * sky.solar.sep * k; const rr = sky.lunar.moonR * k;
+      for (let y = -7; y <= 7; y += 1) for (let x = -7; x <= 7; x += 1) if (Math.hypot(x, y) <= rr) put(cx + x, cy + y, pack([24, 26, 40]), true);
+    }
+    const anti = at(sky.sun.map((c) => -c)); const LS = sky.lunar;
+    const shadow = (x, y) => { // 2 umbra, 1 penumbra, at moon pixel (x, y) (6 px a moon radius)
+      if (LS.sep > LS.penumbra + LS.moonR) return 0;
+      const k = 6 / LS.moonR; const dx = anti[0] - moon[0]; const dy = anti[1] - moon[1]; const n = Math.hypot(dx, dy) || 1;
+      const d = Math.hypot(x - (dx / n) * LS.sep * k, y - (dy / n) * LS.sep * k);
+      return d < LS.umbra * k ? 2 : d < LS.penumbra * k ? 1 : 0;
+    };
     if (moon[2] > -3 * deg) {
       const d = [sun[0] - moon[0], sun[1] - moon[1]]; const n = Math.hypot(...d) || 1;
       const elong = Math.acos(clamp(sky.sun[0] * sky.moon[0] + sky.sun[1] * sky.moon[1] + sky.sun[2] * sky.moon[2], -1, 1));
       const L = [(d[0] / n) * Math.sin(elong), (d[1] / n) * Math.sin(elong), -Math.cos(elong)];
       for (let y = -6; y <= 6; y += 1) for (let x = -6; x <= 6; x += 1) {
         const q = (x * x + y * y) / 36; if (q > 1) continue;
-        if ((x / 6) * L[0] + (y / 6) * L[1] + Math.sqrt(1 - q) * L[2] > 0) put(moon[0] + x, moon[1] + y, pack([240, 238, 220]), true);
+        const sh = shadow(x, y);
+        if (sh) put(moon[0] + x, moon[1] + y, pack(sh === 2 ? [158, 70, 46] : [190, 186, 170]), true);
+        else if ((x / 6) * L[0] + (y / 6) * L[1] + Math.sqrt(1 - q) * L[2] > 0) put(moon[0] + x, moon[1] + y, pack([240, 238, 220]), true);
         else blend(moon[0] + x, moon[1] + y, [240, 238, 220], 0.12, true);
       }
     }
+    sky.planets.forEach((p) => { // the planets, as in the landscape
+      const [c, size] = PLANET_LOOK[p.name]; const show = clamp((-sun[2] / deg - (size === 2 ? 1 : 5)) / 5); const q = at(p.v);
+      if (q[2] <= 0 || show <= 0) return;
+      blend(q[0], q[1], c, show, true);
+      if (size >= 1) [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => blend(q[0] + dx, q[1] + dy, c, show * (size === 2 ? 0.55 : 0.3), true));
+    });
     skyVeil();
     const nC = Math.round(pano.clouds.length * clamp(0.15 + weather.cover)); const cc = unpack(pal32[I.CLOUD]); const cs = unpack(pal32[I.CLOUD_SH]);
     pano.clouds.slice(0, nC).forEach((c) => { // the real cover, drifting with the real wind
@@ -3101,6 +3137,18 @@ f11111f2.
       const x = sx(b.x); const y = b.y + Math.sin(t * 1.3 + b.ph) * 3; const f = Math.floor(t * 4 + b.ph) % 2;
       put(x, y, pal32[I.OUTLINE], true); put(x - 1, y - f, pal32[I.OUTLINE], true); put(x + 1, y - f, pal32[I.OUTLINE], true);
     });
+    if ((weather.kp || 0) >= 7 && look.night > 0.5) { // an aurora low in the north: green curtains, red above
+      const k = clamp((weather.kp - 6.5) / 2); const xN = sx(xAt(0));
+      for (let x = -W; x <= W; x += 1) {
+        const ax = xN + x; if (ax < 0 || ax >= W) continue;
+        const fall = Math.exp(-((x / (W * 0.45)) ** 2)) * k;
+        const h = (14 + 10 * Math.sin(x * 0.07 + t * 0.6) + 6 * Math.sin(x * 0.19 - t * 1.1)) * fall; const base = yh - 2;
+        for (let j = 0; j < h * 2.2; j += 1) {
+          const f = j / (h * 2.2); const ray = 0.6 + 0.4 * Math.sin(x * 0.9 + t * 2 + j * 0.05);
+          blend(ax, base - j, f < 0.55 ? [90, 255, 150] : [255, 90, 110], (1 - f) * 0.5 * ray * fall, true);
+        }
+      }
+    }
     landVeil();
     if (look.night > 0.2) { // the castle's windows and the village's, lit; the signal fire on the parapet
       [[92, 0], [-18, 1]].forEach(([a, k]) => { const x = sx(xAt((a + 360) % 360)); const y = yh + (k ? Math.round(0.2 * H) - 6 : Math.round(0.07 * H) - 10);
@@ -3211,6 +3259,19 @@ f11111f2.
       for (let k = 0; k < 7; k += 1) blend(m.x - m.dx * k * 0.6, m.y - m.dy * k * 0.6, [255, 250, 230], a * (1 - k / 7) * 0.9, true);
     });
 
+    // the planets at their true places, in twilight already (Venus first), each its colour
+    const sunAlt = bodies.sun[2] / deg;
+    bodies.planets.forEach((p) => {
+      const [c, size] = PLANET_LOOK[p.name]; const show = clamp((-sunAlt - (size === 2 ? 1 : 5)) / 5);
+      if (p.at[2] <= 0 || show <= 0) return;
+      const x = Math.round(p.at[0]); const y = Math.round(p.at[1]);
+      blend(x, y, c, show, true);
+      if (size >= 1) [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => blend(x + dx, y + dy, c, show * (size === 2 ? 0.55 : 0.3), true));
+    });
+    if (bodies.sky.solar.sep < bodies.sky.solar.touch && bodies.sun[2] > 0) { // the land darkens with the eclipse
+      const f = solarCover(bodies.sky) ** 2 * 0.6;
+      for (let i = 0; i < buf.length; i += 1) tint(i, 20, 24, 44, f);
+    }
     // sun: disc and a dithered halo; moon: lit where it faces the sun (phase and tilt follow)
     const { sun, moon, light } = bodies;
     if (sun[2] > -3 * deg) {
@@ -3222,7 +3283,19 @@ f11111f2.
           else if (q <= rs + 3 && bayer(X, Y) < 0.5 - (q - rs) / 8) blend(X, Y, look.sun, 0.45, true);
         }
       }
+      const sk = bodies.sky;
+      if (sk.solar.sep < sk.solar.touch) { // the Moon's dark disc on it, offset towards the Moon
+        const k = rs / sk.sunR; const dx = moon[0] - sun[0]; const dy = moon[1] - sun[1]; const n = Math.hypot(dx, dy) || 1;
+        const mx0 = sun[0] + (dx / n) * sk.solar.sep * k; const my0 = sun[1] + (dy / n) * sk.solar.sep * k; const rr = sk.lunar.moonR * k;
+        for (let y = -rr - 1; y <= rr + 1; y += 1) for (let x = -rr - 1; x <= rr + 1; x += 1) if (Math.hypot(x, y) <= rr) put(mx0 + x, my0 + y, pack([24, 26, 40]), true);
+      }
     }
+    const shadowAt = (x, y, rm) => { // 2 in the umbra, 1 in the penumbra, for moon pixel (x, y)
+      const L = bodies.sky.lunar; if (L.sep > L.penumbra + L.moonR) return 0;
+      const k = rm / L.moonR; const dx = bodies.anti[0] - moon[0]; const dy = bodies.anti[1] - moon[1]; const n = Math.hypot(dx, dy) || 1;
+      const d = Math.hypot(x - (dx / n) * L.sep * k, y - (dy / n) * L.sep * k);
+      return d < L.umbra * k ? 2 : d < L.penumbra * k ? 1 : 0;
+    };
     if (moon[2] > -3 * deg) {
       const rm = 6;
       for (let y = -rm; y <= rm; y += 1) {
@@ -3232,6 +3305,8 @@ f11111f2.
           const lit = (x / rm) * light[0] + (y / rm) * light[1] + Math.sqrt(1 - q) * light[2] > 0;
           const X = Math.round(moon[0]) + x; const Y = Math.round(moon[1]) + y;
           const crater = (x * 7 + y * 13) % 11 === 0 && q < 0.6;
+          const sh = shadowAt(x, y, rm);
+          if (sh) { put(X, Y, pack(sh === 2 ? (crater ? [120, 50, 36] : [158, 70, 46]) : (crater ? [150, 150, 140] : [190, 186, 170])), true); continue; }
           if (lit) put(X, Y, pack(crater ? [196, 196, 186] : [240, 238, 220]), true);
           else blend(X, Y, [240, 238, 220], 0.12, true);
         }
@@ -4078,6 +4153,8 @@ f11111f2.
     if (inBox(hm.x0 + lmx - 2, vy - 16, hm.x1 + 28 - hm.x0, 16)) return { kind: 'village' };
     if (scene.lichen.patches.some((p) => Math.hypot(x - (p.x + lmx), y - p.y) <= p.r + 2)) return { kind: 'lichen' };
     if (scene.meteors.some((m) => Math.hypot(x - m.x, y - m.y) < 6)) return { kind: 'meteor' };
+    const pl = bodies && bodies.planets.find((p) => p.at[2] > 0 && bodies.sun[2] < -2 * deg && Math.hypot(x - p.at[0], y - p.at[1]) < 4);
+    if (pl) return { kind: 'planet', name: pl.name, dist: pl.dist };
     const an = scene.angler; if (look.night < 0.5 && inBox(an.x - scene.M + groundOff(an.y + 6), an.y, SPRITES.angler.w + 6, SPRITES.angler.h)) return { kind: 'angler' };
     const hs = scene.horse; if (inBox(hs.x + go, hs.y, SPRITES.horse[0].w, SPRITES.horse[0].h)) return { kind: 'horse' };
     const hr = scene.heron; if (inBox(hr.x - scene.M + shift(RATE[L.MID]), hr.y, SPRITES.heron.w, SPRITES.heron.h)) return { kind: 'heron' };
@@ -4103,7 +4180,10 @@ f11111f2.
     else if (hit.kind === 'cellar') { say('A low door in the rock. Stone steps go down into the dark.'); descendTo(); }
     else if (hit.kind === 'horse') say("The knight's horse crops the grass and flicks its tail at you.");
     else if (hit.kind === 'heron') say('The heron stands on one leg and pretends you are not there.');
-    else if (hit.kind === 'meteor') say('You catch the shooting star and make a wish. It is yours to keep.');
+    else if (hit.kind === 'planet') {
+      const NOTE = { Mercury: 'quick and low, never far from the Sun', Venus: 'the shepherd\'s star, brightest of all', Mars: 'red, the colour of rust', Jupiter: 'steady and bright, four moons too small to see from here', Saturn: 'pale gold; its rings want a telescope' };
+      say(`${hit.name}, ${NOTE[hit.name]}: ${hit.dist.toFixed(2)} au from us tonight (${Math.round(hit.dist * 8.317)} light-minutes).`);
+    } else if (hit.kind === 'meteor') say('You catch the shooting star and make a wish. It is yours to keep.');
     else if (hit.kind === 'angler') say(['The angler raises a finger to his lips. The fish are listening.', 'The angler shows you an empty basket and a patient smile.', '"They bite at dawn," says the angler, "and never when you watch."'][Math.floor(Math.random() * 3)]);
     else if (hit.kind === 'watch') towerTo(true);
     else if (hit.kind === 'village') {
