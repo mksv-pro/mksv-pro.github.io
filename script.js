@@ -88,6 +88,7 @@ const T = {
   <div><dt>1&ndash;${nTabs}</dt><dd>open a section</dd></div>
   <div><dt>&larr; &rarr; &uarr; &darr;</dt><dd>move through the menu, Enter to open</dd></div>
   <div><dt>m</dt><dd>map of the place</dd></div>
+  <div><dt>[ ]</dt><dd>through the curiosities in sight (castle theme); Enter looks</dd></div>
   <div><dt>p</dt><dd>photo mode: the landscape alone, to look at or save (castle theme)</dd></div>
   <div><dt>i &middot; ,</dt><dd>inventory &middot; pick up what lies here</dd></div>
   <div><dt>&gt;</dt><dd>descend: walk the site in first person</dd></div>
@@ -110,6 +111,7 @@ const T = {
   <div><dt>sky &lt;hour&gt;</dt><dd>dawn, noon, dusk, night or now, in the hours theme</dd></div>
   <div><dt>weather &lt;kind&gt;</dt><dd>clear, rain, snow, fog, storm... or now</dd></div>
   <div><dt>photo</dt><dd>the landscape alone, to save as a picture</dd></div>
+  <div><dt>tour</dt><dd>a minute's guided walk round the castle (any key stops it)</dd></div>
   <div><dt>tower</dt><dd>up the watchtower: the view all round, N E S W</dd></div>
   <div><dt>village</dt><dd>close up on the hamlet and its market (Wed, Fri, Sat, Sun, by day)</dd></div>
   <div><dt>music &middot; volume 0-10</dt><dd>the lute on or off &middot; how loud (sound on, castle theme)</dd></div>
@@ -368,10 +370,24 @@ function savePhoto() { // the scene's own pixels, enlarged without blur
   const g = out.getContext('2d');
   g.imageSmoothingEnabled = false;
   g.drawImage(src, 0, 0, out.width, out.height);
-  out.toBlob((blob) => {
+  // a cartouche at the foot: where, when, the weather, whose castle
+  const d = skyNow(); const w = currentWx();
+  const when = d.toLocaleString('en-GB', { timeZone: 'Europe/Paris', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const line = `Paris, ${when}${w ? ` \u00b7 ${T.weather(w).replace(' over Paris', '')}` : ''} \u00b7 ${new URL(SITE).host}`;
+  const fs = Math.round(out.height / 42); g.font = `${fs}px "Departure Mono", monospace`;
+  const tw = g.measureText(line).width; const pad = fs * 0.7;
+  g.fillStyle = 'rgba(244, 236, 216, 0.92)'; g.fillRect(pad, out.height - fs * 2.6, tw + 2 * pad, fs * 1.9);
+  g.strokeStyle = '#16121c'; g.lineWidth = Math.max(2, fs / 8); g.strokeRect(pad, out.height - fs * 2.6, tw + 2 * pad, fs * 1.9);
+  g.fillStyle = '#16121c'; g.fillText(line, 2 * pad, out.height - fs * 1.25);
+  out.toBlob(async (blob) => {
+    const name = `castle-${new Date().toISOString().slice(0, 16).replace(':', 'h')}.png`;
+    const file = new File([blob], name, { type: 'image/png' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { // a phone: share it
+      try { await navigator.share({ files: [file], title: 'The castle, now' }); return; } catch { /* declined: save it instead */ }
+    }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `castle-${new Date().toISOString().slice(0, 16).replace(':', 'h')}.png`;
+    a.download = name;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   });
@@ -1028,6 +1044,25 @@ function showMap() {
     .map(([k, l]) => `<button type="button" data-go="${k}">[${l}]</button>`).join(' ')}</p>` : '';
   showDialog(T.mapTitle, mapHtml(here) + domain + (realm ? realmHtml() : ''));
   if (realm) window.Hours.realm(dialog.querySelector('canvas.realm'));
+}
+
+/* ---- the guided tour (`tour`): a minute round the castle; any key or click stops it ---------- */
+let touring = null;
+// deno-lint-ignore no-unused-vars -- cmdline.js
+function tour() {
+  if (!window.Hours || root.getAttribute('data-theme') !== 'hours') { say('The tour is for the castle theme.'); return; }
+  const H = window.Hours; const steps = [
+    [0, () => { if (root.dataset.room) leaveRoom(); say('A short tour. The landscape keeps the hour, the sky and the weather over Paris, now.'); }],
+    [4000, () => H.village()], [11000, () => H.back()],
+    [13000, () => H.tower()], [17000, () => H.turn(1)], [20500, () => H.turn(1)], [24000, () => H.turn(1)], [27500, () => H.back()],
+    [30000, () => goTo('research')], [37000, () => goTo('projects')], [44000, () => leaveRoom()],
+    [46500, () => say('That is the tour. Click about the landscape: much of it answers. [ and ] go through what is in sight.')],
+  ];
+  const timers = steps.map(([ms, f]) => setTimeout(f, ms));
+  const stop = (e) => { if (e && e.isTrusted === false) return; timers.forEach(clearTimeout); touring = null; removeEventListener('keydown', stop, true); removeEventListener('pointerdown', stop, true); };
+  touring = stop;
+  setTimeout(() => { addEventListener('keydown', stop, true); addEventListener('pointerdown', stop, true); }, 300);
+  setTimeout(() => { if (touring === stop) stop(); }, 47000);
 }
 
 /* ---- the descent (>): first person, loaded on demand ------------------- */

@@ -18,7 +18,8 @@
    grass, firelight. */
 
 (function () {
-  const FPS_MS = 83; // ~12 frames a second: pixel fire looks right at that rate
+  let FPS_MS = 83; // ~12 frames a second: pixel fire looks right at that rate (halved on a slow machine, see frame)
+  let renderMs = 0; let lite = false;
   const deg = Math.PI / 180;
   const PARALLAX = 7; // scene px the nearest plane moves, pointer at an edge
   const MARGIN = 9; // each plane overhangs the screen by this much on both sides
@@ -4306,6 +4307,10 @@ f11111f2.
       }
     }
     catEyes();
+    if (sel >= 0 && selList[sel]) { // the keyboard's choice: a pulsing ring
+      const c = selList[sel]; const r = 5 + (reduce ? 0 : Math.sin(t * 5)); 
+      for (let a = 0; a < 6.28; a += 0.2) blend(c.x + Math.cos(a) * r, c.y + Math.sin(a) * r, [255, 236, 170], 0.8, false);
+    }
   }
 
   /* ---- the rooms at run time: lighting, animation, the camera between outside and in ---- */
@@ -4710,6 +4715,23 @@ f11111f2.
     if (inBox(wizard.x + go, wizard.y, SPRITES.wizard.w, SPRITES.wizard.h)) return { kind: 'wizard' };
     return null;
   }
+  /** The curiosities in sight now, for the keyboard ([ and ] go through them, Enter looks): the
+   *  scene scanned on a 3 px grid through hitAt, one point per kind (its first hit, centred). */
+  let sel = -1; let selList = [];
+  const CURIO_NAMES = { cat: 'a cat', knight: 'the knight', wizard: 'the wizard', fire: 'the fire', shield: "the knight's shield", horse: 'the horse',
+    cellar: 'the cellar door', heron: 'the heron', mill: 'the windmill', angler: 'the angler', owl: 'the owl', meteor: 'a shooting star', lichen: 'the lichen',
+    village: 'the village', watch: 'the watchtower', planet: 'a planet', wmill: 'the water mill', quarry: 'the quarry', falls: 'the waterfall', bees: 'the hives',
+    orchard: 'the orchard', ferry: 'the ferryman', flock: 'the flock', joust: 'the tournament', murmuration: 'the starlings', fireflies: 'the fireflies', burn: "Saint John's fire", seep: 'a spring' };
+  function curioList() {
+    const seen = new Map();
+    for (let y = 0; y < scene.H; y += 3) for (let x = 0; x < scene.W; x += 3) {
+      const h = hitAt(x, y); if (!h) continue;
+      const key = h.kind + (h.name || '');
+      if (!seen.has(key)) seen.set(key, { h, xs: [], ys: [] });
+      const e = seen.get(key); e.xs.push(x); e.ys.push(y);
+    }
+    return [...seen.values()].map((e) => ({ h: e.h, x: e.xs.reduce((a, v) => a + v, 0) / e.xs.length, y: e.ys.reduce((a, v) => a + v, 0) / e.ys.length })).sort((a, b) => a.x - b.x);
+  }
   const sfx = (name) => { if (window.Sound) window.Sound.cue(name); }; // (silent unless the sound is on)
   function talk(hit) {
     found(hit.kind); // the curiosity hunt (script.js)
@@ -4932,7 +4954,7 @@ f11111f2.
     { // the murmuration: autumn and winter dusks, a topological Vicsek flock (each bird turns to its
       // seven nearest neighbours' mean heading, Ballerini et al. 2008), pulled about a wandering centre
       const m = today().getMonth(); const alt = bodies ? bodies.sun[2] / deg : 0;
-      const on = [9, 10, 11, 0, 1].includes(m) && alt < 3 && alt > -7 && !WET[weather.kind] && !reduce;
+      const on = [9, 10, 11, 0, 1].includes(m) && alt < 3 && alt > -7 && !WET[weather.kind] && !reduce && !lite;
       if (on && !scene.starlings) scene.starlings = Array.from({ length: 140 }, () => ({ x: W * (0.6 + Math.random() * 0.15), y: H * (0.18 + Math.random() * 0.1), a: Math.random() * 6.28 }));
       if (!on) scene.starlings = null;
       if (scene.starlings) {
@@ -5076,10 +5098,11 @@ f11111f2.
       if (view.state !== 'room') { stepFire(); step(now()); }
       if (interior) stepInterior();
       dirty = true;
+      if (!lite && renderMs > 28) { lite = true; FPS_MS = 166; } // a slow machine: 6 frames a second, no flock
     }
     const sig = RATE.map((r) => shift(r)).join() + groundOff(scene.H - 1);
     if (sig !== lastSig) { lastSig = sig; dirty = dirty || view.state === 'scene'; }
-    if (dirty) { render(now()); if (view.state === 'scene') anchorMenu(); }
+    if (dirty) { const r0 = performance.now(); render(now()); renderMs = renderMs * 0.95 + (performance.now() - r0) * 0.05; if (view.state === 'scene') anchorMenu(); }
     raf = requestAnimationFrame(frame);
   }
 
@@ -5134,6 +5157,19 @@ f11111f2.
       document.addEventListener('click', (e) => { if (pointed(e)) { castUntil = now() + 0.6; sparkle(24); } });
       // close up, only the market answers (out: the button, or Esc)
       canvas.addEventListener('click', (e) => { if (tower) return; if (zoom) { villageClick(...scenePoint(e)); return; } const h = isOn() && hitAt(...scenePoint(e)); if (h) talk(h); });
+      document.addEventListener('keydown', (e) => { // [ ] through the curiosities in sight, Enter to look
+        if (!isOn() || view.state !== 'scene' || zoom || tower || e.ctrlKey || e.metaKey || e.altKey) return;
+        if (e.target instanceof Element && e.target.closest('input, textarea, dialog')) return;
+        if (e.key === '[' || e.key === ']') {
+          e.preventDefault(); selList = curioList(); if (!selList.length) return;
+          sel = ((sel < 0 ? (e.key === ']' ? -1 : 0) : sel) + (e.key === ']' ? 1 : -1) + selList.length) % selList.length;
+          const nm = CURIO_NAMES[selList[sel].h.kind] || selList[sel].h.kind;
+          say(`${nm[0].toUpperCase()}${nm.slice(1)} (${sel + 1} of ${selList.length}): Enter to look, [ ] for the others, Esc to stop.`);
+          if (!running) render(now());
+        } else if (e.key === 'Enter' && sel >= 0 && selList[sel] && (!(document.activeElement instanceof Element) || document.activeElement === document.body)) {
+          e.preventDefault(); talk(selList[sel].h);
+        } else if (e.key === 'Escape' && sel >= 0) { sel = -1; if (!running) render(now()); }
+      });
       document.addEventListener('keydown', (e) => {
         if (tower && tower.on) {
           if (e.key === 'Escape') { e.preventDefault(); towerTo(false); }
@@ -5165,6 +5201,10 @@ f11111f2.
     weather(w) { weather = { ...weather, ...w }; if (scene && !running && isOn()) render(now()); },
     /** Close up on the village (the `village` command); out of a room first. */
     village() { if (scene && view.state === 'scene' && !tower) talk({ kind: 'village' }); },
+    /** Out of a close-up or down from the tower (the tour). */
+    back() { if (tower && tower.on) towerTo(false); if (zoom && zoom.on) zoomTo(false); },
+    /** Turn round atop the tower by a quarter (the tour). */
+    turn(k) { turnTower(k); },
     /** Up the watchtower (the `tower` command). */
     tower() { if (scene && view.state === 'scene' && !zoom) talk({ kind: 'watch' }); },
     /** Light the thing at index i (hotspot hovered or focused); -1 for none. */
