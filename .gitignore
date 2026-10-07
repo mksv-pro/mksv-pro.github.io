@@ -2,3 +2,4 @@ __pycache__/
 .ruff_cache/
 _cv/*
 !_cv/cv.tex
+_smoke/
