@@ -22,8 +22,10 @@
   <script>
     // Before first paint, so the look never flashes. The castle (hours) is the site; the terminal
     // is the same page framed in the castle's scrying engine (script.js: openEngine), or the whole
-    // page for who chose it (localStorage entry=engine) below 75rem. ?theme=dark previews it
-    // unframed. Below 75rem the castle is a cut-away tower, a floor per section (.climb).
+    // page below 75rem: on a computer always (the castle needs the room), on a touch screen for
+    // who chose it (localStorage entry=engine); a touch screen otherwise gets the castle as a
+    // cut-away tower, a floor per section (.climb). ?theme=dark previews the terminal unframed,
+    // ?touch=1 a touch screen.
     // data-sky (day|night) picks the hours theme's palette: night once the sun is 3 deg below
     // Paris's horizon (low-precision solar position, ~0.5 deg; script.js keeps it current).
     (function () {
@@ -34,7 +36,8 @@
       var framed = window.self !== window.top;
       var e = null; try { e = localStorage.getItem('entry'); } catch (x) {}
       var wide = matchMedia('(min-width: 75rem)').matches;
-      t = (/[?&]theme=(\w+)/.exec(q) || [])[1] === 'dark' || framed || (!wide && e === 'engine') ? 'dark' : 'hours';
+      var touch = matchMedia('(pointer: coarse)').matches || /[?&]touch=1/.test(q);
+      t = (/[?&]theme=(\w+)/.exec(q) || [])[1] === 'dark' || framed || (!wide && (!touch || e === 'engine')) ? 'dark' : 'hours';
       if (framed) r.classList.add('framed');
       if (t === 'hours' && !wide) r.classList.add('climb');
       var k = Math.PI / 180, d = Date.now() / 864e5 - 10957.5;

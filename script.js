@@ -59,6 +59,7 @@ const T = {
   realmTitle: 'The realm',
   realmLabel: 'A pixel map of Paris: the Seine, and a pennant where each of the schools stands.',
   leave: '[leave the room \u00b7 Esc]',
+  narrowTheme: 'The castle needs a wider window: hours opens on screens from 1200 px.',
   notebook: 'The notebook on the desk',
   vintage: 'Vintage', stairDown: 'The steps going down',
   lookHint: '(Whatever glints can be looked at: point at it, or Tab to it and press Enter.)',
@@ -223,7 +224,10 @@ const THEMES = ['dark', 'hours']; // the toggle's cycle
 const WIDE = matchMedia('(min-width: 75rem)');
 const qTheme = new URLSearchParams(location.search).get('theme');
 const FRAMED = window.self !== window.top; // this page is the terminal in the castle's scrying engine
-const chosenTheme = () => (FRAMED || qTheme === 'dark' || (!WIDE.matches && store('entry') === 'engine') ? 'dark' : 'hours');
+// a touch screen (or ?touch=1): below 75rem it gets the tower; a computer's narrow window, the terminal
+const TOUCH = matchMedia('(pointer: coarse)');
+const touchy = () => TOUCH.matches || /[?&]touch=1/.test(location.search);
+const chosenTheme = () => (FRAMED || qTheme === 'dark' || (!WIDE.matches && (!touchy() || store('entry') === 'engine')) ? 'dark' : 'hours');
 const climbing = () => root.classList.contains('climb');
 const nextTheme = () => THEMES[(THEMES.indexOf(root.getAttribute('data-theme')) + 1) % THEMES.length];
 
@@ -235,6 +239,7 @@ function applyTheme(theme, persist) {
   });
   $('theme-next').textContent = FRAMED ? T.engineClose : theme === 'hours' ? T.engineOpen : `[${T.themeName[nextTheme()]}]`;
   root.classList.toggle('climb', theme === 'hours' && !WIDE.matches && !FRAMED);
+  themeToggle.hidden = !FRAMED && theme !== 'hours' && !WIDE.matches && !touchy(); // (a computer's narrow window has the terminal only)
   document.querySelectorAll('#cellar, .tabs .to-cellar').forEach((e) => { e.hidden = !root.classList.contains('climb'); });
   themeColor.setAttribute('content', getComputedStyle(root).getPropertyValue('--bar').trim());
   if (persist) store('theme', theme);

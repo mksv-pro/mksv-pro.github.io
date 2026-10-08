@@ -138,7 +138,7 @@ function run(line) {
       const want = {
         dark: 'dark', terminal: 'dark', light: 'hours', hours: 'hours', colour: 'hours',
       }[arg] || nextTheme();
-      if (!WIDE.matches && want === 'hours') { engineToggle(); return undefined; } // (back up the tower, and stay there)
+      if (!WIDE.matches && want === 'hours') { if (!touchy()) return print(esc(T.narrowTheme)); engineToggle(); return undefined; } // (a touch screen: back up the tower)
       applyTheme(want, true);
       return print(T.themeSet(T.themeName[want]));
     }
