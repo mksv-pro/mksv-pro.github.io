@@ -24,20 +24,19 @@
   <link rel="icon" href="assets/img/monogram.svg" type="image/svg+xml">
 
   <script>
-    // Before first paint, so a stored theme never flashes. The theme follows the screen: the
-    // castle (hours) wants a wide one, below 75rem the terminal; on a wide screen a stored choice
-    // wins, else hours. ('light', from before folio was dropped, reads as hours.)
+    // Before first paint, so the look never flashes. The castle (hours) is the site; the terminal
+    // is the same page framed in the castle's scrying engine (script.js: openEngine), or the
+    // whole page below 75rem, where the castle has no room. ?theme=dark previews it unframed.
     // data-sky (day|night) picks the hours theme's palette: night once the sun is 3 deg below
     // Paris's horizon (low-precision solar position, ~0.5 deg; script.js keeps it current).
     (function () {
       var t = null, s = null, r = document.documentElement;
-      try { t = localStorage.getItem('theme'); s = sessionStorage.getItem('sky'); } catch (e) {}
+      try { s = sessionStorage.getItem('sky'); } catch (e) {}
       var q = location.search; // ?theme= and ?sky= preview a look without storing it
-      t = (/[?&]theme=(\w+)/.exec(q) || [])[1] || t;
       s = (/[?&]sky=(\w+)/.exec(q) || [])[1] || s;
-      if (t === 'light') t = 'hours';
-      if (!matchMedia('(min-width: 75rem)').matches) t = 'dark';
-      else if (t !== 'dark') t = 'hours';
+      var framed = window.self !== window.top;
+      t = (/[?&]theme=(\w+)/.exec(q) || [])[1] === 'dark' || framed || !matchMedia('(min-width: 75rem)').matches ? 'dark' : 'hours';
+      if (framed) r.classList.add('framed');
       var k = Math.PI / 180, d = Date.now() / 864e5 - 10957.5;
       var g = (357.529 + 0.98560028 * d) * k;
       var L = (280.459 + 0.98564736 * d + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * k;
@@ -53,7 +52,7 @@
 
   <link rel="preload" href="assets/fonts/DepartureMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/IBMPlexMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=57479e5d">
+  <link rel="stylesheet" href="styles.css?v=f704f604">
 
   <script type="application/ld+json">
   {
@@ -122,7 +121,7 @@
 
   <p class="msgline">
     <span class="msg-text" role="status" aria-live="polite">A raven arrives: three master's programmes begin at once.</span>
-    <a class="more" href="#news">--More--</a>
+    <a class="more" href="#news"><span class="lbl" data-castle="read on &#10087;">--More--</span></a>
   </p>
 
   <div class="shell">
@@ -542,19 +541,19 @@
   <footer class="status" aria-label="Status line">
     <p class="st-left">
       <span class="st-name">Mike Silva</span>
-      <button class="dlvl" id="descend" type="button" title="Descend: walk the site in first person (&gt;)">Dlvl:<b id="st-dlvl">MSc</b></button>
-      <span>Align:<b id="st-align">stochastic</b></span>
-      <span>Quests:<b>3</b></span>
-      <span>Pubs:<b>1</b></span>
-      <span hidden id="st-explored">Explored:<b>0/11</b></span>
-      <span hidden id="st-curios" title="Curiosities of the landscape found (click what you see)">Curios:<b>0/12</b></span>
+      <button class="dlvl" id="descend" type="button" title="Descend: walk the site in first person (&gt;)"><i class="lbl" data-castle="Rank">Dlvl</i>:<b id="st-dlvl">MSc</b></button>
+      <span><i class="lbl" data-castle="Humour">Align</i>:<b id="st-align">stochastic</b></span>
+      <span><i class="lbl" data-castle="Quests">Quests</i>:<b>3</b></span>
+      <span><i class="lbl" data-castle="Tomes">Pubs</i>:<b>1</b></span>
+      <span hidden id="st-explored"><i class="lbl" data-castle="Rooms">Explored</i>:<b>0/11</b></span>
+      <span hidden id="st-curios" title="Curiosities of the landscape found (click what you see)"><i class="lbl" data-castle="Marvels">Curios</i>:<b>0/12</b></span>
     </p>
     <p class="st-right" aria-hidden="true">
       <span id="st-hour"></span>
       <span id="st-moon"></span>
     </p>
     <button class="cmd-toggle" id="cmd-toggle" type="button" aria-controls="cmdline" aria-expanded="false"
-            title="Command line (:)">[:]<span class="sr-only">Command line</span></button>
+            title="Command line (:)"><span class="lbl" data-castle="[orders]">[:]</span><span class="sr-only">Command line</span></button>
     <button class="theme-toggle" id="theme-toggle" type="button">
       <span class="sr-only">Switch theme to </span><span id="theme-next">[hours]</span>
     </button>
@@ -566,8 +565,8 @@
 
   <script type="application/json" id="site-data">{"world":{"research":{"c":0,"r":0,"name":"Research","label":"research"},"publications":{"c":1,"r":0,"name":"Publications","label":"publications"},"urban-morphogenesis":{"c":2,"r":0,"name":"Urban morphogenesis","label":"city","exit":"urban morphogenesis","page":"projects/urban-morphogenesis.html","img":"illum-dla.png"},"about":{"c":0,"r":1,"name":"About","label":"about","img":"flammarion-dark.png"},"projects":{"c":1,"r":1,"name":"Projects","label":"projects"},"nuclear-emulators":{"c":2,"r":1,"name":"Nuclear emulation","label":"nuclear","exit":"nuclear emulation","page":"projects/nuclear-emulators.html","img":"illum-nuclear.png"},"contact":{"c":0,"r":2,"name":"Contact","label":"contact"},"news":{"c":1,"r":2,"name":"News","label":"news"},"n-body":{"c":2,"r":2,"name":"N-body systems","label":"orrery","exit":"N-body systems","page":"projects/n-body.html","img":"illum-nbody.png"},"talks":{"c":0,"r":3,"name":"Talks","label":"talks"},"teaching":{"c":1,"r":3,"name":"Teaching","label":"teaching"}},"links":[["research","publications"],["research","about"],["publications","projects"],["about","projects"],["about","contact"],["projects","news"],["contact","news"],["projects","nuclear-emulators"],["nuclear-emulators","urban-morphogenesis"],["nuclear-emulators","n-body"],["contact","talks"],["news","teaching"],["talks","teaching"]],"email":"pro.mikesilva@gmail.com","github":"https://github.com/mksv-pro","bib":"assets/bib/silva2026emulation.bib","heraldry":{"own":"silva","tapestry":[["sorbonne","Sorbonne Université","BSc Physics & Mathematics; MSc Quantum Information"],["paris1","Université Paris 1 Panthéon-Sorbonne","BA Economics & Political Science"],["sciencespo","Sciences Po","Research assistant"],["ceremade","CEREMADE","Visiting research student"],["pariscite","Université Paris Cité","MSc Fundamental Physics"],["dauphine","Université Paris Dauphine-PSL","MSc Economics & Finance"],["ijclab","IJCLab","Research intern"],["saclay","Université Paris-Saclay","MSc Physics of Complex Systems"]]},"library":{"shelves":[["statphys","Statistical physics"],["stochastic","Stochastic processes"],["complex","Complex systems"],["dynamics","Dynamical systems and chaos"],["rmt","Random matrices"],["quantum","Quantum mechanics"],["qinfo","Quantum information"],["fields","Statistical field theory"],["proba","Probability"],["analysis","Analysis and PDEs"],["geometry","Geometry"],["ml","Machine learning"],["mlphys","Machine learning for physics"],["mfg","Mean-field games"],["econo","Econophysics and finance"],["social","Agent-based and social models"]]}}</script>
   <script src="assets/js/sky.js?v=3255cb85"></script>
-  <script src="script.js?v=0c89b009" data-dungeon="assets/js/dungeon.js?v=4638a1e8" data-hours="assets/js/hours.js?v=1d21c78c" data-arms="assets/js/arms.js?v=33075736" data-sound="assets/js/sound.js?v=ae654b8c"></script>
-  <script src="assets/js/cmdline.js?v=2bbb46c6"></script>
+  <script src="script.js?v=58129fd6" data-dungeon="assets/js/dungeon.js?v=4638a1e8" data-hours="assets/js/hours.js?v=fd33f316" data-arms="assets/js/arms.js?v=33075736" data-sound="assets/js/sound.js?v=2d547548"></script>
+  <script src="assets/js/cmdline.js?v=ca08b7df"></script>
   <script src="assets/js/armillary.js?v=ea93ec80"></script>
 </body>
 </html>

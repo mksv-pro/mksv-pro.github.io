@@ -72,6 +72,15 @@ function walkTo(id) {
   goTo(id);
 }
 
+/* Weather events: a state of the ground or the sky, until the next real reading (30 min at most). */
+const WX_EVENTS = {
+  snowfall: [{ kind: 'snow', snowDepth: 0.2 }, 'Snow falls and lies, twenty centimetres of it.'], thaw: [{ snowDepth: 0, temp: 8 }, 'The snow melts away.'],
+  puddles: [{ dryH: 0 }, 'It has just rained: puddles on the path and in the meadow.'], frost: [{ temp: -6, frost: -6 }, 'A hard frost: ice on the river, ferns of frost on the windows.'],
+  flood: [{ rain7: 70 }, 'A wet week: the river is over its banks.'], drought: [{ rain7: 0 }, 'A dry week: the river runs low, its gravel showing.'],
+  aurora: [{ kp: 8 }, 'A great geomagnetic storm: an aurora in the north, seen from the watchtower at night.'],
+};
+const eventNames = () => [...window.Hours.events(), ...Object.keys(WX_EVENTS), ...WX_KINDS].sort();
+
 function run(line) {
   const words = line.trim().toLowerCase().split(/\s+/);
   let [cmd, ...args] = words;
@@ -124,7 +133,8 @@ function run(line) {
     case 'github': case 'code':
       location.href = DATA.github;
       return undefined;
-    case 'theme': {
+    case 'theme': case 'engine': case 'castle': {
+      if (FRAMED || root.getAttribute('data-theme') === 'hours') { engineToggle(); return undefined; } // (the castle and the terminal in its engine)
       const want = {
         dark: 'dark', terminal: 'dark', light: 'hours', hours: 'hours', colour: 'hours',
       }[arg] || nextTheme();
@@ -144,9 +154,22 @@ function run(line) {
       showWeather();
       return print(esc(T.wxSet(arg)));
     }
+    case 'event': case 'do': { // call up an event of the castle's landscape (hours theme)
+      if (root.getAttribute('data-theme') !== 'hours' || !window.Hours) return print(esc(T.photoOnly.replace('Photo mode', 'Events')));
+      if (!arg) return print(`<span class="dim">${T.eventsAre}</span> ${eventNames().join('  ')}`);
+      if (WX_KINDS.includes(arg)) { session('weather', arg); showWeather(); return print(esc(T.wxSet(arg))); }
+      if (WX_EVENTS[arg]) { window.Hours.weather(WX_EVENTS[arg][0]); return print(esc(WX_EVENTS[arg][1])); }
+      if (!window.Hours.events().includes(arg)) return print(esc(T.noEvent(arg)));
+      if (root.dataset.room && !['embers', 'banner', 'cinema'].includes(arg)) leaveRoom();
+      closeCmd();
+      { const m = window.Hours.trigger(arg); if (m) say(m); } // (a skimmed stone says its own)
+      if (arg === 'cinema' && root.dataset.room !== 'talks') goTo('talks'); // (the show is in the great hall)
+      return undefined;
+    }
     case 'music':
-      setMusic(arg ? arg !== 'off' : !musicOn);
-      return print(esc(T.musicSet(musicOn)));
+      if (arg !== 'now') setMusic(arg ? arg !== 'off' : !musicOn);
+      { const n = window.Sound && window.Sound.now ? window.Sound.now() : null;
+        return print(esc(T.musicSet(musicOn)) + (n ? ` <span class="dim">Now: ${esc(n.title)}, ${esc(n.composer)}${n.year ? ` (${esc(n.year)})` : ''}.</span>` : '')); }
     case 'volume': {
       const v = Math.max(0, Math.min(10, Math.round(Number(arg))));
       if (!Number.isFinite(v)) return print(esc(T.volumeSet(volume.value)));
@@ -201,12 +224,12 @@ cmdForm.addEventListener('submit', (e) => {
 /* Tab completes the word under the cursor: a command or a room first, then what that command
    takes; one match is completed, several are completed to their common start and listed. */
 const COMMANDS = ['help', 'look', 'ls', 'map', 'cd', 'take', 'inventory', 'use', 'rumour', 'descend',
-  'cv', 'mail', 'github', 'theme', 'sky', 'weather', 'photo', 'tour', 'tower', 'village', 'banner', 'music', 'volume', 'keys', 'quit', 'clear', 'go'];
+  'cv', 'mail', 'github', 'theme', 'sky', 'weather', 'event', 'photo', 'tour', 'tower', 'village', 'banner', 'music', 'volume', 'keys', 'quit', 'clear', 'go'];
 const roomWords = () => ROOM_IDS.map((id) => WORLD[id].label.toLowerCase());
 const ARGS = {
   cd: roomWords, open: roomWords, go: () => ['north', 'south', 'east', 'west'], walk: () => ['north', 'south', 'east', 'west'],
   theme: () => ['terminal', 'hours'], sky: () => Object.keys(SKY_ALT).concat('now'), keys: () => ['on', 'off'],
-  weather: () => WX_KINDS.concat('now'), music: () => ['on', 'off'],
+  weather: () => WX_KINDS.concat('now'), music: () => ['on', 'off'], event: () => (window.Hours ? eventNames() : []), do: () => (window.Hours ? eventNames() : []),
   use: () => pack().map((_, i) => LETTERS[i]),
 };
 

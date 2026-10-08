@@ -8,4 +8,4 @@ target-version = "py312"
 select = ["F", "I", "E9", "W6", "PLE"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["illuminations", "colour"]
+known-first-party = ["illuminations", "colour", "real"]

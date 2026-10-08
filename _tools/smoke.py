@@ -43,6 +43,13 @@ CASES = {
               "document.documentElement.classList.contains('lookout') && " + CANVAS),
     "descent": ("?theme=hours&sky=noon&weather=clear", (1600, 900), "descend(); await wait(1200);",
                 "!!document.querySelector('dialog.dungeon[open]')"),
+    # (the framed copy gets the probe too: it never reports, the top page does)
+    "engine": ("?theme=hours&sky=noon&weather=clear", (1600, 900),
+               "if (window !== top) await new Promise(() => {}); enterEngine(); await wait(5000);"
+               " const f = document.querySelector('.engine-win iframe'); const d = f && f.contentDocument;"
+               " window.framedOk = !!d && d.documentElement.getAttribute('data-theme') === 'dark' && d.documentElement.classList.contains('framed');"
+               " d.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await wait(2500);",
+               "window.framedOk && !document.querySelector('.engine') && !document.documentElement.classList.contains('engine-on')"),
     "terminal": ("?theme=dark", (1600, 900), "", "document.documentElement.getAttribute('data-theme') === 'dark'"),
     "phone-banner": ("?sky=noon&weather=clear", (390, 844), "", "document.documentElement.classList.contains('banner') && " + CANVAS),
 }

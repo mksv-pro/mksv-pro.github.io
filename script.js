@@ -54,6 +54,7 @@ const T = {
   rooms: 'Rooms',
   nothing: 'Nothing happens.',
   themeName: { dark: 'terminal', hours: 'hours' },
+  engineOpen: '[the engine]', engineClose: '[back to the castle]', engineTitle: 'The scrying engine (Esc closes it)',
   bell: (h) => `The castle bell rings: the hour of ${h}.`,
   realmTitle: 'The realm',
   realmLabel: 'A pixel map of Paris: the Seine, and a pennant where each of the schools stands.',
@@ -78,6 +79,19 @@ const T = {
   wizardOff: 'You feel less magical.',
   seeHere: (item) => `You see here ${item}. (, to pick it up)`,
   nothingHere: 'There is nothing here to pick up.',
+  eventsAre: 'event &lt;name&gt;, one of:', noEvent: (n) => `No event called "${n}". Type event alone for the list.`,
+  borrowed: 'What the castle borrows from the world (turned into its pixels and its music)',
+  signName: 'Your name:', signIt: 'sign',
+  signedHere: 'Signed here from this browser (the page stays with you; nothing is sent):',
+  signNone: 'No one has signed from this browser yet. The page stays with you; nothing is sent.',
+  signDone: (n) => `The ink dries: ${n}, in the castle's register.`,
+  billiardTitle: "The tavern's billiard table",
+  billiardAlt: 'A stadium-shaped billiard table, two balls drawing their tracks',
+  billiardText: 'At the back of the tavern, a table the shape of a stadium: two half-circles joined by straight cushions (Bunimovich, 1979). Two balls leave the same spot a millionth of a radian apart. For a few cushions they run together; then they part for good, and each in time crosses every part of the table: chaos. On a round table they would stay together for ever.',
+  billiardCount: (n, d) => `${n} cushions; the balls are ${d < 0.01 ? d.toExponential(1) : d.toFixed(1)} px apart.`,
+  peddlerWants: 'The peddler leans on his barrow: "A tale for a trinket, traveller. Seen anything curious hereabouts? Come back when you have."',
+  peddlerGives: (what, letter) => `You tell the peddler about ${what}. "Worth a brass astrolabe, that one." (${letter} - in your pack: i)`,
+  peddlerDone: 'The peddler tips his hat: "Mind the astrolabe, it was my grandmother\'s."',
   picked: (letter, item) => `${letter} - ${item}.`,
   noSuchItem: (l) => `You don't have that object ('${l}').`,
   rumour: (r) => `You hear a rumour: ${r}`,
@@ -107,9 +121,10 @@ const T = {
   <div><dt>descend</dt><dd>first-person view (arrows or WASD, Enter reads, Esc leaves)</dd></div>
   <div><dt>rumour</dt><dd>listen</dd></div>
   <div><dt>cv &middot; mail &middot; github</dt><dd>take what you came for</dd></div>
-  <div><dt>theme &middot; keys on|off</dt><dd>terminal or hours &middot; single-key shortcuts</dd></div>
+  <div><dt>engine &middot; keys on|off</dt><dd>the terminal in its engine, or back to the castle &middot; single-key shortcuts</dd></div>
   <div><dt>sky &lt;hour&gt;</dt><dd>dawn, noon, dusk, night or now, in the hours theme</dd></div>
   <div><dt>weather &lt;kind&gt;</dt><dd>clear, rain, snow, fog, storm... or now</dd></div>
+  <div><dt>event &lt;name&gt;</dt><dd>call up what the landscape does: bolt, dragon, rider, dream, fireworks... (event alone: the list)</dd></div>
   <div><dt>photo</dt><dd>the landscape alone, to save as a picture</dd></div>
   <div><dt>tour</dt><dd>a minute's guided walk round the castle (any key stops it)</dd></div>
   <div><dt>tower</dt><dd>up the watchtower: the view all round, N E S W</dd></div>
@@ -131,10 +146,10 @@ const T = {
   curiosFound: (k, n) => `You found ${k} of the land's ${n} curiosities:`,
   allCurios: 'You know every curiosity of this land. The wizard nods, impressed.',
   pickTitle: 'Two ways in',
-  pick: `<p>The same site, two ways to walk it. You can switch at any time with the button at the bottom right.</p>
+  pick: `<p>The same site, two ways to walk it. The terminal lives in an old engine in the castle's scriptorium; [the engine], bottom right, opens it from anywhere.</p>
 <div class="pick">
-  <button type="button" data-pick="hours"><b>[the castle]</b><span>a pixel-art landscape under the real sky of Paris; each section is a room to explore</span></button>
-  <button type="button" data-pick="dark"><b>[the terminal]</b><span>a text console, quick to read: every section one key away</span></button>
+  <button type="button" data-pick="castle"><b>[explore the castle]</b><span>a pixel-art landscape under the real sky of Paris; each section is a room to explore</span></button>
+  <button type="button" data-pick="engine"><b>[straight to the terminal]</b><span>through the scriptorium, to the scrying engine: a text console, every section one key away</span></button>
 </div>`,
   minutes: (m) => (m < 1 ? 'under a minute' : m === 1 ? 'one minute' : `${m} minutes`),
 };
@@ -170,6 +185,14 @@ function sessionList(key) {
   try { return JSON.parse(session(key) || '[]'); } catch { return []; }
 }
 
+/* Visits from this browser (kept): the visitor's own oak in the castle's meadow puts on a ring each. */
+if (!session('counted')) {
+  session('counted', '1');
+  store('visits', String(Number(store('visits') || 0) + 1));
+  if (!store('firstVisit')) store('firstVisit', String(Date.now()));
+}
+const visits = () => ({ n: Number(store('visits') || 1), first: Number(store('firstVisit')) || null });
+
 const $ = (id) => document.getElementById(id);
 /** decodeURIComponent that gives back its input when the URL holds a malformed escape (%E0). */
 const decode = (s) => { try { return decodeURIComponent(s); } catch { return s; } };
@@ -199,17 +222,22 @@ const THEMES = ['dark', 'hours']; // the toggle's cycle
 // the theme follows the screen (as in the head script): hours needs a wide one
 const WIDE = matchMedia('(min-width: 75rem)');
 const qTheme = new URLSearchParams(location.search).get('theme');
-const chosenTheme = () => (!WIDE.matches ? 'dark' : ((qTheme || store('theme')) === 'dark' ? 'dark' : 'hours'));
+const FRAMED = window.self !== window.top; // this page is the terminal in the castle's scrying engine
+const chosenTheme = () => (!WIDE.matches || FRAMED || qTheme === 'dark' ? 'dark' : 'hours');
 const nextTheme = () => THEMES[(THEMES.indexOf(root.getAttribute('data-theme')) + 1) % THEMES.length];
 
 let hoursLoading = null;
 function applyTheme(theme, persist) {
   root.setAttribute('data-theme', theme);
-  $('theme-next').textContent = `[${T.themeName[nextTheme()]}]`;
+  document.querySelectorAll('.lbl[data-castle]').forEach((e) => { // the bars' words: the castle's, or the terminal's
+    e.dataset.term ||= e.textContent; e.textContent = theme === 'hours' ? e.dataset.castle : e.dataset.term;
+  });
+  $('theme-next').textContent = FRAMED ? T.engineClose : theme === 'hours' ? T.engineOpen : `[${T.themeName[nextTheme()]}]`;
+  themeToggle.hidden = !FRAMED && theme !== 'hours' && !WIDE.matches; // (a narrow screen has the terminal only)
   themeColor.setAttribute('content', getComputedStyle(root).getPropertyValue('--bar').trim());
   if (persist) store('theme', theme);
   // narrow screens: the terminal, under a banner of the living landscape (unless `banner off`)
-  root.classList.toggle('banner', !WIDE.matches && store('banner') !== 'off' && theme !== 'hours');
+  root.classList.toggle('banner', !FRAMED && !WIDE.matches && store('banner') !== 'off' && theme !== 'hours');
   if (theme === 'hours' || root.classList.contains('banner')) {
     const load = (src) => new Promise((resolve, reject) => {
       const s = document.createElement('script');
@@ -233,12 +261,18 @@ function applyTheme(theme, persist) {
       found: findCurio, // a curiosity of the landscape, clicked
       curios: () => ({ found: curios(), all: CURIOS }), // for the gatehouse's cabinet
       now: nowHtml, // the tavern's slate: what is going on, from the page itself
+      visits, // the visitor's oak, a ring a visit
+      news: latestNews, // the wizard's reading, the messenger's letter
+      dreams: dreamsOf, // what the knight dreams of, asleep by the fire
+      trade, // the peddler's bargain
+      staleness, // cobwebs in the rooms left alone
+      billiard: showBilliard, // the tavern's table, through its door (the village close up)
     })).then(() => { if (session('ended')) window.Hours.hoist(true); showWeather(); fetchKp(); });
   }
 }
 
 applyTheme(root.getAttribute('data-theme'), false);
-themeToggle.addEventListener('click', () => applyTheme(nextTheme(), true));
+themeToggle.addEventListener('click', () => engineToggle());
 WIDE.addEventListener('change', () => applyTheme(chosenTheme(), false));
 
 /** Theme colours as [r, g, b], for the canvases. */
@@ -254,6 +288,24 @@ if ($('rip-path')) {
   $('rip-path').parentElement.hidden = false;
 }
 
+/* ---- for the castle's people: the latest news (and how old), what the knight dreams of ---- */
+
+/** The newest piece of news: its text and its age in days (from its <time>, a month: its first). */
+function latestNews() {
+  const li = document.querySelector('#news .news li');
+  if (!li) return null;
+  const t = li.querySelector('time'); const when = new Date(`${t ? t.getAttribute('datetime') : ''}`.padEnd(10, '-01').slice(0, 10));
+  const span = li.querySelector('span');
+  const age = new URLSearchParams(location.search).has('rider') ? 1 : (Date.now() - when) / 864e5;
+  return { text: (span || li).textContent.replace(/\s+/g, ' ').trim(), age: Number.isFinite(age) ? age : 999 };
+}
+/** The research and the projects, as dreams: a name and a few words to find a picture by. */
+function dreamsOf() {
+  const pick = (sel) => [...document.querySelectorAll(sel)].map((el) => ({
+    name: el.querySelector('h3').textContent.trim(), words: el.textContent.replace(/\s+/g, ' ').slice(0, 400) }));
+  return [...pick('#research .entry'), ...pick('#projects article.project')];
+}
+
 /* ---- objects lying in the rooms, and the pack -------------------------- */
 
 const cvHref = () => document.querySelector('.links a[href*="CV"]').href;
@@ -263,7 +315,21 @@ const ITEMS = {
   publications: { name: 'a scroll labelled BIBTEX', verb: 'copy', use: () => copyFrom(new URL(DATA.bib, SITE).href) },
   contact: { name: 'a raven quill', verb: 'write', use: () => { location.href = `mailto:${DATA.email}`; } },
   projects: { name: 'a lodestone that points to github', verb: 'follow', use: () => { location.href = DATA.github; } },
+  // the peddler's, for a tale of something curious (the hours theme's landscape)
+  astrolabe: { name: "a brass astrolabe, the peddler's", verb: 'sight', use: () => {
+    const alt = Math.asin(skyAt(skyNow()).sun[2]) / rad;
+    say(alt > 0 ? `You sight the Sun through the astrolabe: ${alt.toFixed(0)}\u00b0 above the horizon of Paris.` : `The Sun is ${(-alt).toFixed(0)}\u00b0 below the horizon; you sight the pole star instead, ${LAT_DEG.toFixed(0)}\u00b0 up, as high as Paris is north.`);
+  } },
 };
+const LAT_DEG = 48.8566;
+/** The peddler offers his astrolabe for the tale of a curiosity found (one, once). */
+function trade() {
+  const c = curios().filter((k) => k !== 'peddler'); // (a tale of something else than himself)
+  if (pack().includes('astrolabe')) return T.peddlerDone;
+  if (!c.length) return T.peddlerWants;
+  const p = pack(); p.push('astrolabe'); session('pack', JSON.stringify(p));
+  return T.peddlerGives(CURIOS[c[Math.floor(Math.random() * c.length)]], LETTERS[p.length - 1]);
+}
 const LETTERS = 'abcdefgh';
 
 const pack = () => sessionList('pack');
@@ -320,6 +386,10 @@ function soundState() {
       const h = p.getHours(); const wd = p.getDay(); const alt = Math.asin(skyAt(d).sun[2]) / rad;
       return {
         place: root.classList.contains('village') ? 'village' : root.classList.contains('lookout') ? 'tower' : null,
+        sunAlt: alt, planet: planetaryHour(d).hour, // (the dawn chorus by the light; the lute's mode by the planetary hour)
+        pan: window.Hours && window.Hours.pans ? window.Hours.pans() : {}, // where things stand on the screen
+        cinema: Boolean(window.Hours && window.Hours.cinema && window.Hours.cinema()), // the lantern show (its clatter)
+        office: window.Hours && window.Hours.office ? window.Hours.office() : null, // the chapel's office now (its chant)
         hour: h, minute: p.getMinutes(), day: p.toDateString(), month: p.getMonth(), dawn: alt > -6 && alt < 10 && h < 12,
         market: [0, 3, 5, 6].includes(wd) && alt > 0, forge: wd !== 0 && h >= 7 && h < 18, tavern: h >= 18 || h < 1,
       };
@@ -418,6 +488,10 @@ const CURIOS = {
   lichen: 'the lichen on the rock', watch: 'the view from the watchtower', planet: 'a planet (twilight, night)',
   murmuration: 'starlings at dusk (autumn, winter)', fireflies: 'fireflies (summer nights)', burn: "Saint John's fire (23 June)", seep: 'the springs after rain',
   ferry: 'the ferryman', flock: 'the flock', joust: 'a tournament (first Sundays)', wmill: 'the water mill', quarry: 'the quarry', falls: 'the waterfall', bees: 'the bees', orchard: 'the orchard', market: 'the market crowd (close up, on market days)',
+  sapling: 'your own oak', gauge: 'the river gauge', dream: "the knight's dream (late at night)", peddler: 'the peddler (on the road, now and then)',
+  scribe: 'the copyist at his window (evenings)', ants: 'the ants (warm days)', shoal: 'the shoal (bright days)',
+  skip: 'a stone skimmed on the river', billiard: "the tavern's billiard table",
+  facade: "the castle's stone, in Monet's light", hunters: "Bruegel's hunters (snowy days)", skaters: 'the skaters (hard frost)',
 };
 const curios = () => sessionList('curios');
 function showCurios() {
@@ -447,9 +521,16 @@ if (!session('since')) session('since', String(Date.now()));
 const visited = () => sessionList('visited');
 let here = null; // the room the reader stands in
 
+/* When each room was last entered from this browser (kept): a room left alone a while gathers
+   cobwebs in the castle. `seenBefore` is the record as this visit found it. */
+const seenBefore = (() => { try { return JSON.parse(store('roomSeen') || '{}'); } catch { return {}; } })();
+/** Days since room `id` was last entered before this visit; Infinity if never. */
+const staleness = (id) => (seenBefore[id] ? (Date.now() - seenBefore[id]) / 864e5 : Infinity);
+
 /** The reader enters room `id`; `quiet` keeps the message line as it is (first paint). */
 function enterRoom(id, quiet = false) {
   here = WORLD[id] ? id : null;
+  if (here) { try { const m = JSON.parse(store('roomSeen') || '{}'); m[id] = Date.now(); store('roomSeen', JSON.stringify(m)); } catch { /* */ } }
   const v = visited();
   if (here && !v.includes(id)) {
     v.push(id);
@@ -630,12 +711,37 @@ function roomItems(id) {
       const col = sec.querySelector('.colophon');
       const mail = sec.querySelector('a[href^="mailto:"]');
       const sign = mail ? `<p><a href="${mail.getAttribute('href')}?subject=${encodeURIComponent("The castle's guestbook")}&amp;body=${encodeURIComponent('Name:\nFrom:\n\nA word for the register:\n')}">[sign the guestbook]</a> <span class="dim">(it opens a letter; I copy the kind ones in by hand)</span></p>` : '';
-      if (col) things.push({ kind: 'register', label: T.register, html: `<h3>${T.register}</h3>${col.outerHTML}${sign}` });
+      const book = `<form class="sign-form"><label>${T.signName} <input name="who" maxlength="40" autocomplete="nickname" required></label> <button type="submit">[${T.signIt}]</button></form><div class="signed">${signedHtml()}</div>`;
+      if (col) things.push({ kind: 'register', label: T.register, html: `<h3>${T.register}</h3>${col.outerHTML}${book}${sign}${creditsHtml()}` });
       return things;
     }
     default: return [];
   }
 }
+
+/** Whose works the castle borrows (paintings, films, scores, texts...), as hours.js's index lists them. */
+function creditsHtml() {
+  const c = window.Hours && window.Hours.credits ? window.Hours.credits() : [];
+  const seen = new Set(); const rows = c.filter((x) => { const k = `${x.title}|${x.author}`; if (seen.has(k)) return false; seen.add(k); return true; });
+  if (!rows.length) return '';
+  const link = (x) => (/^https?:\/\//.test(x.source || '') ? `<a href="${esc(x.source)}" rel="noopener">${esc(x.title)}</a>` : esc(x.title));
+  return `<h4>${T.borrowed}</h4><ul class="credits">${rows.map((x) => `<li>${link(x)}${x.author ? `, ${esc(x.author)}` : ''}${x.year ? ` (${esc(x.year)})` : ''}${x.licence ? ` <span class="dim">${esc(x.licence)}</span>` : ''}</li>`).join('')}</ul>`;
+}
+/** The register's local page: names signed in this browser (never sent anywhere). */
+const signatures = () => { try { return JSON.parse(store('signatures') || '[]'); } catch { return []; } };
+function signedHtml() {
+  const s = signatures();
+  return s.length ? `<p class="dim">${T.signedHere}</p><ul>${s.map(([n, t]) => `<li>${esc(n)}, ${new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</li>`).join('')}</ul>` : `<p class="dim">${T.signNone}</p>`;
+}
+document.addEventListener('submit', (e) => {
+  const f = e.target.closest('.sign-form');
+  if (!f) return;
+  e.preventDefault();
+  const who = f.who.value.trim().slice(0, 40);
+  if (!who) return;
+  const s = signatures(); s.push([who, Date.now()]); store('signatures', JSON.stringify(s.slice(-30)));
+  f.reset(); f.nextElementSibling.innerHTML = signedHtml(); say(T.signDone(who));
+});
 
 const spots = document.createElement('div');
 spots.className = 'spots';
@@ -649,6 +755,15 @@ document.body.append(card);
 let spotItems = []; let cardFrom = null;
 
 /** What is going on, gathered from the page: the studies under way, the last news, the projects. */
+/** Today's fare at the tavern (hours.js: from Taillevent's Viandier), as HTML; '' before it has come. */
+function fareHtml(full) {
+  const f = window.Hours && window.Hours.fare ? window.Hours.fare() : null;
+  if (!f || !f.dishes.length) return '';
+  const day = `${f.lean ? 'a lean day' : 'a fat day'} (${f.why}): ${f.lean ? 'fish, no meat' : 'meat'}`;
+  if (!full) return `<p><b>Today's fare</b>, ${day}: ${f.dishes.map((d) => esc(d.name)).join('; ')}.</p>`;
+  return `<h4>Today's fare</h4><p class="dim">From the <i>Viandier</i> of Taillevent, cook to Charles V; ${day}. The book's own words under each dish.</p><ul class="fare">`
+    + f.dishes.map((d) => `<li><b>${esc(d.name)}</b>: ${esc(d.what.join(', '))}.<details><summary>Taillevent</summary><i lang="frm">${esc(d.text)}</i></details></li>`).join('') + '</ul>';
+}
 function nowHtml() {
   const txt = (el) => (el ? el.textContent.replace(/\s+/g, ' ').trim() : '');
   const studying = [...document.querySelectorAll('#about .sheet dd')][0];
@@ -656,7 +771,7 @@ function nowHtml() {
   const projects = [...document.querySelectorAll('#projects article.project h3')].map(txt);
   return `<h3>On the tavern's slate</h3><p class="dim">What is going on, chalked up by the landlord.</p>`
     + (studying ? `<p><b>Studying:</b> ${txt(studying)}</p>` : '') + (news ? `<p><b>Latest news:</b> ${txt(news)}</p>` : '')
-    + (projects.length ? `<p><b>At the workbench:</b> ${projects.join('; ')}.</p>` : '');
+    + (projects.length ? `<p><b>At the workbench:</b> ${projects.join('; ')}.</p>` : '') + fareHtml(false);
 }
 
 /* The report's figure, alive: a wave packet meets a nuclear barrier (Woods-Saxon), part through,
@@ -728,10 +843,88 @@ function setSpots(rects, items) {
     b.addEventListener('pointerleave', () => lit(document.activeElement === b));
     b.addEventListener('focus', () => lit(true));
     b.addEventListener('blur', () => lit(false));
-    b.addEventListener('click', () => openCard(i, b));
+    if (items[i].kind === 'ladder') { // the library's ladder slides along its rail: drag it, or the arrow keys
+      let x0 = null; let moved = false;
+      const to = (r2) => { if (r2) b.style.left = `${r2.l}px`; };
+      b.addEventListener('pointerdown', (e) => { x0 = e.clientX; moved = false; try { b.setPointerCapture(e.pointerId); } catch { /* (a pointer the browser no longer knows) */ } });
+      b.addEventListener('pointermove', (e) => { if (x0 === null || (!moved && Math.abs(e.clientX - x0) < 4)) return; moved = true; to(window.Hours.ladderTo(e.clientX)); });
+      b.addEventListener('pointerup', () => { x0 = null; });
+      b.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+        e.preventDefault(); e.stopPropagation(); to(window.Hours.ladderBy(e.key === 'ArrowLeft' ? -1 : 1));
+      });
+      b.addEventListener('click', (e) => { if (moved) { e.stopImmediatePropagation(); moved = false; } }); // (a drag is not a click)
+    }
+    b.dataset.kind = items[i].kind;
+    b.addEventListener('click', () => (items[i].kind === 'engine' ? openEngine(b) : openCard(i, b)));
     return [b];
   }));
 }
+/* ---- the scrying engine (the scriptorium, About): the terminal, a site in the site ------------
+   The same page in an iframe (framed, it takes the terminal: see the head script), in a window over
+   the castle. Opening: the room's picture zooms on the engine, then the window grows out of its glass;
+   closing runs it back. Esc, [back to the castle] (from inside: postMessage) or a click outside closes. */
+let engine = null;
+function enterEngine() { // from anywhere: into the scriptorium, then the engine
+  if (FRAMED || engine) return;
+  if (!window.Hours) { setTimeout(enterEngine, 200); return; }
+  if (root.dataset.room !== 'about') { if (location.hash === '#about') openWindow('#about', { userAction: true }); else location.hash = '#about'; }
+  const t0 = Date.now();
+  const wait = () => {
+    const b = spots.querySelector('.spot[data-kind="engine"]');
+    if (b && root.classList.contains('room-ready')) setTimeout(() => openEngine(b), 350);
+    else if (Date.now() - t0 < 8000) setTimeout(wait, 120);
+  };
+  wait();
+}
+function openEngine(spot) {
+  if (FRAMED || engine) return;
+  const cv = document.querySelector('.plate-img canvas'); const sr = spot.getBoundingClientRect(); const cr = cv.getBoundingClientRect();
+  const fx = sr.left + sr.width / 2; const fy = sr.top + sr.height * 0.4; // (the glass, in the hood's upper part)
+  const Z = 2.6; const ms = reduceMotion ? 0 : 900;
+  cv.style.transformOrigin = `${fx - cr.left}px ${fy - cr.top}px`;
+  cv.style.transition = `transform ${ms}ms cubic-bezier(.6, 0, .3, 1)`;
+  const vx = innerWidth / 2; const vy = innerHeight / 2; // the glass is brought to the middle, where the window opens
+  cv.style.transform = `translate(${vx - fx}px, ${vy - fy}px) scale(${Z})`;
+  root.classList.add('engine-on'); cue('door');
+  const wrap = document.createElement('div'); wrap.className = 'engine';
+  wrap.innerHTML = `<div class="engine-win" role="dialog" aria-label="${T.engineTitle}"><p class="engine-bar"><span>${T.engineTitle}</span><button type="button" class="engine-x">${T.engineClose}</button></p><iframe title="${T.engineTitle}" src="${location.pathname}"></iframe></div>`;
+  engine = { wrap, cv, fx: vx, fy: vy, ms, from: spot };
+  setTimeout(() => {
+    if (!engine) return;
+    document.body.append(wrap);
+    const win = wrap.querySelector('.engine-win'); const wr = win.getBoundingClientRect();
+    const s0 = Math.max(0.04, (sr.width * Z * 0.5) / wr.width); // grown from the glass, as large as it looks zoomed
+    win.style.transform = `translate(${vx - (wr.left + wr.width / 2)}px, ${vy - (wr.top + wr.height / 2)}px) scale(${s0})`; win.style.opacity = '0';
+    win.getBoundingClientRect(); // (commit the start)
+    win.style.transition = `transform ${reduceMotion ? 0 : 520}ms cubic-bezier(.2, .8, .2, 1), opacity ${reduceMotion ? 0 : 300}ms`;
+    win.style.transform = ''; win.style.opacity = '';
+    engine.win = win; engine.s0 = win.style.transform;
+    const fr = wrap.querySelector('iframe'); fr.addEventListener('load', () => { try { fr.contentWindow.focus(); } catch { /* (another origin: never here) */ } }, { once: true });
+  }, ms);
+  wrap.addEventListener('click', (e) => { if (e.target === wrap || e.target.closest('.engine-x')) closeEngine(); });
+}
+function closeEngine() {
+  if (!engine) return;
+  const { wrap, cv, fx, fy, ms, from } = engine; engine = null;
+  const win = wrap.querySelector('.engine-win'); const wr = win.getBoundingClientRect();
+  win.style.transform = `translate(${fx - (wr.left + wr.width / 2)}px, ${fy - (wr.top + wr.height / 2)}px) scale(0.05)`; win.style.opacity = '0';
+  setTimeout(() => { wrap.remove(); cv.style.transform = ''; }, reduceMotion ? 0 : 400);
+  setTimeout(() => { root.classList.remove('engine-on'); cv.style.transition = ''; cv.style.transformOrigin = ''; if (from.isConnected) from.focus(); }, (reduceMotion ? 0 : 400) + ms);
+}
+function engineToggle() {
+  if (FRAMED) { parent.postMessage({ engine: 'close' }, location.origin); return; }
+  if (engine) closeEngine();
+  else if (root.getAttribute('data-theme') === 'hours') enterEngine();
+  else applyTheme(nextTheme(), true);
+}
+window.addEventListener('message', (e) => { if (e.origin === location.origin && e.data && e.data.engine === 'close') closeEngine(); });
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (engine && !FRAMED) { e.stopImmediatePropagation(); closeEngine(); return; }
+  if (FRAMED && !document.querySelector('dialog[open]') && $('cmdline').hidden) parent.postMessage({ engine: 'close' }, location.origin);
+}, true);
+
 /** The doors out of room `id`, from the section's exits: { dir: n|e|s|w, label, go }. */
 function roomDoors(id) {
   const sec = document.getElementById(id);
@@ -883,6 +1076,11 @@ function openCard(i, from) {
   cue(it.kind === 'letter' ? 'seal' : 'card');
   const runFigs = () => card.querySelectorAll('.pub-fig canvas').forEach((cv) => { if (!cv.running) { cv.running = true; waveFig(cv); } }); // (a property: the pages are clones)
   runFigs(); setTimeout(runFigs, 400); setTimeout(runFigs, 1500); // (and again once a book has been paginated)
+  card.querySelectorAll('.real-fig').forEach(paintFig); // the real things' pictures (paintings, films...)
+  card.querySelectorAll('canvas.astrolabe').forEach((cv) => { // the astrolabe, kept set while its card is open
+    const tick = () => { if (card.hidden || !card.contains(cv) || !window.Hours || !window.Hours.astrolabe) return; cv.nextElementSibling.innerHTML = window.Hours.astrolabe(cv); setTimeout(tick, 1000); };
+    tick();
+  });
   if (book) { // pages are measured, so the card is shown first; again once its fonts have loaded
     bind(body); turn(0);
     const src = card.bookSrc;
@@ -905,6 +1103,16 @@ function openCard(i, from) {
   cardFrom = from;
   card.querySelector('.card-close').focus();
 }
+/** A real asset's figure in a card: its canvas painted by hours.js, its caption; [◄] [►] turn it. */
+function paintFig(fig) {
+  if (!window.Hours || !window.Hours.paint) return;
+  fig.querySelector('figcaption').innerHTML = window.Hours.paint(fig.querySelector('canvas'), fig.dataset.real, Number(fig.dataset.i));
+}
+card.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-real-step]'); if (!b) return;
+  const fig = b.closest('.real-fig'); const n = Number(fig.dataset.n);
+  fig.dataset.i = String((Number(fig.dataset.i) + Number(b.dataset.realStep) + n) % n); paintFig(fig); cue('page');
+});
 function closeCard(refocus = true) {
   if (card.hidden) return;
   card.hidden = true;
@@ -947,7 +1155,7 @@ dialog.setAttribute('aria-labelledby', 'dlg-h');
 document.body.append(dialog);
 dialog.addEventListener('click', (e) => {
   const pick = e.target.closest('[data-pick]');
-  if (pick) { dialog.close(); applyTheme(pick.dataset.pick, true); return; }
+  if (pick) { dialog.close(); store('entry', pick.dataset.pick); if (pick.dataset.pick === 'engine') enterEngine(); return; }
   const use = e.target.closest('[data-use]');
   if (use) { dialog.close(); useItem(use.dataset.use); return; }
   const go = e.target.closest('[data-go]'); // the map's places in the landscape
@@ -974,9 +1182,45 @@ function showDialog(titleHtml, bodyHtml) {
 
 /* First visit on a wide screen, no choice stored: offer the two themes (the castle is drawn behind).
    Narrow screens have the terminal only, so nothing to choose. */
-if (WIDE.matches && !qTheme && !store('theme')) {
+if (WIDE.matches && !qTheme && !FRAMED && !store('entry')) {
   showDialog(T.pickTitle, T.pick);
-  dialog.addEventListener('close', () => { if (!store('theme')) store('theme', root.getAttribute('data-theme')); }, { once: true });
+  dialog.addEventListener('close', () => { if (!store('entry')) store('entry', 'castle'); }, { once: true });
+} else if (WIDE.matches && !qTheme && !FRAMED && store('entry') === 'engine' && !location.hash && isIndex) enterEngine(); // (who chose it comes back to it)
+
+/* The tavern's billiard table: a stadium, two half-discs joined by straight cushions (Bunimovich,
+   1979). Two balls set off from the same spot, their directions a millionth of a radian apart: after
+   a few cushions they part for good, and each in time covers the whole table (chaos, ergodicity).
+   On a round table they would keep their angle at every cushion and stay together. */
+function showBilliard() {
+  findCurio('billiard');
+  showDialog(T.billiardTitle, `<canvas class="billiard" width="320" height="168" aria-label="${T.billiardAlt}"></canvas><p>${T.billiardText}</p><p class="dim billiard-count"></p>${fareHtml(true)}`);
+  const cv = dialog.querySelector('canvas.billiard'); const g = cv.getContext('2d');
+  const A = 70; const R = 60; const cx = 160; const cy = 84; // the straight part's half-length, the ends' radius
+  const ball = (a) => ({ x: -20, y: 10, vx: Math.cos(a) * 1.6, vy: Math.sin(a) * 1.6 });
+  const balls = [ball(0.7), ball(0.7 + 1e-6)]; let hits = 0;
+  g.fillStyle = '#2f5a3a'; g.strokeStyle = '#6a4028'; g.lineWidth = 8;
+  const table = () => { g.beginPath(); g.arc(cx - A, cy, R, Math.PI / 2, (3 * Math.PI) / 2); g.lineTo(cx + A, cy - R); g.arc(cx + A, cy, R, -Math.PI / 2, Math.PI / 2); g.closePath(); };
+  table(); g.fill(); g.stroke();
+  const move = (b) => {
+    b.x += b.vx; b.y += b.vy;
+    if (Math.abs(b.x) <= A) { if (Math.abs(b.y) > R) { b.vy = -b.vy; b.y = Math.sign(b.y) * (2 * R - Math.abs(b.y)); return 1; } return 0; }
+    const c = Math.sign(b.x) * A; const dx = b.x - c; const d = Math.hypot(dx, b.y);
+    if (d <= R) return 0;
+    const nx = dx / d; const ny = b.y / d; const dot = b.vx * nx + b.vy * ny; // reflect off the round cushion
+    b.vx -= 2 * dot * nx; b.vy -= 2 * dot * ny; b.x = c + nx * (2 * R - d); b.y = ny * (2 * R - d); return 1;
+  };
+  const tick = () => {
+    if (!dialog.open || !dialog.contains(cv)) return;
+    g.save(); table(); g.clip(); g.fillStyle = 'rgba(47, 90, 58, 0.04)'; g.fillRect(0, 0, cv.width, cv.height); // old tracks fade
+    for (let k = 0; k < (reduceMotion ? 40 : 8); k += 1) {
+      balls.forEach((b, j) => { const x0 = b.x; const y0 = b.y; const hit = move(b); if (j === 0) hits += hit; g.strokeStyle = j ? 'rgba(220, 80, 60, 0.7)' : 'rgba(250, 240, 210, 0.7)'; g.lineWidth = 1; g.beginPath(); g.moveTo(cx + x0, cy + y0); g.lineTo(cx + b.x, cy + b.y); g.stroke(); });
+    }
+    balls.forEach((b, j) => { g.fillStyle = j ? '#dc503c' : '#faf0d2'; g.beginPath(); g.arc(cx + b.x, cy + b.y, 3, 0, 2 * Math.PI); g.fill(); });
+    g.restore();
+    dialog.querySelector('.billiard-count').textContent = T.billiardCount(hits, Math.hypot(balls[0].x - balls[1].x, balls[0].y - balls[1].y));
+    requestAnimationFrame(tick);
+  };
+  tick();
 }
 
 const showHelp = () => showDialog(T.helpTitle, T.help(document.querySelectorAll('.tabs a').length));
@@ -1292,8 +1536,8 @@ let lastHour = null;
    The almanac says it; the castle's sky shows it. ?weather=<kind> or `:weather <kind>` previews one. */
 
 const WX_URL = 'https://api.open-meteo.com/v1/forecast?latitude=48.8566&longitude=2.3522'
-  + '&current=temperature_2m,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m&timezone=Europe%2FParis'
-  + '&daily=precipitation_sum,temperature_2m_min&past_days=7&forecast_days=1'; // the week behind: the river's level, its ice
+  + '&current=temperature_2m,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,precipitation,relative_humidity_2m,snow_depth&timezone=Europe%2FParis'
+  + '&hourly=precipitation&daily=precipitation_sum,temperature_2m_min&past_days=7&forecast_days=1'; // the week behind: the river's level, its ice, the puddles
 const WX_KINDS = ['clear', 'cloudy', 'overcast', 'fog', 'drizzle', 'showers', 'rain', 'snow', 'storm'];
 const WX_MS = 30 * 60e3;
 let wxNow = null;
@@ -1321,7 +1565,8 @@ function currentWx() {
   const w = WX_KINDS.includes(forced)
     ? { kind: forced, cover: { clear: 0.1, cloudy: 0.5, showers: 0.6 }[forced] ?? 0.95, wind: 18, dir: 250, temp: null } : wxNow;
   const q = new URLSearchParams(location.search); // ?rain7=60&frost=-6: a wet week, a hard frost (previews)
-  const extra = Object.fromEntries(['rain7', 'frost', 'temp'].filter((k) => q.has(k)).map((k) => [k, Number(q.get(k))]));
+  // (and ?dryH=3 puddles, ?snowDepth=0.2 snow lying, ?humid=97 a damp night, ?precip=4 mm/h)
+  const extra = Object.fromEntries(['rain7', 'frost', 'temp', 'dryH', 'snowDepth', 'humid', 'precip'].filter((k) => q.has(k)).map((k) => [k, Number(q.get(k))]));
   return w && Object.keys(extra).length ? { ...w, ...extra } : w;
 }
 
@@ -1338,10 +1583,14 @@ async function fetchWeather() {
     if (c && Date.now() - c.t < WX_MS) { wxNow = c.w; showWeather(); return; }
     const res = await fetch(WX_URL);
     if (!res.ok) return;
-    const { current: k, daily: dy } = await res.json();
+    const { current: k, daily: dy, hourly: hr } = await res.json();
     const past = (a) => (a || []).slice(0, -1).filter((v) => v != null); // the seven days before today
+    // hours since it last rained (>= 0.2 mm in an hour): the puddles dry in about half a day
+    const nowI = hr ? hr.time.findLastIndex((t) => t <= k.time) : -1;
+    const lastWet = nowI < 0 ? -1 : hr.precipitation.slice(0, nowI + 1).findLastIndex((v) => v >= 0.2);
     wxNow = { kind: wxKind(k.weather_code), cover: k.cloud_cover / 100, wind: k.wind_speed_10m, dir: k.wind_direction_10m, temp: Math.round(k.temperature_2m),
-      rain7: past(dy && dy.precipitation_sum).reduce((a, v) => a + v, 0), frost: Math.min(9, ...past(dy && dy.temperature_2m_min).slice(-3)) };
+      rain7: past(dy && dy.precipitation_sum).reduce((a, v) => a + v, 0), frost: Math.min(9, ...past(dy && dy.temperature_2m_min).slice(-3)),
+      precip: k.precipitation ?? 0, humid: k.relative_humidity_2m ?? 70, snowDepth: k.snow_depth ?? 0, dryH: lastWet < 0 ? 99 : nowI - lastWet };
     session('wx', JSON.stringify({ t: Date.now(), w: wxNow }));
     showWeather();
   } catch { /* offline: the sky stays as drawn, the almanac says nothing */ }

@@ -18,6 +18,7 @@
    grass, firelight. */
 
 (function () {
+  const REAL_BASE = new URL('../data/real/', document.currentScript.src); // (things from the real world: see realGet)
   let FPS_MS = 83; // ~12 frames a second: pixel fire looks right at that rate (halved on a slow machine, see frame)
   let renderMs = 0; let lite = false;
   const deg = Math.PI / 180;
@@ -115,6 +116,13 @@
   const CASTLE = new Set(['WALL_HI', 'WALL', 'WALL_SH', 'WALL_DK', 'ROOF_HI', 'ROOF', 'ROOF_SH', 'SLATE_HI', 'SLATE',
     'SLATE_SH', 'DOME_HI', 'DOME', 'DOME_SH', 'TIMBER_HI', 'TIMBER', 'TIMBER_SH', 'BANNER', 'BANNER_SH', 'BANNER_GOLD',
     'IVY', 'IVY_SH', 'WIN_DARK', 'WIN_LIT'].map((n) => I[n]));
+
+  // what snow does on each material: 1 it lies all over (grass, fields, bare earth), 2 it caps the top
+  // edges (roofs, trees, rocks, walls), 3 it lies thin (the trodden path); SNOWDARK: shaded side
+  const SNOWS = new Uint8Array(NAMES.length); const SNOWDARK = new Uint8Array(NAMES.length);
+  [[1, 'GRASS GRASS_SH GRASS_HI GRASS_LT HILL HILL_SH HILL_HI FURROW FURROW_SH WHEAT WHEAT_SH FL_RED FL_YEL FL_WHITE FL_BLUE FL_VIOLET MOSS MOSS_HI DIRT DIRT_SH LEAF LEAF2'],
+    [2, 'ROOF_HI ROOF ROOF_SH SLATE_HI SLATE SLATE_SH THATCH THATCH_SH DOME_HI DOME DOME_SH WALL_HI WALL WALL_SH WALL_DK ROCK_HI ROCK ROCK_SH ROCK_DK PINE PINE_SH PINE_HI TREES_FAR TREES_FAR_SH FG_PINE_HI FG_PINE FG_PINE_SH OAK_HI OAK OAK_SH RUST_HI RUST RUST_SH BARK BIRCH BUSH BUSH_SH BUSH_HI STONE_HI STONE STONE_SH TIMBER_HI TIMBER TIMBER_SH VINE VINE_AUT'],
+    [3, 'PATH PATH_HI PATH_SH']].forEach(([g, names]) => names.split(' ').forEach((n) => { SNOWS[I[n]] = g; SNOWDARK[I[n]] = /_SH|_DK|^FG_/.test(n) ? 1 : 0; }));
 
   // [sun altitude (deg), sky stops top -> horizon, ambient light (multiplies daylight), fog]
   const KEYS = [
@@ -286,19 +294,16 @@ htttt
 .hhh.
 .g.g.`;
   const HERON = `
-...kaa.
-gggaaa.
-....aa.
-.....a.
-.....a.
-....aa.
-...aaaa
-..aaaaa
-..aaaaa
-...aaa.
-...k.k.
-...k.k.
-...k.k.`;
+..kaa.
+ggaaa.
+...aa.
+....a.
+...aa.
+..aaaa
+..aaaa
+...aa.
+...k..
+...k..`;
   const MINSTREL = `
 ..rr.....
 .rppr....
@@ -341,6 +346,40 @@ ghkh...
 .hhhhhh
 ..hhhh.`;
   const WIZ_HEAD_X = 9;
+  // the messenger on his horse, two strides (facing left, up the road)
+  const RIDER = [`
+......rr.......
+.....rffr......
+.....rrrr......
+....arrrra.....
+.....rrrr......
+.hh..rrrrhhhhh.
+hkhhhhhhhhhhhhh
+.hhhhhhhhhhhhhh
+..hhhhhhhhhhhh.
+..h.h.....h.h..
+..h..h...h..h..
+..k...k.k...k..`, `
+......rr.......
+.....rffr......
+.....rrrr......
+....arrrra.....
+.....rrrr......
+.hh..rrrrhhhhh.
+hkhhhhhhhhhhhhh
+.hhhhhhhhhhhhhh
+..hhhhhhhhhhhh.
+...hh.....hh...
+...hh.....hh...
+...kk.....kk...`];
+  // what the knight dreams of (1, 2: two colours, see dream), one picture a subject
+  const DREAMS = {
+    nucleus: [/nucle|scatter|r-matrix|isotop/i, ['..1..', '.121.', '12121', '.121.', '..1..'], ['CAP', 'WING']],
+    spins: [/quantum|spin|qubit|qaoa/i, ['1.2.1', '.....', '2.1.2', '.....', '1.2.1'], ['CAP', 'WING']],
+    city: [/urban|city|morpho|dla|fractal/i, ['..1..', '.111.', '1.1.1', '..1..', '.1.1.'], ['GOLD', 'GOLD']],
+    orbits: [/n-body|gravit|orbit|planet/i, ['.1.1.', '1...1', '..2..', '1...1', '.1.1.'], ['ARM', 'GOLD']],
+    bell: [/market|financ|stochast|mean-field|econom|dataset/i, ['..1..', '.111.', '.111.', '11111', '11111'], ['GOLD', 'GOLD']],
+  };
 
   const DRAGON_BODY = `
 ...................................x....
@@ -561,6 +600,166 @@ nNnnnn..
     return landed;
   }
 
+  /* ---- the campfire's smoke: stable fluids (Stam 1999) on a small grid over the flames. Each step:
+     smoke and heat come in at the bottom; warm smoke rises (buoyancy), the real wind leans it; the
+     velocity is made divergence-free (a pressure solve, Gauss-Seidel), then carries itself and the
+     smoke along, semi-Lagrangian (unconditionally stable: the step never blows up). ---- */
+  function fluidNew(w, h) { const n = w * h; return { w, h, u: new Float32Array(n), v: new Float32Array(n), d: new Float32Array(n), p: new Float32Array(n), div: new Float32Array(n) }; }
+  function fluidAdvect(f, q, u, v) {
+    const { w, h } = f; const out = new Float32Array(w * h);
+    for (let y = 1; y < h - 1; y += 1) for (let x = 1; x < w - 1; x += 1) {
+      const i = y * w + x; const sx = clamp(x - u[i], 0.5, w - 1.5); const sy = clamp(y - v[i], 0.5, h - 1.5);
+      const x0 = Math.floor(sx); const y0 = Math.floor(sy); const fx = sx - x0; const fy = sy - y0; const j = y0 * w + x0;
+      out[i] = (q[j] * (1 - fx) + q[j + 1] * fx) * (1 - fy) + (q[j + w] * (1 - fx) + q[j + w + 1] * fx) * fy;
+    }
+    return out;
+  }
+  function fluidProject(f) {
+    const { w, h, u, v, p, div } = f;
+    for (let y = 1; y < h - 1; y += 1) for (let x = 1; x < w - 1; x += 1) { const i = y * w + x; div[i] = -0.5 * (u[i + 1] - u[i - 1] + v[i + w] - v[i - w]); p[i] = 0; }
+    for (let it = 0; it < 14; it += 1) for (let y = 1; y < h - 1; y += 1) for (let x = 1; x < w - 1; x += 1) { const i = y * w + x; p[i] = (div[i] + p[i - 1] + p[i + 1] + p[i - w] + p[i + w]) / 4; }
+    for (let y = 1; y < h - 1; y += 1) for (let x = 1; x < w - 1; x += 1) { const i = y * w + x; u[i] -= 0.5 * (p[i + 1] - p[i - 1]); v[i] -= 0.5 * (p[i + w] - p[i - w]); }
+  }
+  function fluidStep(f, src, wind) {
+    const { w, h } = f; const cx = w >> 1;
+    f.k = (f.k || 0) + 1; const sway = Math.sin(f.k * 0.07) * 0.5 + Math.sin(f.k * 0.023) * 0.4; // (the flames gutter)
+    for (let x = cx - 2; x <= cx + 2; x += 1) { const i = (h - 3) * w + x; f.d[i] = Math.min(2, f.d[i] + src * (0.4 + Math.random() * 0.6)); f.v[i] -= 0.12; f.u[i] += sway * 0.3 + (Math.random() - 0.5) * 1.2; }
+    for (let i = 0; i < w * h; i += 1) { f.v[i] = f.v[i] * 0.99 - 0.007 * f.d[i]; f.u[i] = f.u[i] * 0.995 + wind * 0.004 * (1 - (i / w) / h); }
+    fluidProject(f); const u2 = fluidAdvect(f, f.u, f.u, f.v); f.v = fluidAdvect(f, f.v, f.u, f.v); f.u = u2; fluidProject(f);
+    const d = fluidAdvect(f, f.d, f.u, f.v); const d2 = new Float32Array(w * h); // carried, then spread a little: the plume widens as it rises
+    for (let y = 1; y < h - 1; y += 1) for (let x = 1; x < w - 1; x += 1) { const i = y * w + x; d2[i] = (d[i] * 0.8 + (d[i - 1] + d[i + 1] + d[i - w] + d[i + w]) * 0.05) * 0.988; }
+    f.d = d2;
+  }
+
+  /* ---- skimming stones: the river's surface as a 2D wave equation (leapfrog, damped, banks held
+     still), in the MID plane's coordinates; a stone's touches set it ringing ---- */
+  function waveNew(s0) {
+    const y0 = s0.yl0 - 3; const h = s0.yg + 2 - y0; const w = s0.WE; const mid = s0.planes[L.MID];
+    const wet = new Uint8Array(w * h); for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) { const c = mid[(y0 + y) * w + x]; wet[y * w + x] = c === I.WATER || c === I.WATER_HI ? 1 : 0; }
+    return { w, h, y0, wet, u: new Float32Array(w * h), up: new Float32Array(w * h), live: 0 };
+  }
+  function waveStep(wv) {
+    const { w, h, wet } = wv; const un = new Float32Array(w * h); let e = 0;
+    for (let y = 1; y < h - 1; y += 1) for (let x = 1; x < w - 1; x += 1) {
+      const i = y * w + x; if (!wet[i]) continue;
+      const lap = wv.u[i - 1] + wv.u[i + 1] + wv.u[i - w] + wv.u[i + w] - 4 * wv.u[i];
+      un[i] = (2 * wv.u[i] - wv.up[i] + 0.3 * lap) * 0.975; e += Math.abs(un[i]);
+    }
+    wv.up = wv.u; wv.u = un; wv.live = e > 0.5 ? 1 : 0;
+  }
+
+  /* ---- the tavern's last customer, at night: a random walk along the bank, a pace either way at
+     random, a hundred paces a walk (then he sits down). After n paces he is about sqrt(n) from the
+     door: the root mean square over his walks is kept. ---- */
+  const drunk = { x: 0, n: 0, ends: [] };
+  function drunkStep() {
+    drunk.x += Math.random() < 0.5 ? -1 : 1; drunk.n += 1;
+    if (drunk.n >= 100) { drunk.ends.push(drunk.x * drunk.x); if (drunk.ends.length > 60) drunk.ends.shift(); drunk.x = 0; drunk.n = 0; }
+  }
+
+  /* ---- things from the real world (paintings, films, scores, texts, furniture, maps), turned into
+     the scene's palette by _tools/real.py and its fetch_*.py scripts: small JSON assets, loaded once.
+     An image asset's palette names map to this palette's indices, so it is lit like the rest. ---- */
+  const real = {}; const realWait = {}; let realIndex = null; let realIndexP = null;
+  const realIx = () => (realIndexP ||= fetch(new URL('index.json', REAL_BASE), { cache: 'no-cache' })
+    .then((r) => (r.ok ? r.json() : null)).catch(() => null).then((ix) => { realIndex = ix || {}; return realIndex; }));
+  function decodeReal(o) {
+    const map = (o.names || []).map((n) => (I[n] === undefined ? I.OUTLINE : I[n]));
+    const dec = (b) => { const t = atob(b); const a = new Uint8Array(t.length); for (let i = 0; i < t.length; i += 1) a[i] = t.charCodeAt(i); return a; };
+    const idx = (b) => Int16Array.from(dec(b), (v) => (v === 255 ? -1 : map[v]));
+    if (o.px) o.idx = idx(o.px);
+    if (o.frames) o.frameIdx = o.frames.map(idx);
+    if (o.small) decodeReal(Object.assign(o.small, { names: o.names }));
+    if (o.sprites) o.sprites = o.sprites.map((sp) => ({ ...sp, px: idx(sp.px) })); // ({w, h, px} as shadeSprite gives)
+    return o;
+  }
+  /** Bytes from base64 deflate (zlib) data, inflated by the browser. */
+  async function inflate(b64) {
+    const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate'))).arrayBuffer());
+  }
+  /** The asset `name` if it has arrived, else null (and it is asked for). */
+  function realGet(name) {
+    if (real[name]) return real[name];
+    realWait[name] ||= realIx().then((ix) => (ix[name] ? fetch(new URL(`${name}.json?v=${ix[name].v}`, REAL_BASE)).then((r) => (r.ok ? r.json() : null)) : null))
+      .then(async (o) => { if (o && o.data && o.n) o.film = await inflate(o.data); return o; }) // (a film: its frames deflated)
+      .then((o) => { if (o) { real[name] = decodeReal(o); realArrived(name); } return real[name] || null; }).catch(() => null);
+    return null;
+  }
+  // what an arrival changes: the landscape's planes, the room shown, the watchtower's panorama
+  const REAL_SCENE = new Set(); const REAL_ROOM = new Set(['heures', 'licorne', 'melies', 'mobilier', 'outils', 'portraits']); const REAL_PANO = new Set(['paris']); const REAL_LIGHT = new Set(['heures', 'monet']);
+  function realArrived(name) {
+    if (!scene) return;
+    if (REAL_SCENE.has(name)) { scene.W = -1; resize(); }
+    if (REAL_ROOM.has(name) && interior && view.id) { interior = makeInterior(view.id); lightInterior(); if (view.state === 'room') publishSpots(true); }
+    if (REAL_PANO.has(name)) pano = tower && tower.on ? makePano(scene.W, scene.H) : null;
+    if (REAL_LIGHT.has(name)) relight();
+    if (!running && isOn()) render(now());
+  }
+
+  /** Muybridge's frames as shaded sprites (both ways), the passer-by's coat in its colour; null before they come. */
+  const muyCache = {};
+  function muySprites(kind) {
+    const a = real.muybridge; if (!a) return null;
+    const rid = kind === 'rider'; const key = rid ? 'rider' : kind;
+    if (!muyCache[key]) {
+      const coat = { messenger: 'r', peddler: 'w', lantern: 'd' }[kind] || 'd';
+      const right = (rid ? a.rider : a.walker).map((txt) => shadeSprite(rid ? txt.replace(/d/g, 'r') : txt.replace(/d/g, coat))); // (the rider in red, as the messenger was)
+      muyCache[key] = { right, left: right.map(flip) };
+    }
+    return muyCache[key];
+  }
+
+  /* ---- the ants: the double bridge (Goss, Aron, Deneubourg & Pasteels 1989). From the nest to a
+     fallen apple run two ways round a pebble, a short one and a long one. At either end an ant
+     takes the short way with p = (k + ts)^2 / ((k + ts)^2 + (k + tl)^2), t the pheromone on each,
+     and marks the way it took when it gets there; the marks fade. The short way's ants come back
+     sooner, so it is marked faster, and the colony settles on it: no ant knows which is shorter. */
+  function antsNew(x0, y0) {
+    const walk = (dip) => { // an arc from the nest to the apple, a pixel a step (its length: the time it takes)
+      const out = [[x0, y0]];
+      for (let u = 0; u <= 1; u += 0.002) {
+        const p = [x0 + Math.round(30 * u), y0 + Math.round(Math.sin(u * Math.PI) * dip)]; const q = out[out.length - 1];
+        if (p[0] !== q[0] || p[1] !== q[1]) out.push(p);
+      }
+      return out;
+    };
+    const ways = [walk(1.5), walk(-10)]; // short, and long: round the pebble
+    return { x0, y0, ways, tau: [1, 1], k: 5, ants: Array.from({ length: 16 }, (_, j) => ({ way: j % 2, s: -j * 3, dir: 1 })), picks: [] };
+  }
+  function antsStep(a) {
+    a.tau = a.tau.map((v) => v * 0.997); // the marks fade
+    const choose = () => { const [s0, l0] = a.tau.map((v) => (a.k + v) ** 2); const w = Math.random() < s0 / (s0 + l0) ? 0 : 1; a.picks.push(w); if (a.picks.length > 40) a.picks.shift(); return w; };
+    a.ants.forEach((n) => {
+      if (n.s < 0) { n.s += 1; return; } // (still in the nest: they leave one by one)
+      n.s += 1; const len = a.ways[n.way].length;
+      if (n.s < len) return;
+      a.tau[n.way] += 1; // there: mark the way taken, turn round, choose again
+      n.dir = -n.dir; n.way = choose(); n.s = 0;
+    });
+  }
+  const antAt = (a, n) => { const w = a.ways[n.way]; const k = Math.min(w.length - 1, Math.max(0, n.s)); return n.dir > 0 ? w[k] : w[w.length - 1 - k]; };
+
+  /* ---- a shoal in the river on bright days (Reynolds 1987): each fish steers towards its neighbours'
+     middle and heading, away from any too close, and keeps to the water ---- */
+  function shoalStep(f, x0, x1, top, bot) {
+    f.forEach((a) => {
+      let cx = 0; let cy = 0; let vx = 0; let vy = 0; let n = 0; let sx = 0; let sy = 0;
+      f.forEach((b) => {
+        if (a === b) return; const d = Math.hypot(b.x - a.x, b.y - a.y);
+        if (d < 12) { cx += b.x; cy += b.y; vx += b.vx; vy += b.vy; n += 1; }
+        if (d < 2.5) { sx += a.x - b.x; sy += a.y - b.y; }
+      });
+      if (n) { a.vx += ((cx / n - a.x) * 0.004) + ((vx / n - a.vx) * 0.06); a.vy += ((cy / n - a.y) * 0.004) + ((vy / n - a.vy) * 0.06); }
+      a.vx += sx * 0.05 + (Math.random() - 0.5) * 0.02; a.vy += sy * 0.05 + (Math.random() - 0.5) * 0.01;
+      if (a.x < x0 + 4) a.vx += 0.02; if (a.x > x1 - 4) a.vx -= 0.02;
+      const t0 = top(Math.round(a.x)) + 2; const b0 = bot(Math.round(a.x)) - 2;
+      if (a.y < t0) a.vy += 0.03; if (a.y > b0) a.vy -= 0.03;
+      const sp = Math.hypot(a.vx, a.vy); const k = sp > 0.45 ? 0.45 / sp : sp < 0.12 ? 0.12 / (sp || 1) : 1;
+      a.vx *= k; a.vy *= k * 0.6; a.x += a.vx; a.y += a.vy;
+    });
+  }
+
   /* ---- the Saturday market's crowd: a stationary mean-field game (Lasry & Lions 2007) on a line
      of N places along the bank. Cost of standing at x: the crush there (kappa N m(x)) less the
      stalls' pull; eps per step taken; entropy sigma (each villager a little whimsical); discount
@@ -667,6 +866,7 @@ nNnnnn..
     // the schoolmaster: not the wizard of the camp, a doctor in a red gown and a black cap, his
     // staff a plain pointer with a gilt knob
     SPRITES.master = shadeSprite(WIZARD.replace(/[uv]/g, 'r').replace(/p/g, 'b').replace(/y/g, 'g').replace(/\*/g, 'g'));
+    SPRITES.masterL = flip(SPRITES.master); // (turned round, to the class)
     // the body from row 6 of the frame: the raised wing behind it, the lowered one over its belly
     const body = `${'.\n'.repeat(6)}${DRAGON_BODY.trim()}`;
     SPRITES.dragon = [shadeSprite(overlay(body, WING_UP, 0, true)), shadeSprite(overlay(body, WING_DOWN, 13, false))];
@@ -686,6 +886,7 @@ nNnnnn..
     SPRITES.snowman = shadeSprite(SNOWMAN);
     SPRITES.angler = shadeSprite(ANGLER);
     SPRITES.walkerL = SPRITES.peasant.map(flip);
+    SPRITES.rider = RIDER.map(shadeSprite); SPRITES.riderR = SPRITES.rider.map(flip);
   }
 
   /* ---- the scene: seven planes of palette indices, generated once per size ---- */
@@ -767,7 +968,7 @@ nNnnnn..
     }
     // ?season= previews another time of year (screenshots); the month follows it
     const qSeason = new URLSearchParams(location.search).get('season');
-    const month = { winter: 0, spring: 4, summer: 6, autumn: 9 }[qSeason] ?? new Date().getMonth(); const season = SEASON(month);
+    const month = { winter: 0, spring: 4, summer: 6, autumn: 9 }[qSeason] ?? today().getMonth(); const season = SEASON(month);
     on(L.FAR); range(yg - 0.6 * H, 0.24 * H, 70, I.MT_FAR, I.MT_FAR_SH, yg - (season === 'winter' ? 0.43 : 0.5) * H);
     on(L.NEAR); range(yg - 0.44 * H, 0.15 * H, 95, I.MT_NEAR, I.MT_NEAR_SH, null);
 
@@ -1021,14 +1222,37 @@ nNnnnn..
     field.top = (x) => Math.round(hill[clamp(x, 0, WE - 1)]) + 2; // it follows the slope
     field.bot = yl0 - 2;
     if (field.x1 - field.x0 > 12 && field.bot - field.top(field.x1) > 4) {
-      const F = { autumn: [I.FURROW, I.FURROW_SH], summer: [I.WHEAT, I.WHEAT_SH], spring: [I.HILL_HI, I.FURROW], winter: [I.SNOWFIELD, I.SNOW_SH] }[season];
+      // the farming year, day by day (a field of wheat sown in autumn): dormant shoots in winter,
+      // green in spring, tall in May, ripening at midsummer, reaped from mid-July (the cut part
+      // stubble with its sheaves), stubble, then ploughed from late September, sown in November;
+      // `cut` is how far (0..1, from the west edge) the day's work has gone
+      const doy = qSeason ? { winter: 20, spring: 100, summer: 190, autumn: 280 }[qSeason] : dayOfYear(today());
+      const ramp = (a, b) => clamp((doy - a) / (b - a));
+      const stage = doy < 69 ? 'dormant' : doy < 121 ? 'shoots' : doy < 171 ? 'green' : doy < 196 ? 'ripen'
+        : doy < 222 ? 'harvest' : doy < 263 ? 'stubble' : doy < 305 ? 'plough' : 'sown';
+      const cut = stage === 'harvest' ? ramp(196, 222) : stage === 'plough' ? ramp(263, 305) : 0;
+      Object.assign(field, { stage, cut });
       for (let x = field.x0; x <= field.x1; x += 1) {
         const y0 = field.top(x) + (rng() < 0.3 ? 1 : 0); // ragged edges, a rim of grass below
         const y1 = field.bot - 2 - (rng() < 0.4 ? 1 : 0);
         if (y1 - y0 < 2) continue;
+        const done = (x - field.x0) / (field.x1 - field.x0) < cut; // west of the day's work
         for (let y = y0; y <= y1; y += 1) {
           if (Math.abs(x - pathX[y]) <= pathW[y] + 2) continue;
-          set(x, y, (y + Math.floor(x / 3)) % 2 ? F[1] : F[0]); // furrows, gently slanting
+          const row = (y + Math.floor(x / 3)) % 2; const b = bayer(x, y); // furrows, gently slanting
+          let c;
+          if (stage === 'dormant') c = row ? I.FURROW_SH : b < 0.25 ? I.HILL_SH : I.FURROW;
+          else if (stage === 'shoots') c = row ? (b < ramp(69, 121) * 0.6 ? I.HILL_SH : I.FURROW_SH) : b < 0.3 + 0.6 * ramp(69, 121) ? I.HILL_HI : I.FURROW;
+          else if (stage === 'green') c = row ? I.HILL_SH : b < 0.2 ? I.GRASS_LT : I.HILL_HI;
+          else if (stage === 'ripen') c = b < ramp(171, 196) ? (row ? I.WHEAT_SH : I.WHEAT) : (row ? I.HILL_SH : I.HILL_HI);
+          else if (stage === 'harvest' && !done) c = row ? I.WHEAT_SH : I.WHEAT;
+          else if (stage === 'harvest' || stage === 'stubble') c = row ? I.THATCH_SH : b < 0.3 ? I.FURROW : I.THATCH;
+          else if (stage === 'plough') c = done ? (row ? I.FURROW_SH : I.FURROW) : (row ? I.THATCH_SH : b < 0.3 ? I.FURROW : I.THATCH);
+          else c = row ? I.FURROW_SH : b < ramp(305, 366) * 0.3 ? I.HILL_SH : I.FURROW; // sown: the first green
+          set(x, y, c);
+        }
+        if (stage === 'harvest' && done && (x - field.x0) % 7 === 3) { // the sheaves, stood up in the stubble
+          const ys = Math.round((y0 + y1) / 2); set(x, ys - 2, I.WHEAT); set(x, ys - 1, I.WHEAT_SH); set(x - 1, ys - 1, I.WHEAT); set(x + 1, ys - 1, I.WHEAT); set(x, ys, I.THATCH_SH);
         }
       }
     } else field.none = true;
@@ -1137,6 +1361,7 @@ nNnnnn..
       }
       return { x0, ww, t0 };
     }
+    let scope = null; // the observatory's telescope: drawn each frame, aimed (see draw)
     function observatory(dx, w, h) { // a round tower under a verdigris dome, its glass out
       const ww = Math.max(6, Math.round(w * u)); const x0 = Math.round(cx + dx * u - ww / 2);
       const t0 = Math.round(crest - h * v);
@@ -1151,10 +1376,7 @@ nNnnnn..
         }
       }
       for (let y = 1; y < r * 0.8; y += 1) set(mid + 1, t0 - 1 - y, I.OUTLINE); // the slit
-      for (let k = 0; k < 5; k += 1) { // the telescope, aimed high to the east
-        set(mid + 2 + k, t0 - Math.round(r * 0.55) - k, k ? I.BLADE : I.BLADE_SH);
-        set(mid + 2 + k, t0 - Math.round(r * 0.55) - k + 1, I.BLADE_SH);
-      }
+      scope = { x: Math.round(mid + 1), y: t0 - Math.round(r * 0.55), slit: Math.round(r * 0.8), t0 };
       set(mid, t0 - 2 - r, I.WALL_DK); set(mid, t0 - 3 - r, I.WALL_DK); // vane
       flags.push({ x: Math.round(mid + 1), y: Math.round(t0 - 3 - r), c: I.FLAG3, long: true });
       const stepY = Math.max(6, Math.round(7 * u));
@@ -1212,7 +1434,8 @@ nNnnnn..
     rect(bell.x - 3, bell.y + 5, 7, 1, I.WALL_HI);
     const tallTip = flags.find((f) => f.c === I.FLAG2);
     room('talks', tall.x0 - 2, tall.t0 - 15 * v - 3, tall.ww + 4, (crest - tall.t0) * 0.55 + 15 * v + 3);
-    const kp = keep(-2, 14, 37);
+    const nWin = windows.length; const kp = keep(-2, 14, 37);
+    const scribeWin = windows.slice(nWin).find((w) => w.pts.length === 10); // the scriptorium's great window (kind 3: ten panes)
     const keepTop = { x: kp.x0 + Math.floor(kp.ww / 2), y: kp.t0 - 3 }; // where the visitor's banner goes up
     room('about', kp.x0, kp.t0 - 3, kp.ww, crest - kp.t0 - 12 * v);
     const pep = tower(-8.5, 3.5, 44, 7, { slate: true }); // a pepperpot turret on the keep's corner
@@ -1275,7 +1498,7 @@ nNnnnn..
     // a village by the river, west of the castle: a back row up the slope (a barn, a dovecote, a
     // cottage), then along the bank cottages under thatch, the chapel and its spire, a well, the
     // forge and the tavern; chimneys smoke, windows and lanterns light up after dark
-    const hamlet = { x0: M + Math.round(0.05 * Ws), x1: 0 };
+    const hamlet = { x0: M + Math.round(0.05 * Ws), x1: 0 }; const nWin0 = windows.length;
     const chimneys = []; const doors = []; const eaves = []; let spire = null;
     windows.push({ pts: [mill.win], lit: true });
     {
@@ -1293,7 +1516,7 @@ nNnnnn..
       const THATCH = [I.THATCH, I.THATCH_SH]; const TILES = [I.ROOF_HI, I.ROOF_SH]; const SLATES = [I.SLATE_HI, I.SLATE_SH];
       const places = {};
       function building(x, yb, w, h, kind, j) {
-        if (!places[kind]) places[kind] = { x, yb, w };
+        if (!places[kind]) places[kind] = { x, yb, w, h };
         if (kind === 'well') { // a stone ring, two posts, a little roof, the bucket
           set(x, yb - 1, I.ROCK_HI); set(x + 1, yb - 1, I.OUTLINE); set(x + 2, yb - 1, I.ROCK_SH);
           set(x, yb, I.ROCK); set(x + 1, yb, I.ROCK); set(x + 2, yb, I.ROCK_SH);
@@ -1358,6 +1581,15 @@ nNnnnn..
           x += w + (kind === 'tavern' ? 4 : 2); // (room for the tavern's sign)
         });
       hamlet.x1 = x; hamlet.places = places;
+    }
+    /* the village's lights at night as a spin glass (Sherrington-Kirkpatrick: each pair of houses
+       coupled at random, for or against, J ~ N(0, 1/N)); annealed through the night (see step) */
+    const glass = { wins: windows.slice(nWin0), J: null, s: null, T: 2, E: 0 };
+    {
+      const rg = mulberry32(1987); // (its own seed: the scene's draws after this stay as they were)
+      const N = glass.wins.length; const g = () => Math.sqrt(-2 * Math.log(1 - rg())) * Math.cos(6.283 * rg()); // (a normal draw)
+      glass.J = new Float32Array(N * N); for (let i = 0; i < N; i += 1) for (let j = i + 1; j < N; j += 1) { const v = g() / Math.sqrt(N); glass.J[i * N + j] = v; glass.J[j * N + i] = v; }
+      glass.s = Int8Array.from({ length: N }, () => (rg() < 0.5 ? -1 : 1)); glass.wins.forEach((w) => { w.glass = true; });
     }
 
     // pines on the hill, smaller and sparser with distance
@@ -1448,10 +1680,12 @@ nNnnnn..
 
     // a great oak on the near bank, east of the bridge: a crown of clumps, each lit from the
     // west and each its own shade of the season (no single block of colour); bare in winter
+    let bigOak = null;
     {
       const wy = yg + 6; let wx = M + Math.round(0.84 * Ws);
       while (Math.abs(wx - pathX[wy]) < pathW[wy] + 18 && wx < M + Ws) wx += 2; // clear of the path
       const h = Math.round(0.19 * H); const trunk = Math.round(h * 0.42);
+      bigOak = { x: wx, y: wy, h };
       rect(wx - 1, wy - trunk, 3, trunk, I.BARK); set(wx - 1, wy - trunk, I.DIRT_SH); set(wx - 2, wy, I.BARK); set(wx + 2, wy, I.BARK);
       [[-1, 0.62], [1, 0.58]].forEach(([dir, f]) => { for (let k = 0; k < h * 0.22; k += 1) set(wx + dir * (1 + k), Math.round(wy - trunk - k * 0.9 + h * 0.08 * f), I.BARK); });
       const PAL = season === 'autumn' ? [[I.RUST_HI, I.RUST, I.RUST_SH], [I.LEAF2, I.RUST_HI, I.RUST], [I.OAK_HI, I.OAK, I.OAK_SH], [I.RUST_HI, I.RUST, I.RUST_SH]]
@@ -1581,6 +1815,17 @@ nNnnnn..
       set(stumpX + 10, H - 5, I.DIRT); set(stumpX + 11, H - 6, I.DIRT); set(stumpX + 15, H - 6, I.DIRT_SH);
     }
 
+    { // nothing of the foreground stands over the grazing horse: what touches its box goes, whole (a mushroom on its head)
+      const fg = planes[L.FG]; const x0 = horse.x - 2; const x1 = horse.x + hsp.w + 2; const y0 = horse.y; const y1 = Math.min(H, horse.y + hsp.h);
+      for (let y = y0; y < y1; y += 1) for (let x = x0; x < x1; x += 1) {
+        if (x < 0 || x >= WE || fg[y * WE + x] === CLEAR) continue;
+        const stack = [y * WE + x];
+        while (stack.length) {
+          const i = stack.pop(); if (fg[i] === CLEAR) continue; fg[i] = CLEAR; const xx = i % WE;
+          if (xx > 0) stack.push(i - 1); if (xx < WE - 1) stack.push(i + 1); if (i >= WE) stack.push(i - WE); if (i < WE * (H - 1)) stack.push(i + WE);
+        }
+      }
+    }
     // the big pines last: they stand in front of the rocks, mushrooms and ferns at their feet
     const clearOf = wizard.x - 3; // the left pines' skirts stop short of the wizard
     pine(Math.min(M + Math.round(-0.08 * Ws), Math.round(clearOf - 0.24 * 0.78 * H)), H + 2, 0.78 * H, FGP);
@@ -1598,6 +1843,7 @@ nNnnnn..
     for (let k = 0; k < WE * 0.3; k += 1) {
       const x = Math.floor(rng() * WE); const y = H + 1 - Math.floor((rng() ** 2.2) * (H - yfg));
       if (x > fire.x - 76 && x < fire.x + 34 && y < fire.y + 18) continue; // not in front of the camp
+      if (x > horse.x - 3 && x < horse.x + hsp.w + 3 && y < horse.y + hsp.h + 6) continue; // nor across the horse
       const nf = clamp((y - yfg) / (H - yfg));
       const h = 2 + rng() * 3 + nf * 4; const c = GR[Math.floor(rng() * GR.length)];
       for (let j = -1; j <= 1; j += 1) blades.push({ x: x + j, y, h: Math.round(h * (j ? 0.75 : 1)), spread: j * (1 + rng()), c });
@@ -1716,6 +1962,75 @@ nNnnnn..
     }
     lichen.max = reduce ? 130 : 45; for (let k = 0; k < 40; k += 1) lichenGrow(lichen, 3000); lichen.max = 130;
 
+    /* ---- what the date, the weather and the visitor leave on the land (a seed of their own: the
+       rest of the place stays where it was) ---- */
+    const rng2 = mulberry32(2027);
+    on(L.GROUND);
+    { // fallen leaves under the broadleaf trees, thicker as the autumn goes on (mid-September to late November)
+      const doy = dayOfYear(today());
+      const litter = qSeason ? (qSeason === 'autumn' ? 0.6 : 0) : doy >= 258 && doy < 350 ? clamp((doy - 258) / 70) : 0;
+      const LEAVES = [I.LEAF, I.LEAF2, I.RUST, I.RUST_SH, I.RUST_HI];
+      if (litter > 0) [[bigOak.x, bigOak.y + 1, bigOak.h * 0.55], ...orchard.trees.map((tr) => [tr.x, tr.yb + 1, tr.r * 1.7])].forEach(([x0, y0, R]) => {
+        for (let k = 0; k < R * R * 0.6 * litter; k += 1) {
+          const a = rng2() * 6.283; const d = Math.sqrt(rng2()) * R;
+          const x = Math.round(x0 + Math.cos(a) * d); const y = Math.round(y0 + Math.sin(a) * d * 0.3);
+          if (meadow(x, y) && !watchers(x, y)) set(x, y, LEAVES[Math.floor(rng2() * LEAVES.length)]);
+        }
+      });
+    }
+    // where water stands after rain: hollows of the path, and a few in the meadow; each pixel's q is
+    // how far it lies from its puddle's middle (0..1): the edges dry first
+    const puddles = [];
+    {
+      const sites = [];
+      for (let k = 0; k < 4; k += 1) {
+        const y = Math.round(yg + 8 + ((k + 0.4) / 4) * (H - yg - 14));
+        sites.push([pathX[y] + (rng2() - 0.5) * pathW[y], y, Math.max(2, pathW[y] * 0.8), y > yg + 25 ? 2 : 1]);
+      }
+      for (let k = 0; k < 6 && sites.length < 7; k += 1) {
+        const x = Math.round(M + rng2() * Ws); const y = Math.round(yg + 6 + rng2() * (H - yg - 12));
+        if (meadow(x, y) && !watchers(x, y)) sites.push([x, y, 3 + rng2() * 3, 1]);
+      }
+      sites.forEach(([xc, yc, rx, ry]) => {
+        for (let dy = -ry; dy <= ry; dy += 1) for (let dx = -Math.ceil(rx); dx <= rx; dx += 1) {
+          const x = Math.round(xc + dx); const y = yc + dy; const q = Math.hypot(dx / (rx + 0.5), dy / (ry + 0.5));
+          if (q < 1 && y < H && y > yg && get(x, y) !== CLEAR && !watchers(x, y)) puddles.push({ i: y * WE + x, x, y, q });
+        }
+      });
+    }
+    // the visitor's own oak, planted on the first visit, a ring a visit (see visitsOf): a seedling,
+    // then a sapling on its stake with a red ribbon, then a young tree for the season
+    const sapling = { x: M + Math.round(0.13 * Ws), y: Math.round(yg + 0.42 * (H - yg)) };
+    {
+      const { n } = visitsOf(); const h = Math.min(Math.round(0.11 * H), Math.round(4 + 4 * Math.log2(Math.max(1, n))));
+      const { x, y } = sapling; sapling.h = h; sapling.n = n;
+      for (let k = 0; k < Math.max(2, Math.round(h * 0.45)); k += 1) set(x, y - k, I.BARK);
+      set(x + 2, y, I.TIMBER_SH); for (let k = 1; k < Math.max(4, h * 0.5); k += 1) set(x + 2, y - k, I.TIMBER); // its stake, a red ribbon round it
+      set(x + 1, y - 3, I.FLAG); set(x + 3, y - 3, I.FLAG); set(x + 3, y - 2, I.FLAG);
+      if (h < 8) { set(x - 1, y - h + 2, I.OAK_HI); set(x + 1, y - h + 1, I.OAK); set(x, y - h + 1, I.OAK_HI); set(x - 1, y - h + 1, I.OAK); }
+      else {
+        const r = h * 0.32; const cy = y - h + r;
+        if (season === 'winter') for (let k = 1; k < r; k += 1) { set(x - k, Math.round(cy - k * 0.6), I.BARK); set(x + k, Math.round(cy - k * 0.7), I.BARK); }
+        else {
+          const P = season === 'autumn' ? [I.LEAF2, I.RUST_HI, I.RUST] : [I.OAK_HI, I.OAK, I.OAK_SH];
+          for (let dy = -Math.ceil(r); dy <= r; dy += 1) for (let dx = -Math.ceil(r * 1.2); dx <= r * 1.2; dx += 1) {
+            if ((dx / (r * 1.2)) ** 2 + (dy / r) ** 2 + (bayer(x + dx, cy + dy) - 0.5) * 0.4 > 1) continue;
+            set(x + dx, cy + dy, dx + dy < -r * 0.4 ? P[0] : dx + dy > r * 0.4 ? P[2] : P[1]);
+          }
+        }
+      }
+      for (let dx = -2; dx <= 3; dx += 1) set(x + dx, y + 1, I.GRASS_SH); // its shade
+    }
+    { // the ants' nest, the pebble between its two ways, the fallen apple they go for (see antsStep)
+      const ax = M + Math.round(0.28 * Ws); const ay = H - 15;
+      set(ax - 2, ay, I.DIRT); set(ax - 1, ay - 1, I.DIRT); set(ax, ay - 1, I.DIRT_SH); set(ax + 1, ay, I.DIRT_SH); set(ax, ay, I.OUTLINE); set(ax - 1, ay, I.DIRT_SH); // the mound and its door
+      blob(ax + 15, ay - 2, 3, 2, [I.STONE_HI, I.STONE, I.STONE_SH], null); // the pebble
+      set(ax + 31, ay, I.CAP); set(ax + 32, ay, I.CAP_SH); set(ax + 31, ay - 1, I.CAP); set(ax + 32, ay - 1, I.FL_RED); set(ax + 31, ay - 2, I.BARK); // the apple
+    }
+    // the river gauge, on a post by the bridge's east pier: marks a pixel apart, the water at its level
+    const gauge = { x: Math.round(pathX[yl0 + 4] + pathW[yl0 + 4] + 6) };
+    gauge.top = riverTop(gauge.x) - 6; gauge.bot = riverBot(gauge.x);
+
     // the rows each plane covers, so compositing skips the empty ones
     const rows = planes.map((p) => {
       let a = H; let b = 0;
@@ -1746,6 +2061,8 @@ nNnnnn..
       ducks: [0, 1, 2].map((k) => ({ x: pathX[yl0 + 4] + 20 + k * 9, a: pathX[yl0 + 4] + 16, b: M + Math.round(0.92 * Ws), dir: k % 2 ? 1 : -1, ph: k })),
       geese: null, swallows: null, meteors: [], millAngle: 0, lichen, seeps, wmill, quarry, falls, orchard, wheel: 0, bridgeK: 0, hill, flock: null,
       gate: { x: gx, w: gw, h: gh, crest },
+      puddles, sapling, gauge, prints: [], bolt: null, boltGen: null, scribeWin, scope, glass, fluid: fluidNew(24, 44), wave: null, skip: null,
+      ants: antsNew(M + Math.round(0.28 * Ws), H - 15), shoal: null, dream: null, hoots: [],
     };
   }
 
@@ -1782,18 +2099,18 @@ nNnnnn..
     return armsCache[id];
   }
 
-  // a 3x5 chalk hand for the schoolroom's equations
+  // a chalk hand for the schoolroom's equations: 5 rows, each glyph its own width (Greek letters wider)
   const GLYPHS = {
-    i: ['010', '000', '010', '010', '010'], 'ħ': ['100', '111', '100', '111', '101'], '∂': ['011', '001', '111', '101', '111'],
-    'ψ': ['101', '101', '111', '010', '010'], '/': ['001', '001', '010', '100', '100'], t: ['010', '111', '010', '010', '011'],
-    '=': ['000', '111', '000', '111', '000'], H: ['101', '101', '111', '101', '101'], 'ρ': ['000', '111', '101', '111', '100'],
-    D: ['110', '101', '101', '101', '110'], '∇': ['111', '101', '101', '010', '000'], '²': ['110', '010', '100', '110', '000'],
+    i: ['1', '0', '1', '1', '1'], 'ħ': ['100', '111', '100', '111', '101'], '∂': ['010', '001', '011', '101', '010'],
+    'ψ': ['10101', '10101', '01110', '00100', '00100'], '/': ['001', '001', '010', '100', '100'], t: ['010', '111', '010', '010', '011'],
+    '=': ['000', '111', '000', '111', '000'], H: ['101', '101', '111', '101', '101'], 'ρ': ['000', '010', '101', '110', '100'],
+    D: ['110', '101', '101', '101', '110'], '∇': ['11111', '10001', '01010', '00100', '00000'], '²': ['11', '01', '10', '11', '00'],
     Z: ['111', '001', '010', '100', '111'], 'Σ': ['111', '100', '010', '100', '111'], e: ['000', '111', '111', '100', '111'],
-    '^': ['010', '101', '000', '000', '000'], '-': ['000', '000', '111', '000', '000'], 'β': ['010', '101', '110', '101', '110'],
-    E: ['111', '100', '110', '100', '111'], u: ['000', '101', '101', '101', '111'], '+': ['000', '010', '111', '010', '000'],
-    '(': ['010', '100', '100', '100', '010'], ')': ['010', '001', '001', '001', '010'], 0: ['111', '101', '101', '101', '111'],
+    x: ['000', '101', '010', '101', '000'], p: ['000', '111', '101', '111', '100'], '-': ['000', '000', '111', '000', '000'],
+    'β': ['010', '101', '110', '101', '110'], E: ['111', '100', '110', '100', '111'], u: ['000', '101', '101', '101', '111'],
+    '+': ['000', '010', '111', '010', '000'], '(': ['01', '10', '10', '10', '01'], ')': ['10', '01', '01', '01', '10'], 0: ['111', '101', '101', '101', '111'],
   };
-  const CHALK = ['iħ∂ψ/∂t=Hψ', '∂ρ/∂t=D∇²ρ', 'Z=Σe^-βE', '-∂u/∂t+H(∇u)=0'];
+  const CHALK = ['iħ∂ψ/∂t=Hψ', '∂ρ/∂t=D∇²ρ', 'Z=Σexp(-βE)', '-∂u/∂t+H(∇u)=0'];
 
   // the labour of the month, as in a book of hours (sower in autumn, reaper in summer...)
   const SEASON = (m) => (m <= 1 || m === 11 ? 'winter' : m <= 4 ? 'spring' : m <= 7 ? 'summer' : 'autumn');
@@ -1843,6 +2160,22 @@ f11111f2.
 2222222..
 2222222..
 2222222..`];
+  // the copyist, a Benedictine in his black habit, seated in profile facing right, his hood down (his writing hand: deco 'copyist')
+  const MONK = `
+.nnn...
+nffff..
+nfffk..
+.fff...
+.bbb...
+bbbbb..
+bbbbbb.
+bbbbbb.
+bbbbb..
+bbbbbb.
+.bbbbbb
+.bbbbbb
+.bbbbbb
+.bb.bb.`;
   const HAIR = ['h', 'b', 't', 'g', 'h', 'b'];
   const TUNIC = ['r', 'u', 'd', 'p', 'u', 'r'];
   const pupilCache = {};
@@ -1855,9 +2188,10 @@ f11111f2.
   function generateInterior(id, W, H, Wi, sup) {
     const rng = mulberry32(id.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 7));
     const idx = new Uint8Array(W * H); const out = new Uint8Array(W * H);
+    const front = new Uint8Array(W * H); let frontOn = false; // what stands before a figure walking at the back (the schoolroom's desks and pupils)
     const set = (x, y, i, o = 0) => {
       x = Math.round(x); y = Math.round(y);
-      if (x >= 0 && x < W && y >= 0 && y < H) { idx[y * W + x] = i; out[y * W + x] = o; }
+      if (x >= 0 && x < W && y >= 0 && y < H) { idx[y * W + x] = i; out[y * W + x] = o; if (frontOn) front[y * W + x] = 1; }
     };
     const rect = (x, y, w, h, i) => { for (let yy = Math.round(y); yy < Math.round(y + h); yy += 1) for (let xx = Math.round(x); xx < Math.round(x + w); xx += 1) set(xx, yy, i); };
     const lights = []; const flames = []; const stars = []; const motes = []; const blinks = []; const camps = []; const deco = [];
@@ -2050,6 +2384,24 @@ f11111f2.
       }));
     }
 
+    /* cobwebs in the upper corners of a room left alone (stalenessOf: days since the visitor was last
+       in it, Infinity if never): none after a day or two, full grown after a month */
+    {
+      const d = stalenessOf(id); const k = d === Infinity ? 0 : clamp((d - 2) / 28); // (never seen from here: no history, no webs)
+      const web = (cx, cy, dir, R) => {
+        const spokes = [0.05, 0.4, 0.8, 1.15, 1.52];
+        spokes.forEach((a) => { for (let r = 0; r <= R; r += 0.5) set(cx + dir * Math.cos(a) * r, cy + Math.sin(a) * r, I.LIME); });
+        for (let ring = 1; ring <= 3; ring += 1) { // the spiral, sagging between the spokes
+          const rr = (R * ring) / 3.4;
+          for (let q = 0; q < spokes.length - 1; q += 1) {
+            for (let f = 0; f <= 1; f += 0.08) { const a = spokes[q] + (spokes[q + 1] - spokes[q]) * f; const r = rr - Math.sin(f * Math.PI) * 0.7; const X = Math.round(cx + dir * Math.cos(a) * r); const Y = Math.round(cy + Math.sin(a) * r); if (bayer(X, Y) < 0.6) set(X, Y, I.LIME_SH); }
+          }
+        }
+        if (R > 8) { const sx = Math.round(cx + dir * R * 0.55); for (let y = cy + Math.round(R * 0.25); y < cy + R * 0.9; y += 1) set(sx, y, I.LIME); rect(sx, Math.round(cy + R * 0.9), 2, 2, I.OUTLINE); } // its spider, let down on a thread
+      };
+      if (k > 0) { web(BL + 1, 6, 1, 3 + 9 * k); if (k > 0.5) web(BR - 2, 6, -1, 2 + 6 * k); }
+    }
+
     // pieces of furniture
     function windowArch(x0, y0, w, h) { // shows the sky and a line of far mountains
       const r = w / 2;
@@ -2096,9 +2448,14 @@ f11111f2.
       }
       pools.push({ x: cx, w: R * 1.6, y0: cy + R }); // its light on the floor
     }
+    // the candles burn down through the evening (lit at five, out by six in the morning), new by day
+    const hNow = clockFn().getHours() + clockFn().getMinutes() / 60; const since = (hNow + 24 - 17) % 24;
+    const burnt = since < 13 ? since / 13 : 0;
     function candle(x, y, big) {
-      rect(x, y - (big ? 4 : 3), 1, big ? 4 : 3, I.STEM); set(x, y, I.GOLD_SH); set(x - 1, y, I.GOLD); set(x + 1, y, I.GOLD);
-      flames.push({ x, y: y - (big ? 5 : 4) }); lights.push({ x, y: y - 4, r: big ? 0.5 * H : 0.38 * H });
+      const h = Math.max(1, Math.round((big ? 4 : 3) * (1 - 0.75 * burnt)));
+      rect(x, y - h, 1, h, I.STEM); set(x, y, I.GOLD_SH); set(x - 1, y, I.GOLD); set(x + 1, y, I.GOLD);
+      if (burnt > 0.3) set(x + 1, y - 1, I.STEM); // a run of wax down the stick
+      flames.push({ x, y: y - h - 1 }); lights.push({ x, y: y - h, r: (big ? 0.5 : 0.38) * H * (1 - 0.25 * burnt) });
     }
     function desk(x, y, w) { // y: the top's height
       rect(x, y, w, 1, I.TIMBER_HI); rect(x, y + 1, w, 2, I.TIMBER); rect(x, y + 3, w, 1, I.TIMBER_SH);
@@ -2193,8 +2550,27 @@ f11111f2.
         rect(bx - 3, by - 3, 7, 1, I.ARM_SH); rect(bx - 2, by - 2, 5, 2, I.ARM); set(bx - 2, by, I.ARM_SH); set(bx + 2, by, I.ARM_SH);
         for (let k = -2; k <= 2; k += 2) flames.push({ x: bx + k, y: by - 4, small: true });
         lights.push({ x: bx, y: by - 5, r: 0.45 * H });
-        sills.forEach((w) => { for (let k = 0; k < 4; k += 1) { set(w.x0 + k, w.y - 2 - k, I.FL_WHITE); set(w.x0 + w.w - 1 - k, w.y - 2 - k, I.FL_WHITE); } });
       }
+      // a freezing day: ferns of frost on the glass, grown up from the sill and the frame by
+      // diffusion-limited aggregation (a random walker freezes where it touches the ice)
+      if ((weather.temp ?? 9) <= 0 || (weather.frost ?? 9) <= -3) sills.forEach(({ x0: wx, w, y, top: wt }) => {
+        const h = y - wt; const ice = new Uint8Array(w * h);
+        const glass = (x, yy) => x >= 0 && x < w && yy >= 0 && yy < h && out[(wt + yy) * W + wx + x] === 1;
+        const freeze = (x, yy) => { ice[yy * w + x] = 1; set(wx + x, wt + yy, bayer(x, yy) < 0.5 ? I.CLOUD : I.CLOUD_SH, 1); };
+        for (let yy = 0; yy < h; yy += 1) for (let x = 0; x < w; x += 1) { // seeds: each pane's lower edge, its sides low down
+          if (glass(x, yy) && (!glass(x, yy + 1) || ((!glass(x - 1, yy) || !glass(x + 1, yy)) && rng() < 0.3))) freeze(x, yy);
+        }
+        const iced = (x, yy) => x >= 0 && x < w && yy >= 0 && yy < h && ice[yy * w + x];
+        const cold = clamp(-(weather.temp ?? -3) / 8, 0.3, 1); const target = Math.round(w * h * 0.16 * cold);
+        for (let grown = 0, tries = 0; grown < target && tries < target * 30; tries += 1) {
+          let x = Math.floor(rng() * w); let yy = Math.floor(h * rng());
+          for (let st = 0; st < 1500 && glass(x, yy) && !ice[yy * w + x]; st += 1) {
+            if (iced(x + 1, yy) || iced(x - 1, yy) || iced(x, yy + 1) || iced(x, yy - 1)) { freeze(x, yy); grown += 1; break; }
+            const d = NEIGH[Math.floor(rng() * 4)]; const nx = x + d[0]; const ny = yy + d[1] + (rng() < 0.06 ? 1 : 0); // (a slight fall: the cold glass is lower down)
+            if (glass(nx, ny)) { x = nx; yy = ny; } // (the leading and the frame turn it back)
+          }
+        }
+      });
       if (kind === 'samhain') { // a carved pumpkin by the wall, lit; a cobweb in the corner
         const px0 = corner; const py = fy;
         rect(px0, py - 4, 6, 4, I.RUST_HI); rect(px0, py - 4, 6, 1, I.RUST); set(px0 + 3, py - 5, I.FERN_SH);
@@ -2329,6 +2705,13 @@ f11111f2.
       extra.push({ t: { kind: 'hanging', label: name, html: `<h3>${escHtml(name)}</h3><p>${escHtml(desc)}</p>` }, b: box(x - 2, y0, w + 4, h + 4) });
     }
     const of = (kind) => things.map((t, i) => [t, i]).filter(([t]) => t.kind === kind);
+    function mobilier(k, x, yb) { // a piece after Viollet-le-Duc (_tools/fetch_mobilier.py) standing on yb, x its left
+      const mb = realGet('mobilier'); if (!mb) return;
+      const sp = mb.sprites[k]; const y0 = yb - sp.h + 1; const c = mb.captions[k];
+      for (let y = 0; y < sp.h; y += 1) for (let xx = 0; xx < sp.w; xx += 1) { const v = sp.px[y * sp.w + xx]; if (v >= 0) set(x + xx, y0 + y, v === I.OUTLINE ? I.TIMBER_SH : v); } // (the engraving's black lines as dark oak: black outlined it like a cartoon)
+      rect(x + 1, yb + 1, sp.w - 2, 1, I.OUTLINE); // (its shadow on the floor)
+      extra.push({ t: { kind: 'mobilier', label: c.name, get html() { return `<h3>${escHtml(c.name)}</h3><p>${escHtml(c.text)}.</p>${provenance('mobilier', k)}`; } }, b: box(x - 1, y0 - 1, sp.w + 2, sp.h + 2) });
+    }
 
     if (kind === 'about') { // the scriptorium: a notebook open on the table, the charters of the schools on the wall
       const ww = Math.max(14, Sw(0.16)); windowArch(S(0.5) - Math.round(ww / 2), Math.round(H * 0.1), ww, Math.round(H * 0.4)); // the great window, over the table
@@ -2341,7 +2724,53 @@ f11111f2.
       spread(half, S(0), S(0.41), 20).forEach(({ k, row, xc }) => { const [t, i] = ch[k]; slots[i] = charter(xc, Math.round(H * 0.14) + row * 26, t.arms); });
       spread(ch.length - half, S(0.59), S(0.81), 20).forEach(({ k, row, xc }) => { const [t, i] = ch[half + k]; slots[i] = charter(xc, Math.round(H * 0.14) + row * 26, t.arms); });
       const shX = S(box3d ? 0.83 : 0.8); const shTop = Math.round(H * 0.3); shelf(shX, shTop, Math.max(16, BR - shX - 2), yf - shTop);
+      const bh = realGet('heures'); // the book of hours on its lectern, open at this month's page
+      if (bh) {
+        const lx = Math.max(tb.r + 3, Math.min(S(0.7), shX - 30)); const top = yf - 22; const pg = bh.small; const m = today().getMonth(); // (between the table and the bookcase)
+        rect(lx + 12, top + 6, 3, yf - top - 6, I.TIMBER_SH); rect(lx + 8, yf - 1, 11, 1, I.TIMBER_SH); // its post and foot
+        for (let k = 0; k < 28; k += 1) set(lx + k, top + 4 + Math.floor(k / 9), I.TIMBER_HI); // the slanted desk
+        rect(lx, top - 13, 13, 16, I.BEARD_HI); for (let r = 0; r < 6; r += 1) rect(lx + 2, top - 11 + r * 2, 9 - (r % 2) * 2, 1, I.BEARD_SH); // the left page: text
+        set(lx + 2, top - 11, I.CLOTH); set(lx + 3, top - 11, I.CLOTH); // (a red initial)
+        for (let y = 0; y < pg.h; y += 1) for (let x = 0; x < pg.w; x += 1) { const c = pg.frameIdx[m][y * pg.w + x]; if (c >= 0) set(lx + 14 + x, top - 13 + y, c); } // the right page: the miniature
+        rect(lx + 13, top - 13, 1, 16, I.LEATHER_SH); rect(lx - 1, top + 3, 28, 1, I.LEATHER); // the gutter, the binding
+        extra.push({ t: { kind: 'hours', label: 'The book of hours', get html() { return cards.hours(); } }, b: box(lx - 2, top - 15, 31, 20) });
+      }
       rug(S(0.3), floorY(0.6), Math.round((BR - BL) * 0.36));
+      { // the scrying engine: an old cabinet of oak and brass, keys like an organ's, a round glass
+        // that glows; the terminal opens in it (script.js: openEngine). Its screen and orb live in drawInterior
+        const ex = Math.min(BR - 24, S(0.74)); const eb = floorY(0.72); const cb = eb - 3; // (cb: the cabinet's foot, on four legs)
+        [0, 3, 16, 19].forEach((dx) => rect(ex + dx, cb + 1, 1, 3, dx === 0 || dx === 19 ? I.TIMBER_SH : I.OUTLINE)); rect(ex + 1, eb + 1, 18, 1, I.OUTLINE); // the legs, the shadow
+        rect(ex, cb - 8, 20, 9, I.TIMBER_SH); rect(ex + 1, cb - 7, 18, 7, I.TIMBER); rect(ex, cb - 8, 20, 1, I.TIMBER_HI); // the cabinet
+        [[2, 7], [11, 7]].forEach(([dx, w]) => { rect(ex + dx, cb - 6, w, 5, I.TIMBER_HI); rect(ex + dx + 1, cb - 5, w - 2, 3, I.TIMBER); }); // two panels
+        [[0, -8], [19, -8], [0, 0], [19, 0]].forEach(([dx, dy]) => set(ex + dx, cb + dy, I.GOLD)); // brass corners
+        rect(ex + 1, cb - 10, 18, 2, I.TIMBER_SH); for (let k = 0; k < 16; k += 1) set(ex + 2 + k, cb - 10, k % 3 === 2 ? I.OUTLINE : I.CREAM); // the keys
+        const ht = cb - 25; // the brass hood, arched
+        for (let y = 0; y < 15; y += 1) for (let x = 0; x < 16; x += 1) {
+          const arch = y < 3 && (Math.min(x, 15 - x) < 3 - y); if (arch) continue;
+          const rim = y === 0 || x === 0 || x === 15 || (y < 3 && Math.min(x, 15 - x) === 3 - y);
+          set(ex + 2 + x, ht + y, rim ? (x < 8 ? I.GOLD_HI : I.GOLD) : (x + y) % 5 === 0 ? I.GOLD : I.GOLD_SH);
+        }
+        for (let k = 0; k < 3; k += 1) { set(ex, ht + 4 + k * 4, I.GOLD); set(ex + 1, ht + 4 + k * 4, I.GOLD_HI); set(ex, ht + 5 + k * 4, I.GOLD_SH); } // three dials, on the side
+        rect(ex + 18, ht + 8, 2, 1, I.ARM_SH); rect(ex + 20, ht + 5, 1, 4, I.ARM_SH); set(ex + 20, ht + 4, I.CLOTH); set(ex + 21, ht + 4, I.CLOTH); // the crank
+        rect(ex + 9, ht - 3, 2, 3, I.GOLD_SH); set(ex + 8, ht - 1, I.GOLD); set(ex + 11, ht - 1, I.GOLD); // the stem, its collar
+        const eb2 = cb; // (the deco's anchors below)
+        deco.push({ type: 'engine', x: ex + 5, y: ht + 3, w: 10, h: 10, ox: ex + 10, oy: ht - 6 });
+        lights.push({ x: ex + 10, y: ht + 8, r: 0.16 * H });
+        extra.push({ t: { kind: 'engine', label: 'The scrying engine: the site as a terminal', html: '' }, b: box(ex - 1, ht - 8, 24, eb2 - ht + 13) });
+      }
+      { // the copyist at his sloping desk, an inkhorn in it; he copies the Roman de la Rose (realGet: cards.copyist)
+        const fy = floorY(0.32); const mx = S(0.25) - 10; const sp = shadeSprite(MONK);
+        rect(mx + 1, fy - 5, 6, 1, I.TIMBER_HI); rect(mx + 2, fy - 4, 1, 4, I.TIMBER_SH); rect(mx + 5, fy - 4, 1, 4, I.TIMBER_SH); // the stool
+        stamp(sp, mx, fy - sp.h + 1);
+        const dx = mx + 9; const top = fy - 11; // the desk: a slanted board on a post, the page on it
+        rect(dx + 4, top + 4, 1, fy - top - 4, I.OUTLINE); rect(dx + 5, top + 4, 1, fy - top - 4, I.TIMBER_SH); rect(dx + 1, fy, 8, 1, I.OUTLINE);
+        for (let k = 0; k < 10; k += 1) { set(dx + k, top + 3 - Math.floor(k / 4), I.TIMBER_HI); set(dx + k, top + 4 - Math.floor(k / 4), I.OUTLINE); }
+        for (let k = 1; k < 8; k += 1) { set(dx + k, top + 2 - Math.floor(k / 4), I.BEARD_HI); set(dx + k, top + 1 - Math.floor(k / 4), k % 2 ? I.BEARD_SH : I.BEARD_HI); }
+        set(dx + 9, top, I.OUTLINE); set(dx + 9, top - 1, I.LEATHER_SH); // the inkhorn
+        deco.push({ type: 'copyist', x: dx, y: top });
+        realGet('rose');
+        extra.push({ t: { kind: 'copyist', label: 'The copyist', get html() { return cards.copyist(); } }, b: box(mx - 1, fy - 16, 22, 17) });
+      }
       { // the great book of courses, open on a lectern left of the desk (gilt edges, a red ribbon)
         const lx = S(0.14) - 8; rect(lx + 7, yf - 13, 3, 13, I.TIMBER_SH); rect(lx + 3, yf - 1, 11, 1, I.TIMBER_SH);
         for (let k = 0; k < 17; k += 1) set(lx + k, yf - 14 + Math.floor(k / 6), I.TIMBER_HI);
@@ -2350,6 +2779,13 @@ f11111f2.
         of('ledger').forEach(([, i]) => { slots[i] = box(lx - 2, yf - 22, 21, 10); });
       }
     } else if (kind === 'research') { // the observatory: the labs' reports, rolled and sealed, on the chart table
+      { // the astrolabe on its shackle, on the wall left of the telescope (its card: cards.astrolabe)
+        const ax = S(0.1); const ay = Math.round(H * 0.5); realGet('astrolabe');
+        for (let y = -8; y <= 8; y += 1) for (let x = -8; x <= 8; x += 1) { const r = Math.hypot(x, y); if (r <= 8.2) set(ax + x, ay + y, r > 6.8 ? I.GOLD : r > 6 ? I.GOLD_SH : (x * 3 + y * 5) % 7 === 0 ? I.OUTLINE : I.GOLD_SH); }
+        for (let k = -5; k <= 5; k += 1) { set(ax + k, ay - Math.round(Math.sqrt(Math.max(0, 25 - k * k)) * 0.6) + 1, I.GOLD_HI); } // the rete's ecliptic
+        set(ax, ay, I.CREAM); set(ax, ay - 9, I.GOLD); set(ax - 1, ay - 10, I.GOLD); set(ax + 1, ay - 10, I.GOLD); set(ax, ay - 11, I.GOLD_HI); // the pin, the throne, the ring
+        extra.push({ t: { kind: 'astrolabe', label: 'The astrolabe', get html() { return cards.astrolabe(); } }, b: box(ax - 9, ay - 12, 19, 22) });
+      }
       for (let y = 4; y < Math.round(H * 0.42); y += 1) {
         const half = Math.sqrt(Math.max(0, 1 - ((Math.round(H * 0.42) - y) / (H * 0.4)) ** 2)) * W * 0.5; // (over the side walls too: the dome caps the whole tower)
         for (let x = 0; x < W; x += 1) if (Math.abs(x - W / 2) > half) set(x, y, (x + Math.round(y * 1.5)) % 9 === 0 ? I.SLATE_HI : (x + y) % 5 ? I.SLATE_SH : I.SLATE);
@@ -2359,6 +2795,7 @@ f11111f2.
       [-5, 0, 5].forEach((dx) => { for (let r = 0; r < 20; r += 1) set(S(0.21) + dx * (r / 20), floorY(0.1) - 20 + r, I.TIMBER_SH); });
       const tb = table3d(S(0.62), yf - 16, Sw(0.4));
       spread(n, tb.l, tb.r, 16).forEach(({ k, row, xc }) => { slots[k] = scrollThing(xc, row ? tb.back + 1 : tb.front, things[k].arms); });
+      candle(tb.r - 2, tb.back, true); // (to read the charts by at night)
       deco.push({ type: 'orrery', x: S(0.9), y: floorY(0.1) - 14 });
       hangs.forEach((e, k) => { // the labs' hangings, either side of the slit
         const lft = k < Math.ceil(hangs.length / 2); const j = lft ? k : k - Math.ceil(hangs.length / 2);
@@ -2378,28 +2815,33 @@ f11111f2.
         }
       }
       rect(S(0.86), floorY(0.1) - 6, 13, 1, I.TIMBER_HI); rect(S(0.87), floorY(0.1) - 5, 1, 6, I.TIMBER_SH); rect(S(0.86) + 11, floorY(0.1) - 5, 1, 6, I.TIMBER_SH);
-      { // Foucault's pendulum from the dome's apex, its ring of pegs on the floor
-        const px0 = S(0.4); const fy = floorY(0.45); const rx = Math.max(10, Sw(0.09)); const ry = 4;
-        for (let a = 0; a < 6.28; a += 0.1) set(px0 + Math.round(Math.cos(a) * (rx + 1)), fy + Math.round(Math.sin(a) * (ry + 1)), I.TIMBER_SH); // the rail
-        set(px0, 4, I.GOLD); set(px0 - 1, 4, I.GOLD_SH); set(px0 + 1, 4, I.GOLD_SH); // the mount
-        deco.push({ type: 'foucault', x: px0, top: 5, fy, rx, ry });
-        extra.push({ t: { kind: 'foucault', label: "Foucault's pendulum", get html() { return cards.foucault(); } }, b: box(px0 - rx - 2, fy - 14, 2 * rx + 4, 18) });
-      }
       cat('thin', S(0.04), floorY(0.5));
     } else if (kind === 'projects') { // the workshop: a working model of each project on the bench
       const hx = S(0.03); const hw = Math.max(18, S(0.2)); const hy = yf - 24;
       rect(hx - 3, hy - 5, hw + 6, 29, I.BRICK_SH); rect(hx - 3, hy - 5, hw + 6, 2, I.BRICK_HI);
       rect(hx, hy, hw, 24, I.OUTLINE);
       for (let y = 0; y < hy - 5; y += 1) rect(hx + hw / 2 - 4, y, 8, 1, y % 3 ? I.BRICK : I.BRICK_SH);
-      flames.push({ x: hx + hw / 2, y: yf - 1, hearth: true, w: hw - 4 }); lights.push({ x: hx + hw / 2, y: yf - 6, r: 0.6 * H });
-      rect(S(0.4), Math.round(H * 0.26), S(0.36), 1, I.TIMBER_SH); // the tool rack over the bench
-      for (let k = 0; k < 7; k += 1) { const tx = S(0.42) + k * Math.max(4, S(0.05)); rect(tx, Math.round(H * 0.26) + 1, 1, 6 + (k % 3) * 2, k % 2 ? I.ARM_SH : I.TIMBER); rect(tx - 1, Math.round(H * 0.26) + 6 + (k % 3) * 2, 3, 2, I.ARM_HI); }
-      const tb = table3d(S(0.58), yf - 16, Sw(0.42));
-      spread(n, tb.l, tb.r, 17).forEach(({ k, row, xc }) => { slots[k] = model(xc, row ? tb.back : tb.front, things[k].model); });
-      deco.push({ type: 'gear', x: S(0.88), y: Math.round(H * 0.45), r: 4, sp: 0.8 }, { type: 'gear', x: S(0.88) + 8, y: Math.round(H * 0.45) + 4, r: 3, sp: -1.1 });
-      lantern(S(0.93), Math.round(H * 0.2));
-      { // the map of the realm on the wall: a region for each project
-        const mx0 = S(0.4); const mw = Math.max(24, Sw(0.18)); const my0 = Math.round(H * 0.36); const mh = Math.round(H * 0.15);
+      flames.push({ x: hx + hw / 2, y: yf - 1, hearth: true, w: hw - 4 }); lights.push({ x: hx + hw / 2, y: yf - 6, r: 0.6 * H, hearth: true });
+      // over the bench, two rows centred on it: the tool board, then the map, Young's slits and the gears,
+      // all of one height and evenly spaced (they were scattered at odd heights)
+      const tb = table3d(S(0.58), yf - 16, Sw(0.42)); const cx = Math.round((tb.l + tb.r) / 2);
+      const ry = Math.round(H * 0.17); const ou = realGet('outils'); // Roubo's tools (_tools/fetch_outils.py): hung from the rail, the planes on the board's shelf
+      { const hung = ou ? ou.sprites.filter((sp) => !sp.on) : []; const stand = ou ? ou.sprites.filter((sp) => sp.on) : [];
+        const hw0 = ou ? hung.reduce((a, sp) => a + sp.w + 2, 0) : 7 * 5; const sw0 = stand.reduce((a, sp) => a + sp.w + 2, 0);
+        const bw = hw0 + sw0 + 4; const bh = Math.max(16, ...hung.map((sp) => sp.h + 3)); const x0 = cx - Math.round(bw / 2);
+        rect(x0 - 1, ry - 1, bw + 2, bh + 2, I.TIMBER_SH); rect(x0, ry, bw, bh, I.PLASTER_HI); // the whitewashed board, so dark iron and wood read on it
+        for (let x = x0 + 4; x < x0 + bw - 1; x += 6) rect(x, ry, 1, bh, I.PLASTER); // (its planks)
+        rect(x0, ry, hw0 + 1, 1, I.TIMBER_SH); // the rail
+        let tx = x0 + 1;
+        if (ou) hung.forEach((sp) => { set(tx + Math.floor(sp.w / 2), ry, I.ARM_SH); for (let y = 0; y < sp.h; y += 1) for (let x = 0; x < sp.w; x += 1) { const v = sp.px[y * sp.w + x]; if (v >= 0) set(tx + x, ry + 1 + y, v); } tx += sp.w + 2; });
+        else for (let k = 0; k < 7; k += 1) { rect(tx + 2, ry + 1, 1, 6 + (k % 3) * 2, k % 2 ? I.ARM_SH : I.TIMBER); rect(tx + 1, ry + 6 + (k % 3) * 2, 3, 2, I.ARM_HI); tx += 5; }
+        const shY = ry + bh - 3; tx += 2; rect(tx - 1, shY, sw0 + 1, 1, I.TIMBER_SH); rect(tx - 1, shY + 1, sw0 + 1, 1, I.TIMBER); // the shelf for the planes
+        stand.forEach((sp) => { for (let y = 0; y < sp.h; y += 1) for (let x = 0; x < sp.w; x += 1) { const v = sp.px[y * sp.w + x]; if (v >= 0) set(tx + x, shY - sp.h + y, v); } tx += sp.w + 2; });
+        if (ou) extra.push({ t: { kind: 'outils', label: 'The tool rack', get html() { return `<h3>The tool rack</h3><p>${ou.captions.map(escHtml).join('; ')}.</p>${provenance('outils')}`; } }, b: box(x0 - 1, ry - 1, bw + 2, bh + 2) });
+        const y2 = ry + bh + 4; const mh = 17; const mw = Math.max(24, Sw(0.14)); const sw = 28; const gw = 21; const gap = 5; // (the row's foot clear of the models on the bench and of the mantel)
+        const row0 = cx - Math.round((mw + sw + gw + 2 * gap) / 2);
+        { // the map of the realm: a region for each project
+          const mx0 = row0; const my0 = y2;
         const models = things.filter((tt) => tt.kind === 'model');
         for (let y = 0; y < mh; y += 1) for (let x = 0; x < mw; x += 1) {
           const edge = x === 0 || y === 0 || x === mw - 1 || y === mh - 1;
@@ -2417,19 +2859,24 @@ f11111f2.
         seeds.forEach(([sx, sy]) => { set(sx, sy, I.OUTLINE); set(sx, sy - 1, I.FLAG); }); // the capitals
         set(mx0 + mw - 4, my0 + 3, I.OUTLINE); set(mx0 + mw - 4, my0 + 2, I.FLAG); set(mx0 + mw - 5, my0 + 3, I.TIMBER_SH); set(mx0 + mw - 3, my0 + 3, I.TIMBER_SH); set(mx0 + mw - 4, my0 + 4, I.TIMBER_SH); // a compass
         const regions = models.map((m) => { const href = (m.html.match(/href="([^"]+)"/) || [])[1]; return href ? `<a href="${href}">${m.label}</a>` : m.label; });
-        extra.push({ t: { kind: 'realm', label: 'The map of the realm', html: cards.realm(regions) }, b: box(mx0, my0, mw, mh) });
-      }
-      { // Young's slits on the wall: a faint lamp, a plate with two slits, the screen where hits gather
-        const sx0 = S(0.4) + Math.max(24, Sw(0.18)) + 6; const sy0 = Math.round(H * 0.36); const sh = Math.round(H * 0.15);
-        if (sx0 + 26 < S(0.88) - 8) {
-          rect(sx0, sy0 + Math.round(sh / 2) - 1, 3, 3, I.ARM_SH); set(sx0 + 1, sy0 + Math.round(sh / 2), I.WIN_LIT); // the lamp
-          for (let y = 0; y < sh; y += 1) if (Math.abs(y - sh / 2) > 2 || Math.abs(y - sh / 2) < 1) set(sx0 + 10, sy0 + y, I.OUTLINE); // the two slits
-          rect(sx0 + 20, sy0 - 1, 8, sh + 2, I.TIMBER); rect(sx0 + 21, sy0, 6, sh, I.OUTLINE); // the screen
-          rect(sx0 - 1, sy0 + sh + 1, 30, 1, I.TIMBER_SH); // its shelf
-          deco.push({ type: 'slits', x: sx0 + 21, y: sy0, w: 6, h: sh });
-          extra.push({ t: { kind: 'slits', label: "Young's slits", get html() { return cards.slits(); } }, b: box(sx0 - 1, sy0 - 1, 30, sh + 3) });
+          extra.push({ t: { kind: 'realm', label: 'The map of the realm', html: cards.realm(regions) }, b: box(mx0, my0, mw, mh) });
         }
+        { // Young's slits in a dark box: a faint lamp, a plate with two slits, the screen where hits gather
+          const bx = row0 + mw + gap; const ih = mh - 2; const iy = y2 + 1;
+          rect(bx, y2, sw, mh, I.TIMBER_SH); rect(bx + 1, iy, sw - 2, ih, I.SLATEB);
+          rect(bx + 2, iy + Math.round(ih / 2) - 1, 3, 3, I.ARM_SH); set(bx + 3, iy + Math.round(ih / 2), I.WIN_LIT); // the lamp
+          for (let y = 0; y < ih; y += 1) if (Math.abs(y - ih / 2) > 2 || Math.abs(y - ih / 2) < 1) set(bx + 12, iy + y, I.ARM_SH); // the plate, two slits in it
+          rect(bx + sw - 9, iy, 1, ih, I.TIMBER); rect(bx + sw - 8, iy, 6, ih, I.OUTLINE); // the screen
+          deco.push({ type: 'slits', x: bx + sw - 8, y: iy, w: 6, h: ih });
+          extra.push({ t: { kind: 'slits', label: "Young's slits", get html() { return cards.slits(); } }, b: box(bx, y2, sw, mh) });
+        }
+        { const bx = row0 + mw + sw + 2 * gap; // two meshed wheels on an oak board
+          rect(bx, y2, gw, mh, I.TIMBER_SH); rect(bx + 1, y2 + 1, gw - 2, mh - 2, I.TIMBER); [[2, 2], [gw - 3, 2], [2, mh - 3], [gw - 3, mh - 3]].forEach(([dx, dy]) => set(bx + dx, y2 + dy, I.ARM_SH));
+          const gx = bx + 7; const gy = y2 + Math.round(mh / 2) - 2;
+          deco.push({ type: 'gear', x: gx, y: gy, r: 4, sp: 0.8 }, { type: 'gear', x: gx + 8, y: gy + 4, r: 3, sp: -0.8 * 4 / 3 }); }
+        lantern(x0 + bw + 6, ry + 2);
       }
+      spread(n, tb.l, tb.r, 17).forEach(({ k, row, xc }) => { slots[k] = model(xc, row ? tb.back : tb.front, things[k].model); });
       const ax = S(0.3); rect(ax, floorY(0.4) - 9, 12, 3, I.ARM_HI); rect(ax, floorY(0.4) - 9, 12, 1, I.BLADE); rect(ax + 3, floorY(0.4) - 6, 6, 3, I.ARM_SH); rect(ax + 2, floorY(0.4) - 3, 8, 3, I.ARM_SH);
     } else if (kind === 'publications') { // the library: each work face out on the display shelf
       // the two bookcases: each shelf a subject (site.toml [library]), each catalogued volume a gilt spine on it
@@ -2458,13 +2905,13 @@ f11111f2.
         deco.push({ type: 'life', x: lx, y: ly, w: lw, h: lh });
         extra.push({ t: { kind: 'life', label: 'The game of life', get html() { return cards.life(); } }, b: box(lx - 2, ly - 2, lw + 4, lh + 4) });
       }
-      { // Buffon's needles on the floorboards, right of the rug
-        const bx = S(0.6); const bw = Math.max(16, Sw(0.14)); const by = floorY(0.3); const bh = floorY(0.8) - by;
-        for (let y = 0; y < bh; y += 1) for (let x = 0; x < bw; x += 1) set(bx + x, by + y, y % 4 === 0 ? I.TIMBER_SH : (x + y * 3) % 11 === 0 ? I.TIMBER : I.TIMBER_HI);
-        deco.push({ type: 'buffon', x: bx, y: by, w: bw, h: bh });
-        extra.push({ t: { kind: 'buffon', label: "Buffon's needles", get html() { return cards.buffon(); } }, b: box(bx, by, bw, bh) });
-      }
       cat('whiteTabby', S(0.36), floorY(0.55) + 4); // asleep on the rug
+      { // the library's ladder on its brass rail, slid along the shelves (by the visitor: see ladderTo)
+        const a = S(0) + 2; const b = BR - 10; rect(a, 6, b - a + 8, 1, I.GOLD_SH);
+        const lx = Math.round(a + (b - a) * ladderF);
+        deco.push({ type: 'ladder', a, b, top: 6, foot: yf - 1 });
+        extra.push({ t: { kind: 'ladder', label: 'The library ladder', html: "<h3>The library ladder</h3><p>On its brass rail, it slides from one bookcase to the other: drag it (or the arrow keys, once it has the focus) to reach the top shelves.</p>" }, b: box(lx - 1, 6, 10, yf - 6) });
+      }
     } else if (kind === 'talks') { // the great hall: a banner on the pole for each talk; the tapestry
       // the schools' hangings along the wall, each on its own rod (one row; spread when there is room)
       const gap = clamp(Math.floor((BR - BL - 6) / Math.max(1, hangs.length)), 21, 24); const tw = hangs.length * gap; const narrow = BR - (tw + S(0.05) + 10) < 72;
@@ -2506,6 +2953,7 @@ f11111f2.
       for (let a2 = 0; a2 < 6.28; a2 += 0.35) set(tcx + Math.round(Math.cos(a2) * rx * 0.25), tcy + Math.round(Math.sin(a2) * ry * 0.25), I.GOLD_SH); // a carved rose
       rect(tcx, tcy - 3, 1, 3, I.GOLD_SH); rect(tcx - 3, tcy - 3, 7, 1, I.GOLD); // the candelabrum
       [-3, 0, 3].forEach((dx) => candle(tcx + dx, tcy - 4, false));
+      lights.splice(-2, 2); // (the three flames light as one: three lights stacked burnt an orange patch on the wall)
       [[-0.6, -0.3], [0.55, -0.2], [0.15, 0.45]].forEach(([fx, fy]) => { const gx = tcx + Math.round(fx * rx); const gy = tcy + Math.round(fy * ry); rect(gx, gy - 3, 2, 2, I.GOLD); set(gx, gy - 1, I.GOLD_SH); set(gx + 1, gy - 1, I.GOLD_SH); }); // goblets
       { const mx0 = tcx - Math.round(rx * 0.45); const my = tcy + Math.round(ry * 0.2); rect(mx0, my, 11, 5, I.PLASTER_HI); for (let k = 0; k < 11; k += 1) set(mx0 + k, my + 2 + (k % 3 === 0 ? 1 : 0), I.WATER); set(mx0 + 3, my + 1, I.CAP); } // a map unrolled
       set(tcx + Math.round(rx * 0.45), tcy + 1, I.OUTLINE); set(tcx + Math.round(rx * 0.45) + 1, tcy, I.PLASTER_HI); // the quill in its pot
@@ -2529,9 +2977,36 @@ f11111f2.
         else if (R >= 5) roseWindow(narrow ? Math.round((BL + BR) / 2) : Math.round(tcx - rx * 0.5), Math.round((top + bottom) / 2), R);
       }
       if (!narrow) chandelier(tcx, Math.max(Math.round(H * 0.3), tcy - ry - 26)); // low over the table, clear of the menu's beam
+      if (cinemaOn()) { // the lantern show: a sheet hung over the middle of the wall, the magic lantern on the table
+        const fm = realGet('melies'); const sw = 58; const sh = 44; const sx = Math.round((BL + BR - sw) / 2); const sy = ty + 1;
+        rect(sx - 2, sy - 2, sw + 4, sh + 4, I.PLASTER_HI); rect(sx - 3, sy - 3, sw + 6, 1, I.TIMBER_SH); set(sx - 4, sy - 3, I.GOLD); set(sx + sw + 3, sy - 3, I.GOLD); // the sheet on its pole
+        rect(tcx - 3, tcy - 9, 7, 5, I.ARM_SH); rect(tcx + 3, tcy - 8, 2, 3, I.GOLD_SH); set(tcx, tcy - 10, I.ARM); // the lantern, its lens towards the sheet
+        if (fm) {
+          deco.push({ type: 'cinema', x: sx, y: sy, w: sw, h: sh, lx: tcx, ly: tcy - 7 });
+          extra.push({ t: { kind: 'cinema', label: 'The magic lantern show', get html() { return `<h3>Le Voyage dans la Lune</h3><p>Méliès, 1902: astronomers fired to the Moon from a cannon, the rocket in its eye. Shown in the great hall on Saturday evenings.</p>${provenance('melies')}`; } }, b: box(sx - 2, sy - 2, sw + 4, sh + 4) });
+        }
+      }
+      mobilier(0, BL + 2, yf - 1); // the bench with dragons' heads, along the wall under the tapestry
+      const lc = realGet('licorne'); // La Dame à la licorne, the tapestry of this visit's sense, under the schools' hangings
+      if (lc) {
+        const k = senseNow(); const x0 = BL + 4; const y0 = ty + 25;
+        const sm = { w: lc.w >> 1, h: lc.h >> 1 }; const big = lc.frameIdx[k]; // half the card's size, each stitch the commonest colour of its 2 x 2 (sharper than the small copy)
+        const px = (x, y) => { const q = [big[2 * y * lc.w + 2 * x], big[2 * y * lc.w + 2 * x + 1], big[(2 * y + 1) * lc.w + 2 * x], big[(2 * y + 1) * lc.w + 2 * x + 1]];
+          return q.reduce((b, c) => (q.filter((v) => v === c).length > q.filter((v) => v === b).length ? c : b), q[0]); };
+        rect(x0 - 2, y0 - 1, sm.w + 4, 1, I.TIMBER_SH); set(x0 - 3, y0 - 1, I.GOLD); set(x0 + sm.w + 2, y0 - 1, I.GOLD); // its rod and finials
+        for (let y = 0; y < sm.h; y += 1) for (let x = 0; x < sm.w; x += 1) { const c = px(x, y); if (c >= 0) set(x0 + x, y0 + y, c); }
+        for (let x = 0; x < sm.w; x += 2) set(x0 + x, y0 + sm.h, I.GOLD_SH); // the fringe
+        extra.push({ t: { kind: 'licorne', label: 'The tapestry of the lady and the unicorn', get html() { return cards.licorne(); } }, b: box(x0 - 3, y0 - 2, sm.w + 6, sm.h + 4) });
+      }
       const lx = tcx - rx - 16; // the speaker's lectern, at the head of the table, waiting
       rect(lx + 3, yf - 13, 2, 13, I.TIMBER_SH); rect(lx + 1, yf - 1, 6, 1, I.TIMBER_SH);
       for (let k = 0; k < 9; k += 1) set(lx + k, yf - 14 + Math.floor(k / 3), I.TIMBER_HI);
+      { // the astronomical clock on the east pillar: a 24-hour dial, the sun's sign, the moon's phase
+        const cx = BR - 3; const cy = Math.round(H * 0.42); const R = 7;
+        for (let y = -R - 1; y <= R + 1; y += 1) for (let x = -R - 1; x <= R + 1; x += 1) { const q = Math.hypot(x, y); if (q <= R + 1) set(cx + x, cy + y, q > R ? I.GOLD_SH : I.T_NAVY); }
+        deco.push({ type: 'astroclock', x: cx, y: cy, r: R });
+        extra.push({ t: { kind: 'astroclock', label: 'The astronomical clock', get html() { return cards.astroclock(); } }, b: box(cx - R - 1, cy - R - 1, 2 * R + 3, 2 * R + 3) });
+      }
       (narrow ? [] : [S(0.95), S(0.86)]).forEach((bx) => { // the council's two banners on the end wall
         const by = Math.round(H * 0.24);
         for (let r = 0; r < 16; r += 1) for (let c = 0; c < 5; c += 1) { if (r === 15 && c === 2) continue; set(bx + c, by + r, c === 2 ? I.T_OR : c === 4 ? I.BANNER_SH : I.BANNER); }
@@ -2549,23 +3024,28 @@ f11111f2.
         while (x < br - 10) { const w = 2 + ((x * 7 + k) % 4); for (let c = 0; c < w; c += 1) set(x + c, y + ((c + k) % 3 === 0 ? -1 : 0), I.FL_WHITE); x += w + 2; }
         slots[k] = box(bl + 2, y - 3, br - bl - 4, 6);
       });
+      const pt = realGet('portraits'); // over the board, the four whose equations it keeps (_tools/fetch_portraits.py)
+      if (pt) {
+        const sm = pt.small; // two either side of the board, beside its lines (over it, the menu would hide them)
+        const xs = [0, 1, 2, 3].map((k) => (k < 2 ? bl - 7 - sm.w : br + 6)); const ys = [0, 1, 2, 3].map((k) => bt + 2 + (k % 2) * (sm.h + 5));
+        xs.forEach((x, k) => { const py = ys[k];
+          rect(x - 1, py - 1, sm.w + 2, sm.h + 2, I.GOLD_SH); set(x - 1, py - 1, I.GOLD); set(x + sm.w, py + sm.h, I.GOLD); // the frame
+          for (let y = 0; y < sm.h; y += 1) for (let xx = 0; xx < sm.w; xx += 1) set(x + xx, py + y, sm.frameIdx[k][y * sm.w + xx]);
+          const c = pt.captions[k];
+          extra.push({ t: { kind: 'portrait', label: `A portrait: ${c.name}`, get html() { return `<h3>${escHtml(c.name)}</h3>${figHtml('portraits', k, 4)}<p class="dim">Hung beside the board, by the line that is his.</p>${provenance('portraits', k)}`; } }, b: box(x - 1, py - 1, sm.w + 2, sm.h + 2) });
+        });
+        deco.push({ type: 'portraits', xs, ys, w: sm.w, h: sm.h });
+      }
       // under the courses, the board's standing equations, in chalk: Schrödinger, diffusion,
       // the partition function, Hamilton-Jacobi-Bellman (the M1, the projects, the masters)
       let ey = bt + 4 + things.length * 7;
       CHALK.forEach((line) => {
-        const w = line.length * 4;
+        const w = [...line].reduce((a, ch) => a + (GLYPHS[ch] ? GLYPHS[ch][0].length + 1 : 2), 0);
         if (ey + 5 > bb - 2 || w > br - bl - 4) return; // what does not fit the board is not written
         let ex = Math.round(bl + (br - bl - w) / 2);
-        [...line].forEach((ch) => { const g = GLYPHS[ch]; if (g) g.forEach((row, ry) => [...row].forEach((b, rx) => { if (b === '1') set(ex + rx, ey + ry, (ex + ey + rx) % 7 ? I.FL_WHITE : I.PLASTER); })); ex += 4; });
+        [...line].forEach((ch) => { const g = GLYPHS[ch]; if (g) g.forEach((row, ry) => [...row].forEach((b, rx) => { if (b === '1') set(ex + rx, ey + ry, (ex + ey + rx) % 7 ? I.FL_WHITE : I.PLASTER); })); ex += g ? g[0].length + 1 : 2; });
         ey += 8;
       });
-      { // under them, Langton's ant at work in chalk
-        const gx0 = bl + 4; const gy0 = ey + 1; const gw = Math.min(br - bl - 8, 72) & ~1; const gh = bb - 3 - gy0;
-        if (gh >= 8) {
-          deco.push({ type: 'langton', x: gx0, y: gy0, w: gw, h: gh });
-          extra.push({ t: { kind: 'langton', label: "Langton's ant", get html() { return cards.langton(); } }, b: box(gx0, gy0, gw, gh) });
-        }
-      }
       { // a Galton board on the wall over the master's desk: pegs in a triangle, bins below
         const gw = 17; const dx0 = S(0.86); const gx0 = Math.round(dx0 + (Math.max(10, BR - dx0 - 2) - gw) / 2); const gy0 = yf - 54;
         if (gx0 > br + 4 && gx0 + gw < BR - 1) {
@@ -2582,7 +3062,7 @@ f11111f2.
       // the class: two rows, each a long desk, the pupils on their chairs before it (we see their
       // backs: they face the board); the master at the board's left, his staff on the equations
       const rowAt = [yf + 7, Math.min(H - 2, yf + 16)];
-      let pk = 0;
+      let pk = 0; const heads = []; frontOn = true;
       rowAt.forEach((fy, row) => {
         const l = bl - 4 - row * 5; const r = (row ? br + 2 : br - 4); const seats = Math.max(2, Math.floor((r - l) / 19));
         const dt = fy - 11; // the desk's top, beyond the pupils
@@ -2593,14 +3073,18 @@ f11111f2.
           rect(xc + 5, dt - 1, 5, 1, I.SLATEB); rect(xc + 5, dt - 2, 5, 1, I.TIMBER); // a slate on the desk, an inkpot
           set(xc - 8, dt - 1, I.OUTLINE); set(xc - 8, dt - 2, I.ARM_SH);
           const sp = pupil(pk); pk += 1;
-          stamp(sp, xc - 4, fy - 5 - sp.h + 2);
+          stamp(sp, xc - 4, fy - 5 - sp.h + 2); heads.push({ x: xc - 4 + (sp.w >> 1), y: fy - 5 - sp.h + 2, row, w: sp.w, h: sp.h });
           // the chair's back, between us and the pupil: posts, top rail, a slat; the seat's edge below
           rect(xc - 6, fy - 11, 2, 11, I.TIMBER_SH); rect(xc + 4, fy - 11, 2, 11, I.TIMBER_SH); set(xc - 6, fy - 11, I.TIMBER_HI);
           rect(xc - 6, fy - 11, 12, 2, I.TIMBER); rect(xc - 6, fy - 11, 12, 1, I.TIMBER_HI); rect(xc - 4, fy - 7, 8, 1, I.TIMBER);
           rect(xc - 6, fy - 4, 12, 1, I.TIMBER_SH); rect(xc - 6, fy - 1, 1, 1, I.OUTLINE); rect(xc + 5, fy - 1, 1, 1, I.OUTLINE);
         }
       });
-      { const ms = SPRITES.master; stamp(ms, bl - ms.w + 4, yf + 3 - ms.h); }
+      frontOn = false;
+      { // the master walks along the board, stops to point at a line, turns round now and then (see drawInterior)
+        const ms = SPRITES.master; deco.push({ type: 'master', xa: bl - ms.w + 4, xb: Math.round(bl + (br - bl) * 0.55), yb: yf + 3, top: bt, rows: Math.max(1, Math.floor((ey - bt - 4) / 7)) });
+        deco.push({ type: 'chatter', heads });
+      }
       [bl + 12, bl + Math.round((br - bl) * 0.3)].forEach((x) => { rect(x, yf + 9, 5, 2, I.SLATEB); rect(x, yf + 8, 5, 1, I.TIMBER); });
       { const gx0 = dx + Math.round(dw / 2); const gy = yf - 16; // a globe on the master's desk
         for (let y = -3; y <= 3; y += 1) for (let x = -3; x <= 3; x += 1) if (x * x + y * y <= 10) set(gx0 + x, gy + y, (x + y * 2) % 4 === 0 ? I.FERN : I.WATER);
@@ -2615,6 +3099,7 @@ f11111f2.
         set(x, y, fr ? I.TIMBER_SH : (x * 7 + y * 3) % 5 === 0 ? I.CORK_SH : I.CORK);
       }
       things.forEach((_t, k) => { slots[k] = letterThing(cl + 8 + (k % fit) * 15, ct + 4 + Math.floor(k / fit) * 13, k); });
+      mobilier(1, Math.round((cl + cr) / 2) - 21, yf - 1); // a bench-chest under the board, to sit and read the news
       const rv = SPRITES.raven;
       [[0.02, 0.3, 2], [0.05, 0.56, 2]].forEach(([f, fy, nn]) => {
         const py = Math.round(H * fy); rect(S(f), py, Sw(0.3), 2, I.TIMBER_SH); set(S(f), py, I.TIMBER_HI);
@@ -2637,13 +3122,28 @@ f11111f2.
         else { const xc = tb.l + 14; rect(xc - 3, tb.front - 3, 6, 3, I.BEARD); slots[i] = box(xc - 4, tb.front - 4, 8, 5); }
       });
       candle(tb.r - 2, tb.back, true);
+      { // a pyramid of cannonballs by the door, packed as tight as balls can be (Kepler's conjecture)
+        const bx0 = b + 4; const by0 = floorY(0.35);
+        const ball = (x, y) => { rect(x, y, 3, 3, I.ARM); set(x, y, I.ARM_HI); set(x + 2, y + 2, I.ARM_SH); set(x + 1, y + 2, I.ARM_SH); set(x + 2, y + 1, I.ARM_SH); set(x, y + 2, I.OUTLINE); set(x + 2, y, I.OUTLINE); };
+        for (let r = 0; r < 4; r += 1) for (let k = 0; k < 4 - r; k += 1) ball(bx0 + k * 3 + r * 1.5, by0 - 3 - r * 2.6);
+        shadow(bx0 + 6, by0 + 1, 13);
+        extra.push({ t: { kind: 'kepler', label: 'The cannonballs', html: cards.kepler() }, b: box(bx0 - 1, by0 - 14, 15, 15) });
+      }
+      { // an arrow slit high in the wall; on a sunny day its light makes fringes on the floor (see drawInterior)
+        const sx = Math.round((tb.r + a) / 2) + 2; const sy0 = Math.round(H * 0.2); const sh = Math.round(H * 0.18);
+        rect(sx - 1, sy0 - 1, 3, sh + 2, I.ROCK_HI); for (let y = 0; y < sh; y += 1) set(sx, sy0 + y, I.SKY2, 1);
+        rect(sx - 2, sy0 + (sh >> 1), 5, 1, I.ROCK_HI); set(sx, sy0 + (sh >> 1), I.SKY2, 1); // the cross-slit
+        deco.push({ type: 'fringes', x: sx, y: sy0, h: sh });
+        extra.push({ t: { kind: 'fringes', label: 'The arrow slit', get html() { return cards.fringes(); } }, b: box(sx - 3, sy0 - 1, 7, sh + 2) });
+      }
       windowArch(S(0.06), Math.round(H * 0.14), Math.max(10, Sw(0.1)), Math.round(H * 0.26));
       { // the cabinet of curiosities: a shelf-place for each thing of the landscape found so far
         const cw = 15; const cx0 = Math.min(BR - cw - 2, S(0.72) + 24); const ch = 30; const cy0 = yf - ch;
         if (cx0 > b + 8) {
-          rect(cx0, cy0, cw, ch, I.TIMBER); rect(cx0, cy0, cw, 1, I.TIMBER_HI); rect(cx0 + 1, cy0 + 2, cw - 2, ch - 4, I.OUTLINE);
-          for (let k = 1; k < 4; k += 1) rect(cx0 + 1, cy0 + 2 + k * 7, cw - 2, 1, I.TIMBER_SH); // the shelves
+          rect(cx0, cy0, cw, ch, I.TIMBER); rect(cx0, cy0, cw, 1, I.TIMBER_HI); rect(cx0 + 1, cy0 + 2, cw - 2, ch - 4, I.TIMBER_SH); // (dark oak inside, not black: the keepsakes must show)
+          for (let k = 1; k < 4; k += 1) { rect(cx0 + 1, cy0 + 2 + k * 7, cw - 2, 1, I.TIMBER_HI); rect(cx0 + 1, cy0 + 3 + k * 7, cw - 2, 1, I.TIMBER); } // the shelves
           rect(cx0 + Math.floor(cw / 2), cy0 + 2, 1, ch - 4, I.TIMBER); // the doors' meeting
+          for (let k = 0; k < 3; k += 1) { set(cx0 + 2 + k, cy0 + 17 + k, I.PLASTER); set(cx0 + Math.floor(cw / 2) + 2 + k, cy0 + 17 + k, I.PLASTER); } // a glint on each glass door
           deco.push({ type: 'cabinet', x: cx0 + 1, y: cy0 + 2, w: cw - 2 });
           extra.push({ t: { kind: 'cabinet', label: 'The cabinet of curiosities', get html() {
             const { found: f, all } = curiosOf(); const miss = Object.keys(all).filter((k) => !f.includes(k));
@@ -2663,14 +3163,15 @@ f11111f2.
       rect(hx - 3, hy - 5, hw + 6, 29, I.BRICK_SH); rect(hx - 3, hy - 5, hw + 6, 2, I.BRICK_HI);
       rect(hx, hy, hw, 24, I.OUTLINE);
       for (let y = 0; y < hy - 5; y += 1) rect(hx + hw / 2 - 4, y, 8, 1, y % 3 ? I.BRICK : I.BRICK_SH); // the flue
-      flames.push({ x: hx + hw / 2, y: yf - 1, hearth: true, w: hw - 4 }); lights.push({ x: hx + hw / 2, y: yf - 6, r: 0.6 * H });
+      flames.push({ x: hx + hw / 2, y: yf - 1, hearth: true, w: hw - 4 }); lights.push({ x: hx + hw / 2, y: yf - 6, r: 0.6 * H, hearth: true });
       const ax = s(0.52); rect(ax, floorY(0.3) - 9, 12, 3, I.ARM_HI); rect(ax, floorY(0.3) - 9, 12, 1, I.BLADE); rect(ax + 3, floorY(0.3) - 6, 6, 3, I.ARM_SH); rect(ax + 2, floorY(0.3) - 3, 8, 3, I.ARM_SH); set(ax - 1, floorY(0.3) - 8, I.ARM); // anvil
       rect(s(0.45), Math.round(H * 0.28), s(0.45), 1, I.TIMBER_SH); // the tool rack
       for (let k = 0; k < 6; k += 1) { const tx = s(0.48) + k * Math.max(3, s(0.07)); rect(tx, Math.round(H * 0.28) + 1, 1, 6 + (k % 3) * 2, k % 2 ? I.ARM_SH : I.TIMBER); rect(tx - 1, Math.round(H * 0.28) + 6 + (k % 3) * 2, 3, 2, I.ARM_HI); }
       deco.push({ type: 'gear', x: s(0.78), y: Math.round(H * 0.5), r: 4, sp: 0.8 }, { type: 'gear', x: s(0.78) + 8, y: Math.round(H * 0.5) + 4, r: 3, sp: -1.1 });
       lantern(s(0.9), Math.round(H * 0.18));
     }
-    return { id, W, H, idx, out, lights, flames, stars, motes, blinks, camps, deco, pools, yf, slots: things ? slots : [], things: things || [], cells: new Float32Array(9 * 14) };
+    return { id, W, H, idx, out, front, lights, flames, stars, motes, blinks, camps, deco, pools, sills, yf, slots: things ? slots : [], things: things || [], cells: new Float32Array(9 * 14),
+      ladderK: things ? things.findIndex((tt) => tt.kind === 'ladder') : -1 };
   }
 
   /* ---- palette from the sun's altitude -------------------------------- */
@@ -2684,24 +3185,48 @@ f11111f2.
   const DETAIL = new Set(['FL_RED', 'FL_YEL', 'FL_WHITE', 'FL_BLUE', 'FL_VIOLET', 'CAP', 'CAP_SH', 'CAP_BR',
     'STEM', 'MOSS', 'MOSS_HI', 'FERN', 'FERN_SH', 'GRASS_LT']);
 
+  // which colours the month's miniature pulls: 1 the greens, 2 the earths (0, the sky, in paletteAt)
+  const TINTED = {}; 'GRASS GRASS_SH GRASS_HI GRASS_LT HILL HILL_SH HILL_HI BUSH BUSH_SH BUSH_HI OAK OAK_SH OAK_HI'.split(' ').forEach((n) => { TINTED[n] = 1; });
+  'FURROW FURROW_SH PATH PATH_SH PATH_HI DIRT DIRT_SH'.split(' ').forEach((n) => { TINTED[n] = 2; });
+  'WALL_HI WALL WALL_SH WALL_DK'.split(' ').forEach((n) => { TINTED[n] = 3; }); // (3: the stone, after Monet)
+  /** Monet's Rouen canvas for this hour and weather (clear, grey, fog), its stone colour interpolated
+   *  between the two canvases nearest in hour; null at night or before the canvases have come. */
+  function monetTint() {
+    const a = real.monet; if (!a) return null;
+    const kind = weather.kind === 'fog' ? 'fog' : ['overcast', 'drizzle', 'rain', 'showers', 'snow', 'storm'].includes(weather.kind) ? 'grey' : 'clear';
+    const d = clockFn(); const h = d.getHours() + d.getMinutes() / 60; if (h < 6 || h > 21) return null;
+    const cs = a.canvases.filter((c) => c.kind === kind).sort((p, q) => p.hour - q.hour); if (!cs.length) return null;
+    let i = cs.findIndex((c) => c.hour > h); if (i < 0) i = cs.length; const lo = cs[Math.max(0, i - 1)]; const hi = cs[Math.min(cs.length - 1, i)];
+    const k = hi === lo ? 0 : clamp((h - lo.hour) / (hi.hour - lo.hour));
+    return { rgb: mix(lo.rgb, hi.rgb, k), title: (k < 0.5 ? lo : hi).title, year: (k < 0.5 ? lo : hi).year };
+  }
+  /** c moved by k towards colour q brought to c's own brightness (the hue moves, not the light). */
+  const toward = (c, q, k) => { const lum = (v) => 0.3 * v[0] + 0.59 * v[1] + 0.11 * v[2] + 1; const f = lum(c) / lum(q); return mix(c, q.map((v) => Math.min(255, v * f)), k); };
+  /** [sky, green, earth] of this month's miniature (null before the book has come). */
+  const monthTint = () => { const a = real.heures; return a && a.tint ? a.tint[today().getMonth()] : null; };
+
   /** Palette for a sun altitude (deg); `moonlit` in [0, 1]: lit fraction of the disc times its height. */
   function paletteAt(alt, moonlit = 0) {
     let k = 0;
     while (k < KEYS.length - 2 && alt > KEYS[k + 1][0]) k += 1;
     const [a0, s0, am0, f0] = KEYS[k]; const [a1, s1, am1, f1] = KEYS[k + 1];
     const t = clamp((alt - a0) / (a1 - a0));
-    const sky = s0.map((c, i) => mix(hex(c), hex(s1[i]), t));
     const night = clamp((-alt - 1) / 8);
+    const mt = monthTint(); // the month's miniature in the book of hours: its blues, greens and earths, a little
+    const wt = monetTint(); // and the stone of the walls as Monet saw Rouen's at this hour, in this weather
+    const sky = s0.map((c, i) => { const q = mix(hex(c), hex(s1[i]), t); return mt && mt[0] ? toward(q, mt[0], 0.08 * (1 - night)) : q; });
     const moon = moonlit * night;
     const amb = mix(am0, am1, t).map((a, j) => a * (1 + moon * [0.45, 0.55, 0.7][j])); // cold moonlight
     const fog = f0 + (f1 - f0) * t;
     const horizon = sky[N_SKY - 1];
-    const lit = (h, depth, a = amb) => mix(hex(h).map((c, j) => c * a[j]), horizon, depth * fog);
+    const lit = (h, depth, a = amb) => mix((typeof h === 'string' ? hex(h) : h).map((c, j) => c * a[j]), horizon, depth * fog);
     const ambDetail = amb.map((a) => a ** 0.55);
     const pal = new Array(NAMES.length);
     sky.forEach((c, i) => { pal[i] = c; });
     SURFACES.forEach(([n, h, depth]) => {
-      let c = lit(h, depth, DETAIL.has(n) ? ambDetail : amb);
+      const g = TINTED[n];
+      const base = g === 3 ? (wt ? toward(hex(h), wt.rgb, 0.3 * (1 - night)) : h) : mt && g !== undefined && mt[g] ? toward(hex(h), mt[g], [0, 0.12, 0.1][g]) : h;
+      let c = lit(base, depth, DETAIL.has(n) ? ambDetail : amb);
       if (n.startsWith('PATH')) c = c.map((q) => q * (1 - 0.35 * night));
       if (n === 'CLOUD' || n === 'CLOUD_SH') c = mix(c, night > 0.5 ? sky[2] : horizon, 0.3 + 0.3 * night);
       if (n === 'WIN_LIT') c = mix(c, [255, 176, 72], night);
@@ -2735,6 +3260,38 @@ f11111f2.
   let hoverId = null; let pendingRoom = null; let pendingHoist = false;
   let heraldry = { own: 'silva', tapestry: [] }; let say = () => {}; let rumour = () => '';
   let curiosOf = () => ({ found: [], all: {} }); let nowOf = () => '';
+  let visitsOf = () => ({ n: 1, first: null }); // the visitor's visits (script.js): their oak's rings
+  let newsOf = () => null; let dreamsOf = () => []; let tradeWith = () => ''; // (script.js: the latest news, the knight's dreams, the peddler's bargain)
+  let pointer = null; // where the mouse is over the landscape, scene px (the black cat watches it)
+  let billiardShow = () => {}; // the tavern's billiard table (script.js: a dialog)
+  let stalenessOf = () => 0; // days since the visitor was last in a room (script.js): its cobwebs
+  let ladderF = 0.15; // where the library's ladder stands on its rail, 0..1 (kept between visits)
+  /* what the visitor has used most this visit, for the great hall's tapestry (La Dame à la licorne):
+     touch the clicks, taste the village and its tavern, smell the fire and the orchard, hearing the
+     sound on, sight the watchtower and the photo mode. Kept for the browser session. */
+  const SENSES = ['touch', 'taste', 'smell', 'hearing', 'sight'];
+  const senses = (() => { try { return { touch: 0, taste: 0, smell: 0, hearing: 0, sight: 0, ...JSON.parse(sessionStorage.getItem('senses') || '{}') }; } catch { return { touch: 0, taste: 0, smell: 0, hearing: 0, sight: 0 }; } })();
+  const sense = (k, n = 1) => { senses[k] += n; try { sessionStorage.setItem('senses', JSON.stringify(senses)); } catch { /* private mode */ } };
+  /** The tapestry for this visit: the most used sense, if one stands out; else "À mon seul désir" (5). */
+  const senseNow = () => { const v = SENSES.map((k) => senses[k]); const m = Math.max(...v); const s2 = [...v].sort((a, b) => b - a)[1]; return m >= 4 && m > s2 * 1.3 ? v.indexOf(m) : 5; };
+  /** A magic lantern show in the great hall: Saturday evenings (7 to 11 pm), or called up (event cinema). */
+  const cinemaOn = () => (forced.cinema || 0) > now() || (clockFn().getDay() === 6 && clockFn().getHours() >= 19 && clockFn().getHours() < 23);
+  let cinemaT0 = 0;
+  let shelterUntil = 0; // (the event command can put the shelter up without rain)
+  const forced = {}; // event name -> until when (now() s): what the event command has called up
+  /* The chapel's offices by the sun (the canonical hours kept by the light, as monasteries did): lauds
+     at first light, prime about sunrise, vespers at sunset, compline at nightfall. */
+  const OFFICES = { lauds: 'Lauds, the morning office', prime: 'Prime, the hour of sunrise', vespers: 'Vespers, the evening office', compline: 'Compline, the last office of the day' };
+  function officeNow(plain = false) {
+    if (!plain && forced.chant && forced.chant.until > now()) return forced.chant.office;
+    if (!bodies) return null;
+    const a = bodies.sun[2] / deg; const h = today().getHours();
+    if (h < 12) return a > -12 && a < -2 ? 'lauds' : a >= -2 && a < 8 ? 'prime' : null;
+    if (a > -3 && a < 6) return 'vespers';
+    return h >= 20 && h < 23 && a < -6 ? 'compline' : null;
+  }
+  let fireFed = 0; // when a log last went on the workshop's fire (it burns down in three minutes)
+  const heatOf = () => clamp(1 - (now() - fireFed - 90) / 90, 0.15, 1);
   let found = () => {}; let itemsOf = () => []; let spotsTo = () => {}; let descendTo = () => {}; let doorsOf = () => []; let hl = -1; // the room's things, their hotspots, the one pointed at
   let scene = null; let look = null; let skyFn; let reduce = false; let px = 3;
   let running = false; let visible = true; let raf = 0; let last = 0; let tick = 0;
@@ -2747,6 +3304,47 @@ f11111f2.
   /* ---- the observatory's loom: a 2D Ising model (J = 1, no field, periodic edges), woven live by
      Metropolis checkerboard sweeps, at a temperature set by Paris's: T/Tc = 2^((t - 15 °C) / 20),
      so a 15 °C day weaves the critical point, Tc = 2 / ln(1 + √2) (Onsager 1944). w, h even. */
+  /* ---- lightning: the dielectric breakdown model (Niemeyer, Pietronero & Wiesmann 1984). The
+     channel grows down from the cloud a cell at a time, onto a neighbouring cell with probability
+     ~ phi^eta, phi the potential (0 on the channel and the cloud, 1 at the ground), relaxed between
+     steps (SOR); eta ~ 1.6 gives the forked bolts of real lightning (eta 1: a DLA bush, higher: a rod). A bolt grows
+     over a few frames before it can strike; cells 2 px. ---- */
+  function boltNew(w, h, x0, y0) {
+    const phi = Float32Array.from({ length: w * h }, (_, i) => Math.floor(i / w) / (h - 1));
+    const on = new Uint8Array(w * h); const par = new Int32Array(w * h).fill(-1); const c0 = w >> 1;
+    on[c0] = 1; phi[c0] = 0;
+    return { w, h, x0, y0, phi, on, par, cells: [c0], done: false, main: null };
+  }
+  function boltGrow(b, steps, eta = 1.6) {
+    const { w, h, phi, on, par } = b;
+    for (let s0 = 0; s0 < steps && !b.done; s0 += 1) {
+      for (let it = 0; it < 4; it += 1) {
+        for (let y = 1; y < h - 1; y += 1) {
+          for (let x = 0; x < w; x += 1) {
+            const i = y * w + x; if (on[i]) continue;
+            const l = phi[x ? i - 1 : i + 1]; const r = phi[x < w - 1 ? i + 1 : i - 1];
+            phi[i] += 1.85 * ((l + r + phi[i - w] + phi[i + w]) / 4 - phi[i]);
+          }
+        }
+      }
+      const cand = []; let tot = 0; // the channel's free neighbours, weighted
+      b.cells.forEach((i) => {
+        const x = i % w; // (eight neighbours: the channel may run on the diagonal)
+        [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i + w, i - w, x > 0 ? i + w - 1 : -1, x < w - 1 ? i + w + 1 : -1].forEach((j) => {
+          if (j < w || j >= w * h || on[j]) return;
+          const p = Math.max(0, phi[j]) ** eta; tot += p; cand.push([j, i, p]);
+        });
+      });
+      if (!tot) { b.done = true; break; }
+      let r = Math.random() * tot; let k = 0; while (k < cand.length - 1 && (r -= cand[k][2]) > 0) k += 1;
+      const [j, from] = cand[k];
+      on[j] = 1; phi[j] = 0; par[j] = from; b.cells.push(j);
+      if (j >= w * (h - 1)) { // it has reached the ground: the main channel, back up the tree
+        b.done = true; b.main = new Set(); for (let q = j; q >= 0; q = par[q]) b.main.add(q);
+      }
+    }
+  }
+
   const TC = 2 / Math.log(1 + Math.SQRT2);
   let loom = null;
   const loomT = () => TC * 2 ** (((weather.temp ?? 15) - 15) / 20);
@@ -2771,23 +3369,9 @@ f11111f2.
     }
     return loom;
   }
-  /* ---- the rooms' other experiments: Foucault's pendulum (observatory), Langton's ant and a Galton
-     board (schoolroom), Conway's Life and Buffon's needles (library). State kept between visits. */
-  const LAT_PARIS = 48.8566;
-  const foucaultRate = 15 * Math.sin((LAT_PARIS * Math.PI) / 180); // deg an hour: the plane's turn here
-  let ant = null; let galton = null; let life = null; let buffon = null;
-  function antOf(w, h) {
-    if (!ant || ant.w !== w || ant.h !== h) ant = { w, h, g: new Uint8Array(w * h), x: w >> 1, y: h >> 1, d: 0, steps: 0 };
-    return ant;
-  }
-  function antStep(n) { // white cell: turn right, black: left; flip it; step (on a torus)
-    const a = ant;
-    for (let k = 0; k < n; k += 1) {
-      const i = a.y * a.w + a.x; a.d = (a.d + (a.g[i] ? 3 : 1)) % 4; a.g[i] ^= 1;
-      a.x = (a.x + [0, 1, 0, -1][a.d] + a.w) % a.w; a.y = (a.y + [-1, 0, 1, 0][a.d] + a.h) % a.h; a.steps += 1;
-    }
-    if (a.steps > 30000) { a.g.fill(0); a.steps = 0; a.x = a.w >> 1; a.y = a.h >> 1; a.d = 0; }
-  }
+  /* ---- the rooms' other experiments: a Galton board (schoolroom), Conway's Life (library). State
+     kept between visits. */
+  let galton = null; let life = null;
   function galtonOf(rows) {
     if (!galton || galton.rows !== rows) galton = { rows, bins: new Array(rows + 1).fill(0), ball: null, n: 0 };
     return galton;
@@ -2814,17 +3398,6 @@ f11111f2.
     if (L.seen.has(key) || L.gen > 400) { life = null; lifeOf(w, h); return; }
     L.seen.set(key, L.gen); if (L.seen.size > 60) L.seen.delete(L.seen.keys().next().value);
   }
-  function buffonOf(d, l) {
-    if (!buffon) buffon = { d, l, n: 0, hits: 0, recent: [] };
-    return buffon;
-  }
-  function buffonDrop(w, h) { // a needle of length l over boards d apart: it crosses a seam with p = 2l/(pi d)
-    const b = buffon; const y = Math.random() * h; const a = Math.random() * Math.PI; const x = Math.random() * (w - 2 * b.l) + b.l;
-    const y1 = y - (Math.sin(a) * b.l) / 2; const y2 = y + (Math.sin(a) * b.l) / 2;
-    const hit = Math.floor(y1 / b.d) !== Math.floor(y2 / b.d);
-    b.n += 1; if (hit) b.hits += 1;
-    b.recent.push({ x, y, a, hit }); if (b.recent.length > 40) b.recent.shift();
-  }
   let slits = null;
   /** One photon through Young's two slits: where it lands on the screen (0..h), drawn from
    *  I(y) ~ cos^2(pi y / fringe) sinc^2(pi y / envelope), by rejection. */
@@ -2836,16 +3409,136 @@ f11111f2.
       if (Math.random() < Math.cos(Math.PI * u * 9) ** 2 * sinc ** 2) return y;
     }
   }
+  /* ---- the schoolroom's life: the master's round (30 s: four stops along the board; at each he
+     points at a line 4 s, turns to the class 1.5 s, walks on 2 s) and the pupils' whispering ---- */
+  function masterAt(d, t) {
+    const T0 = 7.5; const stop = Math.floor(t / T0) % 4; const ph = t % T0; const at = (k) => d.xa + ((d.xb - d.xa) * k) / 3;
+    const back = stop === 3; const from = at(stop); const to = back ? at(0) : at(stop + 1); // (from the last stop back to the first)
+    if (reduce) return { x: from, facing: 1, pointing: true, stop };
+    if (ph < 4) return { x: from, facing: 1, pointing: true, stop };
+    if (ph < 5.5) { const prev = chatAt(interior.deco.find((q) => q.type === 'chatter').heads, t - (ph - 4) - 0.1); return { x: from, facing: -1, stop, caught: Boolean(prev) && ph < 5 }; }
+    const k = (ph - 5.5) / 2; return { x: from + (to - from) * k * k * (3 - 2 * k), facing: to >= from ? 1 : -1, walking: true, stop };
+  }
+  /** Which two neighbours whisper at time t (or null): a new pair every 5 s, talking 3.5 s of it. */
+  function chatAt(heads, t) {
+    const slot = Math.floor(t / 5); if (t % 5 > 3.5 || heads.length < 2) return null;
+    const pairs = []; for (let i = 0; i + 1 < heads.length; i += 1) if (heads[i].row === heads[i + 1].row) pairs.push([heads[i], heads[i + 1]]);
+    if (!pairs.length || (slot * 7919) % 5 === 0) return null; // (and some moments everyone works)
+    return pairs[(slot * 2654435761 >>> 0) % pairs.length];
+  }
+  const PUPIL_TALK = ['"Psst. What is that h with a bar through it?"', '"He wrote the Z wrong. No, I am sure he did."', '"Will the Hamilton-Jacobi one be in the test?"',
+    '"I bet you a sweet the Galton board makes a bell again."', '"Shh, he is turning round!"', '"Lend me your slate, mine is full of sums."', '"Why does heat only go one way?"',
+    '"My father says the castle is older than the mountains."'];
+  const MASTER_TALK = ['"The partition function, children: the whole of a system in one sum."', '"Who is whispering at the back? I have eyes in my cap."',
+    '"Schrodinger first: write it out three times, neatly."', '"Diffusion is patience: every particle wanders, and the crowd spreads."', '"Hands up, not voices."'];
+
+  /** A figure of a real asset in a card: script.js paints its canvas (Hours.paint) and turns its frames. */
+  const figHtml = (name, i, n) => `<figure class="real-fig" data-real="${name}" data-i="${i}" data-n="${n}"><canvas></canvas><figcaption></figcaption>`
+    + (n > 1 ? '<p class="real-steps"><button type="button" data-real-step="-1">[&#9664;]</button> <button type="button" data-real-step="1">[&#9654;]</button></p>' : '') + '</figure>';
+  const SIGNS = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
+  const PHASE_NAMES = ['new', 'a waxing crescent', 'at first quarter', 'waxing gibbous', 'full', 'waning gibbous', 'at last quarter', 'a waning crescent', 'new'];
+  const RULERS = ['Saturn', 'Jupiter', 'Mars', 'the Sun', 'Venus', 'Mercury', 'the Moon']; // (Chaldean order, as in sky.js)
+  /* ---- the astrolabe (the observatory's; its stars from the Bright Star Catalogue: _tools/fetch_astrolabe.py).
+     The plate for the latitude of Paris: the sphere projected from the south pole onto the equator
+     (stereographic), the tropic of Capricorn at its rim; the almucantars every 10 degrees of altitude,
+     the horizon, the zenith. The rete over it, turned to the local sidereal time: the ecliptic ring, the
+     star pointers (J2000, precessed to the date along the ecliptic, 50.29" a year). The Sun on the
+     ecliptic, the rule through it to the hour on the limb. South up, east to the left, as on the instrument. ---- */
+  const PARIS = [48.8566, 2.3522];
+  function astrolabeDraw(cv, d) {
+    const ab = realGet('astrolabe'); const N = 180; cv.width = N; cv.height = N;
+    const g = cv.getContext('2d'); const im = g.createImageData(N, N); const C = N / 2; const R0 = N / 2 - 2; const R = R0 - 11;
+    const n = d.getTime() / 864e5 + 2440587.5 - 2451545; const eps = 23.4393 * deg; const phi = PARIS[0];
+    const lst = (((280.46061837 + 360.98564736629 * n + PARIS[1]) % 360) + 360) % 360; // (Meeus 12.4)
+    const ga = (357.528 + 0.9856003 * n) * deg; const lam = (((280.46 + 0.9856474 * n + 1.915 * Math.sin(ga) + 0.02 * Math.sin(2 * ga)) % 360) + 360) % 360; // the Sun's longitude
+    const eqOf = (l, b = 0) => { const L = l * deg; const B = b * deg; const y = Math.cos(B) * Math.sin(L) * Math.cos(eps) - Math.sin(B) * Math.sin(eps);
+      return [((Math.atan2(y, Math.cos(B) * Math.cos(L)) / deg) + 360) % 360, Math.asin(Math.cos(B) * Math.sin(L) * Math.sin(eps) + Math.sin(B) * Math.cos(eps)) / deg]; };
+    const eclOf = (ra, dec) => { const A = ra * deg; const D = dec * deg; const y = Math.cos(D) * Math.sin(A); const z = Math.sin(D);
+      return [((Math.atan2(y * Math.cos(eps) + z * Math.sin(eps), Math.cos(D) * Math.cos(A)) / deg) + 360) % 360, Math.asin(z * Math.cos(eps) - y * Math.sin(eps)) / deg]; };
+    const rp = (dec) => R * Math.tan(((90 - dec) / 2) * deg) / Math.tan(((90 + 23.4393) / 2) * deg);
+    const at = (ra, dec) => { const H = (lst - ra) * deg; const r = rp(dec); return [r * Math.sin(H), r * Math.cos(H)]; }; // (x east-left, y south-up)
+    const P = (name) => hex(DAYLIGHT[I[name]]);
+    const put = (x, y, c, clip = R0) => { if (Math.hypot(x, y) > clip) return; const X = Math.round(C + x); const Y = Math.round(C - y); if (X >= 0 && Y >= 0 && X < N && Y < N) im.data.set([...c, 255], (Y * N + X) * 4); };
+    const ring = (cx, cy, r, c, clip) => { const k = Math.max(24, Math.ceil(2 * Math.PI * r * 1.5)); for (let i = 0; i < k; i += 1) { const a = (i / k) * 2 * Math.PI; put(cx + r * Math.cos(a), cy + r * Math.sin(a), c, clip); } };
+    for (let y = 0; y < N; y += 1) for (let x = 0; x < N; x += 1) { const r = Math.hypot(x - C, y - C); if (r <= R0) im.data.set([...P(r > R ? 'GOLD' : 'GOLD_SH'), 255], (y * N + x) * 4); }
+    for (let k = 0; k < 120; k += 1) { const a = (k / 120) * 2 * Math.PI; const l = k % 5 ? 3 : 7; for (let q = 0; q < l; q += 1) put((R0 - 1 - q) * Math.sin(a), (R0 - 1 - q) * Math.cos(a), P('GOLD_SH')); } // the limb: 24 hours, 12 minutes apiece
+    const ink = P('OUTLINE'); ring(0, 0, rp(0), ink, R); ring(0, 0, rp(23.4393), ink, R); // the equator, the tropic of Cancer
+    for (let h = 0; h < 90; h += 10) { // the almucantars
+      const z = 90 - h; const ya = rp(phi - z); const yb = phi + z <= 90 ? rp(phi + z) : -rp(180 - phi - z);
+      ring(0, (ya + yb) / 2, Math.abs(ya - yb) / 2, h ? ink : P('CLOTH'), R);
+    }
+    for (let q = -R; q <= R; q += 1) { put(0, q, ink, R); put(q, 0, ink, R); } // the meridian, the east-west line
+    const zy = rp(phi); [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(([a, b]) => put(a, zy + b, P('CLOTH'))); // the zenith
+    const brass = P('GOLD_HI'); ring(0, 0, R, brass, R0); // the rete: its rim, its ecliptic ring
+    for (let l = 0; l < 360; l += 0.5) { const [x, y] = at(...eqOf(l)); put(x, y, brass, R); if (l % 30 === 0) { const [x2, y2] = at(...eqOf(l + 0.01)); put(x * 0.97, y * 0.97, brass, R); put(x2 * 1.03, y2 * 1.03, brass, R); } }
+    const prec = (50.29 / 3600) * (n / 365.25); const up = [];
+    (ab ? ab.stars : []).forEach(([name, , ra, dec]) => {
+      const [l, b] = eclOf(ra, dec); const [ra2, dec2] = eqOf(l + prec, b); const [x, y] = at(ra2, dec2);
+      const H = (lst - ra2) * deg; if (Math.sin(phi * deg) * Math.sin(dec2 * deg) + Math.cos(phi * deg) * Math.cos(dec2 * deg) * Math.cos(H) > 0) up.push(name);
+      const r = Math.hypot(x, y); if (r > R) return; const ux = r ? x / r : 0; const uy = r ? y / r : 1;
+      for (let q = 0; q < 5; q += 1) put(x - ux * q, y - uy * q, brass, R); put(x, y, P('CREAM'), R); // a pointer, its tip on the star
+    });
+    const [sra, sdec] = eqOf(lam); const [sx, sy] = at(sra, sdec); const sr = Math.hypot(sx, sy);
+    for (let q = 0; q < R0 - 1; q += 0.7) put((sx / sr) * q, (sy / sr) * q, P('CREAM')); // the rule, through the Sun
+    for (let a = -2; a <= 2; a += 1) for (let b = -2; b <= 2; b += 1) if (a * a + b * b <= 5) put(sx + a, sy + b, P('WIN_LIT'));
+    g.putImageData(im, 0, 0);
+    const Hs = (((lst - sra + 540) % 360) - 180) / 15; const sol = (Hs + 12 + 24) % 24; // the Sun's hour angle: the hour of the day by the Sun
+    const SIGNS = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
+    const hm = (h) => `${Math.floor(h)}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}`;
+    return `Set for Paris now. The rete stands at sidereal time ${hm(lst / 15)}; the Sun at ${Math.floor(lam % 30)}\u00b0 of ${SIGNS[Math.floor(lam / 30)]}, and the rule through it reads ${hm(sol)} by the Sun on the limb. Above the horizon (the red circle): ${up.length ? up.join(', ') : 'none of the rete\'s stars'}.`;
+  }
+  const escCard = (t) => String(t).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+  /* How each real thing was brought into the castle (_tools/fetch_*.py, _tools/real.py), told at the
+     foot of its card under its source in a line (index.json's first credit; the register has them all). */
+  const METHOD = {
+    heures: 'Resized with a Lanczos filter to 72 &times; 100, then each pixel mapped to the nearest colour of the castle\'s own palette in CIELAB (distances there look like distances), with Floyd&ndash;Steinberg error diffusion at 0.8 so gradients survive as grain. The lectern\'s page is the same at 12 &times; 16, undithered (at that size dither is noise). Each month also gives three colours, sky, green and earth, that the landscape leans towards.',
+    licorne: 'Fitted into 64 &times; 56 (proportions kept, transparent margins) and mapped to the castle\'s palette, nearest colour in CIELAB with Floyd&ndash;Steinberg error diffusion. On the hall\'s wall each stitch is the commonest colour of a 2 &times; 2 block of that: a mode filter keeps the edges an average would muddy.',
+    portraits: 'Cropped to head and shoulders, levels stretched (2% clipped at each end), Lanczos-resized and mapped to five sepia tones: Floyd&ndash;Steinberg dithered at 44 &times; 56 for this card, undithered at 11 &times; 14 on the wall.',
+    mobilier: 'The engraving segmented: ink is whatever is darker than 170/255; dilated until its lines close, the white still connected to the border (a flood fill) is the background, the rest, holes filled and eroded back, is the piece. Box-averaged down to the room; a cell is a line where the ink is dense, else one of three tones of wood by the density of the hatching around it (its quantiles in the piece).',
+    outils: 'Each figure found by labelling the plate\'s connected regions of ink; its silhouette is the paper the ink encloses (dilate the ink, flood the background in from the box\'s edge). Box-averaged to the rack, then three tones of iron or wood by the engraving\'s darkness (quantiles) and an outline.',
+    melies: 'Two passages decoded with ffmpeg at 5 frames a second and 56 &times; 42, levels stretched frame by frame, four greys with an ordered (Bayer) dither like a lantern slide\'s grain; packed 2 bits a pixel and deflated. The browser inflates them with DecompressionStream and the hall plays them.',
+    astrolabe: 'The stars\' J2000 positions and magnitudes read from the catalogue\'s fixed-width columns. The rest is drawn live: the sphere projected stereographically from the south pole onto the equator for 48.86&deg; N, the rete turned to the local sidereal time, each star precessed to today along the ecliptic (50.29&Prime; a year).',
+    rose: 'The text split on its page markers (even pages the Old French, odd ones the translation); the verses are the indented lines, line numbers and footnote calls stripped. Stored as deflated JSON; the copyist\'s line is the minute since the epoch, modulo the book.',
+  };
+  function provenance(name, k = 0) { // k: which credit, where the asset has one per picture
+    const c = ((realIndex || {})[name] || {}).credits || []; if (!c.length) return '';
+    const x = c[Math.min(k, c.length - 1)]; const t = x.source ? `<a href="${escCard(x.source)}">${escCard(x.title)}</a>` : escCard(x.title);
+    return `<p class="src dim">Source: ${t}${x.author ? `, ${escCard(x.author)}` : ''}${x.year ? ` (${escCard(x.year)})` : ''}.</p>`
+      + (METHOD[name] ? `<details class="how"><summary>How it got here</summary><p>${METHOD[name]}</p></details>` : '');
+  }
   const cards = {
+    licorne: () => {
+      const k = senseNow(); const why = k === 5 ? 'no sense has led this visit yet, so the sixth hangs here: the heart, or the giving up of the other five' : `this visit has gone mostly by ${['touch (your clicks)', 'taste (the village and its tavern)', 'smell (the fire, the hives, the orchard)', 'hearing (the castle\'s sounds)', 'sight (the watchtower, the photographs)'][k]}`;
+      return `<h3>The lady and the unicorn</h3><p>Six tapestries, one for each sense and a sixth, <i>À mon seul désir</i>. The hall hangs the one for the sense you have used most: ${why}.</p>${figHtml('licorne', k, 6)}${provenance('licorne', k)}`;
+    },
+    astrolabe: () => '<h3>The astrolabe</h3><p>A flat model of the sky, as astronomers carried from al-Andalus to Chaucer\'s England: a plate engraved for one latitude, here Paris (the circles of equal altitude, the horizon), and over it the pierced rete, its pointers on the bright stars, turned as the sky turns. This one keeps itself set to the true sky.</p><figure class="astro-fig"><canvas class="astrolabe" width="180" height="180" aria-label="The astrolabe, set for now"></canvas><figcaption></figcaption></figure>' + provenance('astrolabe'),
+    copyist: () => {
+      const rz = real.rose;
+      if (!rz || !rz.film) return '<h3>The copyist</h3><p>Bent over his page, he does not look up.</p>';
+      rz.text ||= JSON.parse(new TextDecoder().decode(rz.film));
+      const ms = clockFn().getTime(); const i = Math.floor(ms / 6e4) % rz.n; const sec = (ms / 1000) % 60;
+      const side = i % 64; const folio = `${Math.floor(i / 64) + 1}${side < 32 ? 'r' : 'v'}`; const from = i - (side % 32);
+      const line = (j) => { const t2 = rz.text.old[j]; return /^Ci /.test(t2) ? `<span class="rubric">${escCard(t2)}</span>` : escCard(t2); };
+      const lines = []; for (let j = Math.max(from, i - 9); j < i; j += 1) lines.push(line(j));
+      const cur = rz.text.old[i]; lines.push(`${escCard(cur.slice(0, Math.round(cur.length * sec / 60)))}<span class="quill">|</span>`);
+      const pg = rz.pages.findIndex(([a, n]) => i >= a && i < a + n); const [a, n] = rz.pages[pg]; const tr = rz.text.new[pg];
+      const j = Math.min(tr.length - 1, Math.round(((i - a) / n) * tr.length));
+      const left = Math.round((rz.n - i) / 1440 * 10) / 10;
+      return `<h3>The copyist</h3><p>He copies <i>Le Roman de la Rose</i> (Guillaume de Lorris, about 1230), a line each time his hourglass runs out, so a line a minute (the brothers take turns at the desk, day and night): folio ${folio}, line ${i + 1} of ${rz.n.toLocaleString('en')}. ${left >= 1 ? `${left} days more` : 'A few hours more'} and he will reach the end of the first book, and start again.</p>`
+        + `<p class="rose-page">${lines.join('<br>')}</p><p class="dim">In the French of 1878, about there: <i>${escCard(tr[Math.max(0, j - 1)])} / ${escCard(tr[j])}</i></p>${provenance('rose')}`;
+    },
+    hours: () => { const m = today().getMonth(); return `<h3>The book of hours</h3><p>Open at this month. The landscape takes a little of its colours each month.</p>${figHtml('heures', m, 12)}<p class="dim">The arrows turn the pages.</p>${provenance('heures', m)}`; },
+    kepler: () => '<h3>The cannonballs</h3><p>Stacked as greengrocers stack oranges: each layer sits in the hollows of the one below. Kepler guessed (1611) no packing of equal balls fills space better: &pi;/&radic;18, about 74%. It took until Hales (1998), with a computer, and a proof checked by machine in 2014 (Flyspeck), to be sure.</p><p>Ten balls here: 4 + 3 + 2 + 1, seen from the front, a tetrahedral pile of 1 + 3 + 6.</p>',
+    fringes: () => '<h3>The arrow slit</h3><p>A slit so narrow that light coming through it spreads out. On sunny days its patch on the floor has a bright middle and faint bands at its sides, each colour at its own spacing, red widest: Fraunhofer diffraction, I(x) ~ sinc&sup2;(&pi;ax/&lambda;L), the bands &lambda;L/a apart.</p>',
+    astroclock: () => {
+      const d = clockFn(); const days = d.getTime() / 864e5 + 2440587.5 - 2451545.0;
+      const lam = window.sunEcliptic ? window.sunEcliptic(days).lambda : 0; const mo = window.moon ? window.moon(d) : null; const ph = window.planetaryHour ? window.planetaryHour(d) : null;
+      return '<h3>The astronomical clock</h3><p>A clock of the old kind, like those of Strasbourg or Prague, set for Paris. Its gilt sun goes round the 24-hour dial (noon at the top): '
+        + `${d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}. The red mark on the inner ring is the sign the Sun is in: ${SIGNS[Math.floor(lam / 30) % 12]} (ecliptic longitude ${lam.toFixed(0)}&deg;).</p>`
+        + (mo ? `<p>In the middle, the Moon, ${PHASE_NAMES[mo.phase]}, ${mo.age} days old.${ph ? ` This is the hour of ${RULERS[ph.hour]}, on the day of ${RULERS[ph.day]}.` : ''}</p>` : '');
+    },
     slits: () => `<h3>Young's slits, one photon at a time</h3><p>A lamp so faint that one photon at a time crosses two slits to the screen. Each lands at one spot, at random; no single one interferes. Only the count shows the stripes: each photon went through both slits (Taylor 1909; Tonomura's electrons, 1989).</p><p>${slits ? slits.hits.length : 0} on the screen.</p>`,
     realm: (regions) => `<h3>The map of the realm</h3><p>Each project, a region of its own; a road from one to the next where they share a method.</p><ul>${regions.map((r) => `<li>${r}</li>`).join('')}</ul>`,
-    foucault: () => {
-      const hrs = (Date.now() / 3600e3) % 1e6; const phi = ((hrs * foucaultRate) % 360 + 360) % 360;
-      return '<h3>Foucault\'s pendulum</h3><p>A heavy bob on a long wire, set swinging once and left alone. The Earth turns under it: '
-        + `here in Paris its plane of swing turns ${foucaultRate.toFixed(1)}&deg; an hour (15&deg; &times; sin of the latitude, 48.9&deg;), clockwise, a full turn in ${(360 / foucaultRate).toFixed(1)}&nbsp;h.</p>`
-        + `<p>The pegs round the floor fall one by one as the plane comes round to them. Its heading now: ${phi.toFixed(0)}&deg;.</p><p class="dim">Paris, Panth&eacute;on, 1851.</p>`;
-    },
-    langton: () => `<h3>Langton's ant</h3><p>On the board, an ant in chalk: on a bare square it turns right, on a chalked one left; it flips the square and steps on. Three rules, and for ten thousand steps a mess; then, out of nowhere, a straight highway. (Here the board wraps round, so the highway runs into its own past.)</p><p>Step ${ant ? ant.steps : 0}.</p>`,
     galton: () => {
       const g = galton; const tot = g ? g.bins.reduce((a, v) => a + v, 0) : 0;
       const C = (n, k) => { let c = 1; for (let j = 0; j < k; j += 1) c = (c * (n - j)) / (j + 1); return c; };
@@ -2853,11 +3546,6 @@ f11111f2.
         + (g && tot ? `<p>This run: ${g.bins.join(' &middot; ')} (expected, out of ${tot}: ${g.bins.map((_, k) => ((tot * C(g.rows, k)) / 2 ** g.rows).toFixed(1)).join(' &middot; ')}).</p>` : '');
     },
     life: () => `<h3>The game of life</h3><p>On this board each square lives or dies by its eight neighbours: born with three, surviving with two or three (Conway, 1970). A random soup boils down to blocks, blinkers and gliders; when it settles, a new soup is poured.</p><p>Generation ${life ? life.gen : 0}, ${life ? life.g.reduce((a, v) => a + v, 0) : 0} alive.</p>`,
-    buffon: () => {
-      const b = buffon; const est = b && b.hits ? (2 * b.l * b.n) / (b.d * b.hits) : null;
-      return '<h3>Buffon\'s needles</h3><p>Needles dropped at random on floorboards: one shorter than a board is wide crosses a seam with probability 2l/(&pi;d). Count the crossings, and &pi; falls out (Buffon, 1777).</p>'
-        + (b ? `<p>${b.n} needles, ${b.hits} across a seam: &pi; &asymp; ${est ? est.toFixed(3) : '?'}.</p>` : '');
-    },
   };
   function loomCard() {
     const lm = loom; const T = loomT(); const t = weather.temp;
@@ -2874,7 +3562,22 @@ f11111f2.
   /** The wind across the screen, +x to the right: we look south, so east is on the left and a
    *  west wind (dir 270, where it comes from) pushes things left. About -1..1 for 0..30 km/h. */
   const windX = () => Math.sin((weather.dir ?? 270) * Math.PI / 180) * clamp(weather.wind / 30, 0.1, 1.5);
+  const qBolt = new URLSearchParams(location.search).has('bolt');
+  /** Seconds from the flash to the thunder: in truth ~3 s a km (343 m/s), here squeezed to under 3 s,
+   *  so the two still belong together; nearer, sooner. */
+  const thunderDelay = (km) => 0.15 + km * 0.65;
   const WET = { drizzle: 0.35, showers: 0.7, rain: 1, storm: 1.4 }; // rain: drops, relative
+  /** Snow lying, 0..1: the real depth (12 cm and more covers all), a light cover while it snows. */
+  const snowCover = () => Math.max(clamp((weather.snowDepth ?? 0) / 0.12), weather.kind === 'snow' ? 0.35 : 0);
+  /** How wet the ground is, 0..1: raining now, else drying over the twelve hours since it last rained. */
+  /** The ants are out on warm dry days. */
+  /** Now and then the wizard reads (14 s in 45; always with ?read, for previews). */
+  const qRead = new URLSearchParams(location.search).has('read');
+  const wizardReads = (t) => qRead || (forced.read || 0) > t || (!reduce && t % 45 > 26 && t % 45 < 40);
+  const antsOut = () => (forced.ants || 0) > now() || (weather.temp ?? 15) >= 10 && scene.season !== 'winter' && look.night < 0.3 && !WET[weather.kind] && snowCover() < 0.2;
+  /** The copyist works late in the scriptorium: from dusk to one in the morning, his window lit. */
+  const scribeLate = () => { const h = clockFn().getHours(); return look.night > 0.2 && (h >= 16 || h < 1); };
+  const wetness = () => (WET[weather.kind] ? 1 : clamp(1 - (weather.dryH ?? 99) / 12));
   let clockFn = () => new Date(); // the instant the sky shows (script.js: now, or a previewed hour)
   // meteor showers: [month (0-11), day of peak, ZHR, half-width in days]; IMO calendar, rounded
   const SHOWERS = [[0, 3, 110, 0.6], [3, 22, 18, 1], [4, 6, 50, 4], [7, 12, 100, 4], [9, 8, 10, 0.5],
@@ -2885,9 +3588,10 @@ f11111f2.
     const d = clockFn();
     return q ? new Date(d.getFullYear(), Number(q[1]) - 1, Number(q[2]), d.getHours(), d.getMinutes()) : d;
   }
-  /** The festival kept on day d, if any: [name, its line for the message bar]. */
+  const dayOfYear = (d) => Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 864e5); // 1 Jan = 1
   /** Market days in the hamlet: Wednesday, Friday, Saturday and Sunday. */
   const marketDay = (d) => [0, 3, 5, 6].includes(d.getDay());
+  /** The festival kept on day d, if any: [name, its line for the message bar]. */
   function festival(d) {
     const m = d.getMonth() + 1; const day = d.getDate(); const md = m * 100 + day;
     if (md >= 1030 && md <= 1101) return ['samhain', 'All Hallows: the hamlet has carved its pumpkins.'];
@@ -2954,7 +3658,9 @@ f11111f2.
       for (let i = 0; i < p.length; i += 1) if (p[i] !== CLEAR) c[i] = pal32[p[i]];
       return c;
     });
-    ipal32 = NAMES.map((_n, i) => (i < N_SKY ? pal32[i] : pack(hex(DAYLIGHT[i]).map((c) => c * 0.62))));
+    bakeGround();
+    const ik = 0.62 * (1 - 0.32 * look.night); // (the rooms darker and a little bluer by night: the candles carry them)
+    ipal32 = NAMES.map((_n, i) => (i < N_SKY ? pal32[i] : pack(hex(DAYLIGHT[i]).map((c, j) => c * ik * (j === 2 ? 1 + 0.12 * look.night : 1)))));
     if (interior) lightInterior();
     const sun = project(sky.sun); const moon = project(sky.moon);
     const elong = Math.acos(clamp(sky.sun[0] * sky.moon[0] + sky.sun[1] * sky.moon[1] + sky.sun[2] * sky.moon[2], -1, 1));
@@ -2965,6 +3671,42 @@ f11111f2.
     if (ecl && ecl !== lastEclipse) say(ecl === 'solar' ? `An eclipse of the Sun over Paris: the Moon covers ${Math.round(100 * solarCover(sky))}% of its disc.`
       : 'An eclipse of the Moon: it passes through the Earth\'s shadow and turns the colour of copper.');
     lastEclipse = ecl;
+  }
+
+  /** What lies on the land: the real snow (its depth), puddles after rain (they shrink as the hours
+   *  pass dry). Baked into the planes' colours at each relight (once a minute, and when the weather
+   *  changes), so it costs nothing a frame. */
+  function bakeGround() {
+    const { WE, planes } = scene; const snow = snowCover();
+    if (snow > 0) {
+      const lit = pal32[I.SNOW]; const sh = pal32[I.SNOW_SH];
+      [L.TREES, L.MID, L.GROUND, L.FG].forEach((l) => {
+        const p = planes[l]; const col = planeColour[l];
+        for (let i = WE; i < p.length; i += 1) {
+          const c = p[i]; const g = SNOWS[c]; if (!g || c === CLEAR) continue;
+          const x = i % WE; const y = (i - x) / WE;
+          const b = g === 2 ? bayer(x, y) : (((Math.imul(x, 73856093) ^ Math.imul(y, 19349663)) >>> 0) % 997) / 997; // (lying snow: speckled, not a grid)
+          let on;
+          if (g === 1) on = b < snow * 1.25;
+          else if (g === 3) on = b < snow * 0.7;
+          else {
+            const top = (j) => j < 0 || p[j] === CLEAR || SNOWS[p[j]] !== 2; // nothing that holds snow above
+            on = top(i - WE) ? b < 0.35 + snow : snow > 0.45 && top(i - 2 * WE) && b < snow - 0.3;
+          }
+          if (on) col[i] = SNOWDARK[c] ? sh : lit;
+        }
+      });
+    }
+    const wet = wetness();
+    if (wet > 0 && snow < 0.2) {
+      const frozen = (weather.temp ?? 9) <= 0; const col = planeColour[L.GROUND];
+      const skyC = unpack(pal32[3]); const water = unpack(pal32[I.WATER]);
+      scene.puddles.forEach((q) => {
+        if (q.q > wet) return;
+        const edge = q.q > wet * 0.7;
+        col[q.i] = frozen ? pal32[edge ? I.SNOW_SH : I.SNOWFIELD] : pack(mix(skyC, water, edge ? 0.7 : 0.3).map((v) => v * (edge ? 0.8 : 1)));
+      });
+    }
   }
 
   /** The stage: the part of the plate left of the text column (full-page layout), else all of it. */
@@ -3012,18 +3754,19 @@ f11111f2.
     relight();
     if (view.state === 'room') publishSpots(true);
     for (let k = 0; k < 40; k += 1) stepFire(); // a lit fire from the first frame
+    for (let k = 0; k < 90; k += 1) fluidStep(scene.fluid, 0.5, windX()); // and its smoke already up
     return true;
   }
 
   /** Demo-scene fire: each cell is the smoothed cell below it (shifted by the wind) less a random
    *  cooling, stronger towards the edges so the flame tapers. */
   function stepFire() { stepCells(scene.cells, scene.fw, scene.fh); }
-  function stepCells(cells, fw, fh) {
+  function stepCells(cells, fw, fh, heat = 1) {
     const p = (FIRE_MAX + 1) / (fh * 0.8);
     const wind = Math.sin(performance.now() / 700) * 0.6;
     for (let x = 0; x < fw; x += 1) {
       const e = Math.abs((2 * x) / (fw - 1) - 1);
-      cells[(fh - 1) * fw + x] = (FIRE_MAX + 0.9) * (1 - e * e) * (0.75 + 0.25 * Math.random());
+      cells[(fh - 1) * fw + x] = (FIRE_MAX + 0.9) * (1 - e * e) * (0.75 + 0.25 * Math.random()) * heat;
     }
     const at = (x, y) => cells[y * fw + clamp(x, 0, fw - 1)];
     for (let y = 0; y < fh - 1; y += 1) {
@@ -3084,7 +3827,8 @@ f11111f2.
     if (WET[k]) {
       const c = look.night > 0.5 ? [130, 145, 170] : [226, 234, 246]; const slant = clamp(windX() * 0.75, -1, 1);
       const n = Math.round(scene.drops.length * Math.min(1, WET[k] / 1.4));
-      for (let j = 0; j < n; j += 1) { const d = scene.drops[j]; for (let q = 0; q < 5; q += 1) blend(d.x - q * slant * 0.5, d.y - q, c, 0.75 - q * 0.12, false); }
+      const sh = scene.shelter; const dry = (x, y) => sh && x >= sh.xl && x <= sh.xr + 1 && y > sh.top(x) && y < scene.fire.y + 6;
+      for (let j = 0; j < n; j += 1) { const d = scene.drops[j]; for (let q = 0; q < 5; q += 1) if (!dry(Math.round(d.x - q * slant * 0.5), Math.round(d.y - q))) blend(d.x - q * slant * 0.5, d.y - q, c, 0.75 - q * 0.12, false); }
     } else if (k === 'snow') {
       const c = pack([240, 244, 250]);
       scene.drops.forEach((d, j) => { if (j % 2 === 0) put(d.x + Math.sin(now() * 0.8 + d.ph) * 2, d.y, c, false); });
@@ -3108,6 +3852,18 @@ f11111f2.
     root.classList.toggle('village', on);
     if (!running && isOn()) render(now());
   }
+  // the village's shop signs, after those Atget photographed (_tools/fetch_atget.py, same order): a ground, a 5 x 4 emblem
+  const SIGN_INK = { G: 'GOLD', W: 'FL_WHITE', I: 'OUTLINE', S: 'STONE_HI', Y: 'FL_YEL', B: 'T_AZURE' };
+  const SHOP_SIGNS = [
+    ['CLOTH', ['.GG.G', 'GGGG.', '.GGG.', 'G..G.']], // Au Griffon
+    ['T_AZURE', ['W..W.', 'WW.WW', '.W..W', '.....']], // Aux deux Pigeons
+    ['CREAM', ['IIIII', 'I...I', 'SSSSS', 'SBBBS']], // Au Bon Puits
+    ['GRASS_HI', ['.Y...', 'YYY.Y', '.YYYY', '..YY.']], // Aux Canettes
+    ['CREAM', ['..I..', '.III.', 'I.I.I', '.III.']], // À l'Ancre
+    ['T_AZURE', ['GGGGG', 'G.G.G', 'GGGGG', '.GGG.']], // a lion's head
+    ['CLOTH', ['G..G.', 'GGGGG', '.GGGG', '.G..G']], // Au Lion d'Or
+    ['CREAM', ['..I..', '.III.', '..I..', '.I.I.']], // a carved figure
+  ];
   /** The view: the hamlet and the bank of the market, centred; Z the zoom that fits them. */
   function villageFrame() {
     const { W, H, hamlet: hm, M } = scene;
@@ -3157,6 +3913,10 @@ f11111f2.
       put(x0 + 1 - (walk ? 1 : 0), feet, leg); put(x0 + 3 + (walk ? 1 : 0), feet, leg);
       if (f.k % 3 === 0) { const bx = dir > 0 ? x0 + 5 : x0 - 2; rect(bx, top + 7, 2, 2, P('TIMBER_HI')); put(bx + (dir > 0 ? 0 : 1), top + 6, P('TIMBER_SH')); } // a basket
     }
+    { // the hills and woods behind the roofs, hazed with distance: magnified as they are, they would stand as close as the houses
+      const roof = oy(Math.min(...scene.hamlet.eaves.map((e) => e[2])) - 7); const haze = unpack(pal32[4]);
+      for (let y = 0; y < Math.min(H, roof); y += 1) { const a = 0.18 + 0.4 * clamp((roof - y) / roof); for (let x = 0; x < W; x += 1) obuf[y * W + x] = pack(mix(unpack(obuf[y * W + x]), haze, a)); }
+    }
     const x0 = scene.hamlet.x1 + 1; const mk = market ? marketOf(d.getHours()) : { folk: [], m: [], N: 0, x0: 0 };
     if (market) [[0, I.FLAG, mk.wares[0]], [9, I.FLAG2, mk.wares[1]]].forEach(([dx, c, kind], s) => {
       const X = x0 + dx; const L0 = ox(X); const Y = scene.riverTop(X) - 3; const w = 7 * Z;
@@ -3187,6 +3947,24 @@ f11111f2.
       const X = mk.x0 + k; const base = oy(scene.riverTop(X) - 10);
       for (let j = 0; j < Math.round(v * mk.N * 1.5 * Z); j += 1) for (let i = 0; i < Z - 1; i += 1) blend(ox(X) + i, base - j, [255, 244, 214], 0.55);
     });
+    const at = real.atget; zoom.signs = []; // the shop signs Atget photographed in old Paris, one on an iron bracket by each house's door
+    const front = scene.hamlet.doors.filter(([, Y]) => Y >= Math.max(...scene.hamlet.doors.map((q) => q[1])) - 3); // (the row along the bank: the back row's would hang over its roofs)
+    const tv0 = scene.hamlet.places.tavern; const eaves = scene.hamlet.eaves; let ks = 0;
+    if (at) front.forEach(([X, Y]) => { // a small painted board with the sign's emblem, out from the wall's corner on an iron arm, as signs hang across a street
+      if (ks >= SHOP_SIGNS.length || ks >= at.captions.length || (tv0 && X >= tv0.x && X < tv0.x + tv0.w)) return; // (the tavern has its own sign)
+      const e = eaves.filter((q) => X > q[0] && X < q[1] && q[2] < Y && Y - q[2] < 16).sort((p, q) => q[2] - p[2])[0]; if (!e) return;
+      const k = ks; ks += 1;
+      const free = (x0, x1) => !eaves.some((q) => q !== e && q[2] > e[2] - 6 && q[0] < x1 && q[1] > x0); // (no house there, at that height)
+      const left = free(e[0] - 3, e[0] + 1) || !free(e[1], e[1] + 4); // the door's side (left) unless a neighbour stands against it
+      const [ground, rows] = SHOP_SIGNS[k]; const w = 7; const h = 6; const arm = w + 2;
+      const wx = left ? Math.round(ox(e[0] + 1)) : Math.round(ox(e[1])); const ay = Math.round(oy(e[2] + 1)) + 1; // the wall's corner, under the eaves
+      const ax0 = left ? wx - arm : wx; const sx = left ? wx - arm : wx + 2; const sy = ay + 2;
+      rect(ax0, ay, arm, 1, P('ARM_SH')); put(left ? wx - 1 : wx, ay + 1, P('ARM_SH')); put(left ? wx - 2 : wx + 1, ay + 2, P('ARM_SH')); // the arm and its strut
+      put(sx + 1, ay + 1, P('ARM_SH')); put(sx + w - 2, ay + 1, P('ARM_SH')); // the rings
+      rect(sx, sy, w, h, P('TIMBER_SH')); rect(sx + 1, sy + 1, w - 2, h - 2, P(ground));
+      rows.forEach((row, yy) => [...row].forEach((c, xx) => { if (c !== '.') put(sx + 1 + xx, sy + 1 + yy, P(SIGN_INK[c])); }));
+      zoom.signs.push({ x: sx, y: sy, w, h, k });
+    });
     const life = villageLife(d, t);
     zoom.actors = life.map((a) => ({ ...a, sx: Math.round(ox(a.x) + Z / 2) }));
     zoom.actors.forEach((a) => {
@@ -3214,8 +3992,19 @@ f11111f2.
     if (!zoom || !zoom.done) return;
     const pick = (a) => a[Math.floor(Math.random() * a.length)];
     const who = (zoom.actors || []).find((a) => Math.abs(x - a.sx) <= 3 && y < (a.y - zoom.vy + 1) * zoom.Z && y > (a.y - zoom.vy) * zoom.Z - 14);
-    if (who) { say(pick(LINES[who.role])); return; }
+    const sg = (zoom.signs || []).find((q) => x >= q.x && x < q.x + q.w && y >= q.y && y < q.y + q.h);
+    if (sg && real.atget) { const c = real.atget.captions[sg.k]; say(`A shop sign: "${c.name}", after one at ${c.text.replace(/^(.*), photographed by (.*) \((.*)\)\.$/, '$1 that $2 photographed ($3).')}`); return; }
+    if (who) {
+      if (who.role === 'drunk') { // his walk, and what the walks so far add up to
+        const e = drunk.ends; const rms = e.length ? Math.sqrt(e.reduce((a, v) => a + v, 0) / e.length) : null;
+        say(`"Home's this way. Or that way." He takes a pace left or right at random: ${drunk.n} paces so far tonight, and he is ${Math.abs(drunk.x)} from the tavern door. A walk of n such paces ends about sqrt(n) away${rms ? `: over his last ${e.length} walks of a hundred, ${rms.toFixed(1)} paces on average (root mean square), against sqrt(100) = 10` : ''}. The random walk, as of molecules and of prices.`);
+      } else say(pick(LINES[who.role]));
+      return;
+    }
     const tv = scene.hamlet.places.tavern; const lm0 = shift(RATE[L.MID]) - scene.M;
+    const ch = scene.hamlet.places.chapel;
+    if (ch && x >= (ch.x - 1 + lm0 - zoom.vx) * zoom.Z && x < (ch.x + ch.w + 1 + lm0 - zoom.vx) * zoom.Z && y > (ch.yb - ch.h - 8 - zoom.vy) * zoom.Z && y < (ch.yb + 1 - zoom.vy) * zoom.Z) { say(chapelLine()); return; }
+    if (tv && Math.abs(x - (tv.x + Math.floor(tv.w / 2) - 1 + lm0 - zoom.vx) * zoom.Z) < 6 && y > (tv.yb - 4 - zoom.vy) * zoom.Z && y < (tv.yb + 1 - zoom.vy) * zoom.Z) { sense('taste', 3); billiardShow(); return; } // the door: in, to the billiard table
     if (tv && Math.abs(x - (tv.x + tv.w + 1.5 + lm0 - zoom.vx) * zoom.Z) < 6 && Math.abs(y - (tv.yb - 4.5 - zoom.vy) * zoom.Z) < 8) { // the sign: the landlord's slate
       const div = document.createElement('div'); div.innerHTML = nowOf(); say(div.textContent.replace(/\s+/g, ' ').trim()); return;
     }
@@ -3227,6 +4016,55 @@ f11111f2.
       if (st !== undefined) { say(pick(LINES.vendor)); return; }
     }
     if (villageHit(x, y)) talk({ kind: 'market' });
+  }
+  /* The knight's quotations (Gutenberg's old books: _tools/fetch_quotes.py), the one that best fits the
+     weather, the season, the hour and the month; none of the last six again. */
+  let quoted = null; const quotedLast = [];
+  const QUOTE_KEYS = [['clear', 'cloudy', 'rain', 'storm', 'snow', 'fog', 'wind', 'frost'], ['spring', 'summer', 'autumn', 'winter'], ['dawn', 'day', 'dusk', 'night'],
+    ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']];
+  function quoteNow() {
+    const qs = realGet('quotes'); if (!qs) return null;
+    const k = weather.kind; const a = bodies ? bodies.sun[2] / deg : 30;
+    const now2 = new Set([
+      { clear: 'clear', cloudy: 'cloudy', overcast: 'cloudy', drizzle: 'rain', showers: 'rain', rain: 'rain', storm: 'storm', snow: 'snow', fog: 'fog' }[k] || 'clear',
+      (weather.wind ?? 0) > 25 ? 'wind' : '', (weather.temp ?? 9) <= 0 || (weather.frost ?? 9) <= -3 ? 'frost' : '', scene.season,
+      look.night > 0.45 ? 'night' : a < 8 ? (today().getHours() < 12 ? 'dawn' : 'dusk') : 'day',
+      QUOTE_KEYS[3][today().getMonth()]]);
+    if (now2.has('storm')) { now2.add('rain'); now2.add('wind'); }
+    const score = (q) => (q.keys.includes('any') ? 0.4 : QUOTE_KEYS.reduce((n, g) => { // each kind of key the quotation has: +1 if one fits now, -0.5 if none does
+      const ks = q.keys.filter((key) => g.includes(key)); return ks.length ? n + (ks.some((key) => now2.has(key)) ? 1 : -0.5) : n;
+    }, 0));
+    const pool = qs.quotes.filter((q) => !quotedLast.includes(q)); const best = Math.max(...pool.map(score));
+    if (best < 0.5) return null;
+    const top = pool.filter((q) => score(q) >= best - 0.01); const q = top[Math.floor(Math.random() * top.length)];
+    quotedLast.push(q); if (quotedLast.length > 6) quotedLast.shift();
+    return q;
+  }
+  /* The tavern's bill of fare from Taillevent's Viandier (_tools/fetch_viandier.py): fish on lean days
+     (Wednesday, Friday, Saturday, and all Lent: from Ash Wednesday, 46 days before Easter), meat on the
+     others; three dishes and a sauce, the same all day. */
+  function easter(y) { // the Gregorian computus (the "anonymous" algorithm, Meeus/Jones/Butcher)
+    const a = y % 19; const b = Math.floor(y / 100); const c = y % 100; const h = (19 * a + b - Math.floor(b / 4) - Math.floor((b - Math.floor((b + 8) / 25) + 1) / 3) + 15) % 30;
+    const l = (32 + 2 * (b % 4) + 2 * Math.floor(c / 4) - h - (c % 4)) % 7; const m = Math.floor((a + 11 * h + 22 * l) / 451);
+    return new Date(y, Math.floor((h + l - 7 * m + 114) / 31) - 1, ((h + l - 7 * m + 114) % 31) + 1);
+  }
+  function fareNow() {
+    const vi = realGet('viandier'); if (!vi) return null;
+    const d = today(); const day0 = new Date(d.getFullYear(), d.getMonth(), d.getDate()); const e = easter(d.getFullYear());
+    const lent = day0 >= new Date(e.getTime() - 46 * 864e5) && day0 < e;
+    const lean = lent || [3, 5, 6].includes(d.getDay());
+    const why = lent ? 'in Lent' : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][d.getDay()];
+    const r = mulberry32(d.getFullYear() * 400 + dayOfYear(d)); const pick = (a, n) => { const b = [...a]; const out = []; while (out.length < n && b.length) out.push(b.splice(Math.floor(r() * b.length), 1)[0]); return out; };
+    const dishes = [...pick(vi.dishes.filter((q) => q.lean === lean && q.what.length >= 2), 3), ...pick(vi.dishes.filter((q) => q.lean === null && q.what.length >= 2), 1)];
+    return { lean, why, dishes };
+  }
+  /** What the chapel sings at this hour (GregoBase's transcriptions: _tools/fetch_chant.py). */
+  function chapelLine() {
+    const o = officeNow(); const cs = real.chant ? real.chant.chants.filter((c) => c.office === o) : [];
+    if (!o) return 'The chapel is quiet. The brothers sing lauds at first light, prime at sunrise, vespers at sunset and compline at nightfall.';
+    if (!cs.length) return `${OFFICES[o]}: the brothers are singing.`;
+    const c = cs[0]; const kind = { Hymnus: 'the hymn', Antiphona: 'the antiphon' }[c.part] || 'the hymn';
+    return `${OFFICES[o]}: the brothers sing ${kind} "${c.title}" (mode ${c.mode}), "${c.text.split(/(?<=[,;:.])\s/).slice(0, 2).join(' ').replace(/[,;:.]$/, '')}..."${cs.length > 1 ? `, then "${cs[1].title}"` : ''}. From ${c.book}.`;
   }
   /** Close up, is canvas pixel (x, y) on the market (the stalls and the bank around them)? */
   function villageHit(x, y) {
@@ -3243,7 +4081,7 @@ f11111f2.
   let tower = null; // { on, t0, yaw, to }
   let pano = null; // { P (indices, 4W x H), W, H, yh, clouds, fires }
   const TOWER_S = 0.6;
-  const DIRS = [['North', 'the river, the village and, far off, the city'], ['East', 'the castle on its rock, along the range'],
+  const DIRS = [['North', 'the river, the village and, far off, Paris'], ['East', 'the castle on its rock, along the range'],
     ['South', 'the high mountains, their snow and their glaciers'], ['West', 'the hills going down, vines and forest, where the sun sets']];
   const towerBar = document.createElement('div');
   towerBar.className = 'tower-bar';
@@ -3252,11 +4090,20 @@ f11111f2.
   function towerTo(on) {
     if (on && banner()) return;
     if (!scene || (on && tower && tower.on) || (!on && !tower)) return;
-    if (on) { if (!pano || pano.W !== scene.W || pano.H !== scene.H) pano = makePano(scene.W, scene.H); tower = { on: true, t0: now(), yaw: 2, to: 2 }; document.body.append(towerBar); }
+    if (on) { realGet('paris'); if (!pano || pano.W !== scene.W || pano.H !== scene.H) pano = makePano(scene.W, scene.H); tower = { on: true, t0: now(), yaw: 2, to: 2 }; document.body.append(towerBar); }
     else tower = { ...tower, on: false, t0: now() };
     root.classList.toggle('lookout', on);
+    if (on) sfx('steps', { floor: 'stair', n: 7 });
     if (on) say(`Atop the watchtower. Facing ${DIRS[2][0].toLowerCase()}: ${DIRS[2][1]}. The arrow keys turn you round; Esc goes down.`);
     if (!running && isOn()) render(now());
+  }
+  /** Up the tower, canvas pixel (x, y): one of Paris's monuments, named (OpenStreetMap's heights). */
+  function towerClick(x, y) {
+    if (!pano || !pano.city.length) return;
+    const X = (((Math.round(tower.yaw * scene.W) + x) % pano.PW) + pano.PW) % pano.PW;
+    const c = pano.city.filter((q) => Math.abs(q.x - X) <= 3 && y >= q.top - 2 && y <= q.base + 2).sort((a, b) => Math.abs(a.x - X) - Math.abs(b.x - X))[0];
+    if (c) say(`${c.m.name[0].toUpperCase()}${c.m.name.slice(1)}: ${Math.round(c.m.h)} m tall, ${c.m.d.toFixed(1)} km off, as seen from the terrace of Meudon (its height from OpenStreetMap).`);
+    else if (pano.city.some((q) => Math.abs(q.x - X) < 70) && Math.abs(y - pano.yh) < 8) say('Paris, far off in the haze, as from the terrace of Meudon: click a tower or a dome to have it named.');
   }
   function turnTower(k) {
     if (!tower || !tower.on) return;
@@ -3269,7 +4116,7 @@ f11111f2.
     return (x, PW) => ks.reduce((s, [k, a, ph]) => s + a * Math.sin((6.283 * k * x) / PW + ph), 0);
   }
   function makePano(W, H) {
-    const rng = mulberry32(4471); const PW = 4 * W; const P = new Uint8Array(PW * H).fill(CLEAR);
+    const rng = mulberry32(4471); const PW = 4 * W; const P = new Uint8Array(PW * H).fill(CLEAR); const city = []; // (city: Paris's monuments where drawn, for the clicks)
     const yh = Math.round(H * 0.5); // the horizon: we are up high
     const set = (x, y, i) => { x = ((Math.round(x) % PW) + PW) % PW; y = Math.round(y); if (y >= 0 && y < H) P[y * PW + x] = i; };
     const az = (x) => ((x / W - 0.5) * 90 + 360) % 360; // column -> azimuth (degrees from north)
@@ -3322,17 +4169,14 @@ f11111f2.
       while (x < PW) {
         const w = Math.round(cw * (0.6 + rng() * 0.9)); const a = az(x);
         let c = FIELDS[Math.floor(rng() * FIELDS.length)];
-        const vines = !winter && a > 240 && a < 300 && rng() < 0.6;
-        const forest = a > 140 && a < 220;
-        if (forest) c = I.PINE_SH;
+        const vines = !winter && a > 240 && a < 300 && rng() < 0.6; // (the forest is laid over the fields below, its edge ragged: a field's straight side made a seam)
         for (let yy = y0; yy < y0 + h && yy < H; yy += 1) for (let xx = x; xx < x + w; xx += 1) {
           let k = c;
           if (vines) k = (yy - y0) % 2 ? I.HILL_SH : (xx % 2 ? (autumn ? I.VINE_AUT : I.VINE) : I.HILL_SH);
           else if (c === I.FURROW && (yy - y0) % 2) k = I.FURROW_SH;
-          else if (forest && bayer(xx, yy) < 0.35) k = I.PINE;
           set(xx, yy, k);
         }
-        if (!forest && r > 0 && rng() < 0.45) for (let xx = x; xx < x + w; xx += 2) set(xx, y0, I.BUSH_SH); // a hedge along it
+        if (r > 0 && rng() < 0.45) for (let xx = x; xx < x + w; xx += 2) set(xx, y0, I.BUSH_SH); // a hedge along it
         x += w;
       }
     });
@@ -3344,14 +4188,26 @@ f11111f2.
         set(x + dx, y + dy, autumn && k % 3 === 0 ? (dx + dy < 0 ? I.RUST_HI : I.RUST) : dx + dy < -r * 0.3 ? I.OAK_HI : dx + dy > r * 0.4 ? I.OAK_SH : I.OAK);
       }
     }
+    { // south: the forest, its edge frayed into the fields; darker and lighter stands, a few clearings
+      for (let y = yh + 7; y < H; y += 1) for (let x = 0; x < PW; x += 1) {
+        const d = Math.abs(az(x) - 180); if (d > 60) continue;
+        const edge = (46 - d) / 8 + (nf(x * 0.05 + y * 0.31 + 11) - 0.5) * 2.2;
+        const glade = nf(x * 0.03 + 77) * nf(y * 0.21 + 5) > 0.42 && d < 30; // (a clearing, now and then)
+        if (edge > bayer(x, y) && !glade) set(x, y, nf(x * 0.02 + y * 0.09 + 3) > 0.55 ? (bayer(x, y) < 0.5 ? I.PINE : I.PINE_SH) : bayer(x, y) < 0.25 ? I.PINE : I.PINE_SH);
+      }
+    }
     for (let k = 0; k < 2600; k += 1) { // south: the forest going down, a pine at each point, bigger the nearer
       const x = Math.round(((140 + rng() * 80) / 90 + 0.5) * W); const y = Math.round(yh + 8 + (rng() ** 1.3) * (H - yh - 8)); const h = 2 + Math.round((y - yh) * 0.09);
-      if (Math.abs(az(x) - 180) > 40 - 10 * Math.abs(Math.sin(y))) continue;
+      if (Math.abs(az(x) - 180) > 44 - 10 * nf(x * 0.05 + y * 0.31 + 11)) continue;
       for (let r = 0; r < h; r += 1) { const half = Math.floor(((h - r) * 0.45)); for (let dx = -half; dx <= half; dx += 1) set(x + dx, y - r, dx < 0 ? (winter && r > h / 2 ? I.SNOW : I.PINE_HI) : dx === 0 ? I.PINE : I.PINE_SH); }
     }
     { // south: a lake in the valley floor, under the mountains
       const lx = Math.round((180 / 90 + 0.5) * W) + Math.round(W * 0.12); const ly = yh + 10;
-      for (let dy = 0; dy < 5; dy += 1) for (let dx = -26 + dy * 3; dx <= 26 - dy * 3; dx += 1) set(lx + dx, ly + dy, dy === 0 || (dx + dy) % 9 === 0 ? I.WATER_HI : I.WATER);
+      for (let dy = -1; dy < 7; dy += 1) for (let dx = -30; dx <= 30; dx += 1) { // an oval, its shore ragged, reeds and a beach round it
+        const q = (dx / 27) ** 2 + ((dy - 2.5) / 3.6) ** 2 + (nf(dx * 0.4 + dy + 91) - 0.5) * 0.35;
+        if (q < 1) set(lx + dx, ly + dy, dy <= 0 || (dx * 3 + dy * 7) % 11 === 0 ? I.WATER_HI : I.WATER);
+        else if (q < 1.25) set(lx + dx, ly + dy, (dx + dy) % 3 ? I.HILL_HI : I.GRASS_HI);
+      }
     }
     const xAt = (a) => Math.round((a / 90 + 0.5) * W); // azimuth -> column
     { // north: the river across the plain, winding, the village on it, the city on the horizon
@@ -3367,12 +4223,14 @@ f11111f2.
         for (let x = -1; x <= w; x += 1) set(vx + dx + x, y0 - h, roof);
         if (roof === I.SLATE) { set(vx + dx, y0 - h - 1, I.SLATE); set(vx + dx + 1, y0 - h - 1, I.SLATE); set(vx + dx, y0 - h - 2, I.SLATE); } // the spire
       });
+      if (!real.paris) {
       const cx0 = xAt(10); // the city: low roofs, two towers of a cathedral, a dome, in the haze
       for (let x = -26; x <= 26; x += 1) {
         const hgt = 1 + ((x * 7919) % 5 + 5) % 3 + (Math.abs(x) < 3 ? 6 : 0) + (x === 12 || x === 13 ? 4 : 0) + (x === -10 ? 8 : 0);
         for (let y = 0; y < hgt; y += 1) set(cx0 + x, yh + 1 - y, I.MT_FAR_SH);
       }
       for (let x = 10; x <= 15; x += 1) set(cx0 + x, yh - 4 - Math.round(Math.sqrt(Math.max(0, 6 - (x - 12.5) ** 2))), I.MT_FAR_SH);
+      }
     }
     { // east: the castle on its rock, a little way along the range
       const cx = xAt(92); const base = yh + Math.round(0.07 * H); const k = 1.6; const q = (v) => Math.round(v * k);
@@ -3406,7 +4264,30 @@ f11111f2.
     }
     const clouds = Array.from({ length: 14 }, () => ({ x: rng() * PW, y: H * (0.05 + rng() * 0.25), w: 10 + rng() * 22, h: 3 + rng() * 4 }));
     const birds = Array.from({ length: 3 }, (_, k) => ({ x: rng() * PW, y: H * (0.15 + k * 0.08), ph: rng() * 6 }));
-    return { P, W, H, PW, yh, clouds, birds, xAt, fire: { x: pitch * 2 + Math.round(pitch * 0.7), y: wallY - 1 } };
+    const pr = real.paris; // Paris as from the terrace of Meudon (_tools/fetch_paris.py), turned to lie north here: its roofs, its monuments, over all else
+    if (pr) {
+      const K = 8; const pax = (a) => xAt(10 + a - 48); // (a negative azimuth: set() wraps the column) // (8 px a degree of altitude: the panorama's squeezed sky would hide it)
+      const roofAt = (a) => { const r = pr.roofs; const k = clamp(Math.floor(a - r[0][0]), 0, r.length - 2); const f = clamp(a - r[k][0], 0, 1); return r[k][1] * (1 - f) + r[k + 1][1] * f; };
+      for (let x = pax(pr.roofs[0][0]); x <= pax(pr.roofs.at(-1)[0]); x += 1) {
+        const a = 48 + (x - xAt(10)) / (W / 90); const top = Math.round(yh - roofAt(a) * K);
+        const hx = ((x * 2654435761) >>> 0) % 7; // (a column's house: its roof one pixel up or not, its front lit or in shade)
+        for (let y = top - (hx < 3 ? 1 : 0); y <= yh + 5; y += 1) set(x, y, y <= top - (hx < 3 ? 1 : 0) ? I.SLATE_SH : hx === 5 || (y + x) % 4 === 0 ? I.MT_FAR_SH : I.WALL_SH);
+      }
+      pr.monuments.forEach((m) => {
+        const x = pax(m.az); const top = Math.round(yh - m.alt * K); const base = Math.round(yh - roofAt(m.az) * K) + 1; const c = I.MT_FAR;
+        if (m.kind === 'eiffel') { for (let y = top; y <= base; y += 1) { const w = Math.round(((y - top) / Math.max(1, base - top)) ** 2 * 3); set(x - w, y, I.MT_FAR_SH); set(x + w, y, I.MT_FAR_SH); if (y === top + Math.round((base - top) * 0.55)) for (let q = -w; q <= w; q += 1) set(x + q, y, I.MT_FAR_SH); } }
+        else if (m.kind === 'tower') for (let y = top; y <= base; y += 1) { set(x, y, c); set(x + 1, y, c); }
+        else if (m.kind === 'spire') for (let y = top; y <= base; y += 1) set(x, y, c);
+        else if (m.kind === 'arch') { for (let y = top; y <= base; y += 1) for (let q = -2; q <= 2; q += 1) if (!(y > top + 1 && Math.abs(q) < 1)) set(x + q, y, c); }
+        else { // a dome on its drum, a lantern; the Sacré-Cœur with its little domes
+          for (let y = top + 2; y <= base; y += 1) for (let q = -1; q <= 1; q += 1) set(x + q, y, c);
+          [-2, -1, 0, 1, 2].forEach((q) => set(x + q, top + 2, c)); [-1, 0, 1].forEach((q) => set(x + q, top + 1, c)); set(x, top, c);
+          if (m.kind === 'domes') [-3, 3].forEach((q) => { set(x + q, top + 3, c); set(x + q, top + 4, c); });
+        }
+        city.push({ x, top, base, m });
+      });
+    }
+    return { P, W, H, PW, yh, clouds, birds, xAt, city, fire: { x: pitch * 2 + Math.round(pitch * 0.7), y: wallY - 1 } };
   }
   function drawTower(t) {
     const { W, H } = scene; const { P, PW, yh, xAt } = pano;
@@ -3521,6 +4402,7 @@ f11111f2.
       add(pl.tavern.x + pl.tavern.w + 1, I.ROBE, 'drinker', 1, { dir: -1 }); add(pl.tavern.x - 2, I.FLAG2, 'drinker', 2, { dir: 1 });
       if (day === 5 || day === 6 || festival(d)) add(pl.tavern.x + pl.tavern.w + 3, I.FLAG, 'minstrel', 5, { dir: -1 });
     }
+    if (pl.tavern && (h >= 21 || h < 2)) add(pl.tavern.x + Math.floor(pl.tavern.w / 2) - 1 + Math.round(drunk.x * 0.7), I.TIMBER, 'drunk', 3, { dir: drunk.x >= 0 ? 1 : -1 }); // the last one out
     if (pl.chapel && day === 0 && h >= 9 && h < 11.5) [-5, -3, 6, 8].forEach((dx, k) => add(pl.chapel.x + dx, [I.CLOAK, I.ROBE, I.RUST, I.TIMBER][k], 'faithful', k, { dir: dx < 0 ? 1 : -1 }));
     const warm = (weather.temp ?? 15) >= 15 && !WET[weather.kind] && weather.kind !== 'snow';
     if (pl.well && warm && h >= 14 && h < 19 && look.night < 0.3) [0, 1].forEach((k) => {
@@ -3627,11 +4509,11 @@ f11111f2.
       const f = scene.falls; const x0 = f.x - M + shift(RATE[L.NEAR]); const frozen = (weather.frost ?? 9) <= -4;
       const NEARS = [I.MT_NEAR, I.MT_NEAR_SH];
       for (let y = f.y0; y < f.y0 + f.len; y += 1) {
-        const w = 1 + Math.round((y - f.y0) / f.len * 1.5); const wob = Math.round(Math.sin(y * 0.35) * 0.8); // (it follows the rock)
+        const w = 2 + Math.round((y - f.y0) / f.len * 1.5); const wob = Math.round(Math.sin(y * 0.07) * 1.2); // (a slow bend with the rock: a quick one zigzagged like lightning)
         for (let dx = 0; dx <= w; dx += 1) {
           const x = x0 + dx - Math.floor(w / 2) + wob; if (x < 0 || x >= W || !NEARS.includes(idxNow[y * W + x])) continue;
-          const run = frozen || reduce ? (dx + y) % 3 : Math.floor(y - t * 9 + dx * 2) % 4;
-          put(x, y, frozen ? (run ? pal32[I.WATER_HI] : pal32[I.SNOWFIELD]) : run < 2 ? pal32[I.WATER_HI] : pal32[I.CLOUD]);
+          const run = frozen || reduce ? (dx + y) % 3 : ((Math.floor(y - t * 9 + dx * 5) % 6) + 6) % 6;
+          put(x, y, frozen ? (run ? pal32[I.WATER_HI] : pal32[I.SNOWFIELD]) : dx === 0 || dx === w ? pal32[I.WATER] : run === 0 ? pal32[I.CLOUD] : pal32[I.WATER_HI]);
         }
       }
       if (!frozen && !reduce) for (let k = 0; k < 5; k += 1) { const y = f.y0 + f.len - 1 - (k % 2); const x = x0 - 2 + k; if (x >= 0 && x < W && NEARS.includes(idxNow[y * W + x])) blend(x, y - Math.round(Math.sin(t * 3 + k)), unpack(pal32[I.CLOUD]), 0.5); }
@@ -3643,6 +4525,18 @@ f11111f2.
     }
     { // the river: ice after days of hard frost, its banks overrun after a wet week
       const frost = weather.frost ?? 9; const flood = clamp(((weather.rain7 ?? 0) - 35) / 30);
+      const low = WET[weather.kind] || weather.rain7 == null ? 0 : clamp((6 - weather.rain7) / 6); // a dry week: the gravel shows
+      if (low > 0 && frost > -3) {
+        const off = shift(RATE[L.MID]) - M; const gravel = [pal32[I.MUD], pal32[I.STONE_SH], pal32[I.STONE], pal32[I.DIRT_SH]];
+        for (let x = 0; x < W; x += 1) {
+          const X = x - off; const top = scene.riverTop(X); const bot = scene.riverBot(X);
+          const n = Math.round(low * (1.5 + (X % 7 === 0 ? 1 : 0))); // bars here and there wider
+          for (let y = top; y <= bot; y += 1) {
+            const i = y * W + x; if (idxNow[i] !== I.WATER && idxNow[i] !== I.WATER_HI) continue;
+            if (y < top + n || y > bot - Math.round(n * 0.7)) { buf[i] = gravel[(x * 3 + y * 5) % 4]; idxNow[i] = I.MUD; } // (not mirrored over)
+          }
+        }
+      }
       if (frost <= -3 || flood > 0) {
         const off = shift(RATE[L.MID]) - M; const BANK = [I.GRASS, I.GRASS_SH, I.GRASS_HI, I.MUD, I.REED, I.REED_SH, I.HILL, I.HILL_SH];
         for (let x = 0; x < W; x += 1) {
@@ -3792,6 +4686,20 @@ f11111f2.
         }
       }
     }
+    if (scene.bolt) { // the lightning: its branches faint, the main channel white with a glow; behind the ranges
+      const { b } = scene.bolt; const sky = (x, y) => x >= 0 && x < W && y >= 0 && y < H && idxNow[y * W + x] < I.MT_FAR;
+      const at = (i) => [b.x0 + ((i % b.w) - (b.w >> 1)) * 2 + ((i * 7919) % 3) - 1, b.y0 + Math.floor(i / b.w) * 2]; // (a jag of its own per cell)
+      b.cells.forEach((i) => {
+        if (b.par[i] < 0) return;
+        const [x1, y1] = at(i); const [x0, y0] = at(b.par[i]); const main = b.main.has(i);
+        for (let k = 0; k <= 2; k += 1) {
+          const x = Math.round(x0 + ((x1 - x0) * k) / 2); const y = Math.round(y0 + ((y1 - y0) * k) / 2);
+          if (!sky(x, y)) continue;
+          if (main) { put(x, y, pack([250, 246, 255]), false); [[1, 0], [-1, 0]].forEach(([dx]) => { if (sky(x + dx, y)) blend(x + dx, y, [190, 170, 255], 0.5, false); }); }
+          else blend(x, y, [200, 190, 255], 0.55, false);
+        }
+      });
+    }
     if (scene.geese) { // autumn: a V of geese going south-west, wings beating
       const gc = pack(mix(look.bird, [90, 90, 96], 0.3));
       scene.geese.forEach((g, k) => {
@@ -3839,8 +4747,14 @@ f11111f2.
 
     // the castle's life: windows (glowing at night), pennants, torches, chimney smoke, sentries
     const wl = pal32[I.WIN_LIT]; const wd = pal32[I.WIN_DARK];
+    if (scene.scribeWin && scribeLate()) scene.scribeWin.lit = true;
     scene.windows.forEach((w) => {
       w.pts.forEach(([x, y]) => put(mx(x), y, w.lit ? wl : wd, false));
+      if (w === scene.scribeWin && scribeLate()) { // the copyist bent over his desk, against the candlelight; his hand moves
+        const [x0, y0] = w.pts[0]; const sil = pal32[I.OUTLINE];
+        put(mx(x0 + 1), y0, sil, false); put(mx(x0 + 1), y0 + 1, sil, false); put(mx(x0), y0 + 1, sil, false);
+        if (reduce || Math.floor(t * 2) % 3) put(mx(x0 + 2), y0 + 1, sil, false);
+      }
       if (w.lit && w.big && look.night > 0.3) {
         const [x, y] = w.pts[1];
         [[-1, 0], [-1, 1], [2, 0], [2, 1]].forEach(([dx, dy]) => blend(mx(x + dx), y + dy, [255, 170, 70], 0.18 * look.night, false));
@@ -3852,6 +4766,18 @@ f11111f2.
       put(x, f.y + 1, c); put(x + 1, f.y + 1, c); put(x + 2, f.y + 1, c);
       if (f.long) { put(x + 4, f.y + wave, c); put(x + 5, f.y + 1, c); }
     });
+    { // the observatory: by night its slit opens and the telescope follows the highest planet (else the
+      // Moon); by day it is parked, aimed high to the east
+      const sc = scene.scope; const open = look.night > 0.4;
+      const up = open && bodies ? [...bodies.planets.filter((q) => q.at[2] > 3 * deg)].sort((a, b) => b.at[2] - a.at[2])[0] : null;
+      const tgt = up ? up.at : open && bodies && bodies.moon[2] > 3 * deg ? bodies.moon : null;
+      if (open) for (let y = 1; y < sc.slit; y += 1) { put(mx(sc.x - 1), sc.t0 - 1 - y, pal32[I.OUTLINE], false); put(mx(sc.x + 1), sc.t0 - 1 - y, pal32[I.OUTLINE], false); }
+      let ang = -Math.PI + 0.8; // (parked: up and to the east, on the left)
+      if (tgt) ang = Math.atan2(tgt[1] - sc.y, tgt[0] - mx(sc.x)); // towards it on the screen
+      ang = clamp(ang, -Math.PI + 0.35, -0.35); // (out through the slit, never down)
+      for (let k = 1; k <= 5; k += 1) { const x = mx(sc.x) + Math.round(Math.cos(ang) * k); const y = sc.y + Math.round(Math.sin(ang) * k); put(x, y, pal32[k === 5 ? I.BLADE_SH : I.BLADE], false); put(x, y + 1, pal32[I.BLADE_SH], false); }
+      scene.scopeAt = up ? up.name : tgt ? 'the Moon' : null;
+    }
     scene.fumes.forEach((p) => {
       const a = (1 - p.age / p.life) * 0.6;
       for (let y = 0; y < p.r; y += 1) {
@@ -3973,6 +4899,41 @@ f11111f2.
       }
     }
 
+    if (scene.wave && scene.wave.live) { // rings on the river where the stone touched: crests bright, troughs dark
+      const wv = scene.wave; const off = shift(RATE[L.MID]) - M;
+      for (let y = 1; y < wv.h - 1; y += 1) {
+        const Y = wv.y0 + y;
+        for (let x = 0; x < W; x += 1) {
+          const X = x - off; if (X < 1 || X >= wv.w - 1) continue; const v = wv.u[y * wv.w + X];
+          if (v > 0.1) blend(x, Y, [236, 246, 255], Math.min(0.7, v * 1.6), false); else if (v < -0.1) blend(x, Y, [20, 34, 60], Math.min(0.28, -v * 0.5), false);
+        }
+      }
+    }
+    if (scene.skip) { // the stone in the air between its touches
+      const sk = scene.skip; const k = sk.hits.findIndex((q) => t < q.t);
+      if (k >= 0) {
+        const a = k ? sk.hits[k - 1] : sk.from; const b = sk.hits[k]; const f = clamp((t - a.t) / (b.t - a.t));
+        put(mx(a.x + (b.x - a.x) * f), a.y + (b.y - a.y) * f - Math.sin(f * Math.PI) * (k ? 2 : 5), pal32[I.STONE_SH], false);
+      }
+    }
+    if (real.bruegel && (weather.frost ?? 9) <= -3 && look.night < 0.4) { // on the ice, Bruegel's skaters, gliding to and fro before the hamlet
+      const sk = real.bruegel.sprites.filter((q) => q.role === 'skater'); const hm = scene.hamlet;
+      sk.slice(0, 7).forEach((sp, k) => {
+        const span = hm.x1 + 30 - hm.x0; const ph = (reduce ? k * 0.9 : t * (0.05 + k * 0.011)) + k * 1.3;
+        const X = hm.x0 + span * (0.5 + 0.45 * Math.sin(ph)); const dir = Math.cos(ph) >= 0 ? 1 : -1;
+        const top = scene.riverTop(Math.round(X)); const bot = scene.riverBot(Math.round(X)); const Y = Math.round(top + 2 + ((k * 7) % Math.max(1, bot - top - 3)));
+        const sx = mx(Math.round(X));
+        for (let yy = 0; yy < sp.h; yy += 1) for (let xx = 0; xx < sp.w; xx += 1) { const c = sp.px[yy * sp.w + (dir > 0 ? xx : sp.w - 1 - xx)]; if (c >= 0) put(sx + xx, Y - sp.h + yy + 1, pal32[c], false); }
+      });
+    }
+    if (scene.shoal) { // the shoal, dark backs under the surface, a flash of a flank now and then
+      const dk = mix(unpack(pal32[I.WATER]), [10, 14, 24], 0.55);
+      scene.shoal.forEach((f, k) => {
+        const x = mx(Math.round(f.x)); const y = Math.round(f.y); const tx = x - Math.sign(f.vx || 1);
+        [[x, y], [tx, y]].forEach(([X, Y]) => { if (X >= 0 && X < W && idxNow[Y * W + X] === I.WATER) blend(X, Y, dk, 0.75, false); });
+        if (!reduce && Math.sin(t * 3 + k * 1.7) > 0.97) put(x, y, pal32[I.WATER_HI], false);
+      });
+    }
     { // the ferryman crosses the river, the current pushing him off his line (see step); the jetties
       const J = M + Math.round(0.52 * scene.Ws); const top = scene.riverTop(J); const bot = scene.riverBot(J);
       scene.ferry ||= Object.assign(ferryNew(Math.max(4, bot - top - 3)), { J, top, bot });
@@ -4014,13 +4975,26 @@ f11111f2.
       }
     }
 
-    const wk = scene.walker; // a passer-by on the castle road, far part: a tiny figure on the hill
-    if (wk && wk.y < yg) {
-      const x = mx(Math.round(scene.pathX[Math.round(wk.y)])); const y = Math.round(wk.y);
-      put(x, y - 2, pal32[wk.kind === 'messenger' ? I.FLAG : I.CLOAK], false); put(x, y - 1, pal32[I.CLOAK_SH], false); put(x, y - 3, pal32[I.SKIN], false);
-      if (wk.kind === 'lantern') { put(x + 1, y - 2, pack([255, 214, 120]), false); halo(x + 1, y - 2, 3, [255, 190, 90], 0.4 * look.night); }
-      if (wk.kind === 'peddler') { put(x - wk.dir, y - 1, pal32[I.TIMBER], false); put(x - 2 * wk.dir, y - 1, pal32[I.FL_RED], false); put(x - wk.dir, y, pal32[I.OUTLINE], false); } // his barrow
-    }
+    const wk = scene.walker; // a passer-by on the castle road, far part (the hill, the bridge): drawn small, smaller further off
+    /** The passer-by at height h px (4 far .. 8 near the meadow), feet at (x, y): legs that step, a coat,
+     *  a head, a hat when big enough; by night a lantern lights its bearer, so the figure shows round its light. */
+    const smallWalker = (x, y, h, k) => {
+      const coat = { messenger: I.FLAG, peddler: I.TIMBER, rider: I.CLOTH }[k.kind] || I.CLOAK;
+      const lit = k.kind === 'lantern' && look.night > 0.4; const C = (i) => (lit ? pack(mix(unpack(pal32[i]), mix(hex(DAYLIGHT[i]), [255, 196, 120], 0.35), 0.75)) : pal32[i]); // (by its own lantern: near its day colours, warmed)
+      const legH = Math.max(1, Math.round(h * 0.3)); const bodyH = Math.max(1, Math.round(h * 0.4)); const wide = h >= 6;
+      const step = !reduce && Math.floor(t * 4) % 2;
+      if (k.kind === 'rider') { for (let dx = -2; dx <= 2; dx += 1) { put(x + dx, y - legH, C(I.LEATHER), false); if (Math.abs(dx) === 2) put(x + dx, y - (step ? 0 : 1), C(I.LEATHER_SH), false); } put(x - 2 * (k.dir < 0 ? 1 : -1), y - legH - 1, C(I.LEATHER), false); } // his horse
+      else for (let r = 0; r < legH; r += 1) { if (wide) { put(x - 1 + (step && r === legH - 1 ? -1 : 0), y - r, C(I.CLOAK_SH), false); put(x + 1 + (!step && r === legH - 1 ? 1 : 0), y - r, C(I.CLOAK_SH), false); } else put(x, y - r, C(I.CLOAK_SH), false); }
+      const by = y - legH - (k.kind === 'rider' ? 1 : 0);
+      for (let r = 0; r < bodyH; r += 1) for (let dx = wide ? -1 : 0; dx <= (wide ? 1 : 0); dx += 1) put(x + dx, by - r, C(coat), false);
+      const hy = by - bodyH; put(x, hy, C(I.SKIN), false); if (h >= 7) { put(x, hy - 1, C(I.SKIN), false); put(x - 1, hy - 2, C(I.HAT), false); put(x, hy - 2, C(I.HAT), false); put(x + 1, hy - 2, C(I.HAT), false); }
+      if (k.kind === 'lantern') { const lx = x + (wide ? 2 : 1); const ly = by - Math.floor(bodyH / 2); put(lx, ly, pack([255, 214, 120]), false); halo(lx, ly, 2 + h * 0.4, [255, 190, 90], 0.4 * look.night); }
+      if (k.kind === 'peddler') { const cx0 = x - k.dir * (wide ? 3 : 2); put(cx0, y - 1, C(I.TIMBER), false); put(cx0 - k.dir, y - 1, C(I.FL_RED), false); put(cx0, y, C(I.OUTLINE), false); if (wide) { put(cx0 - k.dir, y - 2, C(I.FL_YEL), false); put(cx0 - k.dir, y, C(I.OUTLINE), false); } } // his barrow
+      if (k.kind === 'messenger' && h >= 5) { for (let r = 0; r < h; r += 1) put(x + 2, y - r, C(I.TIMBER_SH), false); put(x + 3, y - h + 1, C(I.FLAG), false); }
+    };
+    /** Its size on the road: 4 px over the hill, growing across the bridge and the meadow's edge, then the full sprite. */
+    const walkerH = (y) => (y < scene.yl0 - 2 ? 4 : Math.min(8, Math.round(5 + ((y - scene.yl0) / (yg + 10 - scene.yl0)) * 3)));
+    if (wk && wk.y < yg) { const y = Math.round(wk.y); smallWalker(mx(Math.round(scene.pathX[y])), y, walkerH(y), wk); }
     { // market day (see marketDay): two stalls with striped awnings by the hamlet, folk about them
       const d = today(); const close = zoom && zoom.done; // (close up, villageView draws them)
       if (marketDay(d) && look.night < 0.3) {
@@ -4120,7 +5094,55 @@ f11111f2.
       if (!up && Math.floor(t * 2.5) % 4 === 0) put(x - 3, y - 1, pack([255, 240, 200]), false); // a spark off the stone
     }
 
+    { // the river gauge by the bridge: red and white bars a pixel each, the water at this week's level
+      const g = scene.gauge; const x = mx(g.x); const flood = clamp(((weather.rain7 ?? 0) - 35) / 30);
+      const low = WET[weather.kind] || weather.rain7 == null ? 0 : clamp((6 - weather.rain7) / 6);
+      const wy = scene.riverTop(g.x) - Math.round(flood * 2) + Math.round(low * 1.5);
+      for (let y = g.top; y <= g.bot; y += 1) {
+        put(x, y, pal32[(y - g.top) % 2 ? I.FL_WHITE : I.FLAG], false); put(x + 1, y, pal32[I.TIMBER_SH], false);
+        if (y >= wy) { blend(x, y, unpack(pal32[I.WATER]), 0.6, false); blend(x + 1, y, unpack(pal32[I.WATER]), 0.6, false); }
+      }
+      put(x, wy, pal32[I.WATER_HI], false); put(x - 1, wy, pal32[I.WATER_HI], false); put(x + 2, wy, pal32[I.WATER_HI], false);
+    }
+    { // a sea of fog in the valley on still, damp, clear nights and mornings (a temperature inversion):
+      // the river, the village and the foot of the hill under it, the castle on its rock above
+      const h = clockFn().getHours(); const sea = new URLSearchParams(location.search).has('inversion') || (forced.fogsea || 0) > t;
+      if (sea || (weather.cover < 0.5 && weather.wind < 10 && (weather.humid ?? 0) >= 92 && !WET[weather.kind] && weather.kind !== 'snow' && (look.night > 0.3 || h < 10))) {
+        const c = look.night > 0.5 ? [112, 120, 144] : mix([236, 238, 242], look.sun, 0.15);
+        const base = yl0 - 10;
+        for (let x = 0; x < W; x += 1) {
+          const top = base + Math.round(Math.sin(x * 0.05 + t * 0.1) * 1.5 + Math.sin(x * 0.013 - t * 0.05) * 2.5);
+          for (let y = Math.max(0, top - 1); y < Math.min(H, yg + 3); y += 1) {
+            const i = y * W + x; if (idxNow[i] <= FAR) continue; // (the ranges stand clear above it)
+            const depth = y - top;
+            if (depth < 3 && bayer(x, y) > 0.35 + depth * 0.22) continue; // its upper edge, frayed
+            tint(i, c[0], c[1], c[2], Math.min(0.88, 0.5 + depth * 0.05));
+          }
+        }
+      }
+    }
     composite(L.GROUND);
+    if (scene.hunt && real.bruegel) { // Bruegel's hunters coming home through the snow, their hounds about them
+      const sps = real.bruegel.sprites; const hu = scene.hunt; const step = !reduce && Math.floor(t * 3) % 2;
+      hu.party.forEach((m) => {
+        const sp = sps[m.k]; const x = Math.round(hu.x + m.dx); const y = Math.round(hu.y + m.dy); const sx = x - M + groundOff(y);
+        const bob = (m.k + step) % 2;
+        for (let yy = 0; yy < sp.h; yy += 1) for (let xx = 0; xx < sp.w; xx += 1) { const c = sp.px[yy * sp.w + (sp.w - 1 - xx)]; if (c >= 0) put(sx + xx, y - sp.h + yy - bob, pal32[c], false); } // (mirrored: they walk west)
+      });
+    }
+    { // what the weather leaves on the meadow: rings on the puddles while it rains, footprints in the snow
+      const go1 = (x, y) => x - M + groundOff(y);
+      if (WET[weather.kind] && !reduce && snowCover() < 0.2 && scene.puddles.length) for (let k = 0; k < 5; k += 1) {
+        const q = scene.puddles[Math.floor(Math.random() * scene.puddles.length)];
+        if (q.q < 0.6) { put(go1(q.x, q.y), q.y, pal32[I.WATER_HI], false); put(go1(q.x, q.y) + 1, q.y, pal32[I.WATER_HI], false); }
+      }
+      if (snowCover() > 0.05) scene.prints.forEach((f) => put(f.l === L.GROUND ? go1(f.x, f.y) : mx(f.x), f.y, pal32[I.SNOW_SH], false));
+      if (antsOut()) { // the ants: each way darker as it is marked, the ants on them, a crumb for those coming back
+        const a = scene.ants; const tot = a.tau[0] + a.tau[1];
+        a.ways.forEach((w, j) => w.forEach(([x, y], k) => { if (k % 2 === 0 && bayer(x, y) < (a.tau[j] / tot) * 0.9) blend(go1(x, y), y, unpack(pal32[I.DIRT_SH]), 0.5, false); }));
+        a.ants.forEach((n) => { if (n.s < 0) return; const [x, y] = antAt(a, n); put(go1(x, y), y, pal32[I.OUTLINE], false); if (n.dir < 0) put(go1(x, y) + 1, y, pal32[I.FL_WHITE], false); });
+      }
+    }
 
     if (scene.flies2) { // fireflies, flashing; together, once they have found each other
       scene.flies2.forEach((f) => {
@@ -4217,10 +5239,15 @@ f11111f2.
         put(x, y, pal32[I.FERN_SH], false); put(x, y - 1, pal32[I.FERN], false); put(x + 1, y - 2, pal32[I.FL_WHITE], false); put(x + 1, y - 1, pal32[I.FL_WHITE], false);
       });
     }
-    if (wk && wk.y >= yg) { // the passer-by, near: full size, walking
-      const sp = (wk.dir < 0 ? SPRITES.peasant : SPRITES.walkerL)[Math.floor(t * 4) % 2]; const y = Math.min(H - 1, Math.round(wk.y));
-      const x = Math.round(scene.pathX[y]) - M + groundOff(y) - 3;
-      blit(sp, x, y - sp.h);
+    if (wk && wk.y >= yg && wk.y < yg + 10) { const y = Math.round(wk.y); smallWalker(Math.round(scene.pathX[y]) - M + groundOff(y), y, walkerH(y), wk); } // (at the meadow's far edge, still small)
+    if (wk && wk.y >= yg + 10) { // the passer-by, near: full size, walking
+      const rid = wk.kind === 'rider'; const mu = muySprites(wk.kind); // (Muybridge's gallop and walk, once they have come)
+      const sp = mu ? (wk.dir < 0 ? mu.left : mu.right)[Math.floor(rid ? t * 14 : Math.abs(wk.y) * 2.2) % mu.right.length]
+        : (rid ? (wk.dir < 0 ? SPRITES.rider : SPRITES.riderR) : wk.dir < 0 ? SPRITES.peasant : SPRITES.walkerL)[Math.floor(t * (rid ? 7 : 4)) % 2]; const y = Math.min(H - 1, Math.round(wk.y));
+      const x = Math.round(scene.pathX[y]) - M + groundOff(y) - (mu ? Math.floor(sp.w / 2) : rid ? 11 : 3);
+      if (wk.kind === 'lantern' && look.night > 0.4) { // lit by his own lantern, as when he was further off
+        for (let yy = 0; yy < sp.h; yy += 1) for (let xx = 0; xx < sp.w; xx += 1) { const c = sp.px[yy * sp.w + xx]; if (c >= 0) put(x + xx, y - sp.h + yy, c === I.OUTLINE ? pal32[c] : pack(mix(unpack(pal32[c]), mix(hex(DAYLIGHT[c]), [255, 196, 120], 0.35), 0.75)), false); }
+      } else blit(sp, x, y - sp.h);
       if (wk.kind === 'lantern') { put(x + 6, y - sp.h + 4, pack([255, 214, 120]), false); halo(x + 6, y - sp.h + 4, 4, [255, 190, 90], 0.45 * look.night); }
       if (wk.kind === 'peddler') { // his cart behind him, laden
         const cx0 = x + (wk.dir < 0 ? 8 : -8); rect2(cx0, y - 6, 7, 4, pal32[I.TIMBER]); rect2(cx0, y - 7, 7, 1, pal32[I.TIMBER_HI]);
@@ -4264,8 +5291,14 @@ f11111f2.
     const { knight, wizard } = scene;
     const go = groundOff(fire.y) - M;
     const breath = reduce ? 0 : Math.floor(t / 1.7) % 2;
+    if (WET[weather.kind] || shelterUntil > t) { const c = scene.cats[0]; blit(c.sp, knight.x - 12 + go, c.y, H, (y) => (y < 3 ? (c.breathe || 0) : 0)); } // curled behind him, out of the rain
     blit(SPRITES.knight, knight.x + go, knight.y, H, (y) => (y < KNIGHT_HEAD ? breath : 0));
     blit(SPRITES.wizard, wizard.x + go, wizard.y);
+    if (wizardReads(t)) { // the wizard reads, a little book held before him (the latest news: click him)
+      const bx = wizard.x + go + 3; const by = wizard.y + 18;
+      for (let k = 0; k < 7; k += 1) { put(bx + k, by, pal32[k === 3 ? I.LEATHER_SH : I.CREAM], false); put(bx + k, by + 1, pal32[k === 3 ? I.LEATHER_SH : k % 2 ? I.PLASTER : I.CREAM], false); put(bx + k, by + 2, pal32[I.LEATHER], false); }
+      if (!reduce && Math.floor(t / 4) % 3 === 0) put(bx + 1 + (Math.floor(t * 3) % 2) * 4, by + 1, pal32[I.OUTLINE], false); // (a finger on the line)
+    }
     const shield = scene.shieldSp || (scene.shieldSp = armsSprite(heraldry.own)); // the knight's arms, leant on the log
     if (shield) blit(shield, knight.x + go + 1, fire.y + 7 - shield.h);
     { // Blanc Blanc's home is at the knight's feet; now and then (by day and evening, a minute in
@@ -4280,11 +5313,33 @@ f11111f2.
       bb.x = Math.round(x); bb.y = Math.round(y);
       if (p >= 1 && p < 12) { if (!scene.purred) { scene.purred = true; sfx('purr'); } } else scene.purred = false;
     }
+    const rainy = Boolean(WET[weather.kind]) || shelterUntil > t;
+    { // in the rain the big black cat leaves the fire for the shelter, behind the knight (and back after)
+      const lf = scene.cats[0]; lf.hx ??= lf.x;
+      lf.x = rainy ? knight.x - 12 : lf.hx;
+    }
     scene.cats.forEach((c) => { // they blink now and then; the black one by the fire breathes
       const breathe = c.sp === SPRITES.cats.blackLoaf && !reduce ? Math.floor(t / 2.1 + c.ph) % 2 : 0;
+      if (rainy && c === scene.cats[0]) { c.breathe = breathe; return; } // (drawn before the knight, see below)
       blit(c.sp, c.x + go, c.y, H, (y) => (y < 3 ? breathe : 0));
       c.breathe = breathe;
     });
+    scene.shelter = null;
+    if (rainy) { // the shelter: a waxed cloth on a pole and a guy-rope, over the knight and the cat
+      const xr = knight.x + go + SPRITES.knight.w + 1; const xl = knight.x + go - 10; const yr = knight.y - 9; const yl = knight.y + 1;
+      const top = (x) => Math.round(yr + ((xr - x) / (xr - xl)) * (yl - yr));
+      for (let y = top(xr); y < fire.y + 5; y += 1) { put(xr, y, pal32[I.TIMBER], false); put(xr + 1, y, pal32[I.TIMBER_SH], false); } // the pole
+      for (let x = xl; x <= xr + 2; x += 1) { // the cloth: tan canvas, lit on its upper face, a darker underside, a scalloped hem
+        const y = top(x); const seam = (x - xl) % 7 === 0;
+        put(x, y - 2, pal32[I.THATCH], false); put(x, y - 1, pal32[seam ? I.THATCH_SH : I.THATCH], false);
+        put(x, y, pal32[seam ? I.THATCH_SH : I.THATCH], false); put(x, y + 1, pal32[I.THATCH_SH], false); put(x, y + 2, pal32[I.TIMBER_SH], false);
+        if ((x - xl) % 4 < 2) put(x, y + 3, pal32[I.TIMBER_SH], false);
+      }
+      for (let k = 0; k <= 12; k += 1) put(xl - Math.round(k * 0.35), yl + 3 + Math.round(k * ((fire.y + 5 - yl - 3) / 12)), pal32[I.PLASTER], false); // the guy-rope to its peg
+      put(xl - 4, fire.y + 5, pal32[I.TIMBER]); put(xl - 4, fire.y + 4, pal32[I.TIMBER_HI]);
+      if (!reduce) { const dy = Math.floor(t * 6) % 7; put(xl, yl + 4 + dy, pal32[I.WATER_HI], false); put(xl + 2, yl + 4 + ((dy + 3) % 7), pal32[I.WATER_HI], false); } // drips off its low edge
+      scene.shelter = { xl, xr, top };
+    }
     { // the knight's blue butterfly, wandering round his helm
       const hx = knight.x + go + 13; const hy = knight.y + 4;
       const bx = hx + Math.round(10 * Math.sin(t * 0.8)); const by = hy - 3 + Math.round(5 * Math.sin(t * 1.7) * Math.cos(t * 0.45));
@@ -4301,17 +5356,24 @@ f11111f2.
     const fxs = fire.x + go;
     const catEyes = () => scene.cats.forEach((c) => {
       const shut = !reduce && Math.sin(t * 0.7 + c.ph * 3) > 0.96;
-      c.sp.eyes.forEach(([ex, ey]) => put(c.x + go + ex, c.y + ey + (ey < 3 ? c.breathe : 0), pal32[shut ? I.BLACKFUR_SH : I.EYE], false));
-    });
-    scene.smoke.forEach((p) => {
-      const a = (1 - p.age / p.life) * 0.7;
-      for (let y = 0; y < p.r; y += 1) {
-        for (let x = 0; x < p.r; x += 1) {
-          const X = Math.round(p.x + go) + x; const Y = Math.round(p.y) + y;
-          if (bayer(X, Y) < a) blend(X, Y, look.smoke, 0.8, false);
-        }
+      // the big black cat's eyes follow the mouse: a pixel towards it, when there is fur to look through
+      let gx0 = 0; let gy0 = 0;
+      if (c.sp === SPRITES.cats.blackLoaf && pointer && !shut) {
+        const [ex, ey] = c.sp.eyes[0]; const dx = pointer[0] - (c.x + go + ex); const dy = pointer[1] - (c.y + ey);
+        gx0 = Math.abs(dx) > 6 ? Math.sign(dx) : 0; gy0 = dy < -12 ? -1 : 0;
+        const fur = (x, y) => { const v = c.sp.px[y * c.sp.w + x]; return v >= 0 && v !== I.OUTLINE; };
+        if (!c.sp.eyes.every(([x, y]) => fur(x + gx0, y + gy0))) { gx0 = 0; gy0 = 0; }
+        if (gx0 || gy0) c.sp.eyes.forEach(([x, y]) => put(c.x + go + x, c.y + y + (y < 3 ? c.breathe : 0), pal32[I.BLACKFUR], false));
       }
+      c.sp.eyes.forEach(([ex, ey]) => put(c.x + go + ex + gx0, c.y + ey + gy0 + (ey < 3 ? c.breathe : 0), pal32[shut ? I.BLACKFUR_SH : I.EYE], false));
     });
+    { // the smoke: the fluid's density, dithered (its bottom row in the flames' tips)
+      const f = scene.fluid; const x0 = fire.x + go - (f.w >> 1); const y0 = fire.y - 16 - f.h;
+      for (let y = 1; y < f.h - 1; y += 1) for (let x = 1; x < f.w - 1; x += 1) {
+        const dd = f.d[y * f.w + x]; if (dd < 0.04) continue;
+        const a = Math.min(0.7, dd * 0.6); if (a > 0.08) blend(x0 + x, y0 + y, look.smoke, Math.round(a * 4) / 4 + 0.1, false); // (in steps, not dithered: a dither grid reads as a mesh)
+      }
+    }
     const fx0 = fxs - Math.floor(fw / 2); const fy0 = fire.y - fh;
     const fc = FIRE.map((h) => (h ? pack(hex(h)) : 0));
     for (let y = 0; y < fh; y += 1) {
@@ -4347,9 +5409,14 @@ f11111f2.
       const lean = reduce ? 0 : (Math.sin(t * 1.6 + b.x * 0.21) * 0.6 * clamp(weather.wind / 15, 0.3, 1.6) + Math.sin(t * 0.7 + b.x * 0.05) * 0.6 + windX() * 0.8) * b.h * 0.22;
       for (let r = 0; r < b.h; r += 1) put(b.x + fo + Math.round((lean + b.spread) * (r / b.h) ** 2), b.y - r, c, false);
     });
-    if (look.night > 0.5) { // the owl on its branch, blinking now and then
+    if (look.night > 0.5 || (forced.owl || 0) > t) { // the owl on its branch, blinking now and then
       const ow = scene.owl; const ox = ow.x + fo;
       blit(SPRITES.owl, ox, ow.y);
+      scene.hoots.forEach((h) => { // the hour, counted out: a ring of breath for each hoot
+        const a = t - h.t0; if (a < 0 || a > 1.4) return;
+        const ry = ow.y - 2 - Math.round(a * 5); const c = pack([226, 232, 255]);
+        [[0, -1], [1, 0], [0, 1], [-1, 0]].forEach(([dx, dy]) => blend(ox + 6 + dx + Math.round(a * 2), ry + dy, unpack(c), 0.8 * (1 - a / 1.4), false));
+      });
       if (!reduce && Math.sin(t * 0.6) > 0.95) { put(ox + 2, ow.y + 3, pal32[I.LEATHER], false); put(ox + 4, ow.y + 3, pal32[I.LEATHER], false); }
     }
     precipitation(put, blend);
@@ -4371,6 +5438,21 @@ f11111f2.
       }
     }
     catEyes();
+    if (scene.dream) { // the sleeping knight's dream: bubbles rising to a cloud, a picture of a subject in it
+      const DREAM_INK = pack([238, 234, 255]); const DREAM_EDGE = pack([186, 182, 222]); // (a dream glows: the night does not dim it)
+      const d = scene.dream; const age = t - d.t0; const hx = knight.x + go + 17; const hy = knight.y;
+      const ring = (cx, cy, r) => { for (let a = 0; a < 6.28; a += 0.4) put(cx + Math.round(Math.cos(a) * r), cy + Math.round(Math.sin(a) * r), DREAM_INK, false); };
+      if (age > 0.3) ring(hx + 2, hy - 3, 1); if (age > 0.8) ring(hx + 5, hy - 7, 1.5);
+      if (age > 1.3) {
+        const cx = hx + 10; const cy = hy - 16; d.box = [cx - 8, cy - 6, 17, 12];
+        for (let y = -5; y <= 5; y += 1) for (let x = -8; x <= 8; x += 1) {
+          const q = (x / 8.5) ** 2 + (y / 5.5) ** 2 + 0.12 * Math.sin(x * 1.3) * Math.sin(y * 1.7);
+          if (q < 1) put(cx + x, cy + y, q > 0.78 ? DREAM_EDGE : DREAM_INK, false);
+        }
+        const [, rows, cols] = DREAMS[d.icon];
+        rows.forEach((r, y) => [...r].forEach((ch, x) => { if (ch !== '.') put(cx - 2 + x, cy - 2 + y, pack(hex(DAYLIGHT[I[cols[Number(ch) - 1]]])), false); }));
+      }
+    }
     if (sel >= 0 && selList[sel]) { // the keyboard's choice: a pulsing ring
       const c = selList[sel]; const r = 5 + (reduce ? 0 : Math.sin(t * 5)); 
       for (let a = 0; a < 6.28; a += 0.2) blend(c.x + Math.cos(a) * r, c.y + Math.sin(a) * r, [255, 236, 170], 0.8, false);
@@ -4419,6 +5501,48 @@ f11111f2.
    *  pixels take the outdoor palette, so it shows the true sky. */
   function lightInterior() {
     const { W, H, idx, out } = interior;
+    /* the sun through the windows (we face south, as outside: the back wall's windows look into it):
+       a ray through the window at height z above the floor comes down to it z / tan(alt) further
+       in, drifting sideways as the sun's azimuth; the floor is foreshortened by half. 1 in the beam's
+       shaft of air, 2 where it lands on the floor */
+    const beam = new Uint8Array(W * H); interior.beam = null;
+    const sv = skyFn().sun; const alt = Math.asin(clamp(sv[2], -1, 1)); const phi = Math.atan2(sv[0], -sv[1]);
+    if (alt > 3 * deg && look.night < 0.3 && weather.cover < 0.75 && !WET[weather.kind] && weather.kind !== 'fog') {
+      const ta = 1 / Math.tan(alt); const side = Math.tan(clamp(phi, -1.2, 1.2)) * 0.9; let any = false;
+      interior.sills.forEach(({ x0, w, y, top }) => {
+        for (let wy = top + 2; wy < y; wy += 1) {
+          const z = interior.yf - wy; // the window's pixel, its height above the floor
+          for (let wx = x0; wx < x0 + w; wx += 1) {
+            if (!out[wy * W + wx]) continue; // (the leading, the mullion)
+            for (let D = 0; D < 400; D += 1) {
+              const h = z - D * ta * 0.5; const sx = Math.round(wx + D * side * 0.5); const sy = Math.round(interior.yf + D * 0.25 - h);
+              if (sx < 0 || sx >= W || sy >= H) break;
+              if (h <= 0) { if (sy >= 0) beam[sy * W + sx] = 2; break; }
+              if (D > 1 && sy >= 0 && !beam[sy * W + sx]) beam[sy * W + sx] = 1;
+            }
+            any = true;
+          }
+        }
+      });
+      if (any) interior.beam = beam;
+    }
+    // the light spread out, not stamped: the shaft and its patch blurred (two box passes, about a
+    // gaussian), and the patch's glow thrown back wide round the room by the floor and the walls
+    const blur = (a, r) => { // separable box blur, edges clamped
+      const t = new Float32Array(W * H); const o = new Float32Array(W * H);
+      for (let y = 0; y < H; y += 1) { let acc = 0; for (let x = -r; x <= r; x += 1) acc += a[y * W + clamp(x, 0, W - 1)];
+        for (let x = 0; x < W; x += 1) { t[y * W + x] = acc / (2 * r + 1); acc += a[y * W + Math.min(W - 1, x + r + 1)] - a[y * W + Math.max(0, x - r)]; } }
+      for (let x = 0; x < W; x += 1) { let acc = 0; for (let y = -r; y <= r; y += 1) acc += t[clamp(y, 0, H - 1) * W + x];
+        for (let y = 0; y < H; y += 1) { o[y * W + x] = acc / (2 * r + 1); acc += t[Math.min(H - 1, y + r + 1) * W + x] - t[Math.max(0, y - r) * W + x]; } }
+      return o;
+    };
+    let shaft = null; let patch = null; let bounce = null;
+    if (interior.beam) {
+      const s0 = new Float32Array(W * H); const p0 = new Float32Array(W * H);
+      for (let i = 0; i < W * H; i += 1) { if (beam[i] === 1) s0[i] = 1; else if (beam[i] === 2) p0[i] = 1; }
+      shaft = blur(blur(s0, 2), 2); patch = blur(blur(p0, 2), 2); bounce = blur(blur(p0, 9), 9);
+    }
+    const sunC = look.sun; const sunW = [sunC[0], sunC[1] * 0.88, sunC[2] * 0.66]; // (warmer indoors: white read as a glare on the plaster)
     for (let y = 0; y < H; y += 1) {
       const vy = 0.72 + 0.28 * clamp(y / (H * 0.3));
       for (let x = 0; x < W; x += 1) {
@@ -4430,7 +5554,9 @@ f11111f2.
           const dx = Math.abs(x - p.x) / (p.w * 0.5 + (y - interior.yf) * 0.6);
           if (dx < 1) v *= 1 + (1 - dx) * (0.35 - 0.25 * look.night) * (1 - (y - interior.yf) / (H - interior.yf + 1) * 0.5);
         });
-        ibase[i] = pack(unpack(ipal32[idx[i]]).map((c) => c * v));
+        let c = unpack(ipal32[idx[i]]).map((q) => q * v);
+        if (shaft) c = mix(c, sunW, Math.min(0.2, 0.05 * shaft[i] + 0.15 * patch[i] + 0.25 * bounce[i])); // the shaft, its patch on the floor, the room lit round them
+        ibase[i] = pack(c);
       }
     }
   }
@@ -4439,19 +5565,25 @@ f11111f2.
     if (loom && !reduce && interior.deco.some((d) => d.type === 'ising')) loomSweep();
     interior.tk = (interior.tk || 0) + 1; const tk = interior.tk;
     if (!reduce) interior.deco.forEach((d) => {
-      if (d.type === 'langton' && ant) antStep(12);
-      else if (d.type === 'galton' && galton) galtonStep();
+      if (d.type === 'galton' && galton) galtonStep();
       else if (d.type === 'life' && life && tk % 6 === 0) lifeStep();
-      else if (d.type === 'buffon' && buffon && tk % 4 === 0) buffonDrop(d.w, d.h);
       else if (d.type === 'slits' && slits && tk % 2 === 0) { slits.hits.push([Math.floor(Math.random() * d.w), Math.floor(slitsHit(d.h))]); if (slits.hits.length > 500) slits.hits = []; }
     });
-    interior.flames.forEach((f) => { if (f.hearth) stepCells(interior.cells, 9, 14); });
+    const heat = heatOf();
+    interior.flames.forEach((f) => { if (f.hearth) stepCells(interior.cells, 9, 14, heat); });
+    if (heat < 0.35 && !interior.toldEmbers && interior.flames.some((f) => f.hearth)) { interior.toldEmbers = true; say('The fire has burned down to embers. Click the hearth to put a log on.'); }
     interior.motes.forEach((m) => { m.x += Math.sin(now() * 0.4 + m.ph) * 0.15; m.y += Math.cos(now() * 0.3 + m.ph) * 0.1; });
   }
 
   function drawInterior(t) {
     const { W, H, out, idx, lights, flames, stars, motes, blinks } = interior;
     ibuf.set(ibase);
+    const bubble = (x, y, what) => { // a little speech bubble: cream, a dark rim, its tail down to the speaker
+      const w = what === '!' ? 5 : 8; const INK = pack([246, 240, 224]); const RIM = pack([60, 50, 60]);
+      for (let yy = 0; yy < 5; yy += 1) for (let xx = 0; xx < w; xx += 1) { const edge = yy === 0 || yy === 4 || xx === 0 || xx === w - 1; const corner = (yy === 0 || yy === 4) && (xx === 0 || xx === w - 1); if (!corner) put(x + xx, y + yy, edge ? RIM : INK); }
+      put(x + 2, y + 5, RIM); put(x + 3, y + 6, RIM);
+      if (what === '!') { put(x + 2, y + 1, RIM); put(x + 2, y + 3, RIM); } else [2, 4, 6].forEach((xx) => put(x + xx - 1, y + 2, RIM));
+    };
     const put = (x, y, c) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && x < W && y >= 0 && y < H) ibuf[y * W + x] = c; };
     const blend = (x, y, rgb, a) => {
       x = Math.round(x); y = Math.round(y);
@@ -4464,6 +5596,15 @@ f11111f2.
       });
     }
     if (look.night < 0.5) motes.forEach((m) => blend(m.x, m.y, [255, 250, 220], 0.5 * (0.5 + 0.5 * Math.sin(t + m.ph))));
+    if (interior.beam) { // dust turning in the sunbeam, seen only where the light catches it
+      const bm = interior.beam;
+      if (!interior.dust) { const cells = []; for (let i = 0; i < bm.length; i += 7) if (bm[i] === 1) cells.push(i); interior.dust = Array.from({ length: Math.min(24, cells.length) }, () => { const i = cells[Math.floor(Math.random() * cells.length)]; return { x: i % W, y: Math.floor(i / W), ph: Math.random() * 6 }; }); }
+      interior.dust.forEach((m) => {
+        if (!reduce) { m.x += Math.sin(t * 0.3 + m.ph) * 0.05; m.y += Math.cos(t * 0.23 + m.ph * 2) * 0.04 + 0.01; }
+        const i = Math.round(m.y) * W + Math.round(m.x);
+        if (bm[i] === 1) blend(m.x, m.y, [255, 246, 214], 0.22 + 0.18 * Math.sin(t * 1.3 + m.ph)); // (a few, faint: many bright ones drew the shaft as a dotted column)
+      });
+    } else interior.dust = null;
     blinks.forEach((b) => put(b.x, b.y, pal32[Math.sin(t * 0.8 + b.ph) > 0.95 ? I.OUTLINE : I.CREAM]));
     // a discreet hint: a glint passes from one thing to the next, as candlelight would catch it
     if (hl < 0 && !reduce && interior.slots.length) {
@@ -4484,6 +5625,12 @@ f11111f2.
     }
     interior.deco.forEach((d) => {
       const P = (n) => pal32[I[n]];
+      if (d.type === 'copyist') { // the hand and the quill go along the line, back to the inkhorn when the hourglass turns
+        const k = reduce ? 0.4 : (t % 60) / 60; const dip = k > 0.93;
+        const hx = dip ? d.x + 8 : d.x + 1 + Math.round(k * 6 / 0.93); const hy = (dip ? d.y - 1 : d.y + 1 - Math.floor((hx - d.x) / 4)) - (Math.floor(t * 5) % 2);
+        put(hx - 1, hy + 1, P('SKIN')); put(hx, hy, P('SKIN_SH')); put(hx + 1, hy - 1, P('BEARD_HI')); put(hx + 2, hy - 2, P('BEARD')); // hand, quill, its feather
+        for (let x = d.x - 3; x < hx - 1; x += 1) put(x, hy + 2, P('BLACKFUR')); // the sleeve
+      }
       if (d.type === 'hourglass') { // sand runs for a minute, then the glass is turned
         const k = reduce ? 0.5 : (t % 60) / 60;
         put(d.x - 2, d.y, P('TIMBER_HI')); put(d.x + 2, d.y, P('TIMBER_HI')); put(d.x - 2, d.y + 8, P('TIMBER_HI')); put(d.x + 2, d.y + 8, P('TIMBER_HI'));
@@ -4506,52 +5653,115 @@ f11111f2.
         });
       } else if (d.type === 'cabinet') { // a keepsake per curiosity found, four to a shelf
         const KEEP = ['GOLD', 'FL_RED', 'ARM_HI', 'FL_BLUE', 'GRASS_HI', 'CREAM', 'RUST_HI', 'FL_VIOLET'];
-        { const x = d.x + d.w - 5; const y = d.y + 5; // Blanc Blanc, a little white cat with black patches, always on the top shelf
-          put(x, y - 2, P('FL_WHITE')); put(x + 2, y - 2, P('OUTLINE')); put(x, y - 1, P('FL_WHITE')); put(x + 1, y - 1, P('FL_WHITE')); put(x + 2, y - 1, P('FL_WHITE'));
-          put(x, y, P('FL_WHITE')); put(x + 1, y, P('OUTLINE')); put(x + 2, y, P('FL_WHITE')); put(x + 3, y, P('FL_WHITE')); }
+        { const x = d.x + d.w - 7; const y = d.y; // Blanc Blanc, a little white cat with black patches, always on the top shelf, sitting, facing us
+          ['O...W.', 'OWWWW.', 'WOWOW.', '.WWW..', 'WWWWWW', 'WWOWW.'].forEach((row, j) => [...row].forEach((c, i) => { if (c !== '.') put(x + i, y + j, P(c === 'W' ? 'FL_WHITE' : 'OUTLINE')); })); }
         curiosOf().found.forEach((k, j) => { const row = Math.floor(j / 4) % 4; const col = row === 0 ? Math.min(j % 4, 1) : j % 4; const x = d.x + 1 + col * 3; const y = d.y + 5 + row * 7;
           put(x, y, P(KEEP[(k.length + j) % KEEP.length])); put(x, y - 1, P(KEEP[(k.charCodeAt(0) + j) % KEEP.length])); });
       } else if (d.type === 'slits') {
-        slits ||= { hits: [] };
-        slits.hits.forEach(([x, y]) => put(d.x + x, d.y + y, P('CREAM')));
-      } else if (d.type === 'foucault') { // the bob swings along a plane that turns with the hours; pegs knocked down so far today
-        const hrs = Date.now() / 3600e3; const phi = -((hrs * foucaultRate) % 360) * (Math.PI / 180);
-        const now0 = new Date(); const today0 = (now0.getHours() + now0.getMinutes() / 60) * foucaultRate;
-        for (let k = 0; k < 16; k += 1) { // pegs on the rail
-          const a = (k / 16) * 6.283; const down = ((k * 22.5) % 180) < today0 % 180 || today0 >= 180;
-          const x = d.x + Math.round(Math.cos(a) * d.rx); const y = d.fy + Math.round(Math.sin(a) * d.ry);
-          put(x, y, P(down ? 'TIMBER_SH' : 'FL_RED')); if (!down) put(x, y - 1, P('FL_RED'));
-        }
-        const sw = reduce ? 0.7 : Math.cos(t * (2 * Math.PI / 4)); // a 4 s period (it would be 16 s for a 67 m wire)
-        const bx = d.x + Math.cos(phi) * d.rx * 0.85 * sw; const by = d.fy - 3 + Math.sin(phi) * d.ry * 0.85 * sw;
-        const n = Math.max(1, Math.round(by - d.top));
-        for (let k = 0; k < n; k += 1) put(d.x + ((bx - d.x) * k) / n, d.top + k, P('ARM_SH'));
-        put(bx, by, P('GOLD')); put(bx + 1, by, P('GOLD_SH')); put(bx, by + 1, P('GOLD_SH')); put(bx - 1, by, P('GOLD_HI')); put(bx, by + 2, P('ARM_SH'));
-        put(d.x + Math.cos(phi) * d.rx * 0.85 * sw, d.fy + Math.sin(phi) * d.ry * 0.85 * sw, P('TIMBER_SH')); // its shadow
-      } else if (d.type === 'langton') {
-        const a = antOf(d.w, d.h);
-        for (let y = 0; y < d.h; y += 1) for (let x = 0; x < d.w; x += 1) if (a.g[y * d.w + x]) put(d.x + x, d.y + y, P((x + y) % 5 ? 'FL_WHITE' : 'PLASTER'));
-        put(d.x + a.x, d.y + a.y, P('FL_RED'));
+        slits ||= { hits: [] }; // each spot glows by its count, so the stripes build up; the last photon flashes
+        const n = new Uint16Array(d.w * d.h); slits.hits.forEach(([x, y]) => { n[y * d.w + x] += 1; });
+        const RAMP = ['ARM_SH', 'ARM', 'ARM', 'PLASTER', 'PLASTER', 'PLASTER_HI'];
+        n.forEach((c, i) => { if (c) put(d.x + (i % d.w), d.y + Math.floor(i / d.w), P(RAMP[Math.min(RAMP.length - 1, c - 1)])); });
+        const last = slits.hits[slits.hits.length - 1]; if (last) put(d.x + last[0], d.y + last[1], P('CREAM'));
       } else if (d.type === 'galton') {
         const g = galtonOf(7);
         g.bins.forEach((c, k) => { for (let j = 0; j < c; j += 1) put(d.x + 1 + 2 * k, d.y + 33 - j, P('ARM_SH')); });
         if (g.ball) put(d.x + 8 - g.ball.r + 2 * g.ball.k, d.y + 2 + g.ball.r * 2, P('ARM_HI'));
       } else if (d.type === 'life') {
         const L = lifeOf(d.w, d.h);
-        for (let y = 0; y < d.h; y += 1) for (let x = 0; x < d.w; x += 1) put(d.x + x, d.y + y, L.g[y * d.w + x] ? P('CREAM') : P((x + y) % 2 ? 'OUTLINE' : 'SLATEB'));
-      } else if (d.type === 'buffon') {
-        const b = buffonOf(4, 3);
-        b.recent.forEach((q) => { const dx = Math.cos(q.a) * b.l / 2; const dy = Math.sin(q.a) * b.l / 2; for (let k = -2; k <= 2; k += 1) put(d.x + q.x + (dx * k) / 2, d.y + q.y + (dy * k) / 2, P(q.hit ? 'FL_RED' : 'ARM_HI')); });
-      } else if (d.type === 'ising') { // red up, blue down, every other stitch a shade darker
-        const lm = loomOf(d.w, d.h); const up = unpack(P('FLAG')); const dn = unpack(P('FLAG2'));
+        for (let y = 0; y < d.h; y += 1) for (let x = 0; x < d.w; x += 1) put(d.x + x, d.y + y, L.g[y * d.w + x] ? P((x * 3 + y) % 5 ? 'PLASTER' : 'PLASTER_HI') : P('SLATEB')); // (chalk on slate, like the schoolroom's board)
+      } else if (d.type === 'ising') { // red up, blue down, in dyed wool: the warp every third thread, the weft every other row
+        const lm = loomOf(d.w, d.h); const wool = [70, 52, 40];
+        const up = mix(unpack(P('FLAG')), wool, 0.3); const dn = mix(unpack(P('FLAG2')), wool, 0.3);
         for (let y = 0; y < d.h; y += 1) {
-          for (let x = 0; x < d.w; x += 1) put(d.x + x, d.y + y, pack(mix(lm.s[y * d.w + x] > 0 ? up : dn, [0, 0, 0], (x + y) % 2 ? 0.15 : 0)));
+          for (let x = 0; x < d.w; x += 1) put(d.x + x, d.y + y, pack(mix(lm.s[y * d.w + x] > 0 ? up : dn, [0, 0, 0], (x % 3 === 0 ? 0.18 : 0) + (y % 2 ? 0.08 : 0))));
         }
-      } else if (d.type === 'gear') { // a rim, a hub, teeth that turn
+      } else if (d.type === 'fringes') { // the slit's light on the floor: sinc^2, each colour its own width
+        const sv = skyFn().sun; const alt = Math.asin(clamp(sv[2], -1, 1));
+        if (alt > 3 * deg && look.night < 0.3 && weather.cover < 0.75 && !WET[weather.kind]) {
+          const phi = Math.atan2(sv[0], -sv[1]); const fy = interior.yf + 4 + Math.round(Math.min(14, 0.25 * (interior.yf - d.y - d.h / 2) / Math.tan(alt)));
+          const cx = d.x + Math.round(Math.tan(clamp(phi, -1.1, 1.1)) * 10); const sinc2 = (u) => (u === 0 ? 1 : (Math.sin(u) / u) ** 2);
+          for (let x = -18; x <= 18; x += 1) {
+            const rgb = [0.65, 0.53, 0.44].map((lam) => sinc2((x * 0.35) / lam)); // (red, green, blue: wavelengths in proportion)
+            for (let y = 0; y < 2; y += 1) blend(cx + x, fy + y, rgb.map((q) => 160 + 95 * q), clamp(0.5 * Math.max(...rgb)));
+          }
+        }
+      } else if (d.type === 'cinema') { // the film's frame on the sheet, flickering; the beam from the lantern
+        const fm = real.melies; if (!fm || !fm.film) return;
+        if (!cinemaT0) cinemaT0 = t; const k = Math.floor((t - cinemaT0) * fm.fps) % fm.n; const per = (fm.w * fm.h) / 4;
+        const flick = reduce ? 1 : 0.86 + 0.14 * Math.random(); const G = [16, 92, 176, 244].map((v) => pack([v * flick, v * flick * 0.97, v * flick * 0.9]));
+        for (let y = 0; y < fm.h; y += 1) for (let x = 0; x < fm.w; x += 1) {
+          const i = y * fm.w + x; const byte = fm.film[k * per + (i >> 2)]; const v = (byte >> (6 - 2 * (i & 3))) & 3;
+          put(d.x + 1 + x, d.y + 1 + y, G[v]);
+        }
+        for (let s0 = 0; s0 <= 1; s0 += 0.02) { // the beam: a faint cone through the dust
+          const ex = d.x + d.w / 2 + (Math.random() - 0.5) * d.w * 0.9; const ey = d.y + d.h / 2 + (Math.random() - 0.5) * d.h * 0.9;
+          blend(d.lx + (ex - d.lx) * s0, d.ly + (ey - d.ly) * s0, [255, 246, 220], 0.12);
+        }
+      } else if (d.type === 'ladder') { // two stiles leaning from the rail, rungs every third row
+        const Q = (n) => ipal32[I[n]]; const lx = Math.round(d.a + (d.b - d.a) * ladderF); const len = d.foot - d.top; const lean = 6;
+        for (let y = 0; y <= len; y += 1) {
+          const dx = Math.round((y / len) * lean); put(lx + dx, d.top + y, Q('TIMBER_HI')); put(lx + 4 + dx, d.top + y, Q('TIMBER_SH'));
+          if (y % 3 === 2) for (let k = 1; k < 4; k += 1) put(lx + dx + k, d.top + y, Q('TIMBER'));
+        }
+        put(lx, d.top, Q('GOLD')); put(lx + 4, d.top, Q('GOLD')); // the hooks on the rail
+      } else if (d.type === 'astroclock') { // the hours round the rim (noon at the top), the gilt sun on its hand, the sign, the moon
+        const dd = clockFn(); const hr = dd.getHours() + dd.getMinutes() / 60; const R = d.r;
+        for (let k = 0; k < 24; k += 1) { const a = (k / 24) * 6.283; put(d.x + Math.round(Math.sin(a) * (R - 0.6)), d.y - Math.round(Math.cos(a) * (R - 0.6)), P(k % 6 === 0 ? 'GOLD_HI' : 'GOLD_SH')); }
+        const days = dd.getTime() / 864e5 + 2440587.5 - 2451545.0; const sign = Math.floor((window.sunEcliptic ? window.sunEcliptic(days).lambda : 0) / 30) % 12;
+        for (let k = 0; k < 12; k += 1) { const a = (k / 12) * 6.283; put(d.x + Math.round(Math.sin(a) * (R - 3)), d.y - Math.round(Math.cos(a) * (R - 3)), P(k === sign ? 'FL_RED' : k % 2 ? 'T_AZURE' : 'T_ARGENT')); }
+        const ang = ((hr - 12) / 24) * 6.283; // the hand
+        for (let r = 1; r < R - 1; r += 1) put(d.x + Math.round(Math.sin(ang) * r), d.y - Math.round(Math.cos(ang) * r), P('GOLD'));
+        put(d.x + Math.round(Math.sin(ang) * (R - 1)), d.y - Math.round(Math.cos(ang) * (R - 1)), P('GOLD_HI'));
+        const age = window.moon ? window.moon(dd) : { age: 15 }; const lit = 1 - Math.abs(age.age - 14.77) / 14.77; // the moon in the middle, lit as tonight
+        [[-1, 0], [0, 0], [1, 0], [0, -1], [0, 1]].forEach(([dx, dy]) => put(d.x + dx, d.y + dy, P((dx === 0 || lit > 0.5 || (dx > 0) === (age.age < 14.77)) && lit > 0.15 ? 'CREAM' : 'SLATEB')));
+      } else if (d.type === 'portraits') { // the portrait by the line the master points at catches the light
+        const md = interior.deco.find((q) => q.type === 'master'); const st = md && masterAt(md, t);
+        if (st && st.pointing && Math.floor(t * 2) % 2) { const x = d.xs[st.stop]; const y = d.ys[st.stop]; put(x - 1, y - 1, P('GOLD_HI')); put(x + d.w, y + d.h, P('GOLD_HI')); }
+      } else if (d.type === 'master') { // four stops along the board: he points at a line, turns to the class, walks on
+        const ms = masterAt(d, t); d.x = ms.x; d.facing = ms.facing;
+        const sp = ms.facing > 0 ? SPRITES.master : SPRITES.masterL; const y0 = d.yb - sp.h - (ms.walking && Math.floor(t * 4) % 2 ? 1 : 0);
+        for (let y = 0; y < sp.h; y += 1) for (let x = 0; x < sp.w; x += 1) {
+          const c = sp.px[y * sp.w + x]; const X = Math.round(ms.x) + x; const Y = y0 + y;
+          if (c >= 0 && X >= 0 && X < W && Y >= 0 && Y < H && !interior.front[Y * W + X]) put(X, Y, ipal32[c]); // (behind the desks and the pupils)
+        }
+        if (ms.pointing) { // the line pointed at catches the light; his staff's knob glints
+          const ly = d.top + 5 + (ms.stop % d.rows) * 7; const lx = Math.round(ms.x) + sp.w + 2;
+          for (let k = 0; k < 6; k += 1) blend(lx + k * 3, ly, [255, 246, 214], 0.5 + 0.3 * Math.sin(t * 4 + k));
+          put(Math.round(ms.x) + ORB[0], y0 + ORB[1], P('GOLD_HI'));
+        }
+        if (ms.caught) bubble(Math.round(ms.x) + 4, y0 - 7, '!');
+      } else if (d.type === 'chatter') { // while his back is turned the pupils whisper, two at a time
+        const m = interior.deco.find((q) => q.type === 'master'); const ms = m && masterAt(m, t);
+        const ch = chatAt(d.heads, t); d.now = ch;
+        const near = ch && ms && ch.some((h) => Math.abs(h.x - (ms.x + SPRITES.master.w / 2)) < 18); // (not under his nose)
+        if (ch && ms && ms.facing > 0 && !near) { const [a, b] = ch; const who = Math.floor(t / 0.9) % 2 ? b : a; bubble(who.x - 3, who.y - 9, '...'); }
+      } else if (d.type === 'engine') { // the glass: amber lines typed on the dark, a cursor; the orb over it breathing
+        const BG = pack([24, 20, 14]); const AMB = [232, 168, 56];
+        for (let y = 0; y < d.h; y += 1) for (let x = 0; x < d.w; x += 1) {
+          const corner = (x === 0 || x === d.w - 1) && (y === 0 || y === d.h - 1); if (corner) continue;
+          put(d.x + x, d.y + y, BG);
+        }
+        const ln = Math.floor(reduce ? 3 : t * 1.5); // a line every two thirds of a second, scrolling
+        for (let r = 0; r < 4; r += 1) {
+          const len = 2 + ((ln - 3 + r) * 7919 % 6 + 6) % 6; const y = d.y + 2 + r * 2;
+          for (let k = 0; k < len; k += 1) put(d.x + 2 + k, y, pack(AMB.map((c) => c * (r === 3 ? 1 : 0.55 + r * 0.12))));
+          if (r === 3 && Math.floor(t * 2) % 2) put(d.x + 3 + len, y, pack(AMB));
+        }
+        const a = reduce ? 0.6 : 0.5 + 0.35 * Math.sin(t * 1.7);
+        for (let y = -2; y <= 2; y += 1) for (let x = -2; x <= 2; x += 1) { // the orb: a glass ball, a light in it, a halo round it
+          const r = Math.hypot(x + 0.5, y + 0.5); const X = d.ox - 1 + x; const Y = d.oy + y;
+          if (r < 1.3) put(X, Y, pack([170 + 80 * a, 210 + 40 * a, 255])); else if (r < 2.4) put(X, Y, pack([70 + 60 * a, 110 + 60 * a, 170 + 50 * a])); else if (r < 3.2) blend(X, Y, [160, 200, 255], 0.35 * a);
+        }
+        put(d.ox - 2, d.oy - 1, pack([255, 255, 255])); // (a glint on the glass)
+      } else if (d.type === 'gear') { // a brass wheel: a solid disc, its rim, spokes and teeth that turn, the axle
         const a0 = reduce ? 0 : t * d.sp;
-        for (let a = 0; a < 6.28; a += 0.35) put(d.x + Math.round(Math.cos(a) * d.r), d.y + Math.round(Math.sin(a) * d.r), P('GOLD'));
-        for (let k = 0; k < 6; k += 1) { const a = a0 + (k * Math.PI) / 3; put(d.x + Math.round(Math.cos(a) * (d.r + 1)), d.y + Math.round(Math.sin(a) * (d.r + 1)), P('GOLD_HI')); }
-        put(d.x, d.y, P('ARM_SH'));
+        for (let y = -d.r; y <= d.r; y += 1) for (let x = -d.r; x <= d.r; x += 1) {
+          const r = Math.hypot(x, y); if (r > d.r + 0.3) continue;
+          const spoke = r > 1.2 && r < d.r - 0.8 && [0, 1, 2].some((k) => Math.abs(Math.sin(Math.atan2(y, x) - a0 - (k * Math.PI) / 3)) * r < 0.6);
+          put(d.x + x, d.y + y, P(r > d.r - 0.8 ? 'GOLD' : spoke ? 'GOLD' : r < 1.2 ? 'ARM_SH' : 'GOLD_SH'));
+        }
+        const nt = 2 * d.r + 2; for (let k = 0; k < nt; k += 1) { const a = a0 + (k * 2 * Math.PI) / nt; put(d.x + Math.round(Math.cos(a) * (d.r + 1)), d.y + Math.round(Math.sin(a) * (d.r + 1)), P('GOLD_HI')); }
       }
     });
     interior.camps.forEach((c) => { // the campfire through the window, and the two by it
@@ -4562,7 +5772,7 @@ f11111f2.
       put(c.x + 4, c.y, pal32[I.ROBE]); put(c.x + 4, c.y - 1, pal32[I.ROBE]); put(c.x + 4, c.y - 2, pal32[I.HAT]); // the wizard
     });
     lights.forEach((l, k) => { // warm, stepped, flickering
-      const R = l.r * (1 + (reduce ? 0 : 0.05 * Math.sin(t * 11 + k * 2) + 0.03 * Math.sin(t * 23 + k)));
+      const R = l.r * (l.hearth ? 0.35 + 0.65 * heatOf() : 1) * (1 + (reduce ? 0 : 0.05 * Math.sin(t * 11 + k * 2) + 0.03 * Math.sin(t * 23 + k)));
       for (let y = Math.max(0, Math.floor(l.y - R)); y < Math.min(H, l.y + R); y += 1) {
         for (let x = Math.max(0, Math.floor(l.x - R)); x < Math.min(W, l.x + R); x += 1) {
           const i = y * W + x;
@@ -4606,6 +5816,13 @@ f11111f2.
     if (!on || !wide || !interior || !interior.slots.length) { spotsTo([], []); return; }
     const r = plate.getBoundingClientRect(); const k = px * 2;
     spotsTo(Array.from(interior.slots, (b) => b && ({ l: Math.round(r.left + b.x * k), t: Math.round(r.top + b.y * k), w: Math.round(b.w * k), h: Math.round(b.h * k) })), interior.things);
+  }
+  /** The ladder's hotspot follows it: its box in the room, then in viewport px. */
+  function ladderSpot(d) {
+    const lx = Math.round(d.a + (d.b - d.a) * ladderF); const k = interior.ladderK;
+    if (k >= 0) interior.slots[k] = { x: lx - 1, y: d.top, w: 10, h: d.foot - d.top };
+    if (!running) render(now());
+    const r = plate.getBoundingClientRect(); return { l: Math.round(r.left + (lx - 1) * px * 2) };
   }
   const travelling = (on) => root.classList.toggle('travelling', on);
 
@@ -4659,6 +5876,8 @@ f11111f2.
     const t = now(); const anim = animate && !reduce;
     const label = (r) => `Inside the castle: ${ROOM_NAMES[roomOf(r)]}, lit by candles; its window shows the sky over Paris at this hour.`;
     if (id) {
+      fireFed = now(); // (someone keeps the fire while you are away)
+      if (!view.id || roomOf(id) !== roomOf(view.id)) sfx('steps', { floor: ['talks', 'contact', 'research'].includes(roomOf(id)) ? 'stone' : 'wood', n: 4 }); // in: on its floor
       if (view.id && (view.state === 'room' || view.state === 'swap' || view.state === 'in')) {
         if (roomOf(id) === roomOf(view.id)) { view.id = id; return; }
         iprev.set(obuf);
@@ -4748,7 +5967,13 @@ f11111f2.
     if (inBox(fire.x + go - 7, fire.y - 18, 14, 22)) return { kind: 'fire' };
     const c = scene.cellar; const cmx = c.x - scene.M + shift(RATE[L.MID]);
     if (inBox(cmx - 1, c.y - 1, c.w + 2, c.h + 1)) return { kind: 'cellar' };
+    const dm = scene.dream; if (dm && dm.box && inBox(...dm.box)) return { kind: 'dream' };
     if (inBox(knight.x + go, knight.y, SPRITES.knight.w, SPRITES.knight.h)) return { kind: 'knight' };
+    const wk = scene.walker; // the passer-by: the peddler bargains, the rider has a letter
+    if (wk && (wk.kind === 'peddler' || wk.kind === 'rider')) {
+      const yy = Math.min(scene.H - 1, Math.round(wk.y)); const xx = Math.round(scene.pathX[yy]) - scene.M;
+      if (wk.y >= scene.yg ? inBox(xx + groundOff(yy) - 10, yy - 14, 22, 15) : inBox(xx + shift(RATE[L.MID]) - 3, yy - 4, 7, 6)) return { kind: wk.kind };
+    }
     const lmx = shift(RATE[L.MID]) - scene.M;
     const lmx2 = shift(RATE[L.MID]) - scene.M;
     if (scene.starlings && scene.starlings.some((b) => Math.abs(b.x - x) < 3 && Math.abs(b.y - y) < 3)) return { kind: 'murmuration' };
@@ -4775,12 +6000,21 @@ f11111f2.
     if (pl) return { kind: 'planet', name: pl.name, dist: pl.dist };
     const an = scene.angler; if (look.night < 0.5 && inBox(an.x - scene.M + groundOff(an.y + 6), an.y, SPRITES.angler.w + 6, SPRITES.angler.h)) return { kind: 'angler' };
     const hs = scene.horse; if (inBox(hs.x + go, hs.y, SPRITES.horse[0].w, SPRITES.horse[0].h)) return { kind: 'horse' };
+    const sw = scene.scribeWin; if (sw && scribeLate() && inBox(sw.pts[0][0] + lmx2 - 1, sw.pts[0][1] - 2, 5, 6)) return { kind: 'scribe' };
+    const ac = scene.ants; if (antsOut() && inBox(ac.x0 - 3 + groundOff(ac.y0) - scene.M, ac.y0 - 12, 38, 15)) return { kind: 'ants' };
+    if (scene.shoal && scene.shoal.some((f) => Math.abs(x - (f.x + lmx2)) < 3 && Math.abs(y - f.y) < 3)) return { kind: 'shoal' };
+    const hu = scene.hunt; if (hu && real.bruegel && hu.party.some((m) => { const sp = real.bruegel.sprites[m.k]; const yy = Math.round(hu.y + m.dy); const sx = Math.round(hu.x + m.dx) - scene.M + groundOff(yy); return inBox(sx, yy - sp.h - 1, sp.w, sp.h + 1); })) return { kind: 'hunters' };
+    if (real.bruegel && (weather.frost ?? 9) <= -3 && y >= scene.yl0 && y <= scene.yg && x >= scene.hamlet.x0 + lmx2 && x <= scene.hamlet.x1 + 30 + lmx2 && look.night < 0.4) return { kind: 'skaters' };
+    const sa = scene.sapling; if (inBox(sa.x - scene.M + groundOff(sa.y) - 3, sa.y - sa.h - 1, 8, sa.h + 3)) return { kind: 'sapling' };
+    const gg = scene.gauge; if (inBox(gg.x + lmx2 - 2, gg.top - 1, 5, gg.bot - gg.top + 2)) return { kind: 'gauge' };
     const hr = scene.heron; if (inBox(hr.x - scene.M + shift(RATE[L.MID]), hr.y, SPRITES.heron.w, SPRITES.heron.h)) return { kind: 'heron' };
     const ow = scene.owl; const fo = shift(RATE[L.FG]) - scene.M;
     if (look.night > 0.5 && inBox(ow.x + fo - 1, ow.y - 1, SPRITES.owl.w + 2, SPRITES.owl.h + 2)) return { kind: 'owl' };
     const [mhx, mhy] = scene.mill.hub; const mmx = mhx - scene.M + shift(RATE[L.MID]); const ml = scene.mill.len;
     if (inBox(mmx - ml, mhy - ml, 2 * ml + 1, 2 * ml + 14)) return { kind: 'mill' };
     if (inBox(wizard.x + go, wizard.y, SPRITES.wizard.w, SPRITES.wizard.h)) return { kind: 'wizard' };
+    const wi = idxNow[y * scene.W + x]; // the castle's stone itself (its colour after Monet)
+    if (y < scene.gate.crest && y > scene.castleTop && [I.WALL_HI, I.WALL, I.WALL_SH, I.WALL_DK].includes(wi) && Math.abs(x - (scene.M + Math.round(0.64 * scene.Ws) - scene.M + shift(RATE[L.MID]))) < 40) return { kind: 'facade' };
     return null;
   }
   /** The curiosities in sight now, for the keyboard ([ and ] go through them, Enter looks): the
@@ -4789,7 +6023,7 @@ f11111f2.
   const CURIO_NAMES = { cat: 'a cat', knight: 'the knight', wizard: 'the wizard', fire: 'the fire', shield: "the knight's shield", horse: 'the horse',
     cellar: 'the cellar door', heron: 'the heron', mill: 'the windmill', angler: 'the angler', owl: 'the owl', meteor: 'a shooting star', lichen: 'the lichen',
     village: 'the village', watch: 'the watchtower', planet: 'a planet', wmill: 'the water mill', quarry: 'the quarry', falls: 'the waterfall', bees: 'the hives',
-    orchard: 'the orchard', ferry: 'the ferryman', flock: 'the flock', joust: 'the tournament', murmuration: 'the starlings', fireflies: 'the fireflies', burn: "Saint John's fire", seep: 'a spring' };
+    orchard: 'the orchard', ferry: 'the ferryman', flock: 'the flock', joust: 'the tournament', murmuration: 'the starlings', fireflies: 'the fireflies', burn: "Saint John's fire", seep: 'a spring', sapling: 'your oak', gauge: 'the river gauge', dream: "the knight's dream", peddler: 'the peddler', rider: 'the rider', scribe: 'the copyist', ants: 'the ants', shoal: 'the shoal', skip: 'a skimmed stone', facade: "the castle's stone", hunters: "Bruegel's hunters", skaters: 'the skaters' };
   function curioList() {
     const seen = new Map();
     for (let y = 0; y < scene.H; y += 3) for (let x = 0; x < scene.W; x += 3) {
@@ -4800,16 +6034,22 @@ f11111f2.
     }
     return [...seen.values()].map((e) => ({ h: e.h, x: e.xs.reduce((a, v) => a + v, 0) / e.xs.length, y: e.ys.reduce((a, v) => a + v, 0) / e.ys.length })).sort((a, b) => a.x - b.x);
   }
-  const sfx = (name) => { if (window.Sound) window.Sound.cue(name); }; // (silent unless the sound is on)
+  const sfx = (name, o) => { if (window.Sound) window.Sound.cue(name, o); }; // (silent unless the sound is on)
   function talk(hit) {
     found(hit.kind); // the curiosity hunt (script.js)
+    sense('touch'); if (['fire', 'bees', 'orchard'].includes(hit.kind)) sense('smell', 2); if (['village', 'market'].includes(hit.kind)) sense('taste', 2); if (hit.kind === 'watch') sense('sight', 2);
     sfx({ horse: 'neigh', cat: 'meow', owl: 'owl' }[hit.kind]);
     if (hit.kind === 'cat') say(CAT_SAYS[hit.name] || 'A cat looks at you.');
     else if (hit.kind === 'knight' && look.night > 0.7) say('The knight is asleep by the fire. Best not to wake him.');
-    else if (hit.kind === 'knight') { const r = rumour(); say(`The knight looks up from the fire: "${r[0].toUpperCase()}${r.slice(1)}"`); }
+    else if (hit.kind === 'knight' && quoted && now() - quoted.t < 30) { const q = quoted.q; quoted = null; say(`"That is ${q.author}, ${q.work}." He has read more than he lets on.`); }
+    else if (hit.kind === 'knight') {
+      const q = Math.random() < 0.6 ? quoteNow() : null;
+      if (q) { quoted = { q, t: now() }; say(`The knight looks into the fire: "${q.text}" (click him again: whose words?)`); } else { const r = rumour(); say(`The knight looks up from the fire: "${r[0].toUpperCase()}${r.slice(1)}"`); }
+    }
+    else if (hit.kind === 'wizard' && wizardReads(now()) && newsOf()) { say(`The wizard looks up from his book: "The latest from the rookery, traveller: ${newsOf().text}"`); castUntil = now() + 0.8; }
     else if (hit.kind === 'wizard') { say(WIZARD_SAYS[Math.floor(Math.random() * WIZARD_SAYS.length)]); castUntil = now() + 0.8; sparkle(16); }
     else if (hit.kind === 'fire') {
-      say('The fire crackles and throws up sparks.');
+      say('The fire crackles and throws up sparks.'); scene.puff = now() + 1.5; // (a puff of smoke too)
       for (let k = 0; k < 24; k += 1) scene.embers.push({ x: scene.fire.x + (Math.random() - 0.5) * 8, y: scene.fire.y - 10, vy: -(0.8 + Math.random() * 1.4), ph: Math.random() * 6, age: 0, life: 20 + Math.random() * 30 });
     } else if (hit.kind === 'shield') say("On the knight's shield: azure, an armillary sphere or, over a bell curve argent.");
     else if (hit.kind === 'cellar') { say('A low door in the rock. Stone steps go down into the dark.'); descendTo(); }
@@ -4832,7 +6072,9 @@ f11111f2.
       const f = scene.ferry; const e = f.errs; const BARS = '▁▂▃▄▅▆▇█';
       const mean = (a) => (a.length ? (a.reduce((p, v) => p + v, 0) / a.length).toFixed(1) : '-');
       const w = Math.round(weather.wind); const c = ferryCurrent(); const side = c > 0.1 ? `west, ${c.toFixed(1)} px a row` : c < -0.1 ? `east, ${(-c).toFixed(1)} px a row` : 'nowhere much'; // (we face south: +x is west)
-      say(`The ferryman learns his crossing by trial and error (Q-learning): today's wind, ${w} km/h over Paris, sets the current, which pushes him ${side}. `
+      const { n } = visitsOf();
+      const hello = n <= 1 ? 'The ferryman nods: "New in these parts?" ' : n < 6 ? `The ferryman nods: "Back again? That makes ${n} visits." ` : `The ferryman grins: "You again! ${n} visits; you could row it yourself by now." `;
+      say(`${hello}He learns his crossing by trial and error (Q-learning): today's wind, ${w} km/h over Paris, sets the current, which pushes him ${side}. `
         + `${f.n} crossings so far. How far off the jetty he landed, the last ones: ${e.slice(-24).map((v) => BARS[Math.min(7, v)]).join('') || '(none yet)'} `
         + `(mean ${mean(e.slice(-10))} px; at first ${mean(e.slice(0, 10))}).`);
     } else if (hit.kind === 'wmill') {
@@ -4847,8 +6089,9 @@ f11111f2.
       zoomTo(true);
       const open = marketDay(today()) && look.night < 0.3;
       const S0 = scene.sir; const cold = S0 ? ` A cold is going round (day ${S0.day}): ${S0.nodes.filter((n) => n.s === 0).length} houses well, ${S0.nodes.filter((n) => n.s === 1).length} sick (the steam of herb tea at the door), ${S0.nodes.filter((n) => n.s === 2).length} over it; R0 about ${(((S0.beta || 0.3) * 2.5) / (S0.gamma || 0.25)).toFixed(1)}, higher in the cold.` : '';
+      const g = scene.glass; const lights = look.night > 0.5 && g.s.length ? ` Tonight its lights are a spin glass: each pair of houses wants to be lit together, or one lit and the other dark, at random (Sherrington-Kirkpatrick); no setting pleases every pair. They are annealed as the night cools them: ${g.s.filter((v) => v > 0).length} of ${g.s.length} lit, T = ${g.T.toFixed(2)}, energy ${g.E.toFixed(2)} a house, lower as it settles.` : '';
       say((open ? 'Market day in the village. Click the crowd to see the game behind it; the arrow keys walk along the bank, Esc steps back.'
-        : `The village is quiet${look.night < 0.3 ? '' : ' at night'}. Market days: Wednesday, Friday, Saturday and Sunday, by day. The arrow keys walk along the bank, Esc steps back.`) + cold);
+        : `The village is quiet${look.night < 0.3 ? '' : ' at night'}. Market days: Wednesday, Friday, Saturday and Sunday, by day. The arrow keys walk along the bank, Esc steps back.`) + cold + lights);
     } else if (hit.kind === 'market') {
       const mk = scene.market; scene.marketShow = now() + 8;
       say(`Market day: ${mk.wares[0]} and ${mk.wares[1]} today. Each villager weighs the pull of the stalls (it changes with the hour) against the crush around them, and the crowd settles where no one gains by moving: a mean-field Nash equilibrium, found by fictitious play over ${mk.rounds} rounds (gap ${mk.gap.toExponential(0)}). Each villager's policy is a Markov chain on the bank; the crowd is its stationary law, a different one each market day. The bars show its density.`);
@@ -4858,10 +6101,107 @@ f11111f2.
       say(`Lichen on the castle rock, growing while you watch: spores wander at random and take hold where they touch it (diffusion-limited aggregation). ${n} cells so far${D ? `; fractal dimension about ${D.toFixed(2)} (1.71 for a large cluster)` : ''}.`);
     }
     else if (hit.kind === 'owl') say('The owl turns its head right round and hoots: "Who-oo?"');
+    else if (hit.kind === 'hunters') say('Hunters coming home through the snow, their hounds trailing behind them (out of Bruegel\'s "Hunters in the Snow", 1565).');
+    else if (hit.kind === 'skaters') say('Skaters on the frozen river (out of Bruegel\'s "Hunters in the Snow", 1565).');
+    else if (hit.kind === 'facade') {
+      const w = monetTint();
+      say(w ? `The castle's stone at this hour, in this weather: the colour Claude Monet gave Rouen cathedral's in "${w.title}" (${w.year}), one of the thirty canvases he painted of the same portal from dawn to dusk.` : 'The castle\'s walls, grey in the dark.');
+    } else if (hit.kind === 'dream') say(`The knight smiles in his sleep. He dreams of ${scene.dream.name}.`);
+    else if (hit.kind === 'peddler') say(tradeWith());
+    else if (hit.kind === 'rider') say(`The rider does not stop: "A letter for the rookery!" ${scene.walker && scene.walker.news ? `(${scene.walker.news})` : ''}`);
+    else if (hit.kind === 'scribe') say('High in the keep, the scriptorium\'s window is still lit: a copyist bent over his page, his candle burning low. He will stop at one.');
+    else if (hit.kind === 'ants') {
+      const a = scene.ants; const sh = a.picks.length ? a.picks.filter((w) => w === 0).length / a.picks.length : 0.5;
+      say(`Ants between their nest and a fallen apple, two ways round a pebble. None knows which is shorter, but the short way's ants come back sooner and mark it first: the colony settles on it (Goss et al., 1989; the idea behind ant colony optimisation). The last ${a.picks.length} choices: ${Math.round(sh * 100)}% the short way.`);
+    } else if (hit.kind === 'shoal') say(`A shoal of small fish, ${scene.shoal.length} of them, turning as one: each keeps near its neighbours, heads where they head and keeps out of their way, and nobody leads (boids, Reynolds 1987).`);
+    else if (hit.kind === 'sapling') {
+      const { n, first } = visitsOf(); const since = first ? new Date(first).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'today';
+      say(n <= 1 ? 'An acorn has just come up here, by the orchard: yours, planted on this first visit. It will put on a ring each time you come back.'
+        : `Your oak, planted on your first visit (${since}): ${n} rings now, one for each visit. ${scene.sapling.h >= 8 ? 'The red ribbon on its stake is yours.' : 'Still a seedling; come back and it will grow.'}`);
+    } else if (hit.kind === 'gauge') {
+      const r7 = weather.rain7;
+      say(r7 == null ? 'The river gauge by the bridge: red and white bars, a hand apart. No reading today.'
+        : `The river gauge by the bridge. ${Math.round(r7)} mm of rain over Paris this past week: ${r7 > 35 ? 'the river is in spate, over its banks in the low places.' : r7 < 6 ? 'the river is low, its gravel bars showing.' : 'the river runs at its usual level.'}`);
+    }
     else if (hit.kind === 'mill') {
       const w = Math.round(weather.wind);
       say(w < 2 ? 'The mill stands still: not a breath of wind over Paris.' : `The mill's sails turn in the wind: ${w} km/h over Paris.`);
     }
+  }
+  /** A click on the open river (nothing else there): a stone skimmed from the near bank. Its touches
+   *  come closer and quicker as it slows (each bounce loses a share of its speed). */
+  function skim(x, y) {
+    if (!scene || view.state !== 'scene' || zoom || tower) return;
+    const i = y * scene.W + x; if (y < scene.yl0 || y > scene.yg || (idxNow[i] !== I.WATER && idxNow[i] !== I.WATER_HI)) return;
+    const X = x - (shift(RATE[L.MID]) - scene.M); const yb = scene.riverBot(X) - 1; const yt = scene.riverTop(X) + 1;
+    const n = 2 + Math.floor(Math.random() ** 0.8 * 6); const g0 = ((yb - yt) * 0.9 * 0.25) / (1 - 0.75 ** n);
+    const t0 = now(); let yy = yb + 3; let xx = X; let tt = t0; const hits = [];
+    for (let k = 0; k < n; k += 1) { yy -= g0 * 0.75 ** k; xx += (Math.random() - 0.5) * 3; tt += 0.25 * 0.85 ** k; hits.push({ x: Math.round(xx), y: Math.round(yy), t: tt }); }
+    scene.skip = { from: { x: X, y: yb + 4, t: t0 }, hits };
+    found('skip'); sfx('skip', { n });
+    say(`You skim a flat stone across the river: ${n} ${n > 1 ? 'bounces' : 'bounce'}, each shorter than the last.${n >= 6 ? ' A fine throw.' : ''} A stone skips best spun, flat, meeting the water at about 20 degrees (Clanet, Hersen and Bocquet, 2004); every touch sends out rings.`);
+    if (!running) render(now());
+  }
+  /* ---- events on call (the `event` command): each sets the scene up for it and says what it did ---- */
+  const outdoors = () => view.state === 'scene' && !zoom && !tower;
+  const EVENTS = {
+    bolt() { // a bolt grown at once, then the flash and its thunder
+      const b = boltNew(30, Math.round((scene.yl0 - scene.yHor * 0.2) / 2), Math.round(Math.min(scene.W, scene.Ws) * (0.1 + Math.random() * 0.35)), Math.round(scene.yHor * 0.2));
+      for (let k = 0; k < 60 && !b.done; k += 1) boltGrow(b, 40);
+      if (!b.main) return 'The bolt could not find the ground; try again.';
+      scene.bolt = { b, until: tick + 8 }; scene.flash = 3; const km = 0.4 + Math.random() * 3; sfx('thunder', { delay: thunderDelay(km), km });
+      return `Lightning, about ${km.toFixed(1)} km off.`;
+    },
+    dragon() { scene.dragon = null; scene.nextDragon = 0; return 'The dragon is coming.'; },
+    rider() { const n = newsOf(); scene.walker = { y: scene.H + 2, dir: -1, kind: 'rider', news: n ? n.text : 'a letter for the rookery' }; return 'A rider comes up the road with a letter.'; },
+    peddler() { scene.walker = { y: scene.H + 2, dir: -1, kind: 'peddler' }; return 'A peddler pushes his barrow up the road (click him to trade).'; },
+    messenger() { scene.walker = { y: scene.H + 2, dir: -1, kind: 'messenger' }; return 'A messenger on foot, his pennant up.'; },
+    lantern() { scene.walker = { y: scene.top + 1, dir: 1, kind: 'lantern' }; return 'Someone with a lantern comes down from the castle.'; },
+    dream(t) {
+      const ds = dreamsOf().map((d) => [d, Object.keys(DREAMS).find((k) => DREAMS[k][0].test(d.words))]).filter(([, k]) => k);
+      if (!ds.length) return 'The knight has nothing to dream of.';
+      const [d, icon] = ds[Math.floor(Math.random() * ds.length)]; scene.dream = { t0: t, name: d.name, icon, forced: true }; return `The knight nods off and dreams of ${d.name}.`;
+    },
+    hoot(t) { const hr = clockFn().getHours() % 12 || 12; forced.owl = t + hr * 1.6 + 3; for (let k = 0; k < hr; k += 1) scene.hoots.push({ t0: t + 1 + k * 1.6 }); return `The owl hoots the hour: ${hr} times.`; },
+    meteors() { for (let k = 0; k < 6; k += 1) { const dir = Math.random() < 0.5 ? -1 : 1; const v = 2 + Math.random() * 2; scene.meteors.push({ x: Math.random() * scene.W, y: Math.random() * scene.yHor * 0.5, dx: dir * v, dy: v * 0.6, age: 0, life: 8 + k * 2 }); } return 'A handful of shooting stars (best on a dark sky).'; },
+    fireworks(t) { forced.fireworks = t + 15; return 'Fireworks over the castle, a quarter of a minute.'; },
+    skip() { const s0 = scene; const x = Math.round(Math.min(s0.W, s0.Ws) * (0.5 + Math.random() * 0.15)); const X = x + s0.M - shift(RATE[L.MID]); skim(x, Math.round((s0.riverTop(X) + s0.riverBot(X)) / 2)); return null; },
+    shelter(t) { shelterUntil = t + 30; return 'The knight puts up his shelter; the black cat moves under it.'; },
+    read(t) { forced.read = t + 14; return 'The wizard opens his book (click him).'; },
+    shoal(t) { forced.shoal = t + 60; return 'A shoal of fish in the river, west of the bridge.'; },
+    ants(t) { forced.ants = t + 60; return 'The ants come out, by the pebble near the bottom of the meadow.'; },
+    starlings(t) { forced.starlings = t + 60; return 'A murmuration of starlings over the castle.'; },
+    fireflies(t) { forced.fireflies = t + 60; return 'Fireflies, falling into step (best at night).'; },
+    fogsea(t) { forced.fogsea = t + 60; return 'A sea of fog fills the valley.'; },
+    geese() { scene.geese = Array.from({ length: 9 }, (_, k) => ({ x: Math.min(scene.W, scene.Ws) + 10 + Math.ceil(k / 2) * 5, y: Math.round(scene.yHor * 0.3) + Math.ceil(k / 2) * (k % 2 ? 3 : -3) })); return 'Geese, going south-west.'; },
+    birds() { scene.birds = Array.from({ length: 5 }, (_, k) => ({ x: Math.min(scene.W, scene.Ws) + 10 + k * 5, y: scene.yHor * 0.3 + Math.abs(k - 2) * 3 })); return 'Birds across the sky.'; },
+    fish() { const x = scene.M + Math.round(Math.random() * scene.Ws); const y = Math.round((scene.riverTop(x) + scene.riverBot(x)) / 2); scene.fish = { x, y0: y, y, age: 0, dir: 1 }; return 'A fish jumps.'; },
+    bell(t) { scene.ringUntil = t + 5; sfx('bell'); return 'The castle bell rings.'; },
+    banner() { if (!scene.hoist) scene.hoist = { t0: now() }; return 'Your banner goes up the keep.'; },
+    cinema(t) { forced.cinema = t + 90; cinemaT0 = 0; realGet('melies'); if (interior && view.id && roomOf(view.id) === 'talks') { interior = makeInterior(view.id); lightInterior(); publishSpots(view.state === 'room'); } return 'A magic lantern show in the great hall: Méliès, Le Voyage dans la Lune (go to talks).'; },
+    chant(t) { // the office of the hour, or vespers
+      forced.chant = { until: t + 240, office: officeNow(true) || 'vespers' };
+      return `The chapel's ${forced.chant.office}, sung (turn the sound on to hear it; louder close to the village).`;
+    },
+    hunters(t) { if (!real.bruegel) return 'The hunters are not back yet (the painting is still loading).'; forced.hunt = t + 1; return 'Bruegel\'s hunters come home through the meadow, their hounds about them (best in snow: event snowfall).'; },
+    embers(t) { fireFed = t - 200; return 'The workshop fire burns down to embers (in the workshop: click the hearth).'; },
+  };
+  const OUTDOOR = new Set(Object.keys(EVENTS).filter((k) => !['embers', 'banner', 'cinema'].includes(k)));
+
+  /** A click in a room: on the workshop's hearth, a log on the fire. */
+  function roomClick(x, y) {
+    const ix = x >> 1; const iy = y >> 1;
+    const f = interior.flames.find((q) => q.hearth && Math.abs(ix - q.x) <= q.w / 2 + 2 && iy > q.y - 18 && iy <= q.y + 2);
+    if (f) { fireFed = now(); interior.toldEmbers = false; say(heatOf() > 0.9 ? 'You put a log on the fire; it catches and roars.' : 'The fire burns well.'); sfx('crackle'); return; }
+    const pick = (a) => a[Math.floor(Math.random() * a.length)];
+    const m = interior.deco.find((q) => q.type === 'master');
+    if (m && m.x !== undefined && ix >= m.x && ix < m.x + SPRITES.master.w && iy > m.yb - SPRITES.master.h && iy <= m.yb) {
+      const st = masterAt(m, now()); const pt = real.portraits;
+      if (pt && st.pointing && Math.random() < 0.6) { const c = pt.captions[st.stop]; say(`The master taps the board, then the portrait over it: "This line is ${c.name}'s, children: ${c.text.split(';')[0]}."`); } else say(`The master: ${pick(MASTER_TALK)}`);
+      return;
+    }
+    const c = interior.deco.find((q) => q.type === 'chatter');
+    const p0 = c && c.heads.find((h) => Math.abs(ix - h.x) <= 4 && iy >= h.y - 1 && iy <= h.y + h.h); if (p0) say(`A pupil whispers: ${pick(PUPIL_TALK)}`);
   }
   const scenePoint = (e) => {
     const r = plate.getBoundingClientRect();
@@ -4913,13 +6253,21 @@ f11111f2.
       scene.meteors.push({ x: Math.random() * W, y: Math.random() * yHor * 0.5, dx: dir * v, dy: v * (0.4 + Math.random() * 0.5), age: 0, life: 6 + Math.random() * 6 });
     }
     scene.meteors = scene.meteors.filter((m) => { m.x += m.dx; m.y += m.dy; m.age += 1; return m.age < m.life; });
+    // news less than a week old: a rider brings it up the road, once a visit
+    if (!scene.walker && !reduce && t > 6 && !scene.riderDone) {
+      scene.riderDone = true; const n = newsOf(); let told = false;
+      try { told = sessionStorage.getItem('rider') === '1'; } catch { /* private mode */ }
+      if (n && n.age < 7 && !told) { scene.walker = { y: H + 2, dir: -1, kind: 'rider', news: n.text }; try { sessionStorage.setItem('rider', '1'); } catch { /* */ } }
+    }
     // a passer-by on the castle road now and then: peasant or messenger by day, a lantern by night
     if (!scene.walker && !reduce && Math.random() < 0.004) {
       const up = Math.random() < 0.5;
       scene.walker = { y: up ? H + 2 : scene.top + 1, dir: up ? -1 : 1, kind: look.night > 0.5 ? 'lantern' : Math.random() < 0.25 ? 'messenger' : Math.random() < 0.3 ? 'peddler' : 'peasant' };
     }
     if (scene.walker) {
-      const w = scene.walker; w.y += w.dir * (w.y >= yg ? 0.22 : 0.07); // slower far off: perspective
+      const w = scene.walker; w.y += w.dir * (w.y >= yg ? 0.22 : 0.07) * (w.kind === 'rider' ? 2.5 : 1); // slower far off: perspective
+      if (!w.heard && w.y > H - 40 && w.y < H - 30) { w.heard = true; sfx('steps', { floor: 'gravel', n: 6, pan: ((scene.pathX[Math.round(w.y)] - M) / W) * 2 - 1 }); } // close by, on the gravel
+      if (w.kind === 'rider' && w.y < scene.top) say(`A rider gallops up to the castle gate with a letter, fresh news: ${w.news}`);
       if (w.y < scene.top || w.y > H + 3) scene.walker = null;
     }
     if (!scene.fish && look.night < 0.6 && !reduce && Math.random() < 0.01) {
@@ -4929,6 +6277,71 @@ f11111f2.
     if (scene.fish) { const f = scene.fish; f.age += 1; f.x += f.dir * 0.4; f.y = f.y0 - Math.sin((f.age / 12) * Math.PI) * 4; if (f.age > 12) scene.fish = null; }
     if (look.night > 0.7 && !reduce && Math.random() < 0.025) {
       const go0 = groundOff(fire.y) - M; scene.zzz.push({ x: scene.knight.x + go0 + 17, y: scene.knight.y + 2, age: 0 });
+    }
+    { // asleep, the knight dreams now and then of a piece of the research (a bubble, nine seconds)
+      if (scene.dream && (t - scene.dream.t0 > 9 || (look.night <= 0.7 && !scene.dream.forced))) scene.dream = null;
+      const q = new URLSearchParams(location.search).has('dream');
+      if (!scene.dream && look.night > 0.7 && (q || (!reduce && Math.random() < 0.003))) {
+        const ds = dreamsOf().map((d) => [d, Object.keys(DREAMS).find((k) => DREAMS[k][0].test(d.words))]).filter(([, k]) => k);
+        if (ds.length) { const [d, icon] = ds[Math.floor(Math.random() * ds.length)]; scene.dream = { t0: t, name: d.name, icon }; }
+      }
+    }
+    { // the owl hoots the hour at night, once for each (the twelve-hour count)
+      const hr = clockFn().getHours();
+      if (scene.hourSeen === undefined) { scene.hourSeen = hr; if (new URLSearchParams(location.search).has('hoot')) scene.hourSeen = -1; }
+      if (hr !== scene.hourSeen) {
+        scene.hourSeen = hr;
+        if (look.night > 0.5) for (let k = 0; k < (hr % 12 || 12); k += 1) scene.hoots.push({ t0: t + 1 + k * 1.6 });
+      }
+      scene.hoots = scene.hoots.filter((h) => { if (!h.cued && t >= h.t0) { h.cued = true; sfx('owl'); } return t < h.t0 + 1.5; });
+    }
+    if (antsOut() && !reduce && tick % 2 === 0) antsStep(scene.ants);
+    if (tick % 120 === 0) { if (root.classList.contains('sound-on')) sense('hearing'); if (tower || root.classList.contains('photo')) sense('sight'); } // (every ten seconds)
+    { // the hunters come home over the snow now and then (by day), east to west across the meadow
+      const sb = real.bruegel;
+      if (sb && !scene.hunt && !reduce && ((snowCover() > 0.15 && look.night < 0.4 && Math.random() < 0.0015) || (forced.hunt || 0) > t)) {
+        forced.hunt = 0; const hs = sb.sprites.map((q, k) => [q, k]).filter(([q]) => q.role !== 'skater');
+        scene.hunt = { x: M + Math.min(W, Ws) + 4, y: yg + Math.round((H - yg) * 0.12),
+          party: hs.map(([q, k], j) => ({ k, dx: q.role === 'hunter' ? j * 15 : 30 + (j - 2) * 13, dy: q.role === 'hunter' ? -j : 2 + (j % 2) * 4 })) }; // (the hunters ahead, the hounds trailing)
+      }
+      if (scene.hunt) {
+        const hu = scene.hunt; hu.x -= 0.25;
+        if (snowCover() > 0.05 && tick % 6 === 0) hu.party.forEach((m) => { const sp = sb.sprites[m.k]; scene.prints.push({ x: Math.round(hu.x + m.dx + sp.w / 2), y: Math.round(hu.y + m.dy), l: L.GROUND }); });
+        if (scene.prints.length > 400) scene.prints.splice(0, scene.prints.length - 400);
+        if (hu.x < M - 60) scene.hunt = null;
+      }
+    }
+    { // the village's lights, annealed through the night: T falls from dusk (18 h) to the small hours
+      const g = scene.glass; const N = g.s.length;
+      if (N && look.night > 0.5 && tick % 6 === 0) {
+        const d = clockFn(); const hs = (d.getHours() + d.getMinutes() / 60 + 6) % 24; g.T = 0.05 + 1.6 * Math.exp(-hs / 1.6);
+        for (let i = 0; i < N; i += 1) {
+          let f = 0; for (let j = 0; j < N; j += 1) f += g.J[i * N + j] * g.s[j];
+          const dE = 2 * g.s[i] * f; if (dE <= 0 || Math.random() < Math.exp(-dE / g.T)) g.s[i] = -g.s[i];
+        }
+        let E = 0; for (let i = 0; i < N; i += 1) for (let j = i + 1; j < N; j += 1) E -= g.J[i * N + j] * g.s[i] * g.s[j];
+        g.E = E / N; g.wins.forEach((w, i) => { w.lit = g.s[i] > 0; });
+      }
+    }
+    { const h = clockFn().getHours(); if (!reduce && (h >= 21 || h < 2) && tick % 8 === 0) drunkStep(); }
+    if (scene.skip) { // the stone's touches set the water ringing
+      scene.wave ||= waveNew(scene);
+      const wv = scene.wave; const sk = scene.skip;
+      sk.hits.forEach((q) => {
+        if (q.done || t < q.t) return; q.done = true; const yy = q.y - wv.y0;
+        if (yy > 0 && yy < wv.h - 1) [[0, 0, -1.6], [1, 0, -0.8], [-1, 0, -0.8], [0, 1, -0.5], [0, -1, -0.5]].forEach(([dx, dy, a]) => { const i = (yy + dy) * wv.w + q.x + dx; if (wv.wet[i]) wv.u[i] += a; });
+        wv.live = 1;
+      });
+      if (sk.hits.every((q) => q.done) && t > sk.hits[sk.hits.length - 1].t + 0.5) scene.skip = null;
+    }
+    if (scene.wave && scene.wave.live && !reduce) waveStep(scene.wave);
+    { // a shoal in the river west of the bridge, seen when the sun is high and the water still
+      const alt = bodies ? bodies.sun[2] / deg : 0;
+      const on = ((forced.shoal || 0) > t || (alt > 25 && !WET[weather.kind] && weather.cover < 0.7 && (weather.frost ?? 9) > -3)) && !reduce;
+      const x0 = M + Math.round(0.47 * Ws); const x1 = M + Math.round(0.64 * Ws); // (west of the bridge, clear of the menu)
+      if (on && !scene.shoal) scene.shoal = Array.from({ length: 13 }, () => { const x = x0 + 10 + Math.random() * 20; return { x, y: (scene.riverTop(Math.round(x)) + scene.riverBot(Math.round(x))) / 2 + (Math.random() - 0.5) * 2, vx: 0.3, vy: 0 }; });
+      if (!on) scene.shoal = null;
+      if (scene.shoal) shoalStep(scene.shoal, x0, x1, scene.riverTop, scene.riverBot);
     }
     if (scene.market && !reduce) scene.market.folk.forEach((f) => { // a step, now and then, drawn from the policy
       const mk = scene.market;
@@ -4942,7 +6355,7 @@ f11111f2.
     if (!reduce && tick % 2 === 0) lichenGrow(scene.lichen, 150); // (some three minutes to full size)
     scene.zzz = scene.zzz.filter((z) => { z.y -= 0.25; z.x += 0.15; z.age += 1; return z.age < 40; });
     const fest = festival(today());
-    if (fest && fest[0] === 'fireworks' && look.night > 0.4 && !reduce && Math.random() < 0.07) {
+    if (((fest && fest[0] === 'fireworks' && look.night > 0.4) || (forced.fireworks || 0) > t) && !reduce && Math.random() < 0.07) {
       scene.fireworks.push({ rocket: true, x: Math.round(W * (0.5 + Math.random() * 0.3)) + shift(RATE[L.MID]), y: scene.castleTop + 30, top: scene.castleTop - 10 - Math.random() * yHor * 0.4 });
     }
     const sparksOut = [];
@@ -4961,15 +6374,29 @@ f11111f2.
     if (scene.minstrelAt && !reduce && Math.random() < 0.06) scene.notes.push({ x: scene.minstrelAt[0], y: scene.minstrelAt[1], age: 0, ph: Math.random() * 6 });
     scene.notes = scene.notes.filter((n) => { n.y -= 0.3; n.x += Math.sin(n.age * 0.15 + n.ph) * 0.4; n.age += 1; return n.age < 70; });
     if (fest && !scene.toldFest) { scene.toldFest = true; try { if (sessionStorage.getItem('fest') !== fest[0]) { sessionStorage.setItem('fest', fest[0]); say(fest[1]); } } catch { /* private mode */ } }
-    if (weather.kind === 'storm' && !reduce && Math.random() < 0.006) scene.flash = 3;
+    if (weather.kind === 'storm' && !reduce) { // a bolt grows out of sight, then strikes when it will
+      if (scene.bolt && tick > scene.bolt.until) scene.bolt = null;
+      if (!scene.boltGen) scene.boltGen = boltNew(30, Math.round((scene.yl0 - yHor * 0.2) / 2), Math.round(span * (Math.random() < 0.7 ? 0.08 + Math.random() * 0.4 : 0.82 + Math.random() * 0.12)), Math.round(yHor * 0.2)); // (clear of the castle)
+      if (!scene.boltGen.done) boltGrow(scene.boltGen, 12);
+      else if (!scene.bolt && (Math.random() < 0.01 || qBolt)) { // (?bolt: strike when ready, stay a while: previews)
+        scene.bolt = { b: scene.boltGen, until: tick + (qBolt ? 60 : 3) }; scene.boltGen = null; scene.flash = 3;
+        const km = 0.4 + Math.random() * 4; sfx('thunder', { delay: thunderDelay(km), km });
+      } else if (Math.random() < 0.002) scene.flash = 2; // sheet lightning, inside the clouds
+    } else { if (scene.bolt && tick > scene.bolt.until) scene.bolt = null; scene.boltGen = null; }
+    if (scene.walker && snowCover() > 0.05) { // footprints in the snow behind the passer-by
+      const w = scene.walker; const y = Math.round(w.y);
+      if (y !== w.printY && y % 2 === 0 && y > 0 && y < H) {
+        w.printY = y; const near = y >= yg; const side = (y / 2) % 2 ? 1 : -1;
+        scene.prints.push({ x: Math.round(scene.pathX[y]) + (near ? side : 0), y, l: near ? L.GROUND : L.MID });
+        if (scene.prints.length > 400) scene.prints.shift();
+      }
+    }
 
     if (Math.random() < 0.5) {
       scene.embers.push({ x: fire.x + (Math.random() - 0.5) * fw * 0.6, y: fire.y - fh * 0.5,
         vy: -(0.5 + Math.random() * 0.8), ph: Math.random() * 6, age: 0, life: 18 + Math.random() * 30 });
     }
-    if (Math.random() < 0.25 + 0.3 * look.night) {
-      scene.smoke.push({ x: fire.x - 1 + Math.random() * 3, y: fire.y - fh * 0.9, r: 2, age: 0, life: 50 + Math.random() * 40 });
-    }
+    fluidStep(scene.fluid, (0.35 + 0.35 * look.night) * (scene.puff > t ? 3 : 1), windX()); // the campfire's smoke (see fluidStep)
     if (Math.random() < 0.12) scene.fumes.push({ x: chimney.x, y: chimney.y, r: 1, age: 0, life: 60 + Math.random() * 40 });
     const age = (list, move) => list.filter((p) => { p.age += 1; move(p); return p.age < p.life; });
     scene.embers = age(scene.embers, (e) => { e.y += e.vy; e.x += Math.sin(e.age * 0.3 + e.ph) * 0.5 + windX() * 0.2; });
@@ -5008,7 +6435,7 @@ f11111f2.
     });
     if (look.night > 0 && Math.random() < 0.01) { // a window goes out or comes on
       const w = scene.windows[Math.floor(Math.random() * scene.windows.length)];
-      if (w) w.lit = !w.lit;
+      if (w && !w.glass && w !== scene.scribeWin) w.lit = !w.lit;
     }
 
     if (!scene.birds && look.night < 0.3 && Math.random() < 0.004) {
@@ -5023,7 +6450,7 @@ f11111f2.
     { // the murmuration: autumn and winter dusks, a topological Vicsek flock (each bird turns to its
       // seven nearest neighbours' mean heading, Ballerini et al. 2008), pulled about a wandering centre
       const m = today().getMonth(); const alt = bodies ? bodies.sun[2] / deg : 0;
-      const on = [9, 10, 11, 0, 1].includes(m) && alt < 3 && alt > -7 && !WET[weather.kind] && !reduce && !lite;
+      const on = ((forced.starlings || 0) > t || ([9, 10, 11, 0, 1].includes(m) && alt < 3 && alt > -7 && !WET[weather.kind])) && !reduce && !lite;
       if (on && !scene.starlings) scene.starlings = Array.from({ length: 140 }, () => ({ x: W * (0.6 + Math.random() * 0.15), y: H * (0.18 + Math.random() * 0.1), a: Math.random() * 6.28 }));
       if (!on) scene.starlings = null;
       if (scene.starlings) {
@@ -5038,7 +6465,7 @@ f11111f2.
       }
     }
     { // fireflies on summer nights, Kuramoto-coupled: d theta_i/dt = w_i + K r sin(psi - theta_i)
-      const m = today().getMonth(); const on = (m === 5 || m === 6) && look.night > 0.6 && (weather.temp ?? 15) >= 12 && !WET[weather.kind] && !reduce;
+      const m = today().getMonth(); const on = ((forced.fireflies || 0) > t || ((m === 5 || m === 6) && look.night > 0.6 && (weather.temp ?? 15) >= 12 && !WET[weather.kind])) && !reduce;
       if (on && !scene.flies2) scene.flies2 = Array.from({ length: 36 }, () => ({ x: Math.round(W * (0.04 + Math.random() * 0.4)), y: Math.round(yg + 6 + Math.random() * (H - yg - 16)), th: Math.random() * 6.28, w: 2 * Math.PI * (0.8 + Math.random() * 0.15) }));
       if (!on) scene.flies2 = null;
       if (scene.flies2) {
@@ -5088,7 +6515,7 @@ f11111f2.
       fl.dog.a += 0.03;
       fl.sheep.forEach((q, k) => {
         let ax = (fl.sh.x - q.x) * 0.0006 + (Math.random() - 0.5) * 0.02;
-        fl.sheep.forEach((o, j) => { if (j !== k && Math.abs(o.x - q.x) < 4 && Math.abs(o.dy - q.dy) < 3) ax += Math.sign(q.x - o.x || (k - j)) * 0.01; });
+        fl.sheep.forEach((o, j) => { if (j !== k && Math.abs(o.x - q.x) < 5 && Math.abs(o.dy - q.dy) < 3) ax += Math.sign(q.x - o.x || (k - j)) * 0.025; }); // (room for each: closer, they read as one white blot)
         q.vx = clamp(q.vx * 0.92 + ax, -0.06, 0.06); q.x = clamp(q.x + q.vx, fl.a + 2, fl.b - 3);
         if (Math.abs(q.vx) > 0.02) q.dir = Math.sign(q.vx);
         if (Math.random() < 0.003) q.dy = clamp(q.dy + (Math.random() < 0.5 ? -1 : 1), 1, 7);
@@ -5197,9 +6624,12 @@ f11111f2.
       if (canvas) return;
       plate = o.plate; skyFn = o.sky; reduce = o.reduceMotion; clockFn = o.clock || clockFn;
       heraldry = o.heraldry || heraldry; say = o.say || say; rumour = o.rumour || rumour;
-      itemsOf = o.items || itemsOf; found = o.found || found; curiosOf = o.curios || curiosOf; nowOf = o.now || nowOf; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo; doorsOf = o.doors || doorsOf;
+      itemsOf = o.items || itemsOf; found = o.found || found; curiosOf = o.curios || curiosOf; nowOf = o.now || nowOf; visitsOf = o.visits || visitsOf;
+      newsOf = o.news || newsOf; dreamsOf = o.dreams || dreamsOf; tradeWith = o.trade || tradeWith; stalenessOf = o.staleness || stalenessOf; billiardShow = o.billiard || billiardShow; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo; doorsOf = o.doors || doorsOf;
       pendingRoom = root.dataset.room || null;
       label0 = plate.getAttribute('aria-label');
+      realIx(); // (the real things' index: credits now, the things when wanted)
+      ['heures', 'monet', 'bruegel', 'muybridge', 'atget', 'chant', 'quotes', 'viandier'].forEach(realGet); // (those the landscape uses from the start)
       canvas = document.createElement('canvas');
       canvas.setAttribute('aria-hidden', 'true');
       plate.append(canvas);
@@ -5226,7 +6656,7 @@ f11111f2.
       document.addEventListener('focusin', (e) => { const a = pointed(e); hoverId = roomIn(a); if (a) castUntil = now() + 1.2; });
       document.addEventListener('click', (e) => { if (pointed(e)) { castUntil = now() + 0.6; sparkle(24); } });
       // close up, only the market answers (out: the button, or Esc)
-      canvas.addEventListener('click', (e) => { if (tower) return; if (zoom) { villageClick(...scenePoint(e)); return; } const h = isOn() && hitAt(...scenePoint(e)); if (h) talk(h); });
+      canvas.addEventListener('click', (e) => { if (view.state === 'room' && interior) { roomClick(...scenePoint(e)); return; } if (tower) { if (tower.on) towerClick(...scenePoint(e)); return; } if (zoom) { villageClick(...scenePoint(e)); return; } const pt = scenePoint(e); const h = isOn() && hitAt(...pt); if (h) talk(h); else if (isOn()) skim(...pt); });
       document.addEventListener('keydown', (e) => { // [ ] through the curiosities in sight, Enter to look
         if (!isOn() || view.state !== 'scene' || zoom || tower || e.ctrlKey || e.metaKey || e.altKey) return;
         if (e.target instanceof Element && e.target.closest('input, textarea, dialog')) return;
@@ -5250,7 +6680,8 @@ f11111f2.
         if (e.key === 'Escape') { e.preventDefault(); zoomTo(false); }
         else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); e.stopImmediatePropagation(); zoom.pan = (zoom.pan || 0) + (e.key === 'ArrowLeft' ? -8 : 8); }
       }, true);
-      canvas.addEventListener('pointermove', (e) => { canvas.style.cursor = isOn() && (zoom ? zoom.done : hitAt(...scenePoint(e))) ? 'pointer' : ''; });
+      canvas.addEventListener('pointerleave', () => { pointer = null; });
+      canvas.addEventListener('pointermove', (e) => { pointer = scenePoint(e); canvas.style.cursor = isOn() && (zoom ? zoom.done : hitAt(...scenePoint(e))) ? 'pointer' : ''; });
       sync();
     },
     /** New minute, or another hour asked for with `sky`: relight the same scene. */
@@ -5268,7 +6699,13 @@ f11111f2.
     /** Every room seen: the visitor's banner goes up the keep (`instant`: already up). */
     hoist(instant) { if (scene && !scene.hoist) scene.hoist = { t0: instant ? -99 : now() }; else if (!scene) pendingHoist = true; },
     /** The weather over Paris changed (or a preview asked for one). */
-    weather(w) { weather = { ...weather, ...w }; if (scene && !running && isOn()) render(now()); },
+    weather(w) {
+      const iced = () => (weather.temp ?? 9) <= 0 || (weather.frost ?? 9) <= -3; const was = iced();
+      weather = { ...weather, ...w };
+      if (scene) relight();
+      if (interior && view.id && iced() !== was) { interior = makeInterior(view.id); lightInterior(); if (view.state === 'room') publishSpots(true); } // frost on the glass, or gone
+      if (scene && !running && isOn()) render(now());
+    },
     /** Close up on the village (the `village` command); out of a room first. */
     village() { if (scene && view.state === 'scene' && !tower) talk({ kind: 'village' }); },
     /** Out of a close-up or down from the tower (the tour). */
@@ -5278,6 +6715,53 @@ f11111f2.
     /** Up the watchtower (the `tower` command). */
     tower() { if (scene && view.state === 'scene' && !zoom) talk({ kind: 'watch' }); },
     /** Light the thing at index i (hotspot hovered or focused); -1 for none. */
+    /** The event command: call up event `name`; its line for the message bar (or null). */
+    trigger(name) {
+      if (!scene || !EVENTS[name]) return null;
+      const msg = EVENTS[name](now()); if (!running && isOn()) render(now());
+      return msg && OUTDOOR.has(name) && !outdoors() ? `${msg} (Outside: leave the room to see it.)` : msg;
+    },
+    /** Paint frame i of real asset `name` into canvas cv, in its daylight colours; its caption (HTML). */
+    paint(cv, name, i) {
+      const a = real[name]; if (!a) return '';
+      const px0 = a.frameIdx ? a.frameIdx[((i % a.frameIdx.length) + a.frameIdx.length) % a.frameIdx.length] : a.idx;
+      cv.width = a.w; cv.height = a.h; const g = cv.getContext('2d'); const im = g.createImageData(a.w, a.h);
+      for (let k = 0; k < px0.length; k += 1) { const c = px0[k]; if (c < 0) continue; const [r, gg, b] = hex(DAYLIGHT[c]); im.data.set([r, gg, b, 255], k * 4); }
+      g.putImageData(im, 0, 0);
+      const cap = a.months ? a.months[i % 12] : a.captions ? a.captions[i % a.captions.length] : null;
+      return cap ? `<b>${cap.name}.</b> ${cap.text}` : '';
+    },
+    /** Is the lantern show on (for the projector's clatter)? */
+    cinema() { return Boolean(interior && interior.deco.some((d) => d.type === 'cinema')); },
+    /** Draw the astrolabe, set for now, on canvas cv; its caption (HTML). */
+    astrolabe(cv) { return astrolabeDraw(cv, clockFn()); },
+    /** The tavern's fare today: {lean, why, dishes: [{name, what, text}]}, or null before the book has come. */
+    fare() { return fareNow(); },
+    /** The chapel's office now (lauds, prime, vespers, compline) or null, for sound.js's chant. */
+    office() { const o = officeNow(); return o ? { name: o, key: forced.chant && forced.chant.until > now() ? `f${forced.chant.until}` : `${today().toDateString()}-${o}` } : null; },
+    /** Whose work the castle borrows (index.json's credits), for the register. */
+    credits() { return Object.values(realIndex || {}).flatMap((e) => e.credits || []); },
+    /** The events there are. */
+    events() { return Object.keys(EVENTS); },
+    /** Where the sounds' sources stand across the screen (-1 left .. 1 right), for sound.js. */
+    pans() {
+      if (!scene || view.state !== 'scene') return {};
+      const { W, M } = scene; const go = groundOff(scene.fire.y) - M; const mid = shift(RATE[L.MID]) - M;
+      const at = (x) => clamp((x / W) * 2 - 1, -0.9, 0.9); const hm = scene.hamlet;
+      return { fire: at(scene.fire.x + go), horse: at(scene.horse.x + go + 20), owl: at(scene.owl.x + shift(RATE[L.FG]) - M), mill: at(scene.mill.hub[0] + mid),
+        chapel: at((hm.spire ? hm.spire[0] : hm.x0) + mid), ducks: at(scene.ducks[0].x + mid), bell: at(scene.bell.x + mid), village: at((hm.x0 + hm.x1) / 2 + mid) };
+    },
+    /** The library ladder dragged to viewport x: its new hotspot (viewport px), or null. */
+    ladderTo(clientX) {
+      const d = interior && interior.deco.find((q) => q.type === 'ladder'); if (!d) return null;
+      const r = plate.getBoundingClientRect(); const ix = (clientX - r.left) / (px * 2) - 3;
+      ladderF = clamp((ix - d.a) / (d.b - d.a)); return ladderSpot(d);
+    },
+    /** The ladder a step along (k = -1, 1), for the keyboard. */
+    ladderBy(k) {
+      const d = interior && interior.deco.find((q) => q.type === 'ladder'); if (!d) return null;
+      ladderF = clamp(ladderF + k * 0.08); return ladderSpot(d);
+    },
     highlight(i) { hl = i; if (!running && interior && isOn()) render(now()); },
   };
 }());

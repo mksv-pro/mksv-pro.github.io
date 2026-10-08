@@ -162,9 +162,9 @@ def tabs():
 
 
 def stats():
-    counts = (("Quests", "research"), ("Pubs", "publications"), ("Talks", "talks"))
-    return "\n".join(f"      <span>{label}:<b>{len(DATA[k])}</b></span>"
-                     for label, k in counts if DATA[k])
+    counts = (("Quests", "Quests", "research"), ("Pubs", "Tomes", "publications"), ("Talks", "Orations", "talks"))  # (terminal, castle)
+    return "\n".join(f'      <span><i class="lbl" data-castle="{castle}">{label}</i>:<b>{len(DATA[k])}</b></span>'
+                      for label, castle, k in counts if DATA[k])
 
 
 def exits(room, root):
