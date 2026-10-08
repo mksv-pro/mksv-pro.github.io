@@ -2748,10 +2748,20 @@ bbbbbb.
       const half = Math.ceil(ch.length / 2); // the charters either side of the window
       spread(half, S(0), S(0.41), 20).forEach(({ k, row, xc }) => { const [t, i] = ch[k]; slots[i] = charter(xc, Math.round(H * 0.14) + row * 26, t.arms); });
       spread(ch.length - half, S(0.59), S(0.81), 20).forEach(({ k, row, xc }) => { const [t, i] = ch[half + k]; slots[i] = charter(xc, Math.round(H * 0.14) + row * 26, t.arms); });
-      const shTop = Math.round(H * 0.3); shelf(shX, shTop, Math.max(16, BR - shX - 2), yf - shTop);
-      const bh = realGet('heures'); // the book of hours on its lectern, open at this month's page
+      // right of the table, back to front: the book of hours on its lectern (right of the window when as
+      // high as it, under the charters), the engine before it, the bookcase only where both leave it room
+      const bh = realGet('heures'); const chLow = Math.round(H * 0.14) + 21 + 16;
+      const winR = S(0.5) + Math.ceil(ww / 2) + 3; let top = yf - 22;
+      let lx = Math.max(tb.r + 3, top - 15 < Math.round(H * 0.5) + 3 ? winR : 0, Math.min(S(0.7), shX - 30));
+      if (lx + 29 >= S(0.59) - 10 && lx <= S(0.81) + 10) top = Math.min(yf - 12, Math.max(top, chLow));
+      const hoursAt = bh ? [lx - 2, lx + 29] : null;
+      // the engine stands before the lectern's post, below its pages; beside it when the room is too low for that
+      const below = floorY(0.72) - 31 > top + 1; // (its hood under the pages; the slanted desk may hide behind it)
+      const ex = !hoursAt ? Math.min(BR - 24, S(0.74)) : below ? Math.min(BR - 24, lx + 3) : Math.min(BR - 24, hoursAt[1] + 1);
+      const shTop = Math.round(H * 0.3);
+      if (shX >= (hoursAt ? hoursAt[1] : ex + 22) + 1) shelf(shX, shTop, Math.max(16, BR - shX - 2), yf - shTop);
       if (bh) {
-        const lx = Math.max(tb.r + 3, Math.min(S(0.7), shX - 30)); const top = yf - 22; const pg = bh.small; const m = today().getMonth(); // (between the table and the bookcase)
+        const pg = bh.small; const m = today().getMonth();
         rect(lx + 12, top + 6, 3, yf - top - 6, I.TIMBER_SH); rect(lx + 8, yf - 1, 11, 1, I.TIMBER_SH); // its post and foot
         for (let k = 0; k < 28; k += 1) set(lx + k, top + 4 + Math.floor(k / 9), I.TIMBER_HI); // the slanted desk
         rect(lx, top - 13, 13, 16, I.BEARD_HI); for (let r = 0; r < 6; r += 1) rect(lx + 2, top - 11 + r * 2, 9 - (r % 2) * 2, 1, I.BEARD_SH); // the left page: text
@@ -2763,7 +2773,7 @@ bbbbbb.
       rug(S(0.3), floorY(0.6), Math.round((BR - BL) * 0.36));
       { // the scrying engine: an old cabinet of oak and brass, keys like an organ's, a round glass
         // that glows; the terminal opens in it (script.js: openEngine). Its screen and orb live in drawInterior
-        const ex = Math.min(BR - 24, S(0.74)); const eb = floorY(0.72); const cb = eb - 3; // (cb: the cabinet's foot, on four legs)
+        const eb = floorY(0.72); const cb = eb - 3; // (ex: above; cb: the cabinet's foot, on four legs)
         [0, 3, 16, 19].forEach((dx) => rect(ex + dx, cb + 1, 1, 3, dx === 0 || dx === 19 ? I.TIMBER_SH : I.OUTLINE)); rect(ex + 1, eb + 1, 18, 1, I.OUTLINE); // the legs, the shadow
         rect(ex, cb - 8, 20, 9, I.TIMBER_SH); rect(ex + 1, cb - 7, 18, 7, I.TIMBER); rect(ex, cb - 8, 20, 1, I.TIMBER_HI); // the cabinet
         [[2, 7], [11, 7]].forEach(([dx, w]) => { rect(ex + dx, cb - 6, w, 5, I.TIMBER_HI); rect(ex + dx + 1, cb - 5, w - 2, 3, I.TIMBER); }); // two panels
@@ -2934,7 +2944,7 @@ bbbbbb.
       const l = S(0.32); const r = S(0.68); const fit = Math.max(1, Math.floor((r - l) / 13)); const rows = Math.ceil(np / fit) || 1;
       for (let row = 0; row < rows; row += 1) { const y = Math.round(H * 0.5) - row * 17; rect(l - 2, y, r - l + 4, 2, I.TIMBER_HI); rect(l - 2, y + 2, r - l + 4, 1, I.TIMBER_SH); }
       spread(np, l, r, 13).forEach(({ k, row, xc }) => { slots[pubs[k][1]] = bookFace(xc, Math.round(H * 0.5) - row * 17, k); });
-      if (rows < 2) windowArch(S(0.5) - 6, 7, 12, Math.round(H * 0.24));
+      if (rows < 2) windowArch(S(0.5) - 6, 9, 12, Math.round(H * 0.24)); // (its frame under the ladder's rail, at 6)
       rug(S(0.3), floorY(0.55), Sw(0.4));
       { // the game of life on a board on an easel, where the lectern stood
         const lw = 22; const lh = 14; const lx = S(0.5) - lw / 2; const ly = yf - 24;
@@ -3128,7 +3138,6 @@ bbbbbb.
         const ms = SPRITES.master; deco.push({ type: 'master', xa: bl - ms.w + 4, xb: Math.round(bl + (br - bl) * 0.55), yb: yf + 3, top: bt, rows: Math.max(1, Math.floor((ey - bt - 4) / 7)) });
         deco.push({ type: 'chatter', heads });
       }
-      [bl + 12, bl + Math.round((br - bl) * 0.3)].forEach((x) => { rect(x, yf + 9, 5, 2, I.SLATEB); rect(x, yf + 8, 5, 1, I.TIMBER); });
       { const gx0 = dx + Math.round(dw / 2); const gy = yf - 16; // a globe on the master's desk
         for (let y = -3; y <= 3; y += 1) for (let x = -3; x <= 3; x += 1) if (x * x + y * y <= 10) set(gx0 + x, gy + y, (x + y * 2) % 4 === 0 ? I.FERN : I.WATER);
         rect(gx0, gy + 4, 1, 2, I.GOLD_SH); rect(gx0 - 2, gy + 5, 5, 1, I.GOLD); set(gx0 - 4, gy, I.GOLD_SH); set(gx0 + 4, gy, I.GOLD_SH); }
