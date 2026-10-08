@@ -6782,6 +6782,19 @@ bbbbbb.
     },
     /** Into the room of section `id`, or back out (null); script.js calls it as the hash changes. */
     room(id, { animate = true, dir = 0 } = {}) { if (banner()) { root.classList.toggle('room-ready', Boolean(id)); return; } goRoom(id, animate, dir); },
+    /** A still of room `id` at this hour, as a data URL (the tower's frames not yet visited); null
+     *  while the picture is on its way somewhere (asked again later). The live room is put back. */
+    snapshot(id) {
+      if (!scene || !ROOM_NAMES[id] || !['scene', 'room'].includes(view.state)) return null;
+      const keep = interior; const base0 = ibase.slice(); const buf0 = ibuf.slice();
+      try {
+        interior = makeInterior(id); lightInterior(); drawInterior(now());
+        const { W, H } = interior; const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+        const im = cv.getContext('2d').createImageData(W, H); new Uint32Array(im.data.buffer).set(ibuf.subarray(0, W * H));
+        cv.getContext('2d').putImageData(im, 0, 0);
+        return cv.toDataURL();
+      } finally { interior = keep; ibase.set(base0); ibuf.set(buf0); }
+    },
     /** Draw the realm (the map dialog's Paris) into a 240x150 canvas. */
     realm(cv) { if (cv) drawRealm(cv); },
     /** The hour has turned: the bell swings a few seconds. */

@@ -914,12 +914,12 @@ dialog.dungeon canvas {
    (--snap) and their room's line. On its side (.side), the picture is a column on the left. The
    herald speaks under the picture, two lines (a tap: all of it); the status band's buttons go into
    the menu. Overrides the wide castle's fixed layout above. */
-html.climb[data-theme] { --pic-h: clamp(300px, 80vw, 60svh); --cap-h: 3.7rem; scroll-padding-top: .5rem; scroll-padding-bottom: .5rem; }
+html.climb[data-theme] { --pic-h: clamp(300px, 80vw, min(60svh, 28rem)); --cap-h: 3.7rem; scroll-padding-top: .5rem; scroll-padding-bottom: .5rem; }
 html.climb[data-theme] body {
   background: repeating-linear-gradient(0deg, #2b2521 0 1.4rem, #1d1916 1.4rem calc(1.4rem + 2px)), #2b2521;
 }
 html.climb[data-theme] body { padding-bottom: 0; }
-html.climb[data-theme] .status { display: none; }
+html.climb[data-theme] :is(.status, .almanac) { display: none; }
 html.climb[data-theme] .shell { display: block; }
 .floor-slot, .tower-tools { display: none; }
 html.climb[data-theme] .floor-slot {

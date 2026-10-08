@@ -624,6 +624,7 @@ const towerTools = ['cmd-toggle', 'theme-toggle', 'sound-toggle'].map((k) => $(k
 const roofSlot = document.createElement('div');
 roofSlot.className = 'floor-slot roof';
 let floor; // (undefined: not yet placed)
+const roofLine = msgText.textContent;
 const cellar = document.getElementById('cellar'); // the tower's foot (shown by applyTheme in the tower only)
 const floors = () => (cellar && !cellar.hidden ? [...windows, cellar] : windows);
 const slotOf = (id) => (id ? document.getElementById(id).querySelector(':scope > .floor-slot') : roofSlot);
@@ -637,6 +638,15 @@ function mount(slot) { // the live picture into frame `slot`; the frame left kee
   slot.style.removeProperty('--snap');
   slot.append(plateEl);
 }
+// a frame never visited shows a still of its room, drawn a little before it comes into sight
+const stills = new IntersectionObserver((es) => es.forEach(({ target: f, isIntersecting: near }) => {
+  const paint = () => {
+    if (!f.isConnected || f.style.getPropertyValue('--snap') || f.contains(plateEl) || !climbing()) return;
+    const url = window.Hours && window.Hours.snapshot && window.Hours.snapshot(f.parentElement.id);
+    if (url) f.style.setProperty('--snap', `url(${url})`); else setTimeout(paint, 700); // (the castle not ready, or busy)
+  };
+  if (near) paint();
+}), { rootMargin: '600px 0px' });
 function towerLayout() {
   const on = climbing();
   root.classList.toggle('side', on && SIDE.matches);
@@ -645,7 +655,7 @@ function towerLayout() {
     if (isIndex) floors().forEach((w) => {
       if (w.querySelector(':scope > .floor-slot')) return;
       const f = document.createElement('div'); f.className = 'floor-slot'; f.dataset.look = w.dataset.look || ''; f.setAttribute('aria-hidden', 'true');
-      w.prepend(f);
+      w.prepend(f); stills.observe(f);
     });
     if (ribbon.parentElement !== plateEl) plateEl.append(ribbon); // the herald under the picture
     let tools = tabBar.querySelector('.tower-tools');
@@ -685,7 +695,7 @@ function climbFloor() {
   if (id) { root.dataset.room = id; enterRoom(id, dir === 0); } else delete root.dataset.room;
   history.replaceState(null, '', id ? `#${id}` : location.pathname + location.search);
   const win = id && document.getElementById(id);
-  if (win && dir) say(win.dataset.look || '');
+  if (dir) say(win ? win.dataset.look || '' : roofLine); // (back on the roof: the page's own first line)
   if (window.Hours) window.Hours.room(id, { animate: dir !== 0, dir });
   else root.classList.toggle('room-ready', Boolean(id));
 }
