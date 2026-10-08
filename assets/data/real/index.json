@@ -1,0 +1,519 @@
+{
+ "astrolabe": {
+  "v": "d45ef265",
+  "credits": [
+   {
+    "title": "The Bright Star Catalogue, 5th revised ed. (the rete's stars)",
+    "author": "D. Hoffleit and W. H. Warren Jr. (Yale)",
+    "year": "1991",
+    "source": "https://cdsarc.cds.unistra.fr/viz-bin/cat/V/50",
+    "licence": "freely distributed (CDS VizieR V/50)"
+   }
+  ]
+ },
+ "atget": {
+  "v": "2f89cebc",
+  "credits": [
+   {
+    "title": "Enseigne, Au Griffon, 10 rue de Buci",
+    "author": "Eugène Atget",
+    "year": "1900s",
+    "source": "https://commons.wikimedia.org/wiki/File:Atget_-_Enseigne_Au_Griffon_Rue_de_Buci_10,_btv1b105196801.jpeg",
+    "licence": "Public domain"
+   },
+   {
+    "title": "Enseigne, Aux deux Pigeons, 8 rue Clément",
+    "author": "Eugène Atget",
+    "year": "1908",
+    "source": "https://commons.wikimedia.org/wiki/File:Atget_-_Enseigne_(Aux_deux_Pigeons_8_Rue_Cl%C3%A9ment,_btv1b10507021q.jpeg",
+    "licence": "Public domain"
+   },
+   {
+    "title": "Enseigne, Au Bon Puits, 36 rue Michel-le-Comte",
+    "author": "Eugène Atget",
+    "year": "1901",
+    "source": "https://commons.wikimedia.org/wiki/File:Atget_-_Au_Bon_Puits_Rue_Michel_Le_Comte,_36,_btv1b10506731f.jpeg",
+    "licence": "Public domain"
+   },
+   {
+    "title": "Enseigne, Aux Canettes, 18 rue des Canettes",
+    "author": "Eugène Atget",
+    "year": "1899",
+    "source": "https://commons.wikimedia.org/wiki/File:Atget_-_Enseigne_-_Rue_des_Canettes_18_Octobre_1899,_btv1b105070064.jpeg",
+    "licence": "Public domain"
+   },
+   {
+    "title": "Enseigne, À l'Ancre, 38 quai de Bourbon",
+    "author": "Eugène Atget",
+    "year": "1900s",
+    "source": "https://commons.wikimedia.org/wiki/File:Atget_-_Enseigne,_quai_de_Bourbon,_38,_btv1b10518171t.jpeg",
+    "licence": "Public domain"
+   },
+   {
+    "title": "Enseigne, A lion's head, rue Notre-Dame-de-Bonne-Nouvelle",
+    "author": "Eugène Atget",
+    "year": "1900s",
+    "source": "https://commons.wikimedia.org/wiki/File:Atget_-_Enseigne_rue_Notre-Dame-de-Bonne-Nouvelle,_btv1b10516986t.jpeg",
+    "licence": "Public domain"
+   },
+   {
+    "title": "Enseigne, Au Lion d'Or, 16 rue Volta",
+    "author": "Eugène Atget",
+    "year": "1900s",
+    "source": "https://commons.wikimedia.org/wiki/File:Atget_-_Au_Lion_d%27Or,_16_rue_Volta_(enseigne),_2008.788.jpeg",
+    "licence": "Public domain"
+   },
+   {
+    "title": "Enseigne, A carved figure, rue des Nonnains-d'Hyères",
+    "author": "Eugène Atget",
+    "year": "1899",
+    "source": "https://commons.wikimedia.org/wiki/File:Atget_-_Enseigne_rue_des_Nonnains_d%27Hy%C3%A8res,_btv1b105177029.jpeg",
+    "licence": "Public domain"
+   }
+  ]
+ },
+ "bells": {
+  "v": "b88d0d4b",
+  "credits": [
+   {
+    "title": "Bell Emmanuel (recording; its partials measured)",
+    "author": "Notre-Dame de Paris",
+    "year": "1686",
+    "source": "https://commons.wikimedia.org/wiki/File:ND_G1_Emmanuel.ogg",
+    "licence": "CC0"
+   },
+   {
+    "title": "Bell Marcel (recording; its partials measured)",
+    "author": "Notre-Dame de Paris",
+    "year": "2013",
+    "source": "https://commons.wikimedia.org/wiki/File:Cloche_Marcel_Notre_Dame_de_Paris.ogg",
+    "licence": "CC0"
+   }
+  ]
+ },
+ "bruegel": {
+  "v": "2cee2237",
+  "credits": [
+   {
+    "title": "Hunters in the Snow",
+    "author": "Pieter Bruegel the Elder",
+    "year": "1565",
+    "source": "https://commons.wikimedia.org/wiki/File:Pieter_Bruegel_the_Elder_-_Hunters_in_the_Snow_(Winter)_-_Google_Art_Project.jpg",
+    "licence": "Public domain"
+   }
+  ]
+ },
+ "chant": {
+  "v": "81fd70cd",
+  "credits": [
+   {
+    "title": "Aeterne rerum Conditor",
+    "author": "Gregorian chant, as in Liber antiphonarius, 1960, p. 6",
+    "year": "",
+    "source": "https://gregobase.selapa.net/chant.php?id=13348",
+    "licence": "CC0 (GregoBase transcription by Andrew Hinkley)"
+   },
+   {
+    "title": "Iam lucis orto sidere",
+    "author": "Gregorian chant, as in Liber Hymnarius, 1983, p. 233",
+    "year": "",
+    "source": "https://gregobase.selapa.net/chant.php?id=15509",
+    "licence": "CC0 (GregoBase transcription)"
+   },
+   {
+    "title": "Ave Maris Stella",
+    "author": "Gregorian chant, as in Antiphonale Monasticum, 1934, p. 712",
+    "year": "",
+    "source": "https://gregobase.selapa.net/chant.php?id=9733",
+    "licence": "CC0 (GregoBase transcription by rcarey)"
+   },
+   {
+    "title": "Te lucis ante terminum",
+    "author": "Gregorian chant, as in Antiphonarium O.P. (Gillet), 1933, p. 123",
+    "year": "",
+    "source": "https://gregobase.selapa.net/chant.php?id=4884",
+    "licence": "CC0 (GregoBase transcription by Andrew Hinkley)"
+   },
+   {
+    "title": "Salve Regina",
+    "author": "Gregorian chant, as in The Liber Usualis, 1961, p. 276 & Liber antiphonarius, 1960, p. 68",
+    "year": "",
+    "source": "https://gregobase.selapa.net/chant.php?id=2715",
+    "licence": "CC0 (GregoBase transcription by Andrew Hinkley)"
+   }
+  ]
+ },
+ "heures": {
+  "v": "96b5ec80",
+  "credits": [
+   {
+    "title": "Les Très Riches Heures du duc de Berry, the calendar",
+    "author": "the Limbourg brothers",
+    "year": "c. 1411-1416",
+    "source": "https://commons.wikimedia.org/wiki/File:Les_Tr%C3%A8s_Riches_Heures_du_duc_de_Berry_Janvier.jpg",
+    "licence": "public domain (Wikimedia Commons)"
+   }
+  ]
+ },
+ "licorne": {
+  "v": "f94e3d98",
+  "credits": [
+   {
+    "title": "La Dame à la licorne (the six tapestries)",
+    "author": "unknown weavers after a Paris designer",
+    "year": "c. 1500",
+    "source": "https://commons.wikimedia.org/wiki/File:(Toulouse)_Le_toucher_(La_Dame_%C3%A0_la_licorne)_-_Mus%C3%A9e_de_Cluny_Paris.jpg",
+    "licence": "public domain (Wikimedia Commons)"
+   }
+  ]
+ },
+ "melies": {
+  "v": "60033853",
+  "credits": [
+   {
+    "title": "Le Voyage dans la Lune",
+    "author": "Georges Méliès",
+    "year": "1902",
+    "source": "https://archive.org/details/a-trip-to-the-moon-le-voyage-dans-la-lune-1902",
+    "licence": "public domain (Internet Archive, Public Domain Mark)"
+   }
+  ]
+ },
+ "mobilier": {
+  "v": "8fd02c60",
+  "credits": [
+   {
+    "title": "Dictionnaire raisonné du mobilier français, tome 1, article BANC (a bench with dragons' heads)",
+    "author": "Eugène Viollet-le-Duc",
+    "year": "1858-1875",
+    "source": "https://commons.wikimedia.org/wiki/File:Viollet-le-Duc_-_Dictionnaire_raisonn%C3%A9_du_mobilier_fran%C3%A7ais_de_l%27%C3%A9poque_carlovingienne_%C3%A0_la_Renaissance_(1873-1874),_tome_1-48.png",
+    "licence": "Public domain"
+   },
+   {
+    "title": "Dictionnaire raisonné du mobilier français, tome 1, article BANC (a bench-chest)",
+    "author": "Eugène Viollet-le-Duc",
+    "year": "1858-1875",
+    "source": "https://commons.wikimedia.org/wiki/File:Viollet-le-Duc_-_Dictionnaire_raisonn%C3%A9_du_mobilier_fran%C3%A7ais_de_l%27%C3%A9poque_carlovingienne_%C3%A0_la_Renaissance_(1873-1874),_tome_1-49.png",
+    "licence": "Public domain"
+   }
+  ]
+ },
+ "monet": {
+  "v": "d4a008da",
+  "credits": [
+   {
+    "title": "Rouen Cathedral: The Portal, Morning Fog",
+    "author": "Claude Monet",
+    "year": "1893",
+    "source": "https://commons.wikimedia.org/wiki/File:Monet_-_rouen-cathedral-the-portal-morning-fog.jpg",
+    "licence": "Public domain"
+   },
+   {
+    "title": "Rouen Cathedral: The Façade, Morning Effect",
+    "author": "Claude Monet",
+    "year": "1892",
+    "source": "https://commons.wikimedia.org/wiki/File:Claude_Monet_-_Rouen_Cathedral,_Facade_(Morning_effect).JPG",
+    "licence": "Public domain"
+   },
+   {
+    "title": "Rouen Cathedral: The Portal in Morning Light",
+    "author": "Claude Monet",
+    "year": "1894",
+    "source": "https://commons.wikimedia.org/wiki/File:Claude_Monet_-_The_Portal_of_Rouen_Cathedral_in_Morning_Light_(1894)_-_Getty_Center_2001.33.jpg",
+    "licence": "Public domain"
+   },
+   {
+    "title": "Rouen Cathedral: Harmony in Blue",
+    "author": "Claude Monet",
+    "year": "1893",
+    "source": "https://commons.wikimedia.org/wiki/File:Claude_Monet_-_Cath%C3%A9drale_de_Rouen._Harmonie_bleue.jpg",
+    "licence": "Public domain"
+   },
+   {
+    "title": "Rouen Cathedral: West Façade, Sunlight",
+    "author": "Claude Monet",
+    "year": "1894",
+    "source": "https://commons.wikimedia.org/wiki/File:Claude_Monet_-_Rouen_Cathedral,_West_Fa%C3%A7ade,_Sunlight_-_Google_Art_Project.jpg",
+    "licence": "Public domain"
+   },
+   {
+    "title": "Rouen Cathedral: The Portal (Sunlight)",
+    "author": "Claude Monet",
+    "year": "1894",
+    "source": "https://commons.wikimedia.org/wiki/File:Rouen_Cathedral-_The_Portal_(Sunlight)_MET_DT2185.jpg",
+    "licence": "CC0"
+   },
+   {
+    "title": "Rouen Cathedral: Harmony in Blue and Gold",
+    "author": "Claude Monet",
+    "year": "1893",
+    "source": "https://commons.wikimedia.org/wiki/File:Claude_Monet_-_Cath%C3%A9drale_de_Rouen._Harmonie_bleue_et_or.jpg",
+    "licence": "Public domain"
+   },
+   {
+    "title": "Rouen Cathedral: The Portal, Grey Weather",
+    "author": "Claude Monet",
+    "year": "1892",
+    "source": "https://commons.wikimedia.org/wiki/File:Claude_Monet_-_The_Cathedral_in_Rouen._The_portal,_Grey_Weather_-_Google_Art_Project.jpg",
+    "licence": "Public domain"
+   },
+   {
+    "title": "Rouen Cathedral: The Façade at Sunset",
+    "author": "Claude Monet",
+    "year": "1892",
+    "source": "https://commons.wikimedia.org/wiki/File:Claude_Monet_-_Rouen_Cathedral,_Facade_(Sunset).JPG",
+    "licence": "Public domain"
+   },
+   {
+    "title": "Rouen Cathedral: The Cathedral at Sunset",
+    "author": "Claude Monet",
+    "year": "1894",
+    "source": "https://commons.wikimedia.org/wiki/File:Claude_Monet_-_The_Rouen_Cathedral_at_Sunset_-_Pushkin_museum.jpg",
+    "licence": "Public domain"
+   }
+  ]
+ },
+ "muybridge": {
+  "v": "d8dffcea",
+  "credits": [
+   {
+    "title": "The Horse in Motion (Sallie Gardner at a gallop)",
+    "author": "Eadweard Muybridge",
+    "year": "1878",
+    "source": "https://commons.wikimedia.org/wiki/File:The_Horse_in_Motion-anim.gif",
+    "licence": "Public domain"
+   },
+   {
+    "title": "Animal Locomotion: a man walking",
+    "author": "Eadweard Muybridge",
+    "year": "1887",
+    "source": "https://commons.wikimedia.org/wiki/File:Muybridge_human_male_walking_animated.gif",
+    "licence": "Public domain"
+   }
+  ]
+ },
+ "outils": {
+  "v": "ab0c689b",
+  "credits": [
+   {
+    "title": "L'Art du menuisier, plate 12",
+    "author": "André-Jacob Roubo",
+    "year": "1769",
+    "source": "https://commons.wikimedia.org/wiki/File:A-J_Roubo_-_L%27Art_du_Menuisier_-_Planche_012.png",
+    "licence": "Public domain"
+   },
+   {
+    "title": "L'Art du menuisier, plate 14",
+    "author": "André-Jacob Roubo",
+    "year": "1769",
+    "source": "https://commons.wikimedia.org/wiki/File:A-J_Roubo_-_L%27Art_du_Menuisier_-_Planche_014.png",
+    "licence": "Public domain"
+   },
+   {
+    "title": "L'Art du menuisier, plate 13",
+    "author": "André-Jacob Roubo",
+    "year": "1769",
+    "source": "https://commons.wikimedia.org/wiki/File:A-J_Roubo_-_L%27Art_du_Menuisier_-_Planche_013.png",
+    "licence": "Public domain"
+   }
+  ]
+ },
+ "paris": {
+  "v": "0f2de2a8",
+  "credits": [
+   {
+    "title": "Paris's monuments and their heights",
+    "author": "OpenStreetMap contributors",
+    "year": "2026",
+    "source": "https://www.openstreetmap.org/copyright",
+    "licence": "ODbL (© OpenStreetMap contributors)"
+   },
+   {
+    "title": "The ground's height (SRTM 30 m, through OpenTopoData)",
+    "author": "NASA / USGS",
+    "year": "2000",
+    "source": "https://www.opentopodata.org/datasets/srtm/",
+    "licence": "public domain"
+   }
+  ]
+ },
+ "portraits": {
+  "v": "57fe54b7",
+  "credits": [
+   {
+    "title": "Portrait of Erwin Schrödinger (photographed in 1933, the year of his Nobel prize)",
+    "author": "unknown photographer",
+    "year": "",
+    "source": "https://commons.wikimedia.org/wiki/File:Erwin_Schr%C3%B6dinger_(1933).jpg",
+    "licence": "Public domain"
+   },
+   {
+    "title": "Portrait of Albert Einstein (at the patent office in Bern, 1904)",
+    "author": "unknown photographer",
+    "year": "",
+    "source": "https://commons.wikimedia.org/wiki/File:Einstein_patentoffice.jpg",
+    "licence": "Public domain"
+   },
+   {
+    "title": "Portrait of Ludwig Boltzmann (about 1902)",
+    "author": "unknown photographer",
+    "year": "",
+    "source": "https://commons.wikimedia.org/wiki/File:Boltzmann2.jpg",
+    "licence": "Public domain"
+   },
+   {
+    "title": "Portrait of William Rowan Hamilton (a daguerreotype, about 1845)",
+    "author": "unknown photographer",
+    "year": "",
+    "source": "https://commons.wikimedia.org/wiki/File:William_Rowan_Hamilton_portrait_oval_combined.png",
+    "licence": "Public domain"
+   }
+  ]
+ },
+ "quotes": {
+  "v": "120b80a5",
+  "credits": [
+   {
+    "title": "King James Bible (the knight's quotations)",
+    "author": "King James Bible",
+    "year": "1611",
+    "source": "https://www.gutenberg.org/ebooks/10",
+    "licence": "public domain (Project Gutenberg)"
+   },
+   {
+    "title": "Shakespeare (the knight's quotations)",
+    "author": "Shakespeare",
+    "year": "",
+    "source": "https://www.gutenberg.org/ebooks/100",
+    "licence": "public domain (Project Gutenberg)"
+   },
+   {
+    "title": "Geoffrey Chaucer (the knight's quotations)",
+    "author": "Geoffrey Chaucer",
+    "year": "c. 1400",
+    "source": "https://www.gutenberg.org/ebooks/2383",
+    "licence": "public domain (Project Gutenberg)"
+   },
+   {
+    "title": "François Villon (the knight's quotations)",
+    "author": "François Villon",
+    "year": "1461",
+    "source": "https://www.gutenberg.org/ebooks/12246",
+    "licence": "public domain (Project Gutenberg)"
+   },
+   {
+    "title": "Hesiod, tr. H. G. Evelyn-White (the knight's quotations)",
+    "author": "Hesiod, tr. H. G. Evelyn-White",
+    "year": "1914",
+    "source": "https://www.gutenberg.org/ebooks/348",
+    "licence": "public domain (Project Gutenberg)"
+   },
+   {
+    "title": "Virgil, tr. James Rhoades (the knight's quotations)",
+    "author": "Virgil, tr. James Rhoades",
+    "year": "1881",
+    "source": "https://www.gutenberg.org/ebooks/232",
+    "licence": "public domain (Project Gutenberg)"
+   }
+  ]
+ },
+ "rose": {
+  "v": "d2c28d15",
+  "credits": [
+   {
+    "title": "Le Roman de la Rose, tome I (ed. Méon, 1814; translated by Pierre Marteau, 1878)",
+    "author": "Guillaume de Lorris and Jean de Meun",
+    "year": "13th c.",
+    "source": "https://www.gutenberg.org/ebooks/16816",
+    "licence": "public domain (Project Gutenberg)"
+   }
+  ]
+ },
+ "tunes": {
+  "v": "c337581f",
+  "credits": [
+   {
+    "title": "Greensleeves",
+    "author": "traditional",
+    "year": "16th c.",
+    "source": "https://www.mutopiaproject.org/ftp/Traditional/Greensleaves/",
+    "licence": "public domain; notes from the Mutopia Project"
+   },
+   {
+    "title": "Saltarello",
+    "author": "Vincenzo Galilei",
+    "year": "16th c.",
+    "source": "https://www.mutopiaproject.org/ftp/GalileiV/saltarello/",
+    "licence": "public domain; notes from the Mutopia Project"
+   },
+   {
+    "title": "Bourrée in E minor, BWV 996",
+    "author": "J. S. Bach",
+    "year": "1700s",
+    "source": "https://www.mutopiaproject.org/ftp/BachJS/BWV996/bourree/",
+    "licence": "public domain; notes from the Mutopia Project"
+   },
+   {
+    "title": "Pavan no. 2",
+    "author": "Luis Milán",
+    "year": "1536",
+    "source": "https://www.mutopiaproject.org/ftp/MilanL/milan-pavan2/",
+    "licence": "public domain; notes from the Mutopia Project"
+   },
+   {
+    "title": "Unquiet Thoughts",
+    "author": "John Dowland",
+    "year": "1597",
+    "source": "https://www.mutopiaproject.org/ftp/DowlandJ/ALS1/UnquietThoughts/",
+    "licence": "public domain; notes from the Mutopia Project"
+   },
+   {
+    "title": "Come Again",
+    "author": "John Dowland",
+    "year": "1597",
+    "source": "https://www.mutopiaproject.org/ftp/DowlandJ/ALS17/ComeAgain/",
+    "licence": "public domain; notes from the Mutopia Project"
+   },
+   {
+    "title": "Old Hundredth",
+    "author": "Louis Bourgeois",
+    "year": "1551",
+    "source": "https://www.mutopiaproject.org/ftp/BourgeoisL/Old100/",
+    "licence": "public domain; notes from the Mutopia Project"
+   },
+   {
+    "title": "Es ist ein Ros' entsprungen",
+    "author": "anonymous, arr. Michael Praetorius",
+    "year": "1609",
+    "source": "https://www.mutopiaproject.org/ftp/Anonymous/es_ist_ein_ros_entsprungen/",
+    "licence": "public domain; notes from the Mutopia Project"
+   },
+   {
+    "title": "Gnossienne no. 1",
+    "author": "Erik Satie",
+    "year": "1890",
+    "source": "https://www.mutopiaproject.org/ftp/SatieE/Gnossienne/no_1/",
+    "licence": "CC BY-SA 4.0 (Mutopia edition); notes from the Mutopia Project"
+   },
+   {
+    "title": "Gnossienne no. 3",
+    "author": "Erik Satie",
+    "year": "1890",
+    "source": "https://www.mutopiaproject.org/ftp/SatieE/Gnossienne/no_3/",
+    "licence": "CC BY-SA 4.0 (Mutopia edition); notes from the Mutopia Project"
+   }
+  ]
+ },
+ "viandier": {
+  "v": "1311ad81",
+  "credits": [
+   {
+    "title": "Le Viandier (printed c. 1490; ed. Pichon and Vicaire, 1892)",
+    "author": "Taillevent (Guillaume Tirel)",
+    "year": "14th c.",
+    "source": "https://www.gutenberg.org/ebooks/26567",
+    "licence": "public domain (Project Gutenberg)"
+   }
+  ]
+ }
+}
