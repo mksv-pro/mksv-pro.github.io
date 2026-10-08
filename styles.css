@@ -907,19 +907,57 @@ dialog.dungeon canvas {
 [data-theme="hours"][data-room] main .pane-tab { display: none; }
 [data-theme="hours"][data-room] main .room { margin-top: .6rem; }
 
-/* ---- the tower (narrow screens, .climb: head script, script.js climbFloor): the picture stays at
-   the top of the screen, the page scrolls under it floor by floor, roof (the landscape) first.
-   Every section is on the page, a leaf of vellum in the stone; the things in the picture still
-   open their cards, which rise from the bottom. Overrides the wide castle's fixed layout above. */
-html.climb[data-theme] { --climb-h: clamp(15rem, 46svh, 30rem); scroll-padding-top: calc(var(--mh, 3rem) + var(--climb-h) + .5rem); }
-/* the herald stays in sight above the picture (--mh: his ribbon's height, script.js) */
-html.climb[data-theme] .msgline { position: sticky; top: 0; z-index: 4; font-size: 1.05rem; padding-top: .35rem; padding-bottom: .35rem; }
+/* ---- the tower (narrow screens, .climb: head script, script.js towerLayout): every section is
+   on the page, a leaf of vellum in the stone, floor after floor, the roof's view (the landscape)
+   first. Upright, nothing stays on the screen: each floor opens with its room in a frame
+   (.floor-slot); the one live picture sits in the frame most in sight, the others keep a snapshot
+   (--snap) and their room's line. On its side (.side), the picture is a column on the left. The
+   herald speaks under the picture, two lines (a tap: all of it); the status band's buttons go into
+   the menu. Overrides the wide castle's fixed layout above. */
+html.climb[data-theme] { --pic-h: clamp(300px, 80vw, 60svh); --cap-h: 3.7rem; scroll-padding-top: .5rem; scroll-padding-bottom: .5rem; }
 html.climb[data-theme] body {
   background: repeating-linear-gradient(0deg, #2b2521 0 1.4rem, #1d1916 1.4rem calc(1.4rem + 2px)), #2b2521;
 }
-html.climb[data-theme] .plate { position: sticky; inset: var(--mh, 3rem) auto auto; z-index: 2; height: var(--climb-h); border: 0; border-bottom: 3px solid #16121c; }
-html.climb[data-theme] .plate-img { height: 100%; }
+html.climb[data-theme] body { padding-bottom: 0; }
+html.climb[data-theme] .status { display: none; }
+html.climb[data-theme] .shell { display: block; }
+.floor-slot, .tower-tools { display: none; }
+html.climb[data-theme] .floor-slot {
+  display: block; position: relative; height: calc(var(--pic-h) + var(--cap-h)); margin: -1.2rem -1rem 1.2rem;
+  background: var(--snap, none) top / 100% var(--pic-h) no-repeat, #16121c; image-rendering: pixelated;
+}
+html.climb[data-theme] .floor-slot.roof {
+  width: min(100% - 2rem, 44rem); height: calc(var(--pic-h) + var(--cap-h) + 8 * var(--upx, 2px)); margin: 1rem auto 0;
+  border: calc(4 * var(--upx, 2px)) solid transparent; border-image: url("assets/img/frame.svg") 4 / calc(4 * var(--upx, 2px)) stretch;
+  background-origin: padding-box; background-clip: padding-box;
+}
+html.climb[data-theme] .floor-slot::after { /* a frame not live: its room's line under its last picture */
+  content: attr(data-look); position: absolute; left: 0; right: 0; bottom: 0; height: var(--cap-h); overflow: hidden;
+  padding: .45rem .8rem 0 1rem; font: italic 1rem/1.3 "EB Garamond", Georgia, serif; color: #3a2414;
+  background: linear-gradient(#f4e6c2, #e6d09c); border-top: 2px solid #a8781e;
+}
+html.climb[data-theme] .plate { position: absolute; inset: 0; z-index: 1; height: auto; display: flex; flex-direction: column; border: 0; }
+html.climb[data-theme] .plate-img { flex: none; height: var(--pic-h); }
+html.climb[data-theme] .msgline {
+  position: relative; inset: auto; z-index: 2; flex: none; display: block; height: var(--cap-h); overflow: hidden;
+  padding: .45rem .8rem 0 3.4rem; white-space: normal; font-size: 1rem; line-height: 1.3; cursor: pointer; border-bottom: 0; box-shadow: none;
+}
+html.climb[data-theme] .msgline::before { top: 1.1rem; }
+html.climb[data-theme] .msg-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; }
+html.climb[data-theme] .msgline .more { display: none; }
+html.climb[data-theme] .msgline.open { position: absolute; left: 0; right: 0; bottom: 0; height: auto; padding-bottom: .5rem; }
+html.climb[data-theme] .msgline.open .msg-text { display: inline; }
+html.climb[data-theme] .msgline.open .more { display: inline; }
+html.climb[data-theme] .spots { position: absolute; inset: 0; z-index: 1; }
+/* on its side: the picture in a column on the left, the floors read on the right */
+html.climb.side[data-theme] .shell { display: grid; grid-template-columns: minmax(0, 46%) minmax(0, 1fr); }
+html.climb.side[data-theme] .floor-slot:not(.roof) { display: none; }
+html.climb.side[data-theme] .floor-slot.roof { position: sticky; top: 0; align-self: start; width: auto; height: 100dvh; margin: 0; border: 0; }
+html.climb.side[data-theme] .plate-img { height: calc(100dvh - var(--cap-h)); }
+html.climb.side[data-theme] .term { margin: 0; }
 html.climb[data-theme] .term { padding: 1rem 1rem 2rem; max-width: 46rem; margin: 0 auto; }
+html.climb[data-theme] .tower-tools { display: flex; flex-wrap: wrap; gap: .2rem 1rem; margin: .5rem 0 0; padding-top: .4rem; border-top: 1px dashed var(--rule); }
+html.climb[data-theme] .tower-tools button { font: .9rem/1.6 var(--ui); color: var(--accent); background: none; border: 0; padding: 0; min-height: 1.75rem; cursor: pointer; }
 html.climb[data-theme] .host, html.climb[data-theme][data-room] .host { position: static; display: block; pointer-events: auto; padding: .5rem 0 0; }
 html.climb[data-theme] .host::before { content: none; }
 html.climb[data-theme].travelling :is(.tabs, .host) { visibility: visible; }
@@ -957,12 +995,11 @@ html.climb[data-theme] main > section.pane + section.pane::before { /* the floor
 }
 html.climb[data-theme] main .pane-tab { display: none; }
 html.climb[data-theme] .card:not([hidden]) {
-  left: .5rem !important; right: .5rem; top: auto !important; bottom: calc(var(--status-h) + .5rem);
+  left: .5rem !important; right: .5rem; top: auto !important; bottom: .5rem;
   width: auto; max-height: 62svh; display: flex; flex-direction: column;
 }
 html.climb[data-theme] .card::before { content: none; }
 html.climb[data-theme] .card-body { max-height: none; flex: 1; min-height: 0; }
-@media (max-width: 36rem) { html.climb[data-theme] .status :is(.dlvl, .st-left span:not(.st-name)) { display: none; } }
 html.climb[data-theme] .engine-win { width: 100vw; height: 100dvh; max-width: none; max-height: none; border-radius: 0; }
 
 /* ---- small screens --------------------------------------------------- */

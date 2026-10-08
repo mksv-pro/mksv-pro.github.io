@@ -52,9 +52,13 @@ CASES = {
                "window.framedOk && !document.querySelector('.engine') && !document.documentElement.classList.contains('engine-on')"),
     "terminal": ("?theme=dark", (1600, 900), "", "document.documentElement.getAttribute('data-theme') === 'dark'"),
     "phone-banner": ("?theme=dark&sky=noon&weather=clear", (390, 844), "", "document.documentElement.classList.contains('banner') && " + CANVAS),
-    "phone-tower": ("?sky=noon&weather=clear", (390, 844),
-                    "document.querySelector('#research').scrollIntoView({ behavior: 'instant' }); await wait(2500);",
-                    "document.documentElement.classList.contains('climb') && document.documentElement.dataset.room === 'research' && " + CANVAS),
+    "phone-tower": ("?sky=noon&weather=clear", (390, 844),  # (the live picture in the frame in sight; reading on leaves it there)
+                    "document.querySelector('#research').scrollIntoView({ behavior: 'instant' }); await wait(2500); window.scrollBy(0, 300); await wait(600);",
+                    "document.documentElement.classList.contains('climb') && document.documentElement.dataset.room === 'research'"
+                    " && !!document.querySelector('#research > .floor-slot > .plate') && " + CANVAS),
+    "phone-side": ("?sky=noon&weather=clear", (844, 390),
+                   "document.querySelector('#research').scrollIntoView({ behavior: 'instant' }); await wait(2500);",
+                   "document.documentElement.classList.contains('side') && document.documentElement.dataset.room === 'research' && " + CANVAS),
     "phone-cellar": ("?sky=noon&weather=clear", (390, 844),
                      "document.querySelector('#cellar').scrollIntoView({ behavior: 'instant' }); await wait(2500);"
                      " const b = [...document.querySelectorAll('.spot')].find((x) => /steps/i.test(x.dataset.label)); b && b.click(); await wait(1500);",

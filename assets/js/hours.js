@@ -6712,7 +6712,7 @@ bbbbbb.
       canvas.setAttribute('aria-hidden', 'true');
       plate.append(canvas);
       ctx = canvas.getContext('2d');
-      const redraw = () => { if (isOn() && resize() && !running) render(now()); };
+      const redraw = () => { if (isOn() && resize()) render(now()); }; // (at once, even when running: a resized canvas is blank until drawn, and the plate behind would flash through)
       new ResizeObserver(redraw).observe(plate);
 
       addEventListener('resize', redraw);

@@ -566,6 +566,7 @@ function currentWindow() {
 function openWindow(hash, { userAction, animate = userAction }) {
   const target = (hash && document.getElementById(decode(hash.slice(1)))) || null;
   const win = target ? target.closest('main > section') : windows[0];
+  towerLayout();
   if (climbing() && (!target || floors().includes(win))) { // the tower: every floor on the page; the one asked for is scrolled to (climbFloor does the rest)
     windows.forEach((w) => w.classList.remove('is-off'));
     if (target) target.scrollIntoView({ behavior: userAction && !reduceMotion ? 'smooth' : 'instant' });
@@ -611,31 +612,87 @@ function openWindow(hash, { userAction, animate = userAction }) {
   heading.focus({ preventScroll: true });
 }
 
-/* The tower (narrow screens): the picture stays at the top of the screen and shows the floor whose
-   text is under it; above the first floor, the roof's view (the landscape). Going down a floor
-   the room slides up past its floor slab, and the other way round (hours.js 'climb'). */
+/* The tower (narrow screens, .climb; the layout in styles.css). Upright, each floor opens with its
+   room in a frame; the one live picture moves into the frame most in sight (none in sight: it
+   stays, so reading never changes anything), the frame it leaves keeps a snapshot. On its side
+   (.side), the picture is a column on the left and shows the floor read at 40% of the height.
+   Going down a floor the room slides up past its floor slab, and the other way (hours.js 'climb'). */
+const SIDE = matchMedia('(orientation: landscape) and (min-width: 36rem)');
+const plateEl = document.querySelector('.plate');
+const ribbon = document.querySelector('.msgline');
+const towerTools = ['cmd-toggle', 'theme-toggle', 'sound-toggle'].map((k) => $(k)).filter(Boolean);
+const roofSlot = document.createElement('div');
+roofSlot.className = 'floor-slot roof';
 let floor; // (undefined: not yet placed)
 const cellar = document.getElementById('cellar'); // the tower's foot (shown by applyTheme in the tower only)
 const floors = () => (cellar && !cellar.hidden ? [...windows, cellar] : windows);
+const slotOf = (id) => (id ? document.getElementById(id).querySelector(':scope > .floor-slot') : roofSlot);
+function mount(slot) { // the live picture into frame `slot`; the frame left keeps its last picture
+  const old = plateEl.parentElement;
+  if (!slot || old === slot) return;
+  if (old.classList.contains('floor-slot')) {
+    const cv = plateEl.querySelector('canvas');
+    try { if (cv && cv.width) old.style.setProperty('--snap', `url(${cv.toDataURL()})`); } catch { /* (a tainted canvas: no snapshot) */ }
+  }
+  slot.style.removeProperty('--snap');
+  slot.append(plateEl);
+}
+function towerLayout() {
+  const on = climbing();
+  root.classList.toggle('side', on && SIDE.matches);
+  if (on) {
+    if (!roofSlot.isConnected) plateEl.before(roofSlot);
+    if (isIndex) floors().forEach((w) => {
+      if (w.querySelector(':scope > .floor-slot')) return;
+      const f = document.createElement('div'); f.className = 'floor-slot'; f.dataset.look = w.dataset.look || ''; f.setAttribute('aria-hidden', 'true');
+      w.prepend(f);
+    });
+    if (ribbon.parentElement !== plateEl) plateEl.append(ribbon); // the herald under the picture
+    let tools = tabBar.querySelector('.tower-tools');
+    if (!tools) { tools = document.createElement('p'); tools.className = 'tower-tools'; tabBar.append(tools); }
+    tools.append(...towerTools);
+    mount(SIDE.matches || !isIndex ? roofSlot : slotOf(floor ?? null));
+  } else if (roofSlot.isConnected) { // back to the page's own order
+    roofSlot.before(plateEl); roofSlot.remove();
+    document.querySelector('.shell').before(ribbon);
+    $('keys-toggle').before(...towerTools);
+    ribbon.classList.remove('open');
+  }
+}
+ribbon.addEventListener('click', (e) => { // the herald's whole line, or back to two
+  if (climbing() && !e.target.closest('a')) ribbon.classList.toggle('open');
+});
 function climbFloor() {
   if (!climbing() || !isIndex) return;
-  const line = document.querySelector('.plate').getBoundingClientRect().bottom + 48;
   const fl = floors();
-  const win = fl.filter((w) => w.getBoundingClientRect().top < line).pop() || null;
-  const id = win ? win.id : null;
+  let id;
+  if (SIDE.matches) {
+    const line = innerHeight * 0.4;
+    const win = fl.filter((w) => w.getBoundingClientRect().top < line).pop() || null;
+    id = win ? win.id : null;
+  } else {
+    const seen = (el) => { const r = el.getBoundingClientRect(); return Math.max(0, Math.min(r.bottom, innerHeight) - Math.max(r.top, 0)); };
+    id = floor === undefined ? null : floor; let most = floor === undefined ? -1 : seen(slotOf(floor)) + 24; // (24 px: no flicker between two frames half in sight)
+    [null, ...fl.map((w) => w.id)].forEach((k) => { const v = seen(slotOf(k)); if (v > most) { most = v; id = k; } });
+  }
   if (id === floor) return;
-  const dir = floor === undefined ? 0 : fl.findIndex((w) => w.id === id) > fl.findIndex((w) => w.id === floor) ? 1 : -1;
+  const at = (k) => [null, ...fl.map((w) => w.id)].indexOf(k);
+  const dir = floor === undefined ? 0 : at(id) > at(floor) ? 1 : -1;
   floor = id;
+  if (!SIDE.matches) mount(slotOf(id));
+  ribbon.classList.remove('open');
   tabLinks.forEach((a) => { if (id && a.getAttribute('href') === `#${id}`) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   if (id) { root.dataset.room = id; enterRoom(id, dir === 0); } else delete root.dataset.room;
   history.replaceState(null, '', id ? `#${id}` : location.pathname + location.search);
-  if (id && dir) say(win.dataset.look || '');
+  const win = id && document.getElementById(id);
+  if (win && dir) say(win.dataset.look || '');
   if (window.Hours) window.Hours.room(id, { animate: dir !== 0, dir });
   else root.classList.toggle('room-ready', Boolean(id));
 }
 {
   let queued = 0;
   addEventListener('scroll', () => { if (!queued && climbing()) queued = requestAnimationFrame(() => { queued = 0; climbFloor(); }); }, { passive: true });
+  SIDE.addEventListener('change', () => { towerLayout(); climbFloor(); });
 }
 
 // the tab bar wraps on narrow screens: anchors must clear its real height (scroll-padding-top)
@@ -643,10 +700,7 @@ const tabBar = document.querySelector('.tabs');
 new ResizeObserver(() => {
   root.style.setProperty('--tabs-h', `${tabBar.getBoundingClientRect().height}px`);
 }).observe(tabBar);
-{ // the tower's picture sticks under the herald's ribbon, whose height follows his message
-  const ribbon = document.querySelector('.msgline');
-  new ResizeObserver(() => root.style.setProperty('--mh', `${ribbon.getBoundingClientRect().height}px`)).observe(ribbon);
-}
+
 
 root.classList.add('windowed');
 openWindow(location.hash, { userAction: false });
@@ -873,12 +927,15 @@ function waveFig(canvas) {
 function setSpots(rects, items) {
   spotItems = items;
   closeCard(false);
+  // the tower: the buttons ride in the picture's frame as it scrolls (viewport px made the picture's own)
+  const inTower = climbing(); const pr = plateEl.getBoundingClientRect(); const dx = inTower ? pr.left : 0; const dy = inTower ? pr.top : 0;
+  const home0 = inTower ? plateEl : document.body; if (spots.parentElement !== home0) home0.append(spots);
   spots.replaceChildren(...rects.flatMap((r, i) => { // (no rect: the thing found no room in the picture)
     if (!r) return [];
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'spot';
-    Object.assign(b.style, { left: `${r.l}px`, top: `${r.t}px`, width: `${r.w}px`, height: `${r.h}px` });
+    Object.assign(b.style, { left: `${r.l - dx}px`, top: `${r.t - dy}px`, width: `${r.w}px`, height: `${r.h}px` });
     b.setAttribute('aria-label', items[i].label);
     b.dataset.label = items[i].label;
     const lit = (on) => window.Hours && window.Hours.highlight(on ? i : -1);
@@ -888,7 +945,7 @@ function setSpots(rects, items) {
     b.addEventListener('blur', () => lit(false));
     if (items[i].kind === 'ladder') { // the library's ladder slides along its rail: drag it, or the arrow keys
       let x0 = null; let moved = false;
-      const to = (r2) => { if (r2) b.style.left = `${r2.l}px`; };
+      const to = (r2) => { if (r2) b.style.left = `${r2.l - dx}px`; };
       b.addEventListener('pointerdown', (e) => { x0 = e.clientX; moved = false; try { b.setPointerCapture(e.pointerId); } catch { /* (a pointer the browser no longer knows) */ } });
       b.addEventListener('pointermove', (e) => { if (x0 === null || (!moved && Math.abs(e.clientX - x0) < 4)) return; moved = true; to(window.Hours.ladderTo(e.clientX)); });
       b.addEventListener('pointerup', () => { x0 = null; });
