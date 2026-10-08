@@ -670,6 +670,8 @@ dialog.dungeon canvas {
 [data-theme="hours"][data-sky="day"] .plate-img { background: #8cc9f4; }
 .plate-img canvas { display: none; position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
 [data-theme="hours"] .plate-img canvas, .banner .plate-img canvas { display: block; }
+.plate-img canvas.room { z-index: 1; } /* (a room: its own canvas over the embrasure, placed by hours.js layoutRoom) */
+.plate-img canvas.room[hidden] { display: none !important; }
 .banner .plate-img { position: relative; } /* (the narrow screens' landscape, over the engraving) */
 .cap-banner { display: none; }
 .banner .cap-banner { display: inline; }

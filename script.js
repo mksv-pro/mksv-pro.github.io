@@ -670,8 +670,7 @@ function mount(slot) { // the live picture into frame `slot`; the frame left kee
   const old = plateEl.parentElement;
   if (!slot || old === slot) return;
   if (old.classList.contains('floor-slot')) {
-    const cv = plateEl.querySelector('canvas');
-    try { if (cv && cv.width) old.style.setProperty('--snap', `url(${cv.toDataURL()})`); } catch { /* (a tainted canvas: no snapshot) */ }
+    try { if (window.Hours && window.Hours.picture) old.style.setProperty('--snap', `url(${window.Hours.picture()})`); } catch { /* (a tainted canvas: no snapshot) */ }
   }
   slot.style.removeProperty('--snap');
   slot.append(plateEl);
@@ -1027,7 +1026,7 @@ function enterEngine() { // from anywhere: into the scriptorium, then the engine
 }
 function openEngine(spot) {
   if (FRAMED || engine) return;
-  const cv = document.querySelector('.plate-img canvas'); const sr = spot.getBoundingClientRect(); const cr = cv.getBoundingClientRect();
+  const cv = document.querySelector('.plate-img'); const sr = spot.getBoundingClientRect(); const cr = cv.getBoundingClientRect(); // (the picture: the landscape's canvas and the room's)
   const fx = sr.left + sr.width / 2; const fy = sr.top + sr.height * 0.4; // (the glass, in the hood's upper part)
   const Z = 2.6; const ms = reduceMotion ? 0 : 900;
   cv.style.transformOrigin = `${fx - cr.left}px ${fy - cr.top}px`;

@@ -2116,7 +2116,11 @@ nNnnnn..
 
   // the labour of the month, as in a book of hours (sower in autumn, reaper in summer...)
   const OVERLAPS = /[?&]overlaps=1/.test(location.search);
-  let ik = 2; // scene pixels to a room's pixel (makeInterior)
+  /* The rooms' standard: every room is drawn once at RW x RH (16:9), whatever the window, on a canvas
+     of its own scaled by a whole number of device pixels and centred in the plate (layoutRoom); the
+     landscape's canvas behind shows the tower's stone round it, an embrasure (paintFrame). */
+  const RW = 240; const RH = 135;
+  let roomCv; let rctx; let rimg; let robuf; let roomBox = { l: 0, t: 0, k: 1 }; let fbuf = null; // (roomBox: css px in the plate, k: css px a room pixel)
   const SEASON = (m) => (m <= 1 || m === 11 ? 'winter' : m <= 4 ? 'spring' : m <= 7 ? 'summer' : 'autumn');
   const PEASANT = [`
 ..rr...
@@ -3077,6 +3081,7 @@ bbbbbb.
     } else if (kind === 'teaching') { // the schoolroom: each course a line of chalk on the board
       const ptS = realGet('portraits'); const pm = ptS ? ptS.small.w + 9 : 4; // (the portraits hang either side: the board leaves them the wall)
       const bl = Math.max(S(0.16), BL + pm); const br = Math.min(S(0.84), BR - pm); const bt = Math.round(H * 0.18); const bb = Math.round(H * 0.6);
+      const ptLow = ptS ? bt + 2 * ptS.small.h + 9 : 0; // (the portraits' foot: the Galton board and the globe under it)
       for (let y = bt - 3; y < bb + 3; y += 1) for (let x = bl - 3; x < br + 3; x += 1) {
         const fr = x < bl || x >= br || y < bt || y >= bb;
         set(x, y, fr ? ((x === bl - 3 || y === bt - 3) ? I.TIMBER_HI : I.TIMBER) : (noise2(x, y) > 0.62 ? I.SLATEB_HI : I.SLATEB));
@@ -3110,14 +3115,16 @@ bbbbbb.
         ey += 8;
       });
       { // a Galton board on the wall over the master's desk: pegs in a triangle, bins below
-        const gw = 17; const dx0 = S(0.86); const gx0 = Math.round(dx0 + (Math.max(10, BR - dx0 - 2) - gw) / 2); const gy0 = yf - 54;
-        if (gx0 > br + 4 && gx0 + gw < BR - 1) {
-          rect(gx0 - 1, gy0 - 1, gw + 2, 36, I.TIMBER); rect(gx0, gy0, gw, 34, I.PLASTER_HI);
+        // (under the right-hand portraits and over the desk: the bins shorten when the wall is low)
+        const gw = 17; const dx0 = S(0.86); const gx0 = Math.round(dx0 + (Math.max(10, BR - dx0 - 2) - gw) / 2);
+        const gy0 = Math.max(yf - 54, ptLow + 4); const bh = Math.min(15, yf - 12 - (gy0 + 19));
+        if (gx0 > br + 4 && gx0 + gw < BR - 1 && bh >= 8) {
+          rect(gx0 - 1, gy0 - 1, gw + 2, bh + 21, I.TIMBER); rect(gx0, gy0, gw, bh + 19, I.PLASTER_HI);
           for (let r = 0; r < 7; r += 1) for (let k = 0; k <= r; k += 1) set(gx0 + 8 - r + 2 * k, gy0 + 3 + r * 2, I.ARM_SH); // the pegs
-          for (let k = 0; k <= 8; k += 1) rect(gx0 + 2 * k, gy0 + 19, 1, 15, I.TIMBER_SH); // the bins' walls
+          for (let k = 0; k <= 8; k += 1) rect(gx0 + 2 * k, gy0 + 19, 1, bh, I.TIMBER_SH); // the bins' walls
           set(gx0 + 8, gy0 - 3, I.ARM_SH); set(gx0 + 7, gy0 - 2, I.ARM_SH); set(gx0 + 9, gy0 - 2, I.ARM_SH); // its nail and cord
-          deco.push({ type: 'galton', x: gx0, y: gy0 });
-          extra.push({ t: { kind: 'galton', label: 'The Galton board', get html() { return cards.galton(); } }, b: box(gx0 - 1, gy0 - 1, gw + 2, 36) });
+          deco.push({ type: 'galton', x: gx0, y: gy0, bh });
+          extra.push({ t: { kind: 'galton', label: 'The Galton board', get html() { return cards.galton(); } }, b: box(gx0 - 1, gy0 - 1, gw + 2, bh + 21) });
         }
       }
       const dx = S(0.86); const dw = Math.max(10, BR - dx - 2); desk(dx, yf - 10, dw); candle(dx + dw - 3, yf - 11, true);
@@ -3148,7 +3155,6 @@ bbbbbb.
         const ms = SPRITES.master; deco.push({ type: 'master', xa: bl - ms.w + 4, xb: Math.round(bl + (br - bl) * 0.55), yb: yf + 3, top: bt, rows: Math.max(1, Math.floor((ey - bt - 4) / 7)) });
         deco.push({ type: 'chatter', heads });
       }
-      const ptLow = ptS ? bt + 2 * ptS.small.h + 9 : 0; // (the portraits' foot: the globe only under it)
       if (ptLow < yf - 21) { const gx0 = dx + Math.round(dw / 2); const gy = yf - 16; // a globe on the master's desk
         for (let y = -3; y <= 3; y += 1) for (let x = -3; x <= 3; x += 1) if (x * x + y * y <= 10) set(gx0 + x, gy + y, (x + y * 2) % 4 === 0 ? I.FERN : I.WATER);
         rect(gx0, gy + 4, 1, 2, I.GOLD_SH); rect(gx0 - 2, gy + 5, 5, 1, I.GOLD); set(gx0 - 4, gy, I.GOLD_SH); set(gx0 + 4, gy, I.GOLD_SH); }
@@ -3861,7 +3867,7 @@ bbbbbb.
     canvas.width = W; canvas.height = H;
     img = ctx.createImageData(W, H);
     obuf = new Uint32Array(img.data.buffer);
-    buf = new Uint32Array(W * H); ibuf = new Uint32Array(W * H); iprev = new Uint32Array(W * H); ibase = new Uint32Array(W * H);
+    buf = new Uint32Array(W * H); fbuf = null; // (the room's own buffers are RW x RH: start)
     backBuf = new Uint32Array(W * H); backIdx = new Uint8Array(W * H); backKey = '';
     idxNow = new Uint8Array(W * H);
     const hoisted = scene && scene.hoist;
@@ -3869,6 +3875,7 @@ bbbbbb.
     if (hoisted || pendingHoist) { scene.hoist = { t0: -99 }; pendingHoist = false; }
     wizPx = null;
     anchorMenu(r);
+    layoutRoom();
     if (view.id) { interior = makeInterior(view.id); hl = -1; }
     relight();
     if (view.state === 'room') publishSpots(true);
@@ -5585,43 +5592,62 @@ bbbbbb.
      text box on it (--sup-*). The castle's rooms lay out their own things instead. */
   const PLACE = { x: 0.43, w: 0.47, top: 0.15, h: 0.56 };
   function placeOf(W, H) {
-    const p = PLACE; const k = px * ik;
+    const p = PLACE; const k = roomBox.k;
     const pr = plate.getBoundingClientRect(); const menu = document.querySelector('.tabs');
-    const mb = menu ? Math.ceil((menu.getBoundingClientRect().bottom - pr.top) / k) + 2 : 4; // keep under the menu
+    const mb = menu ? Math.ceil((menu.getBoundingClientRect().bottom - pr.top - roomBox.t) / k) + 2 : 4; // keep under the menu
     const x = Math.round(p.x * W); const w = Math.round(p.w * W);
     const y = Math.max(Math.round(p.top * H), mb); const h = Math.min(Math.round(p.h * H), Math.round(H * 0.78) - y);
     return { x, w, y, h };
   }
   /** Hand the text box's place to the page, in viewport pixels. */
   function placeText(pl) {
-    const r = plate.getBoundingClientRect(); const k = px * ik;
+    const r = plate.getBoundingClientRect(); const k = roomBox.k;
     const set = (n, v) => root.style.setProperty(n, `${Math.round(v)}px`);
-    set('--sup-l', r.left + pl.x * k); set('--sup-w', pl.w * k);
-    set('--sup-t', r.top + pl.y * k); set('--sup-h', pl.h * k);
+    set('--sup-l', r.left + roomBox.l + pl.x * k); set('--sup-w', pl.w * k);
+    set('--sup-t', r.top + roomBox.t + pl.y * k); set('--sup-h', pl.h * k);
   }
-  /** A room at half the scene's resolution (we are inside, closer: its pixels are twice as big). */
+  /** A room, at the standard size (RW x RH); a project page keeps its text on the easel. */
   function makeInterior(id) {
-    // a room is laid out for a wide view (about 4:3 at most): a squarer plate gets it at the bottom,
-    // its beamed ceiling going up into the dark over it (off: those rows, see iAt)
-    // a room's pixel is two of the scene's, or one when that would leave it under 180 wide (big
-    // pixels on a squarish window: the furniture is made for a room ~200 to 240 wide)
-    ik = Math.ceil(scene.W / 2) >= 180 ? 2 : 1;
-    const W2 = Math.ceil(scene.W / ik); const H2 = Math.ceil(scene.H / ik); const Hr = Math.min(H2, Math.round(W2 / 1.33)); const off = H2 - Hr;
-    // the castle's rooms lay out their own things; a project page keeps its text on the easel
-    const pl = ROOM_NAMES[id] ? null : placeOf(W2, Hr);
-    if (pl) placeText({ ...pl, y: pl.y + off });
-    const r = generateInterior(id, W2, Hr, Math.round(interiorStage(scene.W) / ik), pl); r.off = off; r.ceil = new Uint32Array(W2 * off);
+    layoutRoom();
+    const pl = ROOM_NAMES[id] ? null : placeOf(RW, RH);
+    if (pl) placeText(pl);
+    const r = generateInterior(id, RW, RH, Math.round(interiorStage(RW)), pl);
     for (let k = 0; k < 30; k += 1) stepCells(r.cells, 9, 14); // a hearth already burning
     return r;
   }
-  const iAt = (x, y) => {
-    const X = ik === 2 ? x >> 1 : x; const Y = ik === 2 ? y >> 1 : y; const iy = Y - interior.off;
-    return iy >= 0 ? ibuf[iy * interior.W + X] : interior.ceil[Y * interior.W + X];
-  };
+  /** The room's canvas: the largest whole number of device pixels a room pixel that fits the plate, centred. */
+  function layoutRoom() {
+    const r = plate.getBoundingClientRect(); const dpr = devicePixelRatio || 1;
+    const kd = Math.max(1, Math.floor(Math.min((r.width * dpr) / RW, (r.height * dpr) / RH))); const k = kd / dpr;
+    const l = Math.round(((r.width - RW * k) / 2) * dpr) / dpr; const t = Math.round(((r.height - RH * k) / 2) * dpr) / dpr;
+    roomBox = { l, t, k };
+    Object.assign(roomCv.style, { left: `${l}px`, top: `${t}px`, width: `${RW * k}px`, height: `${RH * k}px` });
+    fbuf = null; // (the embrasure follows: paintFrame)
+  }
+  /** The embrasure round the room, on the landscape's canvas: the tower's ashlar, its reveal lit on the
+   *  top and left edges, dark on the others; the room's own light (ipal32) on it. */
+  function paintFrame() {
+    const { W, H } = scene; fbuf = new Uint32Array(W * H);
+    const x0 = roomBox.l / px; const y0 = roomBox.t / px; const x1 = x0 + (RW * roomBox.k) / px; const y1 = y0 + (RH * roomBox.k) / px;
+    const C = (n, f = 1) => pack(unpack(ipal32[I[n]]).map((v) => v * f));
+    const stone = [C('ROCK_HI', 0.55), C('ROCK', 0.5), C('ROCK_SH', 0.5), C('ROCK_DK', 0.6)]; const lit = C('ROCK_HI', 0.85); const shade = C('ROCK_SH', 0.4); const dark = C('OUTLINE');
+    const bw = 9; const bh = 4; const rv = 3; // (a block, the reveal: scene px)
+    for (let y = 0; y < H; y += 1) {
+      const course = Math.floor(y / bh); const off = (course % 2) * Math.floor(bw / 2);
+      for (let x = 0; x < W; x += 1) {
+        const i = y * W + x;
+        if (x >= x0 && x < x1 && y >= y0 && y < y1) { fbuf[i] = dark; continue; } // (under the room's canvas)
+        const dx = x < x0 ? x0 - x : x >= x1 ? x - x1 + 1 : 0; const dy = y < y0 ? y0 - y : y >= y1 ? y - y1 + 1 : 0;
+        if (Math.max(dx, dy) <= rv) { fbuf[i] = (y < y0 && dy >= dx) || (x < x0 && dx > dy) ? lit : shade; continue; } // the reveal
+        const j = y % bh === bh - 1 || (x + off) % bw === 0; const n = (x * 7 + course * 13) % 11;
+        fbuf[i] = j ? stone[3] : n < 2 ? stone[0] : n > 8 ? stone[2] : stone[1];
+      }
+    }
+  }
 
   /** Width left to the furniture: on wide screens the parchment hangs over the right half. */
-  function interiorStage(W) {
-    return getComputedStyle(plate.parentElement).position === 'fixed' ? Math.round(W * 0.46) : W;
+  function interiorStage(W) { // (W: the room's width)
+    return getComputedStyle(plate.parentElement).position === 'fixed' && !root.classList.contains('climb') ? Math.round(W * 0.46) : W;
   }
 
   /** Indoor colours under a dim ambient, darker towards the corners and the beams; the window's
@@ -5684,16 +5710,6 @@ bbbbbb.
         let c = unpack(ipal32[idx[i]]).map((q) => q * v);
         if (shaft) c = mix(c, sunW, Math.min(0.2, 0.05 * shaft[i] + 0.15 * patch[i] + 0.25 * bounce[i])); // the shaft, its patch on the floor, the room lit round them
         ibase[i] = pack(c);
-      }
-    }
-    // the ceiling over a room shown on a squarer plate: boards and the beams' undersides, going dark upwards
-    const off = interior.off; if (!off) return;
-    const cBoard = unpack(ipal32[I.TIMBER_SH]); const cBeam = unpack(ipal32[I.TIMBER]); const cDark = unpack(ipal32[I.OUTLINE]);
-    for (let y = 0; y < off; y += 1) {
-      const k = 0.25 + 0.6 * (y / off) ** 1.5;
-      for (let x = 0; x < W; x += 1) {
-        const b = (x - 4) % 22 >= 0 && (x - 4) % 22 < 4; const seam = !b && y % 4 === 3;
-        interior.ceil[y * W + x] = pack((y === off - 1 || seam ? cDark : b ? cBeam : cBoard).map((v) => v * k));
       }
     }
   }
@@ -5802,7 +5818,7 @@ bbbbbb.
         const last = slits.hits[slits.hits.length - 1]; if (last) put(d.x + last[0], d.y + last[1], P('CREAM'));
       } else if (d.type === 'galton') {
         const g = galtonOf(7);
-        g.bins.forEach((c, k) => { for (let j = 0; j < c; j += 1) put(d.x + 1 + 2 * k, d.y + 33 - j, P('ARM_SH')); });
+        g.bins.forEach((c, k) => { for (let j = 0; j < Math.min(c, d.bh); j += 1) put(d.x + 1 + 2 * k, d.y + 18 + d.bh - j, P('ARM_SH')); });
         if (g.ball) put(d.x + 8 - g.ball.r + 2 * g.ball.k, d.y + 2 + g.ball.r * 2, P('ARM_HI'));
       } else if (d.type === 'life') {
         const L = lifeOf(d.w, d.h);
@@ -5954,15 +5970,15 @@ bbbbbb.
   function publishSpots(on) {
     const wide = plate && (getComputedStyle(plate.parentElement).position === 'fixed' || root.classList.contains('climb'));
     if (!on || !wide || !interior || !interior.slots.length) { spotsTo([], []); return; }
-    const r = plate.getBoundingClientRect(); const k = px * ik;
-    spotsTo(Array.from(interior.slots, (b) => b && ({ l: Math.round(r.left + b.x * k), t: Math.round(r.top + (b.y + interior.off) * k), w: Math.round(b.w * k), h: Math.round(b.h * k) })), interior.things);
+    const r = plate.getBoundingClientRect(); const k = roomBox.k;
+    spotsTo(Array.from(interior.slots, (b) => b && ({ l: Math.round(r.left + roomBox.l + b.x * k), t: Math.round(r.top + roomBox.t + b.y * k), w: Math.round(b.w * k), h: Math.round(b.h * k) })), interior.things);
   }
   /** The ladder's hotspot follows it: its box in the room, then in viewport px. */
   function ladderSpot(d) {
     const lx = Math.round(d.a + (d.b - d.a) * ladderF); const k = interior.ladderK;
     if (k >= 0) interior.slots[k] = { x: lx - 1, y: d.top, w: 10, h: d.foot - d.top };
     if (!running) render(now());
-    const r = plate.getBoundingClientRect(); return { l: Math.round(r.left + (lx - 1) * px * ik) };
+    const r = plate.getBoundingClientRect(); return { l: Math.round(r.left + roomBox.l + (lx - 1) * roomBox.k) };
   }
   const travelling = (on) => root.classList.toggle('travelling', on);
 
@@ -5973,34 +5989,37 @@ bbbbbb.
     return a ? [a.x - scene.M + shift(RATE[L.MID]) + a.w / 2, a.y + a.h / 2] : [scene.W / 2, scene.H / 2];
   }
 
-  /** Paint the screen: the landscape, the room, or the way between (zoom, then dissolve). */
+  /** Paint the screen: the landscape, the room, or the way between (zoom, then dissolve). The room
+   *  is on its own canvas (robuf, RW x RH); the landscape's canvas shows the embrasure round it. */
   function render(t) {
     const { W, H } = scene;
     const st = view.state;
+    const roomShown = st !== 'scene';
+    roomCv.hidden = !roomShown;
+    if (roomShown && !fbuf) paintFrame();
     if (st === 'scene' && tower) renderTower(t);
     else if (st === 'scene') { draw(t); if (zoom) zoomed(t); else obuf.set(buf); }
-    else if (st === 'room') { drawInterior(t); for (let y = 0; y < H; y += 1) for (let x = 0; x < W; x += 1) obuf[y * W + x] = iAt(x, y); }
+    else if (st === 'room') { drawInterior(t); obuf.set(fbuf); robuf.set(ibuf); }
     else if (st === 'swap') {
-      drawInterior(t);
+      drawInterior(t); obuf.set(fbuf);
       const th = clamp((t - view.t0) / DISSOLVE);
-      for (let y = 0; y < H; y += 1) for (let x = 0; x < W; x += 1) { const i = y * W + x; obuf[i] = bayer(x, y) < th ? iAt(x, y) : iprev[i]; }
+      for (let y = 0; y < RH; y += 1) for (let x = 0; x < RW; x += 1) { const i = y * RW + x; robuf[i] = bayer(x, y) < th ? ibuf[i] : iprev[i]; }
       if (th >= 1) { view.state = 'room'; travelling(false); }
     } else if (st === 'climb') {
-      drawInterior(t);
-      // a strip, top to bottom: the upper floor, the slab, the lower; the screen slides down it (dir 1) or up
+      drawInterior(t); obuf.set(fbuf);
+      // a strip, top to bottom: the upper floor, the slab, the lower; the view slides down it (dir 1) or up
       const e = clamp((t - view.t0) / CLIMB); const s = e < 0.5 ? 2 * e * e : 1 - 2 * (1 - e) ** 2;
-      const S = Math.max(6, Math.round(H * 0.06)); const o = Math.round(s * (H + S));
-      const y0 = view.dir > 0 ? o : H + S - o;
-      const up = (i) => (view.dir > 0 ? iprev[i] : obufNew(i)); const low = (i) => (view.dir > 0 ? obufNew(i) : iprev[i]);
-      const obufNew = (i) => iAt(i % W, Math.floor(i / W));
+      const S = Math.max(6, Math.round(RH * 0.06)); const o = Math.round(s * (RH + S));
+      const y0 = view.dir > 0 ? o : RH + S - o;
+      const up = (i) => (view.dir > 0 ? iprev[i] : ibuf[i]); const low = (i) => (view.dir > 0 ? ibuf[i] : iprev[i]);
       const stone = slabColours();
-      for (let y = 0; y < H; y += 1) {
+      for (let y = 0; y < RH; y += 1) {
         const yy = y0 + y;
-        for (let x = 0; x < W; x += 1) {
-          const i = y * W + x;
-          if (yy < H) obuf[i] = up(yy * W + x);
-          else if (yy >= H + S) obuf[i] = low((yy - H - S) * W + x);
-          else { const r = yy - H; obuf[i] = r === 0 || r === S - 1 ? stone[2] : r % 3 === 2 || (x + ((r / 3) | 0) * 5) % 10 === 0 ? stone[1] : stone[0]; }
+        for (let x = 0; x < RW; x += 1) {
+          const i = y * RW + x;
+          if (yy < RH) robuf[i] = up(yy * RW + x);
+          else if (yy >= RH + S) robuf[i] = low((yy - RH - S) * RW + x);
+          else { const r = yy - RH; robuf[i] = r === 0 || r === S - 1 ? stone[2] : r % 3 === 2 || (x + ((r / 3) | 0) * 5) % 10 === 0 ? stone[1] : stone[0]; }
         }
       }
       if (e >= 1) { view.state = 'room'; travelling(false); }
@@ -6015,17 +6034,16 @@ bbbbbb.
       const vw = W / z; const vh = H / z;
       const vx = Math.round(clamp(W / 2 + (ax - W / 2) * k - vw / 2, 0, W - vw));
       const vy = Math.round(clamp(H / 2 + (ay - H / 2) * k - vh / 2, 0, H - vh));
-      for (let y = 0; y < H; y += 1) {
+      for (let y = 0; y < H; y += 1) { // the landscape, zoomed; the embrasure dissolving in over it
         const row = (vy + Math.floor(y / z)) * W + vx;
-        for (let x = 0; x < W; x += 1) {
-          const i = y * W + x;
-          obuf[i] = th > 0 && bayer(x, y) < th ? iAt(x, y) : buf[row + Math.floor(x / z)];
-        }
+        for (let x = 0; x < W; x += 1) { const i = y * W + x; obuf[i] = th > 0 && bayer(x, y) < th ? fbuf[i] : buf[row + Math.floor(x / z)]; }
       }
+      for (let y = 0; y < RH; y += 1) for (let x = 0; x < RW; x += 1) { const i = y * RW + x; robuf[i] = th > 0 && bayer(x, y) < th ? ibuf[i] : 0; } // (0: transparent)
       if (into && e >= n * STEP + DISSOLVE) { view.state = 'room'; setReady(true); travelling(false); }
-      if (!into && e >= DISSOLVE + n * STEP) { view.state = 'scene'; interior = null; travelling(false); }
+      if (!into && e >= DISSOLVE + n * STEP) { view.state = 'scene'; interior = null; travelling(false); roomCv.hidden = true; }
     }
     ctx.putImageData(img, 0, 0);
+    if (roomShown) rctx.putImageData(rimg, 0, 0);
   }
 
   /** Go into room `id` (null: back out to the landscape); `dir` (the tower, script.js climbFloor):
@@ -6041,7 +6059,7 @@ bbbbbb.
       if (!view.id || roomOf(id) !== roomOf(view.id)) sfx('steps', { floor: ['talks', 'contact', 'research', 'cellar'].includes(roomOf(id)) ? 'stone' : 'wood', n: 4 }); // in: on its floor
       if (view.id && (view.state === 'room' || view.state === 'swap' || view.state === 'in' || view.state === 'climb')) {
         if (roomOf(id) === roomOf(view.id)) { view.id = id; return; }
-        iprev.set(obuf);
+        iprev.set(robuf);
         interior = makeInterior(id); lightInterior();
         view = { state: !anim ? 'room' : dir ? 'climb' : 'swap', id, anchor: id, t0: t, dir };
         setReady(true); travelling(anim);
@@ -6350,8 +6368,7 @@ bbbbbb.
   const OUTDOOR = new Set(Object.keys(EVENTS).filter((k) => !['embers', 'banner', 'cinema'].includes(k)));
 
   /** A click in a room: on the workshop's hearth, a log on the fire. */
-  function roomClick(x, y) {
-    const ix = ik === 2 ? x >> 1 : x; const iy = (ik === 2 ? y >> 1 : y) - interior.off;
+  function roomClick(ix, iy) { // (room pixels)
     const f = interior.flames.find((q) => q.hearth && Math.abs(ix - q.x) <= q.w / 2 + 2 && iy > q.y - 18 && iy <= q.y + 2);
     if (f) { fireFed = now(); interior.toldEmbers = false; say(heatOf() > 0.9 ? 'You put a log on the fire; it catches and roars.' : 'The fire burns well.'); sfx('crackle'); return; }
     const pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -6796,6 +6813,14 @@ bbbbbb.
       canvas.setAttribute('aria-hidden', 'true');
       plate.append(canvas);
       ctx = canvas.getContext('2d');
+      roomCv = document.createElement('canvas'); roomCv.className = 'room'; roomCv.width = RW; roomCv.height = RH; roomCv.hidden = true;
+      roomCv.setAttribute('aria-hidden', 'true'); plate.append(roomCv); rctx = roomCv.getContext('2d');
+      rimg = rctx.createImageData(RW, RH); robuf = new Uint32Array(rimg.data.buffer);
+      ibuf = new Uint32Array(RW * RH); iprev = new Uint32Array(RW * RH); ibase = new Uint32Array(RW * RH);
+      roomCv.addEventListener('click', (e) => { // (room pixels)
+        if (view.state !== 'room' || !interior) return; const b = roomCv.getBoundingClientRect();
+        roomClick(Math.floor(((e.clientX - b.left) / b.width) * RW), Math.floor(((e.clientY - b.top) / b.height) * RH));
+      });
       const redraw = () => { if (isOn() && resize()) render(now()); }; // (at once, even when running: a resized canvas is blank until drawn, and the plate behind would flash through)
       new ResizeObserver(redraw).observe(plate);
 
@@ -6920,6 +6945,13 @@ bbbbbb.
     },
     /** Is it a market in the village now (its stalls up: the day, by daylight)? For sound.js's band. */
     market() { return Boolean(scene) && marketDay(today()) && look.night < 0.3; },
+    /** The picture now, the room's canvas laid over the landscape's (the tower's stills), as a data URL. */
+    picture() {
+      const c = document.createElement('canvas'); c.width = canvas.width; c.height = canvas.height; const g = c.getContext('2d');
+      g.imageSmoothingEnabled = false; g.drawImage(canvas, 0, 0);
+      if (!roomCv.hidden) g.drawImage(roomCv, roomBox.l / px, roomBox.t / px, (RW * roomBox.k) / px, (RH * roomBox.k) / px);
+      return c.toDataURL();
+    },
     /** Is the lantern show on (for the projector's clatter)? */
     cinema() { return Boolean(interior && interior.deco.some((d) => d.type === 'cinema')); },
     /** Draw the astrolabe, set for now, on canvas cv; its caption (HTML). */
@@ -6943,7 +6975,7 @@ bbbbbb.
     /** The library ladder dragged to viewport x: its new hotspot (viewport px), or null. */
     ladderTo(clientX) {
       const d = interior && interior.deco.find((q) => q.type === 'ladder'); if (!d) return null;
-      const r = plate.getBoundingClientRect(); const ix = (clientX - r.left) / (px * ik) - 3;
+      const r = plate.getBoundingClientRect(); const ix = (clientX - r.left - roomBox.l) / roomBox.k - 3;
       ladderF = clamp((ix - d.a) / (d.b - d.a)); return ladderSpot(d);
     },
     /** The ladder a step along (k = -1, 1), for the keyboard. */
