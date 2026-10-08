@@ -22,7 +22,7 @@
   <script>
     // Before first paint, so the look never flashes. The castle (hours) is the site; the terminal
     // is the same page framed in the castle's scrying engine (script.js: openEngine), or the whole
-    // page below 75rem: on a computer always (the castle needs the room), on a touch screen for
+    // page below 75rem or upright: on a computer always (the castle needs the room), on a touch screen for
     // who chose it (localStorage entry=engine); a touch screen otherwise gets the castle as a
     // cut-away tower, a floor per section (.climb). ?theme=dark previews the terminal unframed,
     // ?touch=1 a touch screen.
@@ -35,7 +35,7 @@
       s = (/[?&]sky=(\w+)/.exec(q) || [])[1] || s;
       var framed = window.self !== window.top;
       var e = null; try { e = localStorage.getItem('entry'); } catch (x) {}
-      var wide = matchMedia('(min-width: 75rem)').matches;
+      var wide = matchMedia('(min-width: 75rem) and (min-aspect-ratio: 1/1)').matches; // (wide, and wider than high: an upright window gets the two columns)
       var touch = matchMedia('(pointer: coarse)').matches || /[?&]touch=1/.test(q);
       t = (/[?&]theme=(\w+)/.exec(q) || [])[1] === 'dark' || framed || (!wide && (!touch || e === 'engine')) ? 'dark' : 'hours';
       if (framed) r.classList.add('framed');

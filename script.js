@@ -244,7 +244,7 @@ const themeToggle = $('theme-toggle');
 const themeColor = document.querySelector('meta[name="theme-color"]');
 const THEMES = ['dark', 'hours']; // the toggle's cycle
 // the theme as in the head script: the castle, whose narrow form is the tower (.climb)
-const WIDE = matchMedia('(min-width: 75rem)');
+const WIDE = matchMedia('(min-width: 75rem) and (min-aspect-ratio: 1/1)'); // (as in the head script)
 const qTheme = new URLSearchParams(location.search).get('theme');
 const FRAMED = window.self !== window.top; // this page is the terminal in the castle's scrying engine
 // a touch screen (or ?touch=1): below 75rem it gets the tower; a computer's narrow window, the terminal
@@ -795,7 +795,7 @@ if (!isIndex) { // a project page is a room already: the workshop
    picture; the card only shows it where the object is. */
 
 /** The castle's rooms show their content as things only on wide screens (the plate fills the page). */
-const wideRooms = () => matchMedia('(min-width: 75rem)').matches;
+const wideRooms = () => WIDE.matches;
 
 function roomItems(id) {
   const sec = isIndex && document.getElementById(id);

@@ -26,7 +26,7 @@
   <script>
     // Before first paint, so the look never flashes. The castle (hours) is the site; the terminal
     // is the same page framed in the castle's scrying engine (script.js: openEngine), or the whole
-    // page below 75rem: on a computer always (the castle needs the room), on a touch screen for
+    // page below 75rem or upright: on a computer always (the castle needs the room), on a touch screen for
     // who chose it (localStorage entry=engine); a touch screen otherwise gets the castle as a
     // cut-away tower, a floor per section (.climb). ?theme=dark previews the terminal unframed,
     // ?touch=1 a touch screen.
@@ -39,7 +39,7 @@
       s = (/[?&]sky=(\w+)/.exec(q) || [])[1] || s;
       var framed = window.self !== window.top;
       var e = null; try { e = localStorage.getItem('entry'); } catch (x) {}
-      var wide = matchMedia('(min-width: 75rem)').matches;
+      var wide = matchMedia('(min-width: 75rem) and (min-aspect-ratio: 1/1)').matches; // (wide, and wider than high: an upright window gets the two columns)
       var touch = matchMedia('(pointer: coarse)').matches || /[?&]touch=1/.test(q);
       t = (/[?&]theme=(\w+)/.exec(q) || [])[1] === 'dark' || framed || (!wide && (!touch || e === 'engine')) ? 'dark' : 'hours';
       if (framed) r.classList.add('framed');
@@ -202,7 +202,7 @@
 
   <script type="application/json" id="site-data">{"world":{"research":{"c":0,"r":0,"name":"Research","label":"research"},"publications":{"c":1,"r":0,"name":"Publications","label":"publications"},"urban-morphogenesis":{"c":2,"r":0,"name":"Urban morphogenesis","label":"city","exit":"urban morphogenesis","page":"projects/urban-morphogenesis.html","img":"illum-dla.png"},"about":{"c":0,"r":1,"name":"About","label":"about","img":"flammarion-dark.png"},"projects":{"c":1,"r":1,"name":"Projects","label":"projects"},"nuclear-emulators":{"c":2,"r":1,"name":"Nuclear emulation","label":"nuclear","exit":"nuclear emulation","page":"projects/nuclear-emulators.html","img":"illum-nuclear.png"},"contact":{"c":0,"r":2,"name":"Contact","label":"contact"},"news":{"c":1,"r":2,"name":"News","label":"news"},"n-body":{"c":2,"r":2,"name":"N-body systems","label":"orrery","exit":"N-body systems","page":"projects/n-body.html","img":"illum-nbody.png"},"talks":{"c":0,"r":3,"name":"Talks","label":"talks"},"teaching":{"c":1,"r":3,"name":"Teaching","label":"teaching"}},"links":[["research","publications"],["research","about"],["publications","projects"],["about","projects"],["about","contact"],["projects","news"],["contact","news"],["projects","nuclear-emulators"],["nuclear-emulators","urban-morphogenesis"],["nuclear-emulators","n-body"],["contact","talks"],["news","teaching"],["talks","teaching"]],"email":"pro.mikesilva@gmail.com","github":"https://github.com/mksv-pro","bib":"assets/bib/silva2026emulation.bib","heraldry":{"own":"silva","tapestry":[["sorbonne","Sorbonne Université","BSc Physics & Mathematics; MSc Quantum Information"],["paris1","Université Paris 1 Panthéon-Sorbonne","BA Economics & Political Science"],["sciencespo","Sciences Po","Research assistant"],["ceremade","CEREMADE","Visiting research student"],["pariscite","Université Paris Cité","MSc Fundamental Physics"],["dauphine","Université Paris Dauphine-PSL","MSc Economics & Finance"],["ijclab","IJCLab","Research intern"],["saclay","Université Paris-Saclay","MSc Physics of Complex Systems"]]},"library":{"shelves":[["statphys","Statistical physics"],["stochastic","Stochastic processes"],["complex","Complex systems"],["dynamics","Dynamical systems and chaos"],["rmt","Random matrices"],["quantum","Quantum mechanics"],["qinfo","Quantum information"],["fields","Statistical field theory"],["proba","Probability"],["analysis","Analysis and PDEs"],["geometry","Geometry"],["ml","Machine learning"],["mlphys","Machine learning for physics"],["mfg","Mean-field games"],["econo","Econophysics and finance"],["social","Agent-based and social models"]]}}</script>
   <script src="/assets/js/sky.js?v=3255cb85"></script>
-  <script src="/script.js?v=60b7f43e" data-dungeon="/assets/js/dungeon.js?v=4638a1e8" data-hours="/assets/js/hours.js?v=bde718a9" data-arms="/assets/js/arms.js?v=33075736" data-sound="/assets/js/sound.js?v=5b198d4e"></script>
+  <script src="/script.js?v=4b876474" data-dungeon="/assets/js/dungeon.js?v=4638a1e8" data-hours="/assets/js/hours.js?v=39ba945f" data-arms="/assets/js/arms.js?v=33075736" data-sound="/assets/js/sound.js?v=5b198d4e"></script>
   <script src="/assets/js/cmdline.js?v=9c65c240"></script>
   <script src="/assets/js/armillary.js?v=ea93ec80"></script>
 </body>
