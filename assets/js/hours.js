@@ -2191,10 +2191,18 @@ bbbbbb.
     const rng = mulberry32(id.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 7));
     const idx = new Uint8Array(W * H); const out = new Uint8Array(W * H);
     const front = new Uint8Array(W * H); let frontOn = false; // what stands before a figure walking at the back (the schoolroom's desks and pupils)
+    const furn = new Uint8Array(W * H); let furnOn = false; // what the furniture covers (on once the shell is built): late pieces look for a free place
     const set = (x, y, i, o = 0) => {
       x = Math.round(x); y = Math.round(y);
-      if (x >= 0 && x < W && y >= 0 && y < H) { idx[y * W + x] = i; out[y * W + x] = o; if (frontOn) front[y * W + x] = 1; }
+      if (x >= 0 && x < W && y >= 0 && y < H) { idx[y * W + x] = i; out[y * W + x] = o; if (frontOn) front[y * W + x] = 1; if (furnOn) furn[y * W + x] = 1; }
     };
+    /** The first x along `xs` where a w x h box with its foot on yb is clear of the furniture (and of
+     *  the animated pieces, `deco`), or null. */
+    const clearAt = (xs, yb, w, h) => xs.find((x0) => {
+      if (x0 < 0 || x0 + w > W) return false;
+      for (let y = Math.max(0, yb - h); y <= Math.min(H - 1, yb + 1); y += 1) for (let x = x0 - 1; x <= x0 + w; x += 1) if (furn[y * W + x]) return false;
+      return !deco.some((d) => d.x !== undefined && d.y !== undefined && d.x + (d.w || 6) >= x0 - 1 && d.x - 6 <= x0 + w && d.y + (d.h || 6) >= yb - h && d.y - 6 <= yb + 1);
+    }) ?? null;
     const rect = (x, y, w, h, i) => { for (let yy = Math.round(y); yy < Math.round(y + h); yy += 1) for (let xx = Math.round(x); xx < Math.round(x + w); xx += 1) set(xx, yy, i); };
     const lights = []; const flames = []; const stars = []; const motes = []; const blinks = []; const camps = []; const deco = [];
     const stamp = (sp, x0, y0) => { for (let y = 0; y < sp.h; y += 1) for (let x = 0; x < sp.w; x += 1) { const c = sp.px[y * sp.w + x]; if (c >= 0) set(x0 + x, y0 + y, c); } };
@@ -2404,6 +2412,7 @@ bbbbbb.
       if (k > 0) { web(BL + 1, 6, 1, 3 + 9 * k); if (k > 0.5) web(BR - 2, 6, -1, 2 + 6 * k); }
     }
 
+    furnOn = true;
     // pieces of furniture
     function windowArch(x0, y0, w, h) { // shows the sky and a line of far mountains
       const r = w / 2;
@@ -2542,17 +2551,22 @@ bbbbbb.
       if (kind === 'may') vase(vx, vy, [I.FL_WHITE, I.FERN, I.FL_WHITE]);
       else if (season === 'spring') vase(vx, vy, [I.BLOSSOM, I.FL_YEL, I.FL_VIOLET]);
       else if (season === 'summer') vase(vx, vy, [I.FL_YEL, I.LEAF2, I.FL_YEL]);
-      if (season === 'autumn' && kind !== 'samhain') { // a basket of apples by the wall, a few leaves blown in
-        rect(corner, fy - 5, 9, 5, I.TIMBER); rect(corner, fy - 5, 9, 1, I.TIMBER_HI); for (let k = 1; k < 9; k += 2) rect(corner + k, fy - 4, 1, 4, I.TIMBER_SH);
-        [[1, -7], [3, -7], [5, -7], [7, -7], [2, -8], [4, -8], [6, -8], [3, -9], [5, -9]].forEach(([dx, dy], k) => { set(corner + dx, fy + dy, k % 3 ? I.CAP : I.LEAF2); set(corner + dx + 1, fy + dy, k % 3 ? I.CAP_SH : I.LEAF); });
+      const along = (from, to) => Array.from({ length: Math.max(0, Math.floor(Math.abs(to - from) / 2) + 1) }, (_, k) => from + Math.sign(to - from) * 2 * k);
+      if (season === 'autumn' && kind !== 'samhain') { // a basket of apples by the wall (a free place, from the corner in), a few leaves blown in
+        const bx = clearAt([...along(corner, S(0.55)), ...along(S(0.05), S(0.45))], fy, 11, 26); // (26 high: not under a table either)
+        if (bx !== null) basket(bx + 1);
         if (sill) for (let k = 0; k < 5; k += 1) set(sill.x0 + k * 3 - 2, floorY(0.08 + (k % 3) * 0.05), k % 2 ? I.LEAF : I.LEAF2);
       }
-      if (season === 'winter') { // a brazier glowing by the wall; frost in the window's corners
-        const bx = S(0.12); const by = floorY(0.3);
+      function basket(corner) {
+        rect(corner, fy - 5, 9, 5, I.TIMBER); rect(corner, fy - 5, 9, 1, I.TIMBER_HI); for (let k = 1; k < 9; k += 2) rect(corner + k, fy - 4, 1, 4, I.TIMBER_SH);
+        [[1, -7], [3, -7], [5, -7], [7, -7], [2, -8], [4, -8], [6, -8], [3, -9], [5, -9]].forEach(([dx, dy], k) => { set(corner + dx, fy + dy, k % 3 ? I.CAP : I.LEAF2); set(corner + dx + 1, fy + dy, k % 3 ? I.CAP_SH : I.LEAF); });
+      }
+      if (season === 'winter') (() => { // a brazier glowing by the wall (a free place); frost in the window's corners
+        const by = floorY(0.3); const b0 = clearAt([...along(S(0.1), S(0.45)), ...along(S(0.9), S(0.55))], by, 9, 24); if (b0 === null) return; const bx = b0 + 4;
         rect(bx - 3, by - 3, 7, 1, I.ARM_SH); rect(bx - 2, by - 2, 5, 2, I.ARM); set(bx - 2, by, I.ARM_SH); set(bx + 2, by, I.ARM_SH);
         for (let k = -2; k <= 2; k += 2) flames.push({ x: bx + k, y: by - 4, small: true });
         lights.push({ x: bx, y: by - 5, r: 0.45 * H });
-      }
+      })();
       // a freezing day: ferns of frost on the glass, grown up from the sill and the frame by
       // diffusion-limited aggregation (a random walker freezes where it touches the ice)
       if ((weather.temp ?? 9) <= 0 || (weather.frost ?? 9) <= -3) sills.forEach(({ x0: wx, w, y, top: wt }) => {
@@ -2717,7 +2731,8 @@ bbbbbb.
 
     if (kind === 'about') { // the scriptorium: a notebook open on the table, the charters of the schools on the wall
       const ww = Math.max(14, Sw(0.16)); windowArch(S(0.5) - Math.round(ww / 2), Math.round(H * 0.1), ww, Math.round(H * 0.4)); // the great window, over the table
-      const tb = table3d(S(0.48), yf - 16, Math.round((BR - BL) * 0.34));
+      const shX = S(box3d ? 0.83 : 0.8); // the bookcase's left side; the table narrows to leave the book of hours its 29 px before it
+      const tb = table3d(S(0.48), yf - 16, Math.max(22, Math.min(Math.round((BR - BL) * 0.34), 2 * (shX - 26 - S(0.48)))));
       of('desk-book').forEach(([, i]) => { openBook(S(0.48) - 9, tb.front, 18); slots[i] = box(S(0.48) - 10, tb.front - 6, 20, 7); });
       candle(tb.l - 1, tb.back, true); candle(tb.r + 1, tb.back, false);
       deco.push({ type: 'hourglass', x: tb.r - 4, y: tb.front - 10 });
@@ -2725,7 +2740,7 @@ bbbbbb.
       const half = Math.ceil(ch.length / 2); // the charters either side of the window
       spread(half, S(0), S(0.41), 20).forEach(({ k, row, xc }) => { const [t, i] = ch[k]; slots[i] = charter(xc, Math.round(H * 0.14) + row * 26, t.arms); });
       spread(ch.length - half, S(0.59), S(0.81), 20).forEach(({ k, row, xc }) => { const [t, i] = ch[half + k]; slots[i] = charter(xc, Math.round(H * 0.14) + row * 26, t.arms); });
-      const shX = S(box3d ? 0.83 : 0.8); const shTop = Math.round(H * 0.3); shelf(shX, shTop, Math.max(16, BR - shX - 2), yf - shTop);
+      const shTop = Math.round(H * 0.3); shelf(shX, shTop, Math.max(16, BR - shX - 2), yf - shTop);
       const bh = realGet('heures'); // the book of hours on its lectern, open at this month's page
       if (bh) {
         const lx = Math.max(tb.r + 3, Math.min(S(0.7), shX - 30)); const top = yf - 22; const pg = bh.small; const m = today().getMonth(); // (between the table and the bookcase)
@@ -3113,7 +3128,7 @@ bbbbbb.
       });
       const nw = Math.max(16, Sw(0.22)); windowArch(S(0.48) - Math.round(nw / 2), Math.round(H * 0.1), nw, Math.round(H * 0.42)); // where they come and go
       for (let k = 0; k < 7; k += 1) set(S(0.1) + Math.floor(rng() * S(0.8)), floorY(0.2 + rng() * 0.6), I.BEARD_SH);
-      lantern(S(0.96), Math.round(H * 0.24));
+      lantern(Math.round((cl + cr) / 2), ct - 7); // (over the board, hung from the beam: not on the cork)
     } else if (kind === 'cellar') { // the cellar: a rack for each year of study, casks, the steps on down
       { // a barrel vault: above the back wall's arch, its curved courses going dark into the corners
         const yA = (x) => Math.round(H * 0.34 * (1 - Math.sqrt(Math.max(0, 1 - ((x - W / 2) / (W / 2)) ** 2))));

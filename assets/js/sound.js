@@ -116,6 +116,25 @@
      amplitudes ~ sin(n pi p) / n^2 (the triangle the finger pulls, in Fourier modes); a gut string is a
      little stiff, so the partials run sharp (f_n = n f1 sqrt(1 + B n^2)), and the high ones die first. */
   const MIDI = (m) => 440 * 2 ** ((m - 69) / 12);
+  /* All the music is played in the village: one bus takes it there. Close up, near and clear; from
+     the meadow, further, duller, from the village's side, its echo off the castle's rock; from the
+     tower, further still; in the castle, through the walls (muffled) and into the room's own echo. */
+  let mus = null;
+  function musicBus() {
+    const i = ac.createGain(); const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 9000;
+    const pan = ac.createStereoPanner(); const near = ac.createGain(); const send = ac.createGain(); send.gain.value = 0.3;
+    const echo = ac.createDelay(1); echo.delayTime.value = 0.32; const eLp = ac.createBiquadFilter(); eLp.type = 'lowpass'; eLp.frequency.value = 1600;
+    const fb = ac.createGain(); fb.gain.value = 0.22; const eOut = ac.createGain(); eOut.gain.value = 0;
+    i.connect(lp).connect(pan); pan.connect(near).connect(dry); pan.connect(send).connect(wet);
+    pan.connect(echo).connect(eLp); eLp.connect(fb).connect(echo); eLp.connect(eOut).connect(dry);
+    return { in: i, lp, pan, near, send, eOut };
+  }
+  function placeMusic(s) { // [lowpass Hz, level, room send, echo] by where the listener is
+    const [f, g, w, e] = s.place === 'village' ? [9000, 1, 0.25, 0.05] : s.place === 'tower' ? [2000, 0.38, 0.6, 0.22]
+      : s.room ? [1100, 0.3, 0.9, 0.12] : [2600, 0.5, 0.55, 0.2];
+    set(mus.lp.frequency, f, 0.5); set(mus.near.gain, g, 0.5); set(mus.send.gain, w, 0.5); set(mus.eOut.gain, e, 0.5);
+    set(mus.pan.pan, s.place || s.room ? 0 : (s.pan && s.pan.village) || 0, 0.5);
+  }
   function pluck(m, at, vol, len) {
     const t = t0() + Math.max(0, at); const f1 = MIDI(m); const P = 0.2; const B = 0.00035;
     const g = ac.createGain(); g.gain.value = vol;
@@ -126,7 +145,7 @@
       a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(amp * 1.6, t + 0.004); a.gain.exponentialRampToValueAtTime(0.0001, t + life);
       o.connect(a).connect(g); o.start(t); o.stop(t + life + 0.05);
     }
-    g.connect(wet); g.connect(dry); // a little of the room's echo on the lute
+    g.connect(mus.in); // (the music bus: from the village, see placeMusic)
   }
   /* The air walks the mode of the planetary hour, as the old correspondences would have it: each
      planet its mode and its pace (sky.js's Chaldean order: Saturn, Jupiter, Mars, Sun, Venus, Mercury, Moon). */
@@ -155,7 +174,7 @@
       a.gain.setValueAtTime(0.0001, t); a.gain.exponentialRampToValueAtTime(1 / (n * n) * 1.4, t + 0.005); a.gain.exponentialRampToValueAtTime(0.0001, t + life);
       o.connect(a).connect(g); o.start(t); o.stop(t + life + 0.05);
     }
-    g.connect(wet); g.connect(dry);
+    g.connect(mus.in);
   }
   const marketNow = (s) => s.place === 'village' && s.market; // (close up on the village, a market day)
   const whenOf = (s) => (marketNow(s) ? 'market' : s.month === 11 && Math.random() < 0.4 ? 'december' : s.night ? 'night' : (s.hour ?? 12) >= 17 ? 'evening' : 'day');
@@ -170,21 +189,21 @@
     [-4, 4].forEach((c) => { const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = c; vd.connect(o.frequency); o.connect(bp); o.start(t); o.stop(t + len + 0.1); });
     vib.start(t); vib.stop(t + len + 0.1);
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.025); g.gain.setValueAtTime(vol, t + Math.max(0.03, len - 0.04)); g.gain.exponentialRampToValueAtTime(0.0001, t + len + 0.06);
-    bp.connect(lp).connect(g); g.connect(dry); g.connect(wet);
+    bp.connect(lp).connect(g); g.connect(mus.in);
   }
   function drone(tonic, at) { // until stopped: [nodes], each with stop()
     const t = t0() + Math.max(0, at); const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.018, t + 0.6);
-    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.connect(g); g.connect(dry); g.connect(wet);
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.connect(g); g.connect(mus.in);
     const os = [36, 43].map((d) => { const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = MIDI(d + tonic + (tonic > 6 ? -12 : 0) + 12); o.connect(lp); o.start(t); return o; });
     return { stop(at2 = 0) { const e = t0() + Math.max(0, at2); g.gain.setTargetAtTime(0.0001, e, 0.15); os.forEach((o) => o.stop(e + 1)); } };
   }
   function tabor(at, strong) {
     const t = t0() + Math.max(0, at); const v = strong ? 0.22 : 0.1;
     const o = ac.createOscillator(); o.frequency.setValueAtTime(strong ? 150 : 190, t); o.frequency.exponentialRampToValueAtTime(60, t + 0.12);
-    const a = ac.createGain(); a.gain.setValueAtTime(v, t); a.gain.exponentialRampToValueAtTime(0.0001, t + 0.18); o.connect(a).connect(dry); o.start(t); o.stop(t + 0.2);
+    const a = ac.createGain(); a.gain.setValueAtTime(v, t); a.gain.exponentialRampToValueAtTime(0.0001, t + 0.18); o.connect(a).connect(mus.in); o.start(t); o.stop(t + 0.2);
     const n = ac.createBufferSource(); n.buffer = noise; const hp = ac.createBiquadFilter(); hp.type = 'bandpass'; hp.frequency.value = 2600; hp.Q.value = 0.8;
     const b = ac.createGain(); b.gain.setValueAtTime(v * 0.5, t); b.gain.exponentialRampToValueAtTime(0.0001, t + (strong ? 0.12 : 0.07));
-    n.connect(hp).connect(b); b.connect(dry); b.connect(wet); n.start(t, Math.random()); n.stop(t + 0.15);
+    n.connect(hp).connect(b); b.connect(mus.in); n.start(t, Math.random()); n.stop(t + 0.15);
   }
   function pickTune(s, but = null) {
     const pool = tunes.filter((q) => q.when === whenOf(s) && q !== but); return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
@@ -423,7 +442,7 @@
     const s = state(); const wx = s.wx || {}; const wet0 = { drizzle: 0.3, showers: 0.6, rain: 0.8, storm: 1 }[wx.kind] || 0;
     const inside = Boolean(s.room); const room = inside ? 0.6 : 1; const outW = inside ? 0.12 : 1; const pan = (inside || s.place ? {} : s.pan) || {};
     set(master.gain, s.on ? volume * 0.55 : 0, 0.4);
-    useVerb(inside ? (RV[s.room] ? s.room : 'out') : 'out');
+    useVerb(inside ? (RV[s.room] ? s.room : 'out') : 'out'); placeMusic(s);
     set(beds.fire.g.gain, (s.room === 'projects' || s.room === 'workshop' ? 0.12 : 0.05) * room); set(beds.fire.p.pan, pan.fire || 0, 0.3);
     set(beds.wind.g.gain, Math.min(0.12, (wx.wind || 0) / 250) * (s.room === 'research' ? 1.4 : outW)); set(beds.wind.f.frequency, 300 + Math.random() * 500, 2);
     // the rain as hard as it really falls (mm an hour; loudness ~ its square root), brighter when heavy
@@ -525,6 +544,7 @@
         dry = ac.createGain(); dry.connect(master);
         wet = ac.createGain(); wet.gain.value = 0.55; wet.connect(master); // (and through the room's echo: useVerb)
         noise = noiseBuffer();
+        mus = musicBus();
         chantBus = ac.createGain(); chantBus.gain.value = 0; chantPan = ac.createStereoPanner(); const cd = ac.createGain(); cd.gain.value = 0.35;
         chantBus.connect(chantPan); chantPan.connect(wet); chantPan.connect(cd).connect(dry); // (mostly the echo: heard through the nave's door)
         beds.fire = bed('lowpass', 500, 0.5); beds.wind = bed('bandpass', 500, 0.8); beds.rain = bed('bandpass', 1800, 0.4);

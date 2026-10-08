@@ -649,6 +649,10 @@ dialog.dungeon canvas {
 @media (max-width: 90rem) {
   .st-right #st-moon { display: none; }
 }
+/* a castle just wide enough (75 to 85rem): the band keeps its buttons whole, the humour and the hour go */
+@media (min-width: 75rem) and (max-width: 85rem) {
+  [data-theme="hours"] .status :is(.st-right, .st-left span:has(#st-align)) { display: none !important; }
+}
 
 
 /* ---- hours: the page is the landscape (wide screens only: head script, script.js) ---------
