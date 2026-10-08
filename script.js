@@ -421,7 +421,7 @@ function soundState() {
         cinema: Boolean(window.Hours && window.Hours.cinema && window.Hours.cinema()), // the lantern show (its clatter)
         office: window.Hours && window.Hours.office ? window.Hours.office() : null, // the chapel's office now (its chant)
         hour: h, minute: p.getMinutes(), day: p.toDateString(), month: p.getMonth(), dawn: alt > -6 && alt < 10 && h < 12,
-        market: [0, 3, 5, 6].includes(wd) && alt > 0, forge: wd !== 0 && h >= 7 && h < 18, tavern: h >= 18 || h < 1,
+        market: window.Hours && window.Hours.market ? window.Hours.market() : [0, 3, 5, 6].includes(wd) && alt > 0, forge: wd !== 0 && h >= 7 && h < 18, tavern: h >= 18 || h < 1,
       };
     })(),
   };

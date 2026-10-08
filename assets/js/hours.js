@@ -1765,10 +1765,12 @@ nNnnnn..
     // deer come out at the forest's edge at dawn and dusk (west, on the meadow's far rim)
     const deer = [0.1, 0.155].map((f, k) => ({ x: M + Math.round(f * Ws), y: yg + 6 + k * 3, ph: k * 2.3 }));
 
-    /* FG: the nearest plane: big pines, mossy rocks, mushrooms, ferns, a stump, a fallen branch */
-    on(L.FG);
+    /* FG: the nearest plane, the big pines; at their feet, drawn into the meadow so they stay where
+       they stand as it slides (a plane of their own slid faster and they drifted over the path):
+       mossy rocks, mushrooms, ferns, a stump, a fallen branch */
+    on(L.GROUND);
     const FGP = [I.FG_PINE_HI, I.FG_PINE, I.FG_PINE_SH];
-    const free = (x) => !(x > fire.x - 70 && x < fire.x + 22) && Math.abs(x - pathX[H - 1]) > pathW[H - 1] + 4;
+    const free = (x, y = H - 1) => !(x > fire.x - 70 && x < fire.x + 22) && Math.abs(x - pathX[Math.min(H - 1, y)]) > pathW[Math.min(H - 1, y)] + 6;
     function mossyRock(x0, y0, rx, ry) {
       blob(x0, y0, rx, ry, [I.STONE_HI, I.STONE, I.STONE_SH], null);
       for (let x = -rx + 1; x < rx; x += 1) { // moss on its crown, lit at the top
@@ -1796,8 +1798,7 @@ nNnnnn..
       mossyRock(x, H - 2 - Math.floor(rng() * 4), 4 + Math.floor(rng() * 3), 3 + Math.floor(rng() * 2));
     }
     for (let k = 0; k < Math.round(WE / 25); k += 1) {
-      const x = Math.round(rng() * WE); if (!free(x)) continue;
-      const y = H - 1 - Math.floor(rng() * (H - yfg));
+      const x = Math.round(rng() * WE); const y = H - 1 - Math.floor(rng() * (H - yfg)); if (!free(x, y)) continue;
       mushroom(x, y, rng() < 0.55);
       if (rng() < 0.5) mushroom(x + 3, y + 1, false);
     }
@@ -1815,6 +1816,7 @@ nNnnnn..
       set(stumpX + 10, H - 5, I.DIRT); set(stumpX + 11, H - 6, I.DIRT); set(stumpX + 15, H - 6, I.DIRT_SH);
     }
 
+    on(L.FG);
     { // nothing of the foreground stands over the grazing horse: what touches its box goes, whole (a mushroom on its head)
       const fg = planes[L.FG]; const x0 = horse.x - 2; const x1 = horse.x + hsp.w + 2; const y0 = horse.y; const y1 = Math.min(H, horse.y + hsp.h);
       for (let y = y0; y < y1; y += 1) for (let x = x0; x < x1; x += 1) {
@@ -2928,16 +2930,20 @@ bbbbbb.
       // each talk a scroll laid at a place (from the far side round to the near), more at the centre
       // the table takes the room right of the tapestry, whole: it never runs off the edges
       // (a narrow room: the table stands in front of the tapestry, which hangs on the wall behind it)
-      const free0 = narrow ? S(0.1) : tx + tw + 10;
-      const rx = Math.max(22, Math.min(56, Math.floor((BR - free0 - 12) / 2)));
-      const tcx = Math.round(free0 + (BR - free0) / 2); const ry = Math.max(7, Math.round(rx * 0.28));
+      // the floor shared out, left to right: the bench and the lectern by it, the table and its end
+      // chairs, a corner kept for the season's basket (each in its own span: nothing on another)
+      const benchW = 34; const lx = BL + 2 + benchW + 3; const right = BR - 21;
+      const free0 = Math.max(narrow ? S(0.1) : tx + tw + 10, lx + 9 + 8);
+      const rx = Math.max(16, Math.min(56, Math.floor((right - free0 - 7) / 2)));
+      const tcx = Math.round(free0 + 7 + rx); const ry = Math.max(6, Math.round(rx * 0.28));
       const tcy = Math.min(yf + 2, H - ry - 14);
       const onEllipse = (ang, k = 1) => [Math.round(tcx + Math.cos(ang) * rx * k), Math.round(tcy + Math.sin(ang) * ry * k)];
       const far = [-0.78, -0.5, -0.22].map((f) => f * Math.PI); // the places behind the table
+      const hangLow = ty + 27; // (the hangings' fringes: the backs stop short of them)
       far.forEach((ang) => { // a high back rising behind the table's far edge (the table hides the seat)
-        const [x, y] = onEllipse(ang, 1);
-        rect(x - 3, y - 13, 7, 14, I.TIMBER); rect(x - 3, y - 13, 7, 1, I.TIMBER_HI); rect(x - 3, y - 13, 1, 14, I.TIMBER_HI);
-        set(x, y - 14, I.GOLD); rect(x - 1, y - 10, 3, 4, I.CLOTH);
+        const [x, y] = onEllipse(ang, 1); const bh = Math.max(7, Math.min(13, y - hangLow - 2));
+        rect(x - 3, y - bh, 7, bh + 1, I.TIMBER); rect(x - 3, y - bh, 7, 1, I.TIMBER_HI); rect(x - 3, y - bh, 1, bh + 1, I.TIMBER_HI);
+        set(x, y - bh - 1, I.GOLD); rect(x - 1, y - bh + 3, 3, 4, I.CLOTH);
       });
       for (let y = -ry; y <= ry; y += 1) { // the top, an ellipse seen from a little above
         const half = Math.round(rx * Math.sqrt(1 - (y / ry) ** 2));
@@ -2998,7 +3004,7 @@ bbbbbb.
         for (let x = 0; x < sm.w; x += 2) set(x0 + x, y0 + sm.h, I.GOLD_SH); // the fringe
         extra.push({ t: { kind: 'licorne', label: 'The tapestry of the lady and the unicorn', get html() { return cards.licorne(); } }, b: box(x0 - 3, y0 - 2, sm.w + 6, sm.h + 4) });
       }
-      const lx = tcx - rx - 16; // the speaker's lectern, at the head of the table, waiting
+      // the speaker's lectern, by the bench, waiting (lx: above)
       rect(lx + 3, yf - 13, 2, 13, I.TIMBER_SH); rect(lx + 1, yf - 1, 6, 1, I.TIMBER_SH);
       for (let k = 0; k < 9; k += 1) set(lx + k, yf - 14 + Math.floor(k / 3), I.TIMBER_HI);
       { // the astronomical clock on the east pillar: a 24-hour dial, the sun's sign, the moon's phase
@@ -5459,10 +5465,10 @@ bbbbbb.
       });
     }
     const fo = shift(RATE[L.FG]) - M;
-    if (nearOn) scene.blades.forEach((b) => {
-      const c = pal32[b.c];
+    if (nearOn) scene.blades.forEach((b) => { // (rooted in the meadow: they slide with it at their row)
+      const c = pal32[b.c]; const bo = groundOff(Math.min(scene.H - 1, b.y)) - M;
       const lean = reduce ? 0 : (Math.sin(t * 1.6 + b.x * 0.21) * 0.6 * clamp(weather.wind / 15, 0.3, 1.6) + Math.sin(t * 0.7 + b.x * 0.05) * 0.6 + windX() * 0.8) * b.h * 0.22;
-      for (let r = 0; r < b.h; r += 1) put(b.x + fo + Math.round((lean + b.spread) * (r / b.h) ** 2), b.y - r, c, false);
+      for (let r = 0; r < b.h; r += 1) put(b.x + bo + Math.round((lean + b.spread) * (r / b.h) ** 2), b.y - r, c, false);
     });
     if (look.night > 0.5 || (forced.owl || 0) > t) { // the owl on its branch, blinking now and then
       const ow = scene.owl; const ox = ow.x + fo;
@@ -6834,6 +6840,8 @@ bbbbbb.
       const cap = a.months ? a.months[i % 12] : a.captions ? a.captions[i % a.captions.length] : null;
       return cap ? `<b>${cap.name}.</b> ${cap.text}` : '';
     },
+    /** Is it a market in the village now (its stalls up: the day, by daylight)? For sound.js's band. */
+    market() { return Boolean(scene) && marketDay(today()) && look.night < 0.3; },
     /** Is the lantern show on (for the projector's clatter)? */
     cinema() { return Boolean(interior && interior.deco.some((d) => d.type === 'cinema')); },
     /** Draw the astrolabe, set for now, on canvas cv; its caption (HTML). */

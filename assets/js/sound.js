@@ -157,28 +157,80 @@
     }
     g.connect(wet); g.connect(dry);
   }
-  const whenOf = (s) => (s.month === 11 && Math.random() < 0.4 ? 'december' : s.night ? 'night' : (s.hour ?? 12) >= 17 ? 'evening' : 'day');
+  const marketNow = (s) => s.place === 'village' && s.market; // (close up on the village, a market day)
+  const whenOf = (s) => (marketNow(s) ? 'market' : s.month === 11 && Math.random() < 0.4 ? 'december' : s.night ? 'night' : (s.hour ?? 12) >= 17 ? 'evening' : 'day');
+  /* the market's band: a shawm (a double reed: two saws a few cents apart, a nasal formant near
+     1.4 kHz, a little vibrato), a bagpipe's drone on the tonic and its fifth, a tabor (a skin's
+     thump falling in pitch, its snare's rattle) */
+  function shawm(m, at, vol, len) {
+    const t = t0() + Math.max(0, at); const f = MIDI(m); const g = ac.createGain();
+    const bp = ac.createBiquadFilter(); bp.type = 'peaking'; bp.frequency.value = 1400; bp.Q.value = 1.2; bp.gain.value = 9;
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 3800;
+    const vib = ac.createOscillator(); vib.frequency.value = 5.5; const vd = ac.createGain(); vd.gain.value = f * 0.004; vib.connect(vd);
+    [-4, 4].forEach((c) => { const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = c; vd.connect(o.frequency); o.connect(bp); o.start(t); o.stop(t + len + 0.1); });
+    vib.start(t); vib.stop(t + len + 0.1);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.025); g.gain.setValueAtTime(vol, t + Math.max(0.03, len - 0.04)); g.gain.exponentialRampToValueAtTime(0.0001, t + len + 0.06);
+    bp.connect(lp).connect(g); g.connect(dry); g.connect(wet);
+  }
+  function drone(tonic, at) { // until stopped: [nodes], each with stop()
+    const t = t0() + Math.max(0, at); const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.018, t + 0.6);
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 900; lp.connect(g); g.connect(dry); g.connect(wet);
+    const os = [36, 43].map((d) => { const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = MIDI(d + tonic + (tonic > 6 ? -12 : 0) + 12); o.connect(lp); o.start(t); return o; });
+    return { stop(at2 = 0) { const e = t0() + Math.max(0, at2); g.gain.setTargetAtTime(0.0001, e, 0.15); os.forEach((o) => o.stop(e + 1)); } };
+  }
+  function tabor(at, strong) {
+    const t = t0() + Math.max(0, at); const v = strong ? 0.22 : 0.1;
+    const o = ac.createOscillator(); o.frequency.setValueAtTime(strong ? 150 : 190, t); o.frequency.exponentialRampToValueAtTime(60, t + 0.12);
+    const a = ac.createGain(); a.gain.setValueAtTime(v, t); a.gain.exponentialRampToValueAtTime(0.0001, t + 0.18); o.connect(a).connect(dry); o.start(t); o.stop(t + 0.2);
+    const n = ac.createBufferSource(); n.buffer = noise; const hp = ac.createBiquadFilter(); hp.type = 'bandpass'; hp.frequency.value = 2600; hp.Q.value = 0.8;
+    const b = ac.createGain(); b.gain.setValueAtTime(v * 0.5, t); b.gain.exponentialRampToValueAtTime(0.0001, t + (strong ? 0.12 : 0.07));
+    n.connect(hp).connect(b); b.connect(dry); b.connect(wet); n.start(t, Math.random()); n.stop(t + 0.15);
+  }
   function pickTune(s, but = null) {
     const pool = tunes.filter((q) => q.when === whenOf(s) && q !== but); return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
   }
   /** Schedule the playing tune's notes up to half a second ahead; false when it has ended. */
   function playTune() {
-    const q = playing; const bd = 60 / q.tune.bpm; const harpy = q.tune.when === 'night';
+    const q = playing; const bd = 60 / q.tune.bpm; const harpy = q.tune.when === 'night'; const band = q.tune.when === 'market';
+    const last = q.tune.notes.at(-1); const span = Math.ceil(last[0] + last[1]) + 1; // (beats; the tune again from there)
+    if (band) { // the drum's pulse: the beat, doubled or more till it is no quicker than ~0.3 s; once round, again till a minute
+      q.reps ??= Math.min(3, Math.max(1, Math.ceil(60 / (span * bd)))); q.rep ??= 1;
+      q.step ??= bd * 2 ** Math.max(0, Math.ceil(Math.log2(0.3 / bd))); q.hit ??= 0;
+      q.drone ??= drone(q.tune.tonic ?? 2, q.t0 - t0() - 0.3);
+      while (q.t0 + q.hit * q.step < Math.min(t0() + 0.5, q.t0 + span * bd)) {
+        const at = q.t0 + q.hit * q.step; if (at > t0() - 0.05) tabor(at - t0(), q.hit % 2 === 0);
+        if (q.hit % 4 === 3 && at + q.step / 2 > t0()) tabor(at + q.step / 2 - t0(), false); // (a skip before the bar's end)
+        q.hit += 1;
+      }
+    }
     while (q.i < q.tune.notes.length) {
       const [b, d, m0, v] = q.tune.notes[q.i]; const at = q.t0 + b * bd;
       if (at > t0() + 0.5) return true;
-      let m = m0; while (m > 84) m -= 12; while (m < 38) m += 12; // (the instrument's compass)
+      let m = m0; while (m > (band ? 79 : 84)) m -= 12; while (m < (band ? 55 : 38)) m += 12; // (the instrument's compass)
       const jitter = (Math.random() - 0.5) * 0.015; // (a player, not a machine)
-      if (at > t0() - 0.05) (harpy ? harp : pluck)(m, at - t0() + jitter, v ? 0.04 : 0.06, Math.max(0.3, d * bd * 1.8));
+      if (at > t0() - 0.05) {
+        if (band) (v ? pluck : shawm)(v ? m - 12 : m, at - t0() + jitter, v ? 0.05 : 0.035, v ? Math.max(0.3, d * bd * 1.8) : Math.max(0.08, d * bd * 0.92));
+        else (harpy ? harp : pluck)(m, at - t0() + jitter, v ? 0.04 : 0.06, Math.max(0.3, d * bd * 1.8));
+      }
       q.i += 1;
     }
-    return t0() < q.t0 + (q.tune.notes.at(-1)[0] + 6) * 60 / q.tune.bpm;
+    if (band && q.rep < q.reps) { q.rep += 1; q.t0 += span * bd; q.i = 0; q.hit = 0; return true; }
+    const going = t0() < q.t0 + (last[0] + 6) * bd;
+    if (!going && q.drone) q.drone.stop();
+    return going;
   }
+  /** Stop what plays (its drone too). */
+  const hush = () => { if (playing && playing.drone) playing.drone.stop(); playing = null; };
   const air = { next: 0, deg: 7, left: 0, beat: 0 };
   function compose() { // schedule the air up to half a second ahead
     askTunes();
     if (chanting && chantBus.gain.value > 0.05) return; // (the lute is quiet while the chapel sings within earshot)
-    if (playing) { if (playTune()) return; playing = null; airUntil = t0() + 60 + Math.random() * 40; }
+    { // into the market close up: the band strikes up at once; out of it, it stops
+      const s0 = state(); const band = playing && playing.tune.when === 'market';
+      if (tunes && marketNow(s0) && !band && !playing?.chosen) { const tune = pickTune(s0); if (tune) { hush(); playing = { tune, t0: t0() + 0.5, i: 0 }; } }
+      else if (band && !marketNow(s0) && !playing.chosen) { hush(); airUntil = t0() + 30; }
+    }
+    if (playing) { if (playTune()) return; hush(); airUntil = t0() + 60 + Math.random() * 40; }
     if (!airUntil) airUntil = t0() + 45;
     const qt = new URLSearchParams(location.search).get('tune'); // (?tune=<id>: that one at once, a preview)
     if (qt && tunes && !compose.forced) { compose.forced = true; const tune = tunes.find((q) => q.id === qt); if (tune) { playing = { tune, t0: t0() + 0.3, i: 0 }; return; } }
@@ -483,14 +535,14 @@
       ac.resume(); askBells();
       clearInterval(timer); timer = setInterval(tick, 250); tick();
     },
-    stop() { if (!ac) return; set(master.gain, 0, 0.2); clearInterval(timer); setTimeout(() => ac.suspend(), 600); },
+    stop() { if (!ac) return; hush(); set(master.gain, 0, 0.2); clearInterval(timer); setTimeout(() => ac.suspend(), 600); },
     setVolume(v) { volume = Math.max(0, Math.min(1, v)); if (ac) set(master.gain, volume * 0.55, 0.2); },
-    setMusic(on) { music = on; },
+    setMusic(on) { music = on; if (!on && ac) hush(); },
     /** Play tune `id` now (the music command), then the hour's music again; false if there is none such. */
     play(id) {
       return askTunes().then((list) => {
         const tune = (list || []).find((q) => q.id === id); if (!tune || !ac) return false;
-        playing = { tune, t0: t0() + 0.3, i: 0 }; return true;
+        hush(); playing = { tune, t0: t0() + 0.3, i: 0, chosen: true }; return true;
       });
     },
     /** Another tune for the hour than the one playing, at once; its title, or null. */
@@ -499,11 +551,11 @@
         if (!list || !ac) return null;
         const was = playing && playing.tune;
         const tune = pickTune(state(), was) || list.filter((q) => q !== was)[Math.floor(Math.random() * (list.length - (was ? 1 : 0)))];
-        playing = { tune, t0: t0() + 0.3, i: 0 }; return tune;
+        hush(); playing = { tune, t0: t0() + 0.3, i: 0, chosen: true }; return tune;
       });
     },
     /** Back to the lute's own air, for two minutes before a tune may come again. */
-    air() { if (ac) { playing = null; airUntil = t0() + 120; } },
+    air() { if (ac) { hush(); airUntil = t0() + 120; } },
     /** The real tune being played, if any: {title, composer, year}. */
     now() {
       if (chanting) return { title: chanting.title, composer: `Gregorian chant, the chapel's ${chanting.office}`, year: '' };

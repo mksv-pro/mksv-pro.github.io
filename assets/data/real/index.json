@@ -430,7 +430,7 @@
   ]
  },
  "tunes": {
-  "v": "c337581f",
+  "v": "12a228ae",
   "credits": [
    {
     "title": "Greensleeves",
@@ -501,6 +501,69 @@
     "year": "1890",
     "source": "https://www.mutopiaproject.org/ftp/SatieE/Gnossienne/no_3/",
     "licence": "CC BY-SA 4.0 (Mutopia edition); notes from the Mutopia Project"
+   },
+   {
+    "title": "Schiarazula Marazula",
+    "author": "Giorgio Mainerio",
+    "year": "1578",
+    "source": "https://abcnotation.com/tunePage?a=trillian.mit.edu/~jc/music/abc/mirror/mindspring.com/~dmilewski/ecdp/3lfpublic/0113",
+    "licence": "tune in the public domain; abc transcription by unnamed, via abcnotation.com"
+   },
+   {
+    "title": "Tourdion",
+    "author": "anonymous, ed. Pierre Attaingnant",
+    "year": "1530",
+    "source": "https://abcnotation.com/tunePage?a=abcplus.sourceforge.net/Choral/Tourdion/0002",
+    "licence": "tune in the public domain; abc transcription by Guido Gonzato, November 2017, via abcnotation.com"
+   },
+   {
+    "title": "Saltarello",
+    "author": "anonymous, Tuscany",
+    "year": "c. 1400",
+    "source": "https://abcnotation.com/tunePage?a=trillian.mit.edu/~jc/music/abc/demo/Tunes/Saltarello/0000",
+    "licence": "tune in the public domain; abc transcription by MTGuru for C&F, via abcnotation.com"
+   },
+   {
+    "title": "Branle de la Haye",
+    "author": "Thoinot Arbeau, Orchésographie",
+    "year": "1589",
+    "source": "https://abcnotation.com/tunePage?a=anamnese.online.fr/site2/abc/arbeau_ps/0059",
+    "licence": "tune in the public domain; abc transcription by Eric Forgeot - http://anamnese.online.fr, via abcnotation.com"
+   },
+   {
+    "title": "Branle de la Montarde",
+    "author": "Thoinot Arbeau, Orchésographie",
+    "year": "1589",
+    "source": "https://abcnotation.com/tunePage?a=anamnese.online.fr/site2/abc/arbeau_ps/0058",
+    "licence": "tune in the public domain; abc transcription by Eric Forgeot - http://anamnese.online.fr, via abcnotation.com"
+   },
+   {
+    "title": "Ductia",
+    "author": "anonymous",
+    "year": "13th c.",
+    "source": "https://abcnotation.com/tunePage?a=trillian.mit.edu/~jc/music/abc/mirror/musicaviva.com/france/ductia01/0000",
+    "licence": "tune in the public domain; abc transcription by Transcribed by Frank Nordberg - http://www.musicaviva.com, via abcnotation.com"
+   },
+   {
+    "title": "Estampie",
+    "author": "anonymous",
+    "year": "14th c.",
+    "source": "https://abcnotation.com/tunePage?a=trillian.mit.edu/~jc/music/abc/mirror/galouvielle.free.fr/Provence/0048",
+    "licence": "tune in the public domain; abc transcription by Transcrit et/ou corrigé par Michel BELLON - 2005-03-04, via abcnotation.com"
+   },
+   {
+    "title": "Estampie royale",
+    "author": "anonymous",
+    "year": "13th c.",
+    "source": "https://abcnotation.com/tunePage?a=trillian.mit.edu/~jc/music/abc/mirror/galouvielle.free.fr/Provence/0047",
+    "licence": "tune in the public domain; abc transcription by Transcrit et/ou corrigé par Michel BELLON - 2005-04-24, via abcnotation.com"
+   },
+   {
+    "title": "Lamento di Tristano and La Rotta",
+    "author": "anonymous, Tuscany",
+    "year": "c. 1400",
+    "source": "https://abcnotation.com/tunePage?a=richardrobinson.tunebook.org.uk/static/tunebook/02713",
+    "licence": "tune in the public domain; abc transcription by Andy Hornby, via abcnotation.com"
    }
   ]
  },

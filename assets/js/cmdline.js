@@ -87,7 +87,7 @@ let tuneListP = null;
 const tuneList = () => (tuneListP ||= fetch(new URL('assets/data/real/index.json', SITE), { cache: 'no-cache' }).then((r) => r.json())
   .then((ix) => (ix.tunes ? fetch(new URL(`assets/data/real/tunes.json?v=${ix.tunes.v}`, SITE)).then((r) => r.json()) : { tunes: [] }))
   .then((o) => o.tunes).catch(() => []));
-const WHEN = { day: 'by day', evening: 'in the evening', december: 'in December', night: 'at night, on the harp' };
+const WHEN = { day: 'by day', evening: 'in the evening', december: 'in December', night: 'at night, on the harp', market: 'at the market, pipes and drum' };
 const nowPlaying = () => { const n = window.Sound && window.Sound.now ? window.Sound.now() : null; return n ? `${esc(n.title)}, ${esc(n.composer)}${n.year ? ` (${esc(n.year)})` : ''}` : null; };
 /** Sound and music on, in the castle (the terminal is silent); the promise of the sound, or null. */
 function hearing() {
