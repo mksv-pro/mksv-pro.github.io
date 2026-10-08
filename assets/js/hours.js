@@ -2074,7 +2074,7 @@ nNnnnn..
   const ROOM_NAMES = {
     about: 'the scriptorium', research: 'the observatory', projects: 'the workshop',
     publications: 'the library', talks: 'the great hall', teaching: 'the schoolroom',
-    news: 'the rookery', contact: 'the gatehouse',
+    news: 'the rookery', contact: 'the gatehouse', cellar: 'the cellar', // (the cellar: the tower's foot, phones only)
   };
   const roomOf = (id) => (ROOM_NAMES[id] ? id : 'projects'); // project pages: the workshop
 
@@ -2209,7 +2209,7 @@ bbbbbb.
       about: { side: 0.17, mat: 'wainscot' }, publications: { side: 0.25, mat: 'shelves' },
       research: { side: 0.11, mat: 'stone' }, projects: { side: 0.15, mat: 'brick' },
       talks: { side: 0.09, mat: 'ashlar', pillars: true }, teaching: { side: 0.17, mat: 'lime', sideWindow: true },
-      news: { side: 0.16, mat: 'boards' }, contact: { side: 0.2, mat: 'ashlar' },
+      news: { side: 0.16, mat: 'boards' }, contact: { side: 0.2, mat: 'ashlar' }, cellar: { side: 0.18, mat: 'ashlar' },
     };
     const SHAPE = ROOM_NAMES[id] ? SHAPES[kind] : null;
     const box3d = Boolean(SHAPE);
@@ -2259,7 +2259,7 @@ bbbbbb.
     } else stones(9, 4, STONE); // the gatehouse: big ashlar
 
     // the ceiling's beams (the observatory has its dome, the rookery its rafters)
-    if (kind !== 'research') {
+    if (kind !== 'research' && kind !== 'cellar') {
       for (let x = 0; x < W; x += 1) { rect(x, 0, 1, 3, I.TIMBER_SH); set(x, 3, I.OUTLINE); }
       for (let x = 4; x < W; x += 22) { rect(x, 0, 4, 5, I.TIMBER); rect(x, 0, 1, 5, I.TIMBER_HI); rect(x, 5, 4, 1, I.OUTLINE); }
     }
@@ -2267,7 +2267,7 @@ bbbbbb.
 
     /* the floor in perspective: seams run to a vanishing point, rows close up with distance */
     const vx = box3d ? W / 2 : W * 0.42; const vy = yf - (H - yf) * 1.4;
-    const flag = kind === 'talks' || kind === 'contact' || kind === 'research';
+    const flag = kind === 'talks' || kind === 'contact' || kind === 'research' || kind === 'cellar';
     for (let y = yf; y < H; y += 1) {
       const k = (y - yf) / (H - yf);
       const rowN = Math.floor(Math.pow(k, 0.62) * (flag ? 5 : 8));
@@ -3108,6 +3108,61 @@ bbbbbb.
       const nw = Math.max(16, Sw(0.22)); windowArch(S(0.48) - Math.round(nw / 2), Math.round(H * 0.1), nw, Math.round(H * 0.42)); // where they come and go
       for (let k = 0; k < 7; k += 1) set(S(0.1) + Math.floor(rng() * S(0.8)), floorY(0.2 + rng() * 0.6), I.BEARD_SH);
       lantern(S(0.96), Math.round(H * 0.24));
+    } else if (kind === 'cellar') { // the cellar: a rack for each year of study, casks, the steps on down
+      { // a barrel vault: above the back wall's arch, its curved courses going dark into the corners
+        const yA = (x) => Math.round(H * 0.34 * (1 - Math.sqrt(Math.max(0, 1 - ((x - W / 2) / (W / 2)) ** 2))));
+        for (let x = 0; x < W; x += 1) {
+          for (let y = 0; y < yA(x); y += 1) {
+            const course = Math.floor((x - W / 2) / 7 + (y / (yA(x) + 1)) * 2);
+            set(x, y, (x * 3 + y * 5) % 23 === 0 || Math.abs(((x - W / 2) / 7) % 1) < 0.12 ? I.ROCK_DK : course % 2 ? I.ROCK_SH : I.ROCK);
+          }
+          set(x, yA(x), I.ROCK_DK);
+        }
+      }
+      const bottle = (x, y, k) => { rect(x, y, 2, 2, (k * 7) % 5 ? I.PINE_SH : I.FG_PINE_SH); set(x, y, I.PINE_HI); };
+      const racks = of('vintage'); const rl = S(0.02); const rr = S(0.62);
+      const tiers = (rr - rl) / Math.max(1, racks.length) < 11 ? 2 : 1; const cols = Math.ceil(racks.length / tiers); // (a narrow cellar: racks on racks)
+      const per = Math.floor((rr - rl) / Math.max(1, cols)); const top = Math.round(H * 0.24); const th = Math.floor((yf - 2 - top) / tiers);
+      racks.forEach(([, i], k) => { // a rack: an oak frame, its bottles' ends in rows, a slate tag on top
+        const x0 = rl + (k % cols) * per; const w = per - 2; const y0 = top + Math.floor(k / cols) * th + 5; const y1 = top + (Math.floor(k / cols) + 1) * th;
+        rect(x0, y0, w, y1 - y0, I.TIMBER_SH); rect(x0, y0, w, 1, I.TIMBER_HI); rect(x0, y0, 1, y1 - y0, I.TIMBER);
+        const full = 0.45 + 0.55 * ((k * 5 + 3) % 7) / 6; // (some racks fuller than others)
+        for (let y = y0 + 3; y < y1 - 2; y += 3) for (let x = x0 + 2; x < x0 + w - 2; x += 3) if (rng() < full) bottle(x, y, x + y);
+        rect(x0 + Math.round(w / 2) - 3, y0 - 4, 7, 4, I.STONE_SH); set(x0 + Math.round(w / 2) - 1, y0 - 3, I.LIME_HI); set(x0 + Math.round(w / 2) + 1, y0 - 2, I.LIME_HI); // chalk on the slate
+        slots[i] = box(x0 - 1, y0 - 5, w + 2, y1 - y0 + 6);
+      });
+      function cask(xc, yb, r) { // a cask standing, seen from the side: bellied staves, two iron hoops, its lid
+        const h = Math.round(r * 2.6);
+        for (let y = 0; y < h; y += 1) {
+          const half = Math.round(r * (0.78 + 0.22 * Math.sin((Math.PI * (y + 0.5)) / h)));
+          const hoop = Math.abs(y - h * 0.22) < 0.6 || Math.abs(y - h * 0.78) < 0.6;
+          for (let x = -half; x <= half; x += 1) {
+            const edge = Math.abs(x) === half;
+            set(xc + x, yb - y, edge ? I.OUTLINE : hoop ? (x > 0 ? I.ARM_HI : I.ARM_SH) : (x + half) % 3 === 0 ? I.TIMBER_SH : x > half * 0.3 ? I.TIMBER_HI : I.TIMBER);
+          }
+        }
+        rect(xc - Math.round(r * 0.78), yb - h, Math.round(r * 1.56) + 1, 1, I.TIMBER_SH);
+        shadow(xc, yb + 1, 2 * r);
+        return yb - h;
+      }
+      const cr = Math.max(4, Math.min(Math.round(H * 0.075), Math.floor((S(0.98) - S(0.66)) / 4.4))); const cx0 = S(0.66) + cr;
+      const lid = cask(cx0, yf - 1, cr); cask(cx0 + 2 * cr + 2, yf + 1, cr); // two, one a little nearer
+      candle(cx0, lid - 1, false);
+      of('stair').forEach(([, i]) => { // the steps on down, cut into the floor before us: each step darker
+        const x0 = S(0.28); const w = Sw(0.4); const y0 = floorY(0.25); const y1 = floorY(0.95);
+        const N = 3; // seen from above: each step a lit tread, then its riser in shadow, narrower and darker going down
+        for (let y = y0; y < y1; y += 1) {
+          const f = ((y - y0) / (y1 - y0)) * N; const step = Math.floor(f); const tread = f - step < 0.45;
+          const ins = 1 + step * 2;
+          for (let x = x0; x < x0 + w; x += 1) {
+            const wall = x < x0 + ins || x >= x0 + w - ins;
+            set(x, y, wall ? (x < x0 + w / 2 ? I.ROCK_SH : I.ROCK_DK) : tread ? [I.ROCK_HI, I.ROCK, I.ROCK_SH][step] : bayer(x, y) < 0.3 + step * 0.3 ? I.OUTLINE : I.ROCK_DK);
+          }
+        }
+        rect(x0 - 1, y0 - 1, w + 2, 1, I.ROCK_HI); // the lip
+        slots[i] = box(x0 - 2, y0 - 3, w + 4, y1 - y0 + 4);
+      });
+      lantern(S(0.66), Math.round(H * 0.3));
     } else { // contact: the letterbox in the door, a lodestone and the register on the table, a map of Paris
       const a = S(0.42); const b = S(0.62); door(a, b, Math.round(H * 0.16));
       lantern(b + 6, Math.round(H * 0.38));
@@ -5900,7 +5955,7 @@ bbbbbb.
     const label = (r) => `Inside the castle: ${ROOM_NAMES[roomOf(r)]}, lit by candles; its window shows the sky over Paris at this hour.`;
     if (id) {
       fireFed = now(); // (someone keeps the fire while you are away)
-      if (!view.id || roomOf(id) !== roomOf(view.id)) sfx('steps', { floor: ['talks', 'contact', 'research'].includes(roomOf(id)) ? 'stone' : 'wood', n: 4 }); // in: on its floor
+      if (!view.id || roomOf(id) !== roomOf(view.id)) sfx('steps', { floor: ['talks', 'contact', 'research', 'cellar'].includes(roomOf(id)) ? 'stone' : 'wood', n: 4 }); // in: on its floor
       if (view.id && (view.state === 'room' || view.state === 'swap' || view.state === 'in' || view.state === 'climb')) {
         if (roomOf(id) === roomOf(view.id)) { view.id = id; return; }
         iprev.set(obuf);
@@ -6670,10 +6725,18 @@ bbbbbb.
           if (e.pointerType !== 'mouse' || !isOn() || zoom) return;
           parTarget = clamp((e.clientX / innerWidth) * 2 - 1, -1, 1);
         }, { passive: true });
-        addEventListener('deviceorientation', (e) => { // the tower: the phone tilted left or right (no permission asked: iOS stays still)
+        addEventListener('deviceorientation', (e) => { // the tower: the phone tilted left or right
           if (e.gamma === null || !root.classList.contains('climb') || zoom) return;
           parTarget = clamp(e.gamma / 25, -1, 1);
         }, { passive: true });
+        const DOE = window.DeviceOrientationEvent; // iOS gives the tilt only once asked, from a gesture: the first tap on the picture
+        if (DOE && typeof DOE.requestPermission === 'function') {
+          const ask = (e) => {
+            if (!root.classList.contains('climb') || !(e.target instanceof Element) || !e.target.closest('.plate, .spot')) return;
+            document.removeEventListener('click', ask); DOE.requestPermission().catch(() => {});
+          };
+          document.addEventListener('click', ask);
+        }
       }
       // the wizard answers the menu he holds: sparks while a choice is pointed at, a burst on one
       const pointed = (e) => isOn() && e.target instanceof Element && e.target.closest('.tabs a');

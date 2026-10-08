@@ -55,6 +55,10 @@ CASES = {
     "phone-tower": ("?sky=noon&weather=clear", (390, 844),
                     "document.querySelector('#research').scrollIntoView({ behavior: 'instant' }); await wait(2500);",
                     "document.documentElement.classList.contains('climb') && document.documentElement.dataset.room === 'research' && " + CANVAS),
+    "phone-cellar": ("?sky=noon&weather=clear", (390, 844),
+                     "document.querySelector('#cellar').scrollIntoView({ behavior: 'instant' }); await wait(2500);"
+                     " const b = [...document.querySelectorAll('.spot')].find((x) => /steps/i.test(x.dataset.label)); b && b.click(); await wait(1500);",
+                     "document.documentElement.dataset.room === 'cellar' && !!document.querySelector('dialog.dungeon[open]')"),
     "phone-engine": ("?sky=noon&weather=clear", (390, 844),
                      "if (window !== top) await new Promise(() => {}); await wait(1500); document.getElementById('theme-toggle').click(); await wait(6000);",
                      "!!document.querySelector('.engine-win iframe') && document.documentElement.dataset.room === 'about'"),

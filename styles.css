@@ -760,6 +760,7 @@ dialog.dungeon canvas {
 [data-theme="hours"] .tabs a[href$="#teaching"] { --icon: url("assets/img/icons/slate.svg"); }
 [data-theme="hours"] .tabs a[href$="#news"] { --icon: url("assets/img/icons/raven.svg"); }
 [data-theme="hours"] :is(.tabs a[href$="#contact"], .links a[href^="mailto:"]) { --icon: url("assets/img/icons/letter.svg"); }
+[data-theme="hours"] .tabs a[href$="#cellar"] { --icon: url("assets/img/icons/cask.svg"); }
 [data-theme="hours"] .links a[href*="github"] { --icon: url("assets/img/icons/lodestone.svg"); }
 [data-theme="hours"] .links a[href*="CV"] { --icon: url("assets/img/icons/scroll.svg"); }
 [data-theme="hours"] .loot li[data-item="about"] { --icon: url("assets/img/icons/scroll.svg"); }
@@ -934,6 +935,7 @@ html.climb[data-theme] .tabs-session { display: block; font-size: 0; margin-bott
 html.climb[data-theme] .tabs-session::before { content: "The tower's floors, roof to cellar"; font-size: .85rem; color: var(--red); }
 html.climb[data-theme][data-room] .tabs ul { grid-template-columns: 1fr 1fr; justify-content: stretch; }
 html.climb[data-theme] .leave { display: none !important; }
+html.climb[data-theme] .go-down { font: inherit; color: var(--accent); background: none; border: 0; padding: .2rem 0; cursor: pointer; text-decoration: underline; }
 html.climb[data-theme] main, html.climb[data-theme][data-room] main {
   position: static; display: block; width: auto; height: auto; max-height: none; overflow: visible; clip-path: none;
   padding: 0; margin: 0; background: none; outline: 0; box-shadow: none; opacity: 1; pointer-events: auto; animation: none;
@@ -1033,7 +1035,8 @@ html.climb[data-theme] .engine-win { width: 100vw; height: 100dvh; max-width: no
   :root, [data-theme] { --bg: #fff; --panel: #fff; --ink: #000; --hi: #000; --dim: #444; --accent: #000; --red: #000; --rule: #999; }
   body { padding: 0; background: #fff; font-size: 10pt; }
   .msgline, .plate, .tabs, .status, .almanac, .monogram, .skip-link, .illum, .cmdline, .demo, .exits, .rip { display: none !important; }
-  main > section { display: block !important; }
+  main > section:not(#cellar) { display: block !important; }
+  #cellar { display: none !important; } /* (the tower's way down: nothing to print) */
   .project { display: block; }
   .shell { display: block; }
   .term { max-width: none; padding: 0; }

@@ -127,3 +127,15 @@ hh.........
 .ssssssssk.
 ..sssssskk.
 ...kkkkk...
+== cask
+...wwwww...
+..wwwwwww..
+.aaaaaaaaa.
+.wwwwwwwww.
+wwwwwwwwwww
+wwwwwkwwwww
+wwwwwwwwwww
+.wwwwwwwww.
+.aaaaaaaaa.
+..wwwwwww..
+...wwwww...

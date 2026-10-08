@@ -60,6 +60,7 @@ const T = {
   realmLabel: 'A pixel map of Paris: the Seine, and a pennant where each of the schools stands.',
   leave: '[leave the room \u00b7 Esc]',
   notebook: 'The notebook on the desk',
+  vintage: 'Vintage', stairDown: 'The steps going down',
   lookHint: '(Whatever glints can be looked at: point at it, or Tab to it and press Enter.)',
   charter: 'A charter of enrolment, sealed with the arms of the school.',
   register: 'The register by the door',
@@ -234,6 +235,7 @@ function applyTheme(theme, persist) {
   });
   $('theme-next').textContent = FRAMED ? T.engineClose : theme === 'hours' ? T.engineOpen : `[${T.themeName[nextTheme()]}]`;
   root.classList.toggle('climb', theme === 'hours' && !WIDE.matches && !FRAMED);
+  document.querySelectorAll('#cellar, .tabs .to-cellar').forEach((e) => { e.hidden = !root.classList.contains('climb'); });
   themeColor.setAttribute('content', getComputedStyle(root).getPropertyValue('--bar').trim());
   if (persist) store('theme', theme);
   // the terminal on a narrow screen (who chose it): under a banner of the living landscape (unless `banner off`)
@@ -552,7 +554,7 @@ function enterRoom(id, quiet = false) {
 /* ---- one window at a time, addressed by the URL hash ------------------- */
 
 const tabLinks = [...document.querySelectorAll('.tabs a[href^="#"]')];
-const windows = [...document.querySelectorAll('main > section:not([hidden])')];
+const windows = [...document.querySelectorAll('main > section:not([hidden]):not(#cellar)')];
 const host = document.querySelector('.host');
 const isIndex = tabLinks.length > 0;
 
@@ -564,14 +566,14 @@ function currentWindow() {
 function openWindow(hash, { userAction, animate = userAction }) {
   const target = (hash && document.getElementById(decode(hash.slice(1)))) || null;
   const win = target ? target.closest('main > section') : windows[0];
-  if (!windows.includes(win)) return; // e.g. the skip link's #main: leave the windows alone
-  if (climbing()) { // the tower: every floor on the page; the one asked for is scrolled to (climbFloor does the rest)
+  if (climbing() && (!target || floors().includes(win))) { // the tower: every floor on the page; the one asked for is scrolled to (climbFloor does the rest)
     windows.forEach((w) => w.classList.remove('is-off'));
     if (target) target.scrollIntoView({ behavior: userAction && !reduceMotion ? 'smooth' : 'instant' });
     else if (userAction) window.scrollTo({ top: 0 });
     climbFloor();
     return;
   }
+  if (!windows.includes(win)) return; // e.g. the skip link's #main: leave the windows alone
 
   windows.forEach((w) => w.classList.toggle('is-off', w !== win));
   tabLinks.forEach((a) => {
@@ -613,13 +615,16 @@ function openWindow(hash, { userAction, animate = userAction }) {
    text is under it; above the first floor, the roof's view (the landscape). Going down a floor
    the room slides up past its floor slab, and the other way round (hours.js 'climb'). */
 let floor; // (undefined: not yet placed)
+const cellar = document.getElementById('cellar'); // the tower's foot (shown by applyTheme in the tower only)
+const floors = () => (cellar && !cellar.hidden ? [...windows, cellar] : windows);
 function climbFloor() {
   if (!climbing() || !isIndex) return;
   const line = document.querySelector('.plate').getBoundingClientRect().bottom + 48;
-  const win = windows.filter((w) => w.getBoundingClientRect().top < line).pop() || null;
+  const fl = floors();
+  const win = fl.filter((w) => w.getBoundingClientRect().top < line).pop() || null;
   const id = win ? win.id : null;
   if (id === floor) return;
-  const dir = floor === undefined ? 0 : windows.findIndex((w) => w.id === id) > windows.findIndex((w) => w.id === floor) ? 1 : -1;
+  const dir = floor === undefined ? 0 : fl.findIndex((w) => w.id === id) > fl.findIndex((w) => w.id === floor) ? 1 : -1;
   floor = id;
   tabLinks.forEach((a) => { if (id && a.getAttribute('href') === `#${id}`) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   if (id) { root.dataset.room = id; enterRoom(id, dir === 0); } else delete root.dataset.room;
@@ -738,6 +743,9 @@ function roomItems(id) {
     });
     case 'talks': return of('.entry', 'banner', (el) => ({ label: text(el.querySelector('h3')), html: el.innerHTML }));
     case 'teaching': return of('.entry', 'course', (el) => ({ label: text(el.querySelector('h3')), html: el.innerHTML }));
+    case 'cellar': // a rack for each year of study, and the steps on down (the descent)
+      return [...vintages().map((v) => ({ kind: 'vintage', label: `${T.vintage} ${v.year}`, html: `<p class="dim">${esc(v.note)}</p>${v.html}` })),
+        { kind: 'stair', label: T.stairDown, act: descend }];
     case 'contact': {
       const things = [...sec.querySelectorAll('.kv div')].map((d) => {
         const k = text(d.querySelector('dt'));
@@ -1094,6 +1102,7 @@ function openCard(i, from) {
   const it = spotItems[i];
   if (!it) return; // a button of the room just left
   if (it.go) { goTo(it.go); return; } // a door: through it
+  if (it.act) { it.act(); return; } // the cellar's steps: down
   const body = card.querySelector('.card-body');
   body.innerHTML = it.html;
   illuminate(body, it.label);
@@ -1377,14 +1386,20 @@ function descend() {
     map: (id) => showDialog(T.mapTitle, mapHtml(id)),
     inventory: showInventory,
     read: (id) => goTo(id),
-    vintages: () => [...document.querySelectorAll('#coursework .ledger-year')].map((y) => { // a year of study, as a wine
-      const n = y.querySelectorAll('li').length; const progs = [...y.querySelectorAll('.ledger-prog')].map((p) => p.textContent.split('\u00b7')[0].trim());
-      const body = n > 14 ? 'full-bodied' : n > 8 ? 'well-structured' : n > 4 ? 'light and lively' : 'a rare small cuvée';
-      return `"${y.querySelector('h3').textContent}", from ${progs.join(' and ')}: ${body}, ${n} courses in the blend.`;
-    }),
+    vintages: () => vintages().map((v) => v.note),
   }));
 }
+/** Each year of study as a wine (the descent's racks, the tower's cellar): its year, a tasting note, its courses. */
+function vintages() {
+  return [...document.querySelectorAll('#coursework .ledger-year')].map((y) => {
+    const n = y.querySelectorAll('li').length; const progs = [...y.querySelectorAll('.ledger-prog')].map((p) => p.textContent.split('\u00b7')[0].trim());
+    const body = n > 14 ? 'full-bodied' : n > 8 ? 'well-structured' : n > 4 ? 'light and lively' : 'a rare small cuvée';
+    const year = y.querySelector('h3').textContent;
+    return { year, note: `"${year}", from ${progs.join(' and ')}: ${body}, ${n} courses in the blend.`, html: y.innerHTML };
+  });
+}
 $('descend').addEventListener('click', descend);
+document.querySelectorAll('[data-descend]').forEach((b) => b.addEventListener('click', descend));
 
 /* ---- wizard mode (the Konami code) ------------------------------------- */
 
