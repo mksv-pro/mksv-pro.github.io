@@ -50,6 +50,10 @@ CASES = {
                " window.framedOk = !!d && d.documentElement.getAttribute('data-theme') === 'dark' && d.documentElement.classList.contains('framed');"
                " d.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await wait(2500);",
                "window.framedOk && !document.querySelector('.engine') && !document.documentElement.classList.contains('engine-on')"),
+    "music-help": ("?theme=hours&sky=noon&weather=clear", (1600, 900),  # (the help, then the book of tunes on the command line)
+                   "await wait(1000); document.querySelectorAll('dialog[open]').forEach((d) => d.close()); showHelp(); await wait(300);"
+                   " const ok = !!document.querySelector('dialog.is-help .help'); dialog.close(); openCmd(); run('music list'); await wait(1500); window.helpOk = ok;",
+                   "window.helpOk && document.querySelectorAll('.cmd-out .tunes b').length >= 10"),
     "terminal": ("?theme=dark", (1600, 900), "", "document.documentElement.getAttribute('data-theme') === 'dark'"),
     "phone-banner": ("?theme=dark&sky=noon&weather=clear", (390, 844), "", "document.documentElement.classList.contains('banner') && " + CANVAS),
     "narrow-window": ("?sky=noon&weather=clear", (1100, 800), "",  # (a computer: the terminal, the landscape over the engraving)

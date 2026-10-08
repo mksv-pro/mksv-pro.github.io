@@ -141,13 +141,12 @@
   ];
   /* ---- real tunes (Mutopia's MIDI, reduced to a tune and a bass): after a while of the composed air,
      one fitting the hour is played through, then the air comes back. Satie, at night, on a harp. */
-  let tunes = null; let tunesAsked = false; let playing = null; let airUntil = 0;
+  let tunes = null; let tunesAsked = null; let playing = null; let airUntil = 0;
   /** One of the real assets (assets/data/real/<name>.json, its version from index.json), or null. */
   const realJson = (name) => fetch(new URL('index.json', REAL), { cache: 'no-cache' }).then((r) => r.json())
     .then((ix) => (ix[name] ? fetch(new URL(`${name}.json?v=${ix[name].v}`, REAL)).then((r) => r.json()) : null));
-  function askTunes() {
-    if (tunesAsked) return; tunesAsked = true;
-    realJson('tunes').then((o) => { tunes = o ? o.tunes : null; }).catch(() => {});
+  function askTunes() { // (once; the promise of the list)
+    return (tunesAsked ||= realJson('tunes').then((o) => { tunes = o ? o.tunes : null; return tunes; }).catch(() => null));
   }
   function harp(m, at, vol, len) { // plucked in the middle: the odd harmonics, a long ring
     const t = t0() + Math.max(0, at); const f1 = MIDI(m); const g = ac.createGain(); g.gain.value = vol;
@@ -158,9 +157,9 @@
     }
     g.connect(wet); g.connect(dry);
   }
-  function pickTune(s) {
-    const h = s.hour ?? 12; const when = s.month === 11 && Math.random() < 0.4 ? 'december' : s.night ? 'night' : h >= 17 ? 'evening' : 'day';
-    const pool = tunes.filter((q) => q.when === when); return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
+  const whenOf = (s) => (s.month === 11 && Math.random() < 0.4 ? 'december' : s.night ? 'night' : (s.hour ?? 12) >= 17 ? 'evening' : 'day');
+  function pickTune(s, but = null) {
+    const pool = tunes.filter((q) => q.when === whenOf(s) && q !== but); return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
   }
   /** Schedule the playing tune's notes up to half a second ahead; false when it has ended. */
   function playTune() {
@@ -487,6 +486,24 @@
     stop() { if (!ac) return; set(master.gain, 0, 0.2); clearInterval(timer); setTimeout(() => ac.suspend(), 600); },
     setVolume(v) { volume = Math.max(0, Math.min(1, v)); if (ac) set(master.gain, volume * 0.55, 0.2); },
     setMusic(on) { music = on; },
+    /** Play tune `id` now (the music command), then the hour's music again; false if there is none such. */
+    play(id) {
+      return askTunes().then((list) => {
+        const tune = (list || []).find((q) => q.id === id); if (!tune || !ac) return false;
+        playing = { tune, t0: t0() + 0.3, i: 0 }; return true;
+      });
+    },
+    /** Another tune for the hour than the one playing, at once; its title, or null. */
+    next() {
+      return askTunes().then((list) => {
+        if (!list || !ac) return null;
+        const was = playing && playing.tune;
+        const tune = pickTune(state(), was) || list.filter((q) => q !== was)[Math.floor(Math.random() * (list.length - (was ? 1 : 0)))];
+        playing = { tune, t0: t0() + 0.3, i: 0 }; return tune;
+      });
+    },
+    /** Back to the lute's own air, for two minutes before a tune may come again. */
+    air() { if (ac) { playing = null; airUntil = t0() + 120; } },
     /** The real tune being played, if any: {title, composer, year}. */
     now() {
       if (chanting) return { title: chanting.title, composer: `Gregorian chant, the chapel's ${chanting.office}`, year: '' };

@@ -81,6 +81,53 @@ const WX_EVENTS = {
 };
 const eventNames = () => [...window.Hours.events(), ...Object.keys(WX_EVENTS), ...WX_KINDS].sort();
 
+/* The music command: the lute's book of tunes (assets/data/real/tunes.json, read here without the
+   sound: the list is shown before anything plays), one of them now, the lute's own air, another. */
+let tuneListP = null;
+const tuneList = () => (tuneListP ||= fetch(new URL('assets/data/real/index.json', SITE), { cache: 'no-cache' }).then((r) => r.json())
+  .then((ix) => (ix.tunes ? fetch(new URL(`assets/data/real/tunes.json?v=${ix.tunes.v}`, SITE)).then((r) => r.json()) : { tunes: [] }))
+  .then((o) => o.tunes).catch(() => []));
+const WHEN = { day: 'by day', evening: 'in the evening', december: 'in December', night: 'at night, on the harp' };
+const nowPlaying = () => { const n = window.Sound && window.Sound.now ? window.Sound.now() : null; return n ? `${esc(n.title)}, ${esc(n.composer)}${n.year ? ` (${esc(n.year)})` : ''}` : null; };
+/** Sound and music on, in the castle (the terminal is silent); the promise of the sound, or null. */
+function hearing() {
+  if (root.getAttribute('data-theme') !== 'hours') { print(esc(T.musicCastle)); return null; }
+  if (!musicOn) setMusic(true);
+  if (!soundOn) setSound(true);
+  return soundLoading;
+}
+function musicCmd([sub = '', ...rest]) {
+  const what = [sub, ...rest].join(' ');
+  if (!sub || sub === 'now') {
+    const n = nowPlaying();
+    return print(`${esc(T.musicState(soundOn && musicOn))}${n ? ` ${T.nowPlaying(n)}` : ''} <span class="dim">${T.musicHint}</span>`);
+  }
+  if (sub === 'on' || sub === 'off') { setMusic(sub === 'on'); if (sub === 'on' && !soundOn) setSound(true); return print(esc(T.musicSet(sub === 'on'))); }
+  if (sub === 'list' || sub === 'ls') {
+    return tuneList().then((list) => {
+      const playing = window.Sound && window.Sound.now && window.Sound.now();
+      const rows = Object.keys(WHEN).map((w) => [w, list.map((q, k) => [q, k + 1]).filter(([q]) => q.when === w)]).filter(([, l]) => l.length)
+        .map(([w, l]) => `<div><dt>${WHEN[w]}</dt><dd>${l.map(([q, k]) => `<b>${k}</b> ${esc(q.title)} <span class="dim">${esc(q.composer)}</span>${playing && playing.title === q.title ? ' &#9834;' : ''}`).join('<br>')}</dd></div>`);
+      print(`<dl class="tunes"><div><dt>any hour</dt><dd><b>0</b> ${T.airName}</dd></div>${rows.join('')}</dl><p class="dim">${T.tunesHint}</p>`);
+    });
+  }
+  if (sub === 'air' || what === '0' || sub === 'lute') {
+    const p = hearing(); if (!p) return undefined;
+    return p.then(() => { window.Sound.air(); print(esc(T.airNow)); });
+  }
+  if (sub === 'next' || sub === 'skip' || sub === 'another') {
+    const p = hearing(); if (!p) return undefined;
+    return p.then(() => window.Sound.next()).then((q) => print(q ? T.nowPlaying(`${esc(q.title)}, ${esc(q.composer)}`) : esc(T.noTunes)));
+  }
+  return tuneList().then((list) => { // a tune by its number, its id, or words of its title or composer
+    const k = Number(what);
+    const q = Number.isInteger(k) && k >= 1 ? list[k - 1] : list.find((t) => t.id === what) || list.find((t) => `${t.title} ${t.composer}`.toLowerCase().includes(what));
+    if (!q) { print(esc(T.noSuchTune(what))); return; }
+    const p = hearing(); if (!p) return;
+    p.then(() => window.Sound.play(q.id)).then((ok) => print(ok ? T.nowPlaying(`${esc(q.title)}, ${esc(q.composer)}`) : esc(T.noTunes)));
+  });
+}
+
 function run(line) {
   const words = line.trim().toLowerCase().split(/\s+/);
   let [cmd, ...args] = words;
@@ -166,10 +213,8 @@ function run(line) {
       if (arg === 'cinema' && root.dataset.room !== 'talks') goTo('talks'); // (the show is in the great hall)
       return undefined;
     }
-    case 'music':
-      if (arg !== 'now') setMusic(arg ? arg !== 'off' : !musicOn);
-      { const n = window.Sound && window.Sound.now ? window.Sound.now() : null;
-        return print(esc(T.musicSet(musicOn)) + (n ? ` <span class="dim">Now: ${esc(n.title)}, ${esc(n.composer)}${n.year ? ` (${esc(n.year)})` : ''}.</span>` : '')); }
+    case 'music': case 'tune': case 'tunes':
+      return musicCmd(cmd === 'music' ? args : ['list']);
     case 'volume': {
       const v = Math.max(0, Math.min(10, Math.round(Number(arg))));
       if (!Number.isFinite(v)) return print(esc(T.volumeSet(volume.value)));

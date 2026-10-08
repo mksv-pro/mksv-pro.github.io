@@ -493,6 +493,22 @@ dialog.scroll .keys { margin: 0; }
 dialog.scroll .keys div { display: grid; grid-template-columns: 14ch 1fr; gap: 1ch; }
 dialog.scroll .keys dt { color: var(--hi); }
 dialog.scroll .keys dd { margin: 0; }
+/* the help (?): its groups side by side where there is room, keys drawn as keys */
+dialog.scroll.is-help { width: min(78rem, 96vw); max-width: none; }
+dialog.scroll .help { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(21rem, 100%), 1fr)); gap: 0 2.2rem; }
+dialog.scroll .help h3 { margin: .6rem 0 .4rem; padding-bottom: .2rem; border-bottom: 1px solid var(--rule); }
+dialog.scroll .help .keys { display: grid; grid-template-columns: fit-content(11rem) 1fr; gap: .15rem 1.4rem; line-height: 1.5; } /* (each group's labels as wide as its longest) */
+dialog.scroll .help .keys div { display: contents; }
+dialog.scroll .help .keys dt { white-space: nowrap; }
+dialog.scroll .help .keys dd { color: var(--ink); }
+dialog.scroll .help p { margin: .4rem 0 0; font-size: .85em; }
+dialog.scroll .help kbd { display: inline-block; min-width: 1.6em; margin-right: .15em; padding: 0 .25em; text-align: center; line-height: 1.25; font-size: .9em; border-radius: 3px; border-bottom-width: 2px; }
+.cmd-out { max-height: min(16em, 45vh); }
+.cmd-out .tunes { margin: .2rem 0 .3rem; }
+.cmd-out .tunes div { display: grid; grid-template-columns: 22ch 1fr; gap: 1ch; margin-bottom: .25rem; }
+.cmd-out .tunes dt { color: var(--accent); }
+.cmd-out .tunes dd { margin: 0; }
+.cmd-out .tunes b { color: var(--hi); display: inline-block; min-width: 2ch; }
 .loot { list-style: none; padding: 0; }
 .loot li::before { content: "- "; color: var(--accent); }
 .dlg-foot { margin: 1rem 0 0; text-align: right; }
@@ -625,7 +641,7 @@ dialog.dungeon canvas {
   white-space: nowrap;
   overflow: hidden;
 }
-.status p { margin: 0; display: flex; gap: 2ch; }
+.status p { margin: 0; display: flex; align-items: baseline; gap: 2ch; } /* (baseline: Rank is a button, taller, its text centred) */
 .st-name { color: var(--hi); }
 .st-right { margin-left: auto !important; color: var(--ink); }
 #st-hour { color: var(--accent); }
@@ -1051,6 +1067,9 @@ html.climb[data-theme] .engine-win { width: 100vw; height: 100dvh; max-width: no
   .dg-keys { display: none; }
   .map, .rip { font-size: .62rem; }
   dialog.scroll .keys div { grid-template-columns: 1fr; gap: 0; }
+  dialog.scroll .help .keys { grid-template-columns: fit-content(8rem) 1fr; gap: .1rem 1rem; }
+  dialog.scroll .help .keys dt { white-space: normal; }
+  .cmd-out .tunes div { grid-template-columns: 1fr; gap: 0; }
   .flow li { display: block; }
   .flow li:not(:last-child)::after { content: none; }
   .name { font-size: 2.1rem; }

@@ -98,41 +98,57 @@ const T = {
   rumour: (r) => `You hear a rumour: ${r}`,
   close: '[close]',
   helpTitle: 'Keys and commands',
-  help: (nTabs) => `<h3>Keys</h3>
+  help: (nTabs) => `<div class="help">
+<section><h3>Keys</h3>
 <dl class="keys">
-  <div><dt>1&ndash;${nTabs}</dt><dd>open a section</dd></div>
-  <div><dt>&larr; &rarr; &uarr; &darr;</dt><dd>move through the menu, Enter to open</dd></div>
-  <div><dt>m</dt><dd>map of the place</dd></div>
-  <div><dt>[ ]</dt><dd>through the curiosities in sight (castle theme); Enter looks</dd></div>
-  <div><dt>p</dt><dd>photo mode: the landscape alone, to look at or save (castle theme)</dd></div>
-  <div><dt>i &middot; ,</dt><dd>inventory &middot; pick up what lies here</dd></div>
-  <div><dt>&gt;</dt><dd>descend: walk the site in first person</dd></div>
-  <div><dt>:</dt><dd>command line</dd></div>
-  <div><dt>?</dt><dd>this help</dd></div>
-  <div><dt>Esc</dt><dd>close</dd></div>
+  <div><dt><kbd>1</kbd>&ndash;<kbd>${nTabs}</kbd></dt><dd>open a section</dd></div>
+  <div><dt><kbd>&larr;</kbd><kbd>&rarr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd></dt><dd>the menu; <kbd>Enter</kbd></dd></div>
+  <div><dt><kbd>m</kbd></dt><dd>the map</dd></div>
+  <div><dt><kbd>i</kbd> <kbd>,</kbd></dt><dd>your pack &middot; pick up</dd></div>
+  <div><dt><kbd>&gt;</kbd></dt><dd>descend, in first person</dd></div>
+  <div><dt><kbd>[</kbd> <kbd>]</kbd></dt><dd>the curiosities in sight</dd></div>
+  <div><dt><kbd>p</kbd></dt><dd>photo of the landscape</dd></div>
+  <div><dt><kbd>:</kbd> <kbd>?</kbd></dt><dd>command line &middot; this help</dd></div>
+  <div><dt><kbd>Esc</kbd></dt><dd>close, leave</dd></div>
 </dl>
-<p class="dim">Single-key shortcuts can be switched off with <b>keys</b> in the status line.</p>
-<h3>Commands, after <kbd>:</kbd></h3>
+<p class="dim">Single keys off: <b>keys</b>, in the status line.</p></section>
+<section><h3>Walking</h3>
 <dl class="keys">
   <div><dt>look</dt><dd>describe the room</dd></div>
-  <div><dt>n s e w</dt><dd>walk through an exit (<i>go north</i> works too)</dd></div>
-  <div><dt>ls &middot; map</dt><dd>list the rooms &middot; draw the map</dd></div>
-  <div><dt>cd &lt;room&gt;</dt><dd>go to a room, or just type its name</dd></div>
-  <div><dt>take &middot; i &middot; use &lt;a-d&gt;</dt><dd>pick up, inventory, use an object</dd></div>
-  <div><dt>descend</dt><dd>first-person view (arrows or WASD, Enter reads, Esc leaves)</dd></div>
-  <div><dt>rumour</dt><dd>listen</dd></div>
-  <div><dt>cv &middot; mail &middot; github</dt><dd>take what you came for</dd></div>
-  <div><dt>engine &middot; keys on|off</dt><dd>the terminal in its engine, or back to the castle &middot; single-key shortcuts</dd></div>
-  <div><dt>sky &lt;hour&gt;</dt><dd>dawn, noon, dusk, night or now, in the hours theme</dd></div>
-  <div><dt>weather &lt;kind&gt;</dt><dd>clear, rain, snow, fog, storm... or now</dd></div>
-  <div><dt>event &lt;name&gt;</dt><dd>call up what the landscape does: bolt, dragon, rider, dream, fireworks... (event alone: the list)</dd></div>
-  <div><dt>photo</dt><dd>the landscape alone, to save as a picture</dd></div>
-  <div><dt>tour</dt><dd>a minute's guided walk round the castle (any key stops it)</dd></div>
-  <div><dt>tower</dt><dd>up the watchtower: the view all round, N E S W</dd></div>
-  <div><dt>village</dt><dd>close up on the hamlet and its market (Wed, Fri, Sat, Sun, by day)</dd></div>
-  <div><dt>music &middot; volume 0-10</dt><dd>the lute on or off &middot; how loud (sound on, castle theme)</dd></div>
+  <div><dt>n s e w</dt><dd>through an exit</dd></div>
+  <div><dt>cd &lt;room&gt;</dt><dd>go there (or just its name)</dd></div>
+  <div><dt>ls &middot; map</dt><dd>the rooms &middot; their map</dd></div>
+  <div><dt>descend</dt><dd>walk it in first person</dd></div>
+  <div><dt>take &middot; i &middot; use</dt><dd>pick up, look, use</dd></div>
+</dl></section>
+<section><h3>The castle</h3>
+<dl class="keys">
+  <div><dt>sky &lt;hour&gt;</dt><dd>dawn, noon, dusk, night</dd></div>
+  <div><dt>weather &lt;kind&gt;</dt><dd>rain, snow, fog, storm&hellip;</dd></div>
+  <div><dt>event &lt;name&gt;</dt><dd>dragon, bolt, rider&hellip;</dd></div>
+  <div><dt>tour</dt><dd>a minute's guided walk</dd></div>
+  <div><dt>tower &middot; village</dt><dd>the view &middot; the market</dd></div>
+  <div><dt>photo</dt><dd>the landscape, to save</dd></div>
+  <div><dt>rumour</dt><dd>listen to the knight</dd></div>
+  <div><dt>engine</dt><dd>the terminal, and back</dd></div>
+</dl></section>
+<section><h3>Music</h3>
+<dl class="keys">
+  <div><dt>music list</dt><dd>the book of tunes</dd></div>
+  <div><dt>music &lt;n&gt;</dt><dd>play a tune (number or word)</dd></div>
+  <div><dt>music next</dt><dd>another, for the hour</dd></div>
+  <div><dt>music air</dt><dd>the lute's own air</dd></div>
+  <div><dt>music off &middot; on</dt><dd>silence, or play again</dd></div>
+  <div><dt>volume &lt;0&ndash;10&gt;</dt><dd>how loud</dd></div>
+</dl></section>
+<section><h3>The rest</h3>
+<dl class="keys">
+  <div><dt>cv &middot; mail</dt><dd>the CV &middot; write to me</dd></div>
+  <div><dt>github</dt><dd>the code</dd></div>
+  <div><dt>keys on|off</dt><dd>single-key shortcuts</dd></div>
   <div><dt>quit</dt><dd>end the visit</dd></div>
-</dl>`,
+</dl></section>
+</div>`,
   mapTitle: 'Map',
   invTitle: 'Inventory',
   packEmpty: 'Your pack is empty.',
@@ -142,6 +158,13 @@ const T = {
 <p class="dim">Goodbye, traveller.</p>`,
   emptyHanded: '<p>You leave empty-handed.</p>',
   volume: 'Volume of the sound', musicSet: (on) => `The lute ${on ? 'plays again' : 'falls silent'}.`, volumeSet: (v) => `Volume ${v} of 10.`,
+  musicState: (on) => (on ? 'The lute is playing.' : 'The lute is silent.'), nowPlaying: (t) => `Now: <b>${t}</b>.`,
+  musicHint: 'music list: the tunes; music &lt;n&gt;: one of them; music next, music air, music off.',
+  musicCastle: 'The music plays in the castle: the terminal is silent (engine, to go back).',
+  airName: "the lute's own air, made up as it goes, in the mode of the hour's planet",
+  tunesHint: 'music &lt;n&gt; or a word of its title plays it now; then the hour chooses again.',
+  airNow: "Back to the lute's own air.", noTunes: 'The book of tunes has not come (offline?).',
+  noSuchTune: (w) => `No tune "${w}" in the book: music list shows them.`,
   photoSave: '[save the picture]', photoClose: '[back \u00b7 p or Esc]',
   photoOnly: 'Photo mode is for the castle: switch theme first.',
   curiosFound: (k, n) => `You found ${k} of the land's ${n} curiosities:`,
@@ -1343,7 +1366,7 @@ function showBilliard() {
   tick();
 }
 
-const showHelp = () => showDialog(T.helpTitle, T.help(document.querySelectorAll('.tabs a').length));
+const showHelp = () => { showDialog(T.helpTitle, T.help(document.querySelectorAll('.tabs a[href*="#"]:not([href$="#cellar"])').length)); dialog.classList.add('is-help'); dialog.scrollTop = 0; dialog.addEventListener('close', () => dialog.classList.remove('is-help'), { once: true }); };
 const showInventory = () => showDialog(T.invTitle, lootHtml() || `<p>${T.packEmpty}</p>`);
 
 function showEnd() {
