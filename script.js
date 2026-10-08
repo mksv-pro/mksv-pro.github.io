@@ -285,7 +285,8 @@ function applyTheme(theme, persist) {
       items: roomItems, // what each room holds, to be drawn as things
       spots: setSpots, // and where those things ended up
       rumour: () => RUMOURS[Math.floor(Math.random() * RUMOURS.length)], // the knight tells it
-      descend, // the cellar door in the rock
+      descend, // the descent (the cellar's steps, >)
+      cellar: () => { location.hash = '#cellar'; }, // the door in the rock: into the cellar
       doors: roomDoors, // the doors in the rooms' side walls
       clock: skyNow, // the instant shown: dawn mist, the night's meteor shower
       found: findCurio, // a curiosity of the landscape, clicked
@@ -595,6 +596,15 @@ function openWindow(hash, { userAction, animate = userAction }) {
   const target = (hash && document.getElementById(decode(hash.slice(1)))) || null;
   const win = target ? target.closest('main > section') : windows[0];
   towerLayout();
+  if (target && win === cellar && !climbing()) { // the castle's cellar (through the door in the rock): a room of its own, out of the menu
+    if (root.getAttribute('data-theme') !== 'hours') { descend(); return; }
+    windows.forEach((w) => w.classList.add('is-off'));
+    tabLinks.forEach((a) => a.removeAttribute('aria-current'));
+    root.dataset.room = 'cellar';
+    if (userAction) { say(cellar.dataset.look); cue('door'); }
+    if (window.Hours) window.Hours.room('cellar', { animate });
+    return;
+  }
   if (climbing() && (!target || floors().includes(win))) { // the tower: every floor on the page; the one asked for is scrolled to (climbFloor does the rest)
     windows.forEach((w) => w.classList.remove('is-off'));
     if (target) target.scrollIntoView({ behavior: userAction && !reduceMotion ? 'smooth' : 'instant' });
@@ -1304,7 +1314,7 @@ dialog.addEventListener('click', (e) => {
   const go = e.target.closest('[data-go]'); // the map's places in the landscape
   if (go) {
     dialog.close(); const k = go.dataset.go;
-    if (k === 'cellar') { descend(); return; }
+    if (k === 'cellar') { if (root.getAttribute('data-theme') === 'hours') location.hash = '#cellar'; else descend(); return; }
     if (root.dataset.room) leaveRoom();
     setTimeout(() => { if (window.Hours) window.Hours[k === 'tower' ? 'tower' : 'village'](); }, root.dataset.room ? 900 : 0);
     return;

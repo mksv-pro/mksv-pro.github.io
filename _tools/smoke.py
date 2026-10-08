@@ -54,6 +54,11 @@ CASES = {
                    "await wait(1000); document.querySelectorAll('dialog[open]').forEach((d) => d.close()); showHelp(); await wait(300);"
                    " const ok = !!document.querySelector('dialog.is-help .help'); dialog.close(); openCmd(); run('music list'); await wait(1500); window.helpOk = ok;",
                    "window.helpOk && document.querySelectorAll('.cmd-out .tunes b').length >= 10"),
+    "cellar": ("?theme=hours&sky=noon&weather=clear", (1600, 900),  # (the door in the rock, the cellar, its steps down)
+               "await wait(1000); document.querySelectorAll('dialog[open]').forEach((d) => d.close()); location.hash = '#cellar'; await wait(2800);"
+               " window.inCellar = document.documentElement.dataset.room === 'cellar' && document.documentElement.classList.contains('room-ready');"
+               " const b = [...document.querySelectorAll('.spot')].find((x) => /steps/i.test(x.dataset.label)); b && b.click(); await wait(1500);",
+               "window.inCellar && !!document.querySelector('dialog.dungeon[open]')"),
     "terminal": ("?theme=dark", (1600, 900), "", "document.documentElement.getAttribute('data-theme') === 'dark'"),
     "phone-banner": ("?theme=dark&sky=noon&weather=clear", (390, 844), "", "document.documentElement.classList.contains('banner') && " + CANVAS),
     "narrow-window": ("?sky=noon&weather=clear", (1100, 800), "",  # (a computer: the terminal, the landscape over the engraving)

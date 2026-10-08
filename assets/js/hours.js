@@ -2115,6 +2115,7 @@ nNnnnn..
   const CHALK = ['iħ∂ψ/∂t=Hψ', '∂ρ/∂t=D∇²ρ', 'Z=Σexp(-βE)', '-∂u/∂t+H(∇u)=0'];
 
   // the labour of the month, as in a book of hours (sower in autumn, reaper in summer...)
+  const OVERLAPS = /[?&]overlaps=1/.test(location.search);
   const SEASON = (m) => (m <= 1 || m === 11 ? 'winter' : m <= 4 ? 'spring' : m <= 7 ? 'summer' : 'autumn');
   const PEASANT = [`
 ..rr...
@@ -2192,9 +2193,16 @@ bbbbbb.
     const idx = new Uint8Array(W * H); const out = new Uint8Array(W * H);
     const front = new Uint8Array(W * H); let frontOn = false; // what stands before a figure walking at the back (the schoolroom's desks and pupils)
     const furn = new Uint8Array(W * H); let furnOn = false; // what the furniture covers (on once the shell is built): late pieces look for a free place
+    // ?overlaps=1 (a check, slow): each piece's pixels signed with the line of this function that drew
+    // them; one piece painted over another is counted, line against line, in window.overlaps[id]
+    const audit = OVERLAPS && new Int32Array(W * H); const clash = audit && new Map();
+    const lineOf = () => { const f = new Error().stack.split('\n').find((l) => l.startsWith('generateInterior@')); return f ? Number(f.split(':').at(-2)) : 0; };
     const set = (x, y, i, o = 0) => {
       x = Math.round(x); y = Math.round(y);
-      if (x >= 0 && x < W && y >= 0 && y < H) { idx[y * W + x] = i; out[y * W + x] = o; if (frontOn) front[y * W + x] = 1; if (furnOn) furn[y * W + x] = 1; }
+      if (x >= 0 && x < W && y >= 0 && y < H) {
+        idx[y * W + x] = i; out[y * W + x] = o; if (frontOn) front[y * W + x] = 1; if (furnOn) furn[y * W + x] = 1;
+        if (audit && furnOn) { const k = y * W + x; const l = lineOf(); if (audit[k] && audit[k] !== l) { const key = `${audit[k]}>${l}`; clash.set(key, (clash.get(key) || 0) + 1); } audit[k] = l; }
+      }
     };
     /** The first x along `xs` where a w x h box with its foot on yb is clear of the furniture (and of
      *  the animated pieces, `deco`), or null. */
@@ -2810,17 +2818,27 @@ bbbbbb.
       const sw = Math.max(14, Sw(0.18)); windowArch(S(0.5) - Math.round(sw / 2), 5, sw, Math.round(H * 0.46)); // the slit, wide open
       for (let k = 0; k < 22; k += 1) { const tx = S(0.2) + k; const ty = floorY(0.1) - 20 - Math.round(k * 0.75); set(tx, ty, k < 4 ? I.GOLD_SH : I.ARM_HI); set(tx, ty + 1, I.ARM_SH); if (k > 15) set(tx, ty - 1, I.ARM); } // the telescope, at the slit
       [-5, 0, 5].forEach((dx) => { for (let r = 0; r < 20; r += 1) set(S(0.21) + dx * (r / 20), floorY(0.1) - 20 + r, I.TIMBER_SH); });
-      const tb = table3d(S(0.62), yf - 16, Sw(0.4));
+      const orX = Math.min(S(0.9), BR - 10); // the orrery, by the table's end: the table stops short of it
+      const tb = table3d(S(0.62), yf - 16, Math.max(24, Math.min(Sw(0.4), 2 * (orX - 12 - S(0.62)))));
       spread(n, tb.l, tb.r, 16).forEach(({ k, row, xc }) => { slots[k] = scrollThing(xc, row ? tb.back + 1 : tb.front, things[k].arms); });
       candle(tb.r - 2, tb.back, true); // (to read the charts by at night)
-      deco.push({ type: 'orrery', x: S(0.9), y: floorY(0.1) - 14 });
-      hangs.forEach((e, k) => { // the labs' hangings, either side of the slit
-        const lft = k < Math.ceil(hangs.length / 2); const j = lft ? k : k - Math.ceil(hangs.length / 2);
-        hanging(lft ? S(0.32) - j * 24 : S(0.68) + j * 24, Math.round(H * 0.18), e, k);
+      deco.push({ type: 'orrery', x: orX, y: floorY(0.1) - 14 });
+      // the labs' hangings, either side of the slit, out from its edges; a place each, clear of the
+      // astrolabe, of the telescope's tube when they hang that low, of each other (none if no room)
+      const winL = S(0.5) - Math.round(sw / 2) - 3; const winR = S(0.5) - Math.round(sw / 2) + sw + 3; const hy = Math.round(H * 0.18);
+      const taken = []; if (hy + 27 > Math.round(H * 0.5) - 13) taken.push([S(0.1) - 10, S(0.1) + 10]); if (hy + 27 > floorY(0.1) - 37) taken.push([S(0.2) - 6, S(0.2) + 23]); // (the astrolabe, the tube: when as high)
+      const fits = (xc) => xc - 10 >= BL + 1 && xc + 11 <= BR - 2 && !taken.some(([a0, b0]) => xc + 11 >= a0 && xc - 10 <= b0);
+      let rightmost = winR;
+      hangs.forEach((e, k) => {
+        const sides = k < Math.ceil(hangs.length / 2) ? [-1, 1] : [1, -1];
+        for (const d of sides) {
+          let xc = d < 0 ? winL - 11 : winR + 10; while (!fits(xc) && xc - 10 > BL && xc + 11 < BR) xc += d;
+          if (!fits(xc)) continue;
+          hanging(xc, hy, e, k); taken.push([xc - 10, xc + 11]); if (d > 0) rightmost = Math.max(rightmost, xc + 11); break;
+        }
       });
       { // the loom, right of the hangings: its weave runs in drawInterior
-        const nr = hangs.length - Math.ceil(hangs.length / 2);
-        const a = (nr ? S(0.68) + (nr - 1) * 24 + 16 : S(0.6)); const b = BR - 5;
+        const a = rightmost + 5; const b = BR - 5;
         const w = Math.min(24, (b - a - 4) & ~1); const h = 28; const y0 = Math.round(H * 0.18);
         if (w >= 12) {
           const x = Math.round((a + b - w) / 2);
@@ -2834,14 +2852,15 @@ bbbbbb.
       rect(S(0.86), floorY(0.1) - 6, 13, 1, I.TIMBER_HI); rect(S(0.87), floorY(0.1) - 5, 1, 6, I.TIMBER_SH); rect(S(0.86) + 11, floorY(0.1) - 5, 1, 6, I.TIMBER_SH);
       cat('thin', S(0.04), floorY(0.5));
     } else if (kind === 'projects') { // the workshop: a working model of each project on the bench
-      const hx = S(0.03); const hw = Math.max(18, S(0.2)); const hy = yf - 24;
+      const hx = S(0.03); const hw = Math.max(18, Sw(0.24)); const hy = yf - 24; // (a width: Sw, not S, which is a place and grew with the side walls)
       rect(hx - 3, hy - 5, hw + 6, 29, I.BRICK_SH); rect(hx - 3, hy - 5, hw + 6, 2, I.BRICK_HI);
       rect(hx, hy, hw, 24, I.OUTLINE);
       for (let y = 0; y < hy - 5; y += 1) rect(hx + hw / 2 - 4, y, 8, 1, y % 3 ? I.BRICK : I.BRICK_SH);
       flames.push({ x: hx + hw / 2, y: yf - 1, hearth: true, w: hw - 4 }); lights.push({ x: hx + hw / 2, y: yf - 6, r: 0.6 * H, hearth: true });
       // over the bench, two rows centred on it: the tool board, then the map, Young's slits and the gears,
       // all of one height and evenly spaced (they were scattered at odd heights)
-      const tb = table3d(S(0.58), yf - 16, Sw(0.42)); const cx = Math.round((tb.l + tb.r) / 2);
+      const tw0 = Math.min(Sw(0.42), 2 * (S(0.58) - hx - hw - 16)); // (the bench clear of the hearth, the anvil between them)
+      const tb = table3d(S(0.58), yf - 16, Math.max(26, tw0)); const cx = Math.round((tb.l + tb.r) / 2);
       const ry = Math.round(H * 0.17); const ou = realGet('outils'); // Roubo's tools (_tools/fetch_outils.py): hung from the rail, the planes on the board's shelf
       { const hung = ou ? ou.sprites.filter((sp) => !sp.on) : []; const stand = ou ? ou.sprites.filter((sp) => sp.on) : [];
         const hw0 = ou ? hung.reduce((a, sp) => a + sp.w + 2, 0) : 7 * 5; const sw0 = stand.reduce((a, sp) => a + sp.w + 2, 0);
@@ -2855,8 +2874,10 @@ bbbbbb.
         const shY = ry + bh - 3; tx += 2; rect(tx - 1, shY, sw0 + 1, 1, I.TIMBER_SH); rect(tx - 1, shY + 1, sw0 + 1, 1, I.TIMBER); // the shelf for the planes
         stand.forEach((sp) => { for (let y = 0; y < sp.h; y += 1) for (let x = 0; x < sp.w; x += 1) { const v = sp.px[y * sp.w + x]; if (v >= 0) set(tx + x, shY - sp.h + y, v); } tx += sp.w + 2; });
         if (ou) extra.push({ t: { kind: 'outils', label: 'The tool rack', get html() { return `<h3>The tool rack</h3><p>${ou.captions.map(escHtml).join('; ')}.</p>${provenance('outils')}`; } }, b: box(x0 - 1, ry - 1, bw + 2, bh + 2) });
-        const y2 = ry + bh + 4; const mh = 17; const mw = Math.max(24, Sw(0.14)); const sw = 28; const gw = 21; const gap = 5; // (the row's foot clear of the models on the bench and of the mantel)
-        const row0 = cx - Math.round((mw + sw + gw + 2 * gap) / 2);
+        // the row's foot clear of the models on the bench (when it can) and of the mantel
+        const mh = 17; const y2 = Math.max(ry + bh + 2, Math.min(ry + bh + 4, tb.back - 19 - mh)); const mw = Math.max(24, Sw(0.14)); const sw = 28; const gw = 21; const gap = 5;
+        const rowW = mw + sw + gw + 2 * gap; const clearX = y2 + mh > hy - 6 ? hx + hw + 5 : hx + hw / 2 + 6; // (not over the flue, nor the hearth when as low)
+        const row0 = Math.min(BR - 3 - rowW, Math.max(clearX, cx - Math.round(rowW / 2)));
         { // the map of the realm: a region for each project
           const mx0 = row0; const my0 = y2;
         const models = things.filter((tt) => tt.kind === 'model');
@@ -2894,7 +2915,7 @@ bbbbbb.
         lantern(x0 + bw + 6, ry + 2);
       }
       spread(n, tb.l, tb.r, 17).forEach(({ k, row, xc }) => { slots[k] = model(xc, row ? tb.back : tb.front, things[k].model); });
-      const ax = S(0.3); rect(ax, floorY(0.4) - 9, 12, 3, I.ARM_HI); rect(ax, floorY(0.4) - 9, 12, 1, I.BLADE); rect(ax + 3, floorY(0.4) - 6, 6, 3, I.ARM_SH); rect(ax + 2, floorY(0.4) - 3, 8, 3, I.ARM_SH);
+      const ax = Math.max(hx + 2, Math.min(S(0.3), S(0.58) - Math.round(Math.max(26, tw0) / 2) - 14)); rect(ax, floorY(0.4) - 9, 12, 3, I.ARM_HI); rect(ax, floorY(0.4) - 9, 12, 1, I.BLADE); rect(ax + 3, floorY(0.4) - 6, 6, 3, I.ARM_SH); rect(ax + 2, floorY(0.4) - 3, 8, 3, I.ARM_SH);
     } else if (kind === 'publications') { // the library: each work face out on the display shelf
       // the two bookcases: each shelf a subject (site.toml [library]), each catalogued volume a gilt spine on it
       const rx = S(0.76);
@@ -3007,7 +3028,8 @@ bbbbbb.
           extra.push({ t: { kind: 'cinema', label: 'The magic lantern show', get html() { return `<h3>Le Voyage dans la Lune</h3><p>Méliès, 1902: astronomers fired to the Moon from a cannon, the rocket in its eye. Shown in the great hall on Saturday evenings.</p>${provenance('melies')}`; } }, b: box(sx - 2, sy - 2, sw + 4, sh + 4) });
         }
       }
-      mobilier(0, BL + 2, yf - 1); // the bench with dragons' heads, along the wall under the tapestry
+      const lcN = realGet('licorne'); const benchTop = yf - 1 - 24; // (the bench sprite is 24 high)
+      if (!lcN || ty + 25 + (lcN.h >> 1) + 2 < benchTop) mobilier(0, BL + 2, yf - 1); // the bench with dragons' heads, along the wall under the tapestry (when the tapestry clears it)
       const lc = realGet('licorne'); // La Dame à la licorne, the tapestry of this visit's sense, under the schools' hangings
       if (lc) {
         const k = senseNow(); const x0 = BL + 4; const y0 = ty + 25;
@@ -3246,6 +3268,7 @@ bbbbbb.
       deco.push({ type: 'gear', x: s(0.78), y: Math.round(H * 0.5), r: 4, sp: 0.8 }, { type: 'gear', x: s(0.78) + 8, y: Math.round(H * 0.5) + 4, r: 3, sp: -1.1 });
       lantern(s(0.9), Math.round(H * 0.18));
     }
+    if (clash) (window.overlaps ||= {})[id] = { W, H, pairs: [...clash].sort((a, b) => b[1] - a[1]) };
     return { id, W, H, idx, out, front, lights, flames, stars, motes, blinks, camps, deco, pools, sills, yf, slots: things ? slots : [], things: things || [], cells: new Float32Array(9 * 14),
       ladderK: things ? things.findIndex((tt) => tt.kind === 'ladder') : -1 };
   }
@@ -3368,7 +3391,7 @@ bbbbbb.
   }
   let fireFed = 0; // when a log last went on the workshop's fire (it burns down in three minutes)
   const heatOf = () => clamp(1 - (now() - fireFed - 90) / 90, 0.15, 1);
-  let found = () => {}; let itemsOf = () => []; let spotsTo = () => {}; let descendTo = () => {}; let doorsOf = () => []; let hl = -1; // the room's things, their hotspots, the one pointed at
+  let found = () => {}; let itemsOf = () => []; let spotsTo = () => {}; let descendTo = () => {}; let cellarTo = () => descendTo(); let doorsOf = () => []; let hl = -1; // the room's things, their hotspots, the one pointed at
   let scene = null; let look = null; let skyFn; let reduce = false; let px = 3;
   let running = false; let visible = true; let raf = 0; let last = 0; let tick = 0;
   let bodies = null; let lastEclipse = null; let label0 = ''; let castUntil = 0;
@@ -5907,6 +5930,7 @@ bbbbbb.
 
   /** Where the camera heads: the room's part of the castle, on screen. */
   function anchorOf(id) {
+    if (id === 'cellar') { const c = scene.cellar; return [c.x - scene.M + shift(RATE[L.MID]) + c.w / 2, c.y + c.h / 2]; } // (in through the door in the rock)
     const a = id && scene.rooms[roomOf(id)];
     return a ? [a.x - scene.M + shift(RATE[L.MID]) + a.w / 2, a.y + a.h / 2] : [scene.W / 2, scene.H / 2];
   }
@@ -6151,7 +6175,7 @@ bbbbbb.
       say('The fire crackles and throws up sparks.'); scene.puff = now() + 1.5; // (a puff of smoke too)
       for (let k = 0; k < 24; k += 1) scene.embers.push({ x: scene.fire.x + (Math.random() - 0.5) * 8, y: scene.fire.y - 10, vy: -(0.8 + Math.random() * 1.4), ph: Math.random() * 6, age: 0, life: 20 + Math.random() * 30 });
     } else if (hit.kind === 'shield') say("On the knight's shield: azure, an armillary sphere or, over a bell curve argent.");
-    else if (hit.kind === 'cellar') { say('A low door in the rock. Stone steps go down into the dark.'); descendTo(); }
+    else if (hit.kind === 'cellar') { say('A low door in the rock. Stone steps go down into the cellar.'); cellarTo(); }
     else if (hit.kind === 'horse') say("The knight's horse crops the grass and flicks its tail at you.");
     else if (hit.kind === 'heron') say('The heron stands on one leg and pretends you are not there.');
     else if (hit.kind === 'bbstar') say('Blanc Blanc\'s star, over the fire where he slept. It comes back every night.');
@@ -6724,7 +6748,7 @@ bbbbbb.
       plate = o.plate; skyFn = o.sky; reduce = o.reduceMotion; clockFn = o.clock || clockFn;
       heraldry = o.heraldry || heraldry; say = o.say || say; rumour = o.rumour || rumour;
       itemsOf = o.items || itemsOf; found = o.found || found; curiosOf = o.curios || curiosOf; nowOf = o.now || nowOf; visitsOf = o.visits || visitsOf;
-      newsOf = o.news || newsOf; dreamsOf = o.dreams || dreamsOf; tradeWith = o.trade || tradeWith; stalenessOf = o.staleness || stalenessOf; billiardShow = o.billiard || billiardShow; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo; doorsOf = o.doors || doorsOf;
+      newsOf = o.news || newsOf; dreamsOf = o.dreams || dreamsOf; tradeWith = o.trade || tradeWith; stalenessOf = o.staleness || stalenessOf; billiardShow = o.billiard || billiardShow; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo; cellarTo = o.cellar || cellarTo; doorsOf = o.doors || doorsOf;
       pendingRoom = root.dataset.room || null;
       label0 = plate.getAttribute('aria-label');
       realIx(); // (the real things' index: credits now, the things when wanted)
