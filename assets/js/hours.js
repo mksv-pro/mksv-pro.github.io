@@ -3616,7 +3616,7 @@ bbbbbb.
   }
   const t0 = performance.now();
   const now = () => (performance.now() - t0) / 1000;
-  // on, as the castle theme or as the narrow screens' banner (the landscape only: no rooms, no close-ups)
+  // on, as the castle theme (the tower on narrow screens) or as the narrow terminal's banner (the landscape only)
   const banner = () => root.getAttribute('data-theme') !== 'hours' && root.classList.contains('banner');
   const isOn = () => root.getAttribute('data-theme') === 'hours' || root.classList.contains('banner');
   const SCENE_LABEL = 'Pixel-art landscape under the sky over Paris at this hour: a castle with an observatory on a '
@@ -5808,11 +5808,14 @@ bbbbbb.
 
   const ZOOMS = [1, 2, 3, 4, 6]; // integer steps: the pixels stay square all the way in
   const STEP = 0.09; const DISSOLVE = 0.32; // seconds per step; the dithered cross-fade
+  const CLIMB = 0.55; // seconds through a floor slab (the tower)
+  /** The slab's stone, mortar and edge, dimmed at night as the rooms are. */
+  const slabColours = () => { const k = 1 - 0.55 * look.night; return [[118, 104, 92], [74, 64, 58], [40, 34, 32]].map((c) => pack(c.map((v) => v * k))); };
 
   function setReady(on) { root.classList.toggle('room-ready', on); publishSpots(on); }
   /** Tell the page where the room's things are (viewport px), for their hotspots; wide screens only. */
   function publishSpots(on) {
-    const wide = plate && getComputedStyle(plate.parentElement).position === 'fixed';
+    const wide = plate && (getComputedStyle(plate.parentElement).position === 'fixed' || root.classList.contains('climb'));
     if (!on || !wide || !interior || !interior.slots.length) { spotsTo([], []); return; }
     const r = plate.getBoundingClientRect(); const k = px * 2;
     spotsTo(Array.from(interior.slots, (b) => b && ({ l: Math.round(r.left + b.x * k), t: Math.round(r.top + b.y * k), w: Math.round(b.w * k), h: Math.round(b.h * k) })), interior.things);
@@ -5844,6 +5847,25 @@ bbbbbb.
       const th = clamp((t - view.t0) / DISSOLVE);
       for (let y = 0; y < H; y += 1) for (let x = 0; x < W; x += 1) { const i = y * W + x; obuf[i] = bayer(x, y) < th ? iAt(x, y) : iprev[i]; }
       if (th >= 1) { view.state = 'room'; travelling(false); }
+    } else if (st === 'climb') {
+      drawInterior(t);
+      // a strip, top to bottom: the upper floor, the slab, the lower; the screen slides down it (dir 1) or up
+      const e = clamp((t - view.t0) / CLIMB); const s = e < 0.5 ? 2 * e * e : 1 - 2 * (1 - e) ** 2;
+      const S = Math.max(6, Math.round(H * 0.06)); const o = Math.round(s * (H + S));
+      const y0 = view.dir > 0 ? o : H + S - o;
+      const up = (i) => (view.dir > 0 ? iprev[i] : obufNew(i)); const low = (i) => (view.dir > 0 ? obufNew(i) : iprev[i]);
+      const obufNew = (i) => iAt(i % W, Math.floor(i / W));
+      const stone = slabColours();
+      for (let y = 0; y < H; y += 1) {
+        const yy = y0 + y;
+        for (let x = 0; x < W; x += 1) {
+          const i = y * W + x;
+          if (yy < H) obuf[i] = up(yy * W + x);
+          else if (yy >= H + S) obuf[i] = low((yy - H - S) * W + x);
+          else { const r = yy - H; obuf[i] = r === 0 || r === S - 1 ? stone[2] : r % 3 === 2 || (x + ((r / 3) | 0) * 5) % 10 === 0 ? stone[1] : stone[0]; }
+        }
+      }
+      if (e >= 1) { view.state = 'room'; travelling(false); }
     } else {
       const e = t - view.t0; const n = ZOOMS.length;
       const into = st === 'in';
@@ -5868,8 +5890,9 @@ bbbbbb.
     ctx.putImageData(img, 0, 0);
   }
 
-  /** Go into room `id` (null: back out to the landscape). */
-  function goRoom(id, animate) {
+  /** Go into room `id` (null: back out to the landscape); `dir` (the tower, script.js climbFloor):
+   *  the floor below (1) or above (-1), reached through the floor slab instead of a dissolve. */
+  function goRoom(id, animate, dir = 0) {
     if (!scene) { pendingRoom = id; return; }
     if (zoom) { zoom = null; root.classList.remove('village'); backBtn.remove(); }
     if (tower) { tower = null; root.classList.remove('lookout'); towerBar.remove(); }
@@ -5878,11 +5901,11 @@ bbbbbb.
     if (id) {
       fireFed = now(); // (someone keeps the fire while you are away)
       if (!view.id || roomOf(id) !== roomOf(view.id)) sfx('steps', { floor: ['talks', 'contact', 'research'].includes(roomOf(id)) ? 'stone' : 'wood', n: 4 }); // in: on its floor
-      if (view.id && (view.state === 'room' || view.state === 'swap' || view.state === 'in')) {
+      if (view.id && (view.state === 'room' || view.state === 'swap' || view.state === 'in' || view.state === 'climb')) {
         if (roomOf(id) === roomOf(view.id)) { view.id = id; return; }
         iprev.set(obuf);
         interior = makeInterior(id); lightInterior();
-        view = { state: anim ? 'swap' : 'room', id, anchor: id, t0: t };
+        view = { state: !anim ? 'room' : dir ? 'climb' : 'swap', id, anchor: id, t0: t, dir };
         setReady(true); travelling(anim);
       } else {
         interior = makeInterior(id); lightInterior();
@@ -6589,7 +6612,7 @@ bbbbbb.
     const dt = lastMs ? Math.min(0.1, (ms - lastMs) / 1000) : 0;
     lastMs = ms;
     par += (parTarget - par) * (1 - Math.exp(-dt / 0.2));
-    let dirty = view.state === 'in' || view.state === 'out' || view.state === 'swap' || !!zoom || !!tower;
+    let dirty = view.state === 'in' || view.state === 'out' || view.state === 'swap' || view.state === 'climb' || !!zoom || !!tower;
     if (ms - last >= FPS_MS) {
       last = ms;
       if (view.state !== 'room') { stepFire(); step(now()); }
@@ -6647,6 +6670,10 @@ bbbbbb.
           if (e.pointerType !== 'mouse' || !isOn() || zoom) return;
           parTarget = clamp((e.clientX / innerWidth) * 2 - 1, -1, 1);
         }, { passive: true });
+        addEventListener('deviceorientation', (e) => { // the tower: the phone tilted left or right (no permission asked: iOS stays still)
+          if (e.gamma === null || !root.classList.contains('climb') || zoom) return;
+          parTarget = clamp(e.gamma / 25, -1, 1);
+        }, { passive: true });
       }
       // the wizard answers the menu he holds: sparks while a choice is pointed at, a burst on one
       const pointed = (e) => isOn() && e.target instanceof Element && e.target.closest('.tabs a');
@@ -6691,7 +6718,7 @@ bbbbbb.
       if (!running && isOn()) render(now());
     },
     /** Into the room of section `id`, or back out (null); script.js calls it as the hash changes. */
-    room(id, { animate = true } = {}) { if (banner()) { root.classList.toggle('room-ready', Boolean(id)); return; } goRoom(id, animate); },
+    room(id, { animate = true, dir = 0 } = {}) { if (banner()) { root.classList.toggle('room-ready', Boolean(id)); return; } goRoom(id, animate, dir); },
     /** Draw the realm (the map dialog's Paris) into a 240x150 canvas. */
     realm(cv) { if (cv) drawRealm(cv); },
     /** The hour has turned: the bell swings a few seconds. */

@@ -58,7 +58,6 @@ const T = {
   bell: (h) => `The castle bell rings: the hour of ${h}.`,
   realmTitle: 'The realm',
   realmLabel: 'A pixel map of Paris: the Seine, and a pennant where each of the schools stands.',
-  narrowTheme: 'The castle needs a wider window: hours opens on screens from 1200 px.',
   leave: '[leave the room \u00b7 Esc]',
   notebook: 'The notebook on the desk',
   lookHint: '(Whatever glints can be looked at: point at it, or Tab to it and press Enter.)',
@@ -219,11 +218,12 @@ moreLink.addEventListener('click', (e) => {
 const themeToggle = $('theme-toggle');
 const themeColor = document.querySelector('meta[name="theme-color"]');
 const THEMES = ['dark', 'hours']; // the toggle's cycle
-// the theme follows the screen (as in the head script): hours needs a wide one
+// the theme as in the head script: the castle, whose narrow form is the tower (.climb)
 const WIDE = matchMedia('(min-width: 75rem)');
 const qTheme = new URLSearchParams(location.search).get('theme');
 const FRAMED = window.self !== window.top; // this page is the terminal in the castle's scrying engine
-const chosenTheme = () => (!WIDE.matches || FRAMED || qTheme === 'dark' ? 'dark' : 'hours');
+const chosenTheme = () => (FRAMED || qTheme === 'dark' || (!WIDE.matches && store('entry') === 'engine') ? 'dark' : 'hours');
+const climbing = () => root.classList.contains('climb');
 const nextTheme = () => THEMES[(THEMES.indexOf(root.getAttribute('data-theme')) + 1) % THEMES.length];
 
 let hoursLoading = null;
@@ -233,10 +233,10 @@ function applyTheme(theme, persist) {
     e.dataset.term ||= e.textContent; e.textContent = theme === 'hours' ? e.dataset.castle : e.dataset.term;
   });
   $('theme-next').textContent = FRAMED ? T.engineClose : theme === 'hours' ? T.engineOpen : `[${T.themeName[nextTheme()]}]`;
-  themeToggle.hidden = !FRAMED && theme !== 'hours' && !WIDE.matches; // (a narrow screen has the terminal only)
+  root.classList.toggle('climb', theme === 'hours' && !WIDE.matches && !FRAMED);
   themeColor.setAttribute('content', getComputedStyle(root).getPropertyValue('--bar').trim());
   if (persist) store('theme', theme);
-  // narrow screens: the terminal, under a banner of the living landscape (unless `banner off`)
+  // the terminal on a narrow screen (who chose it): under a banner of the living landscape (unless `banner off`)
   root.classList.toggle('banner', !FRAMED && !WIDE.matches && store('banner') !== 'off' && theme !== 'hours');
   if (theme === 'hours' || root.classList.contains('banner')) {
     const load = (src) => new Promise((resolve, reject) => {
@@ -273,7 +273,7 @@ function applyTheme(theme, persist) {
 
 applyTheme(root.getAttribute('data-theme'), false);
 themeToggle.addEventListener('click', () => engineToggle());
-WIDE.addEventListener('change', () => applyTheme(chosenTheme(), false));
+WIDE.addEventListener('change', () => { applyTheme(chosenTheme(), false); openWindow(location.hash, { userAction: false }); });
 
 /** Theme colours as [r, g, b], for the canvases. */
 function tokenRGB(prop) {
@@ -565,6 +565,13 @@ function openWindow(hash, { userAction, animate = userAction }) {
   const target = (hash && document.getElementById(decode(hash.slice(1)))) || null;
   const win = target ? target.closest('main > section') : windows[0];
   if (!windows.includes(win)) return; // e.g. the skip link's #main: leave the windows alone
+  if (climbing()) { // the tower: every floor on the page; the one asked for is scrolled to (climbFloor does the rest)
+    windows.forEach((w) => w.classList.remove('is-off'));
+    if (target) target.scrollIntoView({ behavior: userAction && !reduceMotion ? 'smooth' : 'instant' });
+    else if (userAction) window.scrollTo({ top: 0 });
+    climbFloor();
+    return;
+  }
 
   windows.forEach((w) => w.classList.toggle('is-off', w !== win));
   tabLinks.forEach((a) => {
@@ -602,11 +609,39 @@ function openWindow(hash, { userAction, animate = userAction }) {
   heading.focus({ preventScroll: true });
 }
 
+/* The tower (narrow screens): the picture stays at the top of the screen and shows the floor whose
+   text is under it; above the first floor, the roof's view (the landscape). Going down a floor
+   the room slides up past its floor slab, and the other way round (hours.js 'climb'). */
+let floor; // (undefined: not yet placed)
+function climbFloor() {
+  if (!climbing() || !isIndex) return;
+  const line = document.querySelector('.plate').getBoundingClientRect().bottom + 48;
+  const win = windows.filter((w) => w.getBoundingClientRect().top < line).pop() || null;
+  const id = win ? win.id : null;
+  if (id === floor) return;
+  const dir = floor === undefined ? 0 : windows.findIndex((w) => w.id === id) > windows.findIndex((w) => w.id === floor) ? 1 : -1;
+  floor = id;
+  tabLinks.forEach((a) => { if (id && a.getAttribute('href') === `#${id}`) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  if (id) { root.dataset.room = id; enterRoom(id, dir === 0); } else delete root.dataset.room;
+  history.replaceState(null, '', id ? `#${id}` : location.pathname + location.search);
+  if (id && dir) say(win.dataset.look || '');
+  if (window.Hours) window.Hours.room(id, { animate: dir !== 0, dir });
+  else root.classList.toggle('room-ready', Boolean(id));
+}
+{
+  let queued = 0;
+  addEventListener('scroll', () => { if (!queued && climbing()) queued = requestAnimationFrame(() => { queued = 0; climbFloor(); }); }, { passive: true });
+}
+
 // the tab bar wraps on narrow screens: anchors must clear its real height (scroll-padding-top)
 const tabBar = document.querySelector('.tabs');
 new ResizeObserver(() => {
   root.style.setProperty('--tabs-h', `${tabBar.getBoundingClientRect().height}px`);
 }).observe(tabBar);
+{ // the tower's picture sticks under the herald's ribbon, whose height follows his message
+  const ribbon = document.querySelector('.msgline');
+  new ResizeObserver(() => root.style.setProperty('--mh', `${ribbon.getBoundingClientRect().height}px`)).observe(ribbon);
+}
 
 root.classList.add('windowed');
 openWindow(location.hash, { userAction: false });
@@ -916,7 +951,7 @@ function engineToggle() {
   if (FRAMED) { parent.postMessage({ engine: 'close' }, location.origin); return; }
   if (engine) closeEngine();
   else if (root.getAttribute('data-theme') === 'hours') enterEngine();
-  else applyTheme(nextTheme(), true);
+  else { if (!WIDE.matches) store('entry', 'castle'); applyTheme(nextTheme(), true); openWindow(location.hash, { userAction: false }); }
 }
 window.addEventListener('message', (e) => { if (e.origin === location.origin && e.data && e.data.engine === 'close') closeEngine(); });
 document.addEventListener('keydown', (e) => {
@@ -1181,7 +1216,7 @@ function showDialog(titleHtml, bodyHtml) {
 }
 
 /* First visit on a wide screen, no choice stored: offer the two themes (the castle is drawn behind).
-   Narrow screens have the terminal only, so nothing to choose. */
+   Narrow screens open on the tower; its engine is the way to the terminal. */
 if (WIDE.matches && !qTheme && !FRAMED && !store('entry')) {
   showDialog(T.pickTitle, T.pick);
   dialog.addEventListener('close', () => { if (!store('entry')) store('entry', 'castle'); }, { once: true });

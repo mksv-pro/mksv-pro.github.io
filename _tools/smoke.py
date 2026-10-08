@@ -51,7 +51,13 @@ CASES = {
                " d.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await wait(2500);",
                "window.framedOk && !document.querySelector('.engine') && !document.documentElement.classList.contains('engine-on')"),
     "terminal": ("?theme=dark", (1600, 900), "", "document.documentElement.getAttribute('data-theme') === 'dark'"),
-    "phone-banner": ("?sky=noon&weather=clear", (390, 844), "", "document.documentElement.classList.contains('banner') && " + CANVAS),
+    "phone-banner": ("?theme=dark&sky=noon&weather=clear", (390, 844), "", "document.documentElement.classList.contains('banner') && " + CANVAS),
+    "phone-tower": ("?sky=noon&weather=clear", (390, 844),
+                    "document.querySelector('#research').scrollIntoView({ behavior: 'instant' }); await wait(2500);",
+                    "document.documentElement.classList.contains('climb') && document.documentElement.dataset.room === 'research' && " + CANVAS),
+    "phone-engine": ("?sky=noon&weather=clear", (390, 844),
+                     "if (window !== top) await new Promise(() => {}); await wait(1500); document.getElementById('theme-toggle').click(); await wait(6000);",
+                     "!!document.querySelector('.engine-win iframe') && document.documentElement.dataset.room === 'about'"),
 }
 PROBE = """<script>(() => {
   const errs = []; const wait = (ms) => new Promise((r) => setTimeout(r, ms));

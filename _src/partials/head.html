@@ -21,8 +21,9 @@
 
   <script>
     // Before first paint, so the look never flashes. The castle (hours) is the site; the terminal
-    // is the same page framed in the castle's scrying engine (script.js: openEngine), or the
-    // whole page below 75rem, where the castle has no room. ?theme=dark previews it unframed.
+    // is the same page framed in the castle's scrying engine (script.js: openEngine), or the whole
+    // page for who chose it (localStorage entry=engine) below 75rem. ?theme=dark previews it
+    // unframed. Below 75rem the castle is a cut-away tower, a floor per section (.climb).
     // data-sky (day|night) picks the hours theme's palette: night once the sun is 3 deg below
     // Paris's horizon (low-precision solar position, ~0.5 deg; script.js keeps it current).
     (function () {
@@ -31,8 +32,11 @@
       var q = location.search; // ?theme= and ?sky= preview a look without storing it
       s = (/[?&]sky=(\w+)/.exec(q) || [])[1] || s;
       var framed = window.self !== window.top;
-      t = (/[?&]theme=(\w+)/.exec(q) || [])[1] === 'dark' || framed || !matchMedia('(min-width: 75rem)').matches ? 'dark' : 'hours';
+      var e = null; try { e = localStorage.getItem('entry'); } catch (x) {}
+      var wide = matchMedia('(min-width: 75rem)').matches;
+      t = (/[?&]theme=(\w+)/.exec(q) || [])[1] === 'dark' || framed || (!wide && e === 'engine') ? 'dark' : 'hours';
       if (framed) r.classList.add('framed');
+      if (t === 'hours' && !wide) r.classList.add('climb');
       var k = Math.PI / 180, d = Date.now() / 864e5 - 10957.5;
       var g = (357.529 + 0.98560028 * d) * k;
       var L = (280.459 + 0.98564736 * d + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * k;
