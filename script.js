@@ -1032,7 +1032,7 @@ function paginate(src, probe) {
         seq.push({ el: orn, keep: true });
       }
       walk(n);
-    } else if (n.matches('ul, ol')) [...n.children].forEach((li) => seq.push({ el: li, list: n }));
+    } else if (n.matches('ul, ol, .sheet, .kv')) [...n.children].forEach((li) => seq.push({ el: li, list: n })); // (a sheet breaks between its rows)
     else seq.push({ el: n, keep: n.matches('h3, .ledger-prog, .entry-head, .orn-band, .card-title') });
   });
   walk(src);
@@ -1065,7 +1065,11 @@ function bind(body) { // the book's spread: two pages side by side, filled from 
   card.classList.remove('one-leaf'); // measured at the full page height
   body.innerHTML = `<div class="spread"><div class="page"></div><div class="page"></div></div>
 <nav class="pager" aria-label="${T.pages}"><button type="button" data-turn="-1" aria-label="${T.prevPage}">‹</button><span class="folio"></span><button type="button" data-turn="1" aria-label="${T.nextPage}">›</button></nav>`;
-  card.bookPages = paginate(src, body.querySelector('.page'));
+  const probe = body.querySelector('.page');
+  const whole = document.createElement('div'); whole.innerHTML = src.innerHTML; probe.append(whole);
+  const short = whole.offsetHeight <= probe.clientHeight * 1.5; // a short text: one leaf, read through, rather than a spread half empty
+  probe.replaceChildren();
+  card.bookPages = short ? [whole.outerHTML] : paginate(src, probe);
   card.bookAt = 0;
   card.classList.toggle('one-leaf', card.bookPages.length === 1);
 }

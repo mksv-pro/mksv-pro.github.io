@@ -284,7 +284,7 @@ BLOCKS = {
     "jsonld": jsonld,
     "studying": lambda: "\n".join(f"              <span data-arms=\"{x['arms']}\">{x['about']}</span>"
                                   for x in DATA["education"] if x.get("now")),
-    "languages": lambda: " &middot; ".join(f"{n} <span class=\"meta\">({lvl})</span>" for n, lvl in DATA["person"]["languages"]),
+    "languages": lambda: " &middot; ".join(f"{n}&nbsp;<span class=\"meta\">({lvl})</span>" for n, lvl in DATA["person"]["languages"]),
     "coursework": coursework,
     "drawn_to": lambda: "\n".join(f"                <li>{x}</li>" for x in DATA["person"]["drawn_to"]),
 }

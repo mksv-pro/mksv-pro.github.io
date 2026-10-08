@@ -323,7 +323,7 @@ html:not(.js) .theme-toggle, html:not(.js) .keys-toggle { display: none; }
 
 .sheet { margin: 1.5rem 0; font-family: var(--ui); }
 .sheet div, .kv div { display: grid; grid-template-columns: 9ch 1fr; gap: 1ch; margin-bottom: .35rem; }
-.sheet dd span { display: block; }
+.sheet dd span:not(.meta) { display: block; }
 .flow { list-style: none; margin: 0; padding: 0; }
 .flow li { display: inline; white-space: nowrap; }
 .flow li:not(:last-child)::after { content: "\00a0\00b7"; color: var(--dim); } /* lines break between items, the dot stays at the end */
@@ -1169,6 +1169,7 @@ html.photo :is(.msgline, .host, .tabs, .status, .spots, .card, .leave, main, .cm
 [data-theme="hours"] .card.as-book.one-leaf:not([hidden]) { width: min(34rem, 44vw); }
 [data-theme="hours"] .card.one-leaf .spread { grid-template-columns: 1fr; background: none; }
 [data-theme="hours"] .card.one-leaf .page { height: auto; }
+[data-theme="hours"] .card.as-book.one-leaf .card-body { max-height: calc(100dvh - var(--msg-h) - var(--status-h) - 5rem); overflow: auto; }
 [data-theme="hours"] .card.one-leaf .page:last-child, [data-theme="hours"] .card.one-leaf .pager { display: none; }
 /* (no padding on the pages) the initial's paragraph makes room for its flourish */
 [data-theme="hours"] .card.as-book .page p.opening { margin-left: 1.5rem; }
