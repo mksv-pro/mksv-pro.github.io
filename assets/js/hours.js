@@ -6769,6 +6769,7 @@ bbbbbb.
     if (want) {
       if (!view.id) plate.setAttribute('aria-label', SCENE_LABEL);
       resize();
+      if (banner()) { pendingRoom = null; if (view.state !== 'scene' || zoom || tower) goRoom(null, false); } // (the terminal's banner: the landscape only, whatever room the castle was in)
       if (pendingRoom !== null) { const id = pendingRoom; pendingRoom = null; goRoom(id, false); }
       if (reduce) { render(now()); return; }
       if (!running) { running = true; lastMs = 0; raf = requestAnimationFrame(frame); }
