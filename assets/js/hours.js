@@ -7629,7 +7629,7 @@ qqqqqTqqq
       canvas.addEventListener('pointerleave', () => { pointer = null; post.hidden = true; });
       canvas.addEventListener('pointermove', (e) => {
         pointer = scenePoint(e); const hit = isOn() && !zoom ? hitAt(...pointer) : null;
-        canvas.style.cursor = isOn() && (zoom ? zoom.done : hit) ? 'pointer' : '';
+        canvas.style.cursor = isOn() && (zoom ? zoom.done : hit) ? 'var(--cur-hand)' : '';
         const way = isOn() ? wayAt(...pointer, hit) : null; post.hidden = !way;
         if (way) { post.textContent = way; post.style.left = `${e.clientX + 14}px`; post.style.top = `${e.clientY - 34}px`; }
       });

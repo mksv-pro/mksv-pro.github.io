@@ -855,6 +855,15 @@ dialog.dungeon canvas {
 .spots, .card[hidden] { display: none; }
 [data-theme="hours"] .spots { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; }
 [data-theme="hours"] .spot { position: absolute; pointer-events: auto; cursor: pointer; background: none; border: 0; padding: 0; }
+/* the castle's pointers (_tools/icons.py), the hotspot at the fingertip, the key's bit, the lens, the nib */
+:root[data-theme="hours"] {
+  --cur-hand: url("assets/img/cursor-hand.svg") 5 1, pointer; --cur-key: url("assets/img/cursor-key.svg") 3 1, pointer;
+  --cur-loupe: url("assets/img/cursor-loupe.svg") 7 7, zoom-in; --cur-quill: url("assets/img/cursor-quill.svg") 1 24, text;
+}
+[data-theme="hours"] .spot, [data-theme="hours"] .card a, [data-theme="hours"] .card button { cursor: var(--cur-hand); }
+[data-theme="hours"] .spot[data-kind="door"] { cursor: var(--cur-key); }
+[data-theme="hours"] .spot[data-detail] { cursor: var(--cur-loupe); }
+[data-theme="hours"] .card .card-body { cursor: var(--cur-quill); }
 [data-theme="hours"] .spot:focus-visible { outline: var(--upx, 2px) solid #d8a838; outline-offset: 2px; box-shadow: 0 0 0 calc(2 * var(--upx, 2px)) #2a1d14; } /* (Tab goes from thing to thing: a gilt frame) */
 [data-theme="hours"] .spot::after { /* its name, on a little tag, when pointed at */
   content: attr(data-label);

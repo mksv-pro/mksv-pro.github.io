@@ -1112,7 +1112,9 @@ function setSpots(rects, items) {
       });
       b.addEventListener('click', (e) => { if (moved) { e.stopImmediatePropagation(); moved = false; } }); // (a drag is not a click)
     }
-    b.dataset.kind = items[i].kind;
+    b.dataset.kind = items[i].kind; b.dataset.i = String(i);
+    const html = (Object.getOwnPropertyDescriptor(items[i], 'html') || {}).value; // (not a live card's getter: it runs on opening)
+    if (/real-fig|astrolabe/.test(html || '')) b.dataset.detail = ''; // (a picture inside: the magnifier)
     b.addEventListener('click', () => (items[i].kind === 'engine' ? openEngine(b) : openCard(i, b)));
     return [b];
   }));
@@ -1326,15 +1328,27 @@ function turn(dir) {
 }
 card.addEventListener('click', (e) => { const b = e.target.closest('[data-turn]'); if (b) turn(Number(b.dataset.turn)); });
 card.addEventListener('keydown', (e) => {
-  if (!card.querySelector('.spread') || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
-  e.preventDefault(); turn(e.key === 'ArrowLeft' ? -1 : 1);
+  if (!['ArrowLeft', 'ArrowRight'].includes(e.key) || (e.target instanceof Element && e.target.closest('input, textarea'))) return;
+  e.preventDefault(); const dir = e.key === 'ArrowLeft' ? -1 : 1;
+  const at = card.bookAt; if (card.querySelector('.spread')) turn(dir);
+  if (!card.querySelector('.spread') || card.bookAt === at) nextOfKind(dir); // (past a book's last leaf: the next book)
 });
+/** The next thing of the open card's kind in the room (dir 1) or the one before (-1), left to right: its card. */
+function nextOfKind(dir) {
+  const bs = [...spots.querySelectorAll('.spot')].filter((b) => b.dataset.kind === card.dataset.kind)
+    .sort((a, b) => a.getBoundingClientRect().left - b.getBoundingClientRect().left);
+  const i = bs.indexOf(cardFrom); if (i < 0 || bs.length < 2) return;
+  const b = bs[(i + dir + bs.length) % bs.length];
+  if (window.Hours) window.Hours.highlight(Number(b.dataset.i));
+  openCard(Number(b.dataset.i), b);
+}
 
 function openCard(i, from) {
   const it = spotItems[i];
   if (!it) return; // a button of the room just left
   if (it.go) { goTo(it.go); return; } // a door: through it
   if (it.act) { it.act(); return; } // the cellar's steps: down
+  card.getAnimations().forEach((a) => a.cancel()); card.closing = false; // (one closing: stopped, this one opens)
   const body = card.querySelector('.card-body');
   body.innerHTML = it.html;
   illuminate(body, it.label);
@@ -1377,7 +1391,26 @@ function openCard(i, from) {
   card.dataset.side = side;
   card.style.setProperty('--tail-y', `${Math.max(14, Math.min(ch - 14, r.top + r.height / 2 - top))}px`);
   cardFrom = from;
+  if (window.Hours && window.Hours.opened) window.Hours.opened(i); // (the room answers: the thing out of its place, eyes on it)
+  unfold(from, true);
   card.querySelector('.card-close').focus();
+}
+/** The card comes out of its thing and goes back into it: from the thing's box to the card's, each
+ *  kind its way (a scroll unrolls, a book opens, a letter unfolds in three folds, the rest grows). */
+function unfold(from, out, then) {
+  if (reduceMotion || !from || !from.isConnected) { if (then) then(); return; }
+  const r = from.getBoundingClientRect(); const c = card.getBoundingClientRect();
+  if (!c.width || !r.width) { if (then) then(); return; }
+  const at = (sx, sy, x = r.left, y = r.top) => `translate(${x - c.left}px, ${y - c.top}px) scale(${sx}, ${sy})`;
+  const small = at(r.width / c.width, r.height / c.height);
+  const k = card.dataset.kind; const mid = { offset: 0.55 };
+  if (k === 'scroll' || k === 'charter' || k === 'hanging') Object.assign(mid, { transform: at(1, 0.06, c.left, c.top) }); // (rolled: its full width, then down)
+  else if (BOOKISH.has(k)) Object.assign(mid, { transform: at(0.08, 1, c.left + c.width / 2, c.top) }); // (shut: its spine, then the covers apart)
+  const frames = [{ transform: small, opacity: 0.3 }, ...(mid.transform ? [mid] : []), { transform: 'none', opacity: 1 }];
+  const fold = k === 'letter';
+  const a = card.animate(out ? frames : frames.reverse(), { duration: out ? 340 : 240, easing: fold ? 'steps(3, end)' : out ? 'cubic-bezier(.2, .8, .3, 1)' : 'ease-in', fill: out ? 'none' : 'forwards' });
+  card.style.transformOrigin = '0 0';
+  a.onfinish = () => { card.style.transformOrigin = ''; if (then) then(); a.cancel(); };
 }
 /** A real asset's figure in a card: its canvas painted by hours.js, its caption; [◄] [►] turn it. */
 function paintFig(fig) {
@@ -1390,10 +1423,12 @@ card.addEventListener('click', (e) => {
   fig.dataset.i = String((Number(fig.dataset.i) + Number(b.dataset.realStep) + n) % n); paintFig(fig); cue('page');
 });
 function closeCard(refocus = true) {
-  if (card.hidden) return;
-  card.hidden = true;
+  if (card.hidden || card.closing) return;
   cue('close');
-  if (refocus && cardFrom) cardFrom.focus();
+  const from = cardFrom; card.closing = true;
+  const done = () => { card.closing = false; card.hidden = true; if (window.Hours && window.Hours.opened) window.Hours.opened(-1); };
+  if (refocus && from && from.isConnected) unfold(from, false, done); else done();
+  if (refocus && from) from.focus();
 }
 card.querySelector('.card-close').addEventListener('click', () => closeCard());
 card.addEventListener('keydown', (e) => { // Tab stays in the card while it is open; Esc (below) closes it
@@ -1414,6 +1449,32 @@ document.addEventListener('keydown', (e) => {
   e.preventDefault();
   if (!card.hidden) { closeCard(); return; } // Esc: first the card, then the room
   leaveRoom();
+});
+
+// in a room, the arrow keys go from thing to thing as they lie: to the nearest one that way (Enter looks)
+document.addEventListener('keydown', (e) => {
+  const dirs = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+  if (!dirs[e.key] || !root.classList.contains('room-ready') || root.getAttribute('data-theme') !== 'hours' || !card.hidden) return;
+  if (e.ctrlKey || e.metaKey || e.altKey || document.querySelector('dialog[open]') || cmdOpen()) return;
+  const act = document.activeElement; if (act && act.closest && act.closest('input, textarea, .tabs')) return;
+  const bs = [...spots.querySelectorAll('.spot')]; if (!bs.length) return;
+  e.stopImmediatePropagation(); // (not the menu's 'arrows bring the cursor back': in a room they walk among the things)
+  const mid = (b) => { const r = b.getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; };
+  e.preventDefault();
+  if (!bs.includes(act)) { // from nowhere: the thing nearest the middle
+    const c = [innerWidth / 2, innerHeight / 2];
+    bs.reduce((a, b) => (Math.hypot(...mid(b).map((v, k) => v - c[k])) < Math.hypot(...mid(a).map((v, k) => v - c[k])) ? b : a)).focus();
+    return;
+  }
+  const [dx, dy] = dirs[e.key]; const [x0, y0] = mid(act);
+  let best = null; let score = Infinity;
+  bs.forEach((b) => {
+    if (b === act) return;
+    const [x, y] = mid(b); const along = (x - x0) * dx + (y - y0) * dy; const across = Math.abs((x - x0) * dy) + Math.abs((y - y0) * dx);
+    if (along <= 4) return; const sc = along + 2 * across;
+    if (sc < score) { score = sc; best = b; }
+  });
+  if (best) best.focus();
 });
 
 /** Go to room `id`, by hash on the index, by page load elsewhere. */
