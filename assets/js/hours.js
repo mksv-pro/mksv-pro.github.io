@@ -2116,10 +2116,11 @@ nNnnnn..
 
   // the labour of the month, as in a book of hours (sower in autumn, reaper in summer...)
   const OVERLAPS = /[?&]overlaps=1/.test(location.search);
-  /* The rooms' standard: every room is drawn once at RW x RH (16:9), whatever the window, on a canvas
-     of its own scaled by a whole number of device pixels and centred in the plate (layoutRoom); the
-     landscape's canvas behind shows the tower's stone round it, an embrasure (paintFrame). */
-  const RW = 240; const RH = 135;
+  /* The rooms' standard: every room is drawn at RW x RH, in one of two formats, 16:9 (240 x 135) or,
+     on a squarer window, 4:3 (240 x 180: the same width, so the same places, a higher ceiling); on a
+     canvas of its own scaled by a whole number of device pixels and centred in the plate (layoutRoom).
+     The landscape's canvas round it shows a wall of black brick and a gilt frame (paintFrame). */
+  const RW = 240; const RH_WIDE = 135; const RH_SQUARE = 180; let RH = RH_WIDE;
   let roomCv; let rctx; let rimg; let robuf; let roomBox = { l: 0, t: 0, k: 1 }; let fbuf = null; // (roomBox: css px in the plate, k: css px a room pixel)
   const SEASON = (m) => (m <= 1 || m === 11 ? 'winter' : m <= 4 ? 'spring' : m <= 7 ? 'summer' : 'autumn');
   const PEASANT = [`
@@ -2389,7 +2390,7 @@ bbbbbb.
       }
       Object.entries(sides).forEach(([side, list]) => list.slice(0, 2).forEach((d, n) => {
         const [xa, xb] = toX(side, ...spans[list.length === 1 && !SHAPE.sideWindow ? 0 : n]);
-        const dh = Math.min(Math.round(yf * 0.62), hw - 3); let top = H; let bottom = 0;
+        const dh = Math.min(Math.round(yf * 0.46), hw - 3); let top = H; let bottom = 0; // (scale: an adult ~30 px; a door ~1.2 of him, more at its near edge)
         for (let x = xa; x <= xb; x += 1) {
           const bot = sideBot(x); const k = bot / yf; const yt = Math.round(bot - dh * k);
           top = Math.min(top, yt); bottom = Math.max(bottom, Math.round(bot));
@@ -3000,7 +3001,7 @@ bbbbbb.
       const clockR = 7; const clockX = BR - 3; const clockY = Math.max(Math.round(H * 0.42), hangLow + clockR + 2);
       far.forEach((ang) => { // a high back rising behind the table's far edge (the table hides the seat)
         const [x, y] = onEllipse(ang, 1); const low = x + 4 >= clockX - clockR - 2 ? Math.max(hangLow, clockY + clockR + 1) : hangLow;
-        const bh = Math.max(5, Math.min(13, y - low - 2));
+        const bh = Math.max(5, Math.min(18, y - low - 2)); // (a high back, to the shoulder)
         rect(x - 3, y - bh, 7, bh + 1, I.TIMBER); rect(x - 3, y - bh, 7, 1, I.TIMBER_HI); rect(x - 3, y - bh, 1, bh + 1, I.TIMBER_HI);
         set(x, y - bh - 1, I.GOLD); rect(x - 1, y - bh + 3, 3, 4, I.CLOTH);
       });
@@ -3012,7 +3013,7 @@ bbbbbb.
       rect(tcx - 3, tcy + ry + 4, 7, Math.max(2, floorY(0.85) - tcy - ry - 4), I.TIMBER_SH); rect(tcx - 8, floorY(0.85) - 1, 17, 2, I.TIMBER_SH); // the pedestal
       [Math.PI, 0].forEach((ang) => { // the two ends: chairs seen from the side, against the table
         const x = Math.round(tcx + Math.cos(ang) * (rx + 3)); const dir = Math.cos(ang) > 0 ? 1 : -1;
-        rect(x + dir * 2, tcy - 12, 2, 18, I.TIMBER); set(x + dir * 2, tcy - 13, I.GOLD); // the back
+        rect(x + dir * 2, tcy - 17, 2, 23, I.TIMBER); set(x + dir * 2, tcy - 18, I.GOLD); // the back
         rect(x - 2, tcy + 2, 6, 2, I.TIMBER_HI); rect(x - 2, tcy + 4, 1, 6, I.TIMBER_SH); rect(x + 3, tcy + 4, 1, 6, I.TIMBER_SH); // seat, legs
       });
       for (let a2 = 0; a2 < 6.28; a2 += 0.35) set(tcx + Math.round(Math.cos(a2) * rx * 0.25), tcy + Math.round(Math.sin(a2) * ry * 0.25), I.GOLD_SH); // a carved rose
@@ -3030,8 +3031,8 @@ bbbbbb.
       });
       [0.72, 0.28].map((f) => f * Math.PI).forEach((ang) => { // the near chairs: their backs, seen from behind, against the near edge
         const [x, y] = onEllipse(ang, 1);
-        rect(x - 4, y - 6, 9, 12, I.TIMBER_SH); rect(x - 4, y - 6, 9, 1, I.TIMBER);
-        for (let k = 1; k < 8; k += 2) rect(x - 4 + k, y - 4, 1, 8, I.TIMBER);
+        rect(x - 4, y - 9, 9, 15, I.TIMBER_SH); rect(x - 4, y - 9, 9, 1, I.TIMBER);
+        for (let k = 1; k < 8; k += 2) rect(x - 4 + k, y - 7, 1, 11, I.TIMBER);
         rect(x - 4, y + 6, 1, Math.max(1, floorY(0.95) - y - 6), I.TIMBER_SH); rect(x + 4, y + 6, 1, Math.max(1, floorY(0.95) - y - 6), I.TIMBER_SH);
       });
       { // the rose window: over the table, left of the chandelier's chain; under the hangings in a narrow room
@@ -3080,7 +3081,7 @@ bbbbbb.
       });
     } else if (kind === 'teaching') { // the schoolroom: each course a line of chalk on the board
       const ptS = realGet('portraits'); const pm = ptS ? ptS.small.w + 9 : 4; // (the portraits hang either side: the board leaves them the wall)
-      const bl = Math.max(S(0.16), BL + pm); const br = Math.min(S(0.84), BR - pm); const bt = Math.round(H * 0.18); const bb = Math.round(H * 0.6);
+      const bl = Math.max(S(0.16), BL + pm); const br = Math.min(S(0.84), BR - pm); const bt = Math.round(H * 0.2); const bb = Math.min(Math.round(H * 0.6), bt + Math.max(34, things.length * 7 + 40)); // (as tall as its chalk: ~1.2 m)
       const ptLow = ptS ? bt + 2 * ptS.small.h + 9 : 0; // (the portraits' foot: the Galton board and the globe under it)
       for (let y = bt - 3; y < bb + 3; y += 1) for (let x = bl - 3; x < br + 3; x += 1) {
         const fr = x < bl || x >= br || y < bt || y >= bb;
@@ -3117,7 +3118,7 @@ bbbbbb.
       { // a Galton board on the wall over the master's desk: pegs in a triangle, bins below
         // (under the right-hand portraits and over the desk: the bins shorten when the wall is low)
         const gw = 17; const dx0 = S(0.86); const gx0 = Math.round(dx0 + (Math.max(10, BR - dx0 - 2) - gw) / 2);
-        const gy0 = Math.max(yf - 54, ptLow + 4); const bh = Math.min(15, yf - 12 - (gy0 + 19));
+        const gy0 = Math.max(yf - 54, ptLow + 4); const bh = Math.min(15, yf - 21 - (gy0 + 21)); // (its foot above the globe on the desk)
         if (gx0 > br + 4 && gx0 + gw < BR - 1 && bh >= 8) {
           rect(gx0 - 1, gy0 - 1, gw + 2, bh + 21, I.TIMBER); rect(gx0, gy0, gw, bh + 19, I.PLASTER_HI);
           for (let r = 0; r < 7; r += 1) for (let k = 0; k <= r; k += 1) set(gx0 + 8 - r + 2 * k, gy0 + 3 + r * 2, I.ARM_SH); // the pegs
@@ -3233,12 +3234,12 @@ bbbbbb.
       });
       lantern(S(0.66), Math.round(H * 0.3));
     } else { // contact: the letterbox in the door, a lodestone and the register on the table, a map of Paris
-      const a = S(0.42); const b = S(0.62); door(a, b, Math.round(H * 0.16));
-      lantern(b + 6, Math.round(H * 0.38));
-      for (let k = 0; k < 3; k += 1) { set(a - 6 + k * 2, Math.round(H * 0.42), I.GOLD); set(a - 6 + k * 2, Math.round(H * 0.42) + 1, I.GOLD_SH); }
+      const a = S(0.42); const b = S(0.62); const dt = yf - 52; door(a, b, dt); // (a great door: ~1.7 adults)
+      lantern(b + 6, dt + 14);
+      for (let k = 0; k < 3; k += 1) { set(a - 6 + k * 2, dt + 18, I.GOLD); set(a - 6 + k * 2, dt + 19, I.GOLD_SH); }
       const tb = table3d(S(0.2), yf - 14, Sw(0.26));
       things.forEach((t, i) => {
-        if (t.kind === 'letterbox') { const lx = Math.round((a + b) / 2) - 4; const ly = Math.round(H * 0.5); rect(lx, ly, 9, 5, I.ARM_SH); rect(lx, ly, 9, 1, I.ARM_HI); rect(lx + 2, ly + 2, 5, 1, I.OUTLINE); set(lx + 4, ly + 4, I.GOLD); slots[i] = box(lx - 1, ly - 1, 11, 7); }
+        if (t.kind === 'letterbox') { const lx = Math.round((a + b) / 2) - 4; const ly = dt + 24; rect(lx, ly, 9, 5, I.ARM_SH); rect(lx, ly, 9, 1, I.ARM_HI); rect(lx + 2, ly + 2, 5, 1, I.OUTLINE); set(lx + 4, ly + 4, I.GOLD); slots[i] = box(lx - 1, ly - 1, 11, 7); }
         else if (t.kind === 'lodestone') { const xc = tb.l + 4; rect(xc - 3, tb.front - 4, 7, 4, I.STONE); rect(xc - 3, tb.front - 4, 7, 1, I.STONE_HI); rect(xc - 4, tb.front - 3, 5, 1, I.CAP); rect(xc + 1, tb.front - 3, 4, 1, I.WING); shadow(xc, tb.front, 8); slots[i] = box(xc - 5, tb.front - 6, 11, 7); }
         else if (t.kind === 'map') { const mx0 = S(0.72); const my = Math.round(H * 0.24); rect(mx0, my, 20, 15, I.TIMBER); rect(mx0 + 1, my + 1, 18, 13, I.BEARD);
           for (let x = 0; x < 18; x += 1) set(mx0 + 1 + x, my + 7 + Math.round(Math.sin(x * 0.5) * 2), I.WATER); [[5, 4], [11, 9], [14, 3]].forEach(([dx, dy]) => set(mx0 + dx, my + dy, I.CAP)); slots[i] = box(mx0 - 1, my - 1, 22, 17); }
@@ -5618,31 +5619,52 @@ bbbbbb.
   /** The room's canvas: the largest whole number of device pixels a room pixel that fits the plate, centred. */
   function layoutRoom() {
     const r = plate.getBoundingClientRect(); const dpr = devicePixelRatio || 1;
+    const rh = r.width / r.height < (16 / 9 + 4 / 3) / 2 ? RH_SQUARE : RH_WIDE; // (the format nearer the window's shape)
+    if (rh !== RH) { RH = rh; roomCv.height = RH; rimg = rctx.createImageData(RW, RH); robuf = new Uint32Array(rimg.data.buffer); }
     const kd = Math.max(1, Math.floor(Math.min((r.width * dpr) / RW, (r.height * dpr) / RH))); const k = kd / dpr;
     const l = Math.round(((r.width - RW * k) / 2) * dpr) / dpr; const t = Math.round(((r.height - RH * k) / 2) * dpr) / dpr;
     roomBox = { l, t, k };
     Object.assign(roomCv.style, { left: `${l}px`, top: `${t}px`, width: `${RW * k}px`, height: `${RH * k}px` });
     fbuf = null; // (the embrasure follows: paintFrame)
   }
-  /** The embrasure round the room, on the landscape's canvas: the tower's ashlar, its reveal lit on the
-   *  top and left edges, dark on the others; the room's own light (ipal32) on it. */
+  /** Round the room, on the landscape's canvas: a wall of black brick and, about the opening, a gilt
+   *  fillet lit from above and the left; a quatrefoil with a red stone at each corner and a lozenge at
+   *  the middle of each side, where the margin has room for them. In the room's own light (ipal32). */
   function paintFrame() {
     const { W, H } = scene; fbuf = new Uint32Array(W * H);
-    const x0 = roomBox.l / px; const y0 = roomBox.t / px; const x1 = x0 + (RW * roomBox.k) / px; const y1 = y0 + (RH * roomBox.k) / px;
+    const x0 = Math.round(roomBox.l / px); const y0 = Math.round(roomBox.t / px);
+    const x1 = Math.round((roomBox.l + RW * roomBox.k) / px); const y1 = Math.round((roomBox.t + RH * roomBox.k) / px);
     const C = (n, f = 1) => pack(unpack(ipal32[I[n]]).map((v) => v * f));
-    const stone = [C('ROCK_HI', 0.55), C('ROCK', 0.5), C('ROCK_SH', 0.5), C('ROCK_DK', 0.6)]; const lit = C('ROCK_HI', 0.85); const shade = C('ROCK_SH', 0.4); const dark = C('OUTLINE');
-    const bw = 9; const bh = 4; const rv = 3; // (a block, the reveal: scene px)
-    for (let y = 0; y < H; y += 1) {
-      const course = Math.floor(y / bh); const off = (course % 2) * Math.floor(bw / 2);
+    const brick = [C('OUTLINE', 1.25), C('ROCK_DK', 0.42), C('OUTLINE', 1.05), C('ROCK_DK', 0.36)]; const mortar = C('ROCK_DK', 0.62);
+    const gold = C('GOLD'); const goldHi = C('GOLD_HI'); const goldSh = C('GOLD_SH'); const ink = C('OUTLINE', 0.7); const gem = C('CAP');
+    const bw = 7; const bh = 3;
+    for (let y = 0; y < H; y += 1) { // the brick
+      const course = Math.floor(y / bh); const off = (course % 2) * 3;
       for (let x = 0; x < W; x += 1) {
-        const i = y * W + x;
-        if (x >= x0 && x < x1 && y >= y0 && y < y1) { fbuf[i] = dark; continue; } // (under the room's canvas)
-        const dx = x < x0 ? x0 - x : x >= x1 ? x - x1 + 1 : 0; const dy = y < y0 ? y0 - y : y >= y1 ? y - y1 + 1 : 0;
-        if (Math.max(dx, dy) <= rv) { fbuf[i] = (y < y0 && dy >= dx) || (x < x0 && dx > dy) ? lit : shade; continue; } // the reveal
-        const j = y % bh === bh - 1 || (x + off) % bw === 0; const n = (x * 7 + course * 13) % 11;
-        fbuf[i] = j ? stone[3] : n < 2 ? stone[0] : n > 8 ? stone[2] : stone[1];
+        const i = y * W + x; const bx = Math.floor((x + off) / bw);
+        fbuf[i] = y % bh === bh - 1 || (x + off) % bw === 0 ? mortar : brick[(bx * 7 + course * 3) % 4];
       }
     }
+    const put = (x, y, c) => { if (x >= 0 && x < W && y >= 0 && y < H && !(x >= x0 && x < x1 && y >= y0 && y < y1)) fbuf[y * W + x] = c; };
+    // the fillet: a dark line on the opening, two of gilt, a dark line outside
+    for (let d = 1; d <= 4; d += 1) {
+      for (let x = x0 - d; x < x1 + d; x += 1) { put(x, y0 - d, d === 1 || d === 4 ? ink : d === 2 ? goldHi : gold); put(x, y1 + d - 1, d === 1 || d === 4 ? ink : goldSh); }
+      for (let y = y0 - d; y < y1 + d; y += 1) { put(x0 - d, y, d === 1 || d === 4 ? ink : d === 2 ? goldHi : gold); put(x1 + d - 1, y, d === 1 || d === 4 ? ink : goldSh); }
+    }
+    const quatrefoil = (cx, cy) => { // 11 x 11: four lobes, a gem
+      for (let y = -5; y <= 5; y += 1) for (let x = -5; x <= 5; x += 1) {
+        const lobe = [[-2, 0], [2, 0], [0, -2], [0, 2]].some(([lx, ly]) => (x - lx) ** 2 + (y - ly) ** 2 <= 6.5);
+        const rim = !lobe && [[-2, 0], [2, 0], [0, -2], [0, 2]].some(([lx, ly]) => (x - lx) ** 2 + (y - ly) ** 2 <= 10.5);
+        if (Math.abs(x) <= 1 && Math.abs(y) <= 1) put(cx + x, cy + y, x === -1 && y === -1 ? goldHi : gem);
+        else if (lobe) put(cx + x, cy + y, x + y < -1 ? goldHi : x + y > 1 ? goldSh : gold);
+        else if (rim) put(cx + x, cy + y, ink);
+      }
+    };
+    const lozenge = (cx, cy) => { for (let y = -3; y <= 3; y += 1) for (let x = -3; x <= 3; x += 1) { const m = Math.abs(x) + Math.abs(y); if (m <= 3) put(cx + x, cy + y, m === 3 ? ink : m === 0 ? gem : y < 0 ? goldHi : gold); } };
+    const mx = Math.min(x0, W - x1); const my = Math.min(y0, H - y1);
+    if (mx >= 6 && my >= 6) [[x0 - 3, y0 - 3], [x1 + 2, y0 - 3], [x0 - 3, y1 + 2], [x1 + 2, y1 + 2]].forEach(([cx, cy]) => quatrefoil(cx, cy));
+    if (my >= 5) { lozenge(Math.round((x0 + x1) / 2), y0 - 3); lozenge(Math.round((x0 + x1) / 2), y1 + 2); }
+    if (mx >= 5) { lozenge(x0 - 3, Math.round((y0 + y1) / 2)); lozenge(x1 + 2, Math.round((y0 + y1) / 2)); }
   }
 
   /** Width left to the furniture: on wide screens the parchment hangs over the right half. */
@@ -5999,7 +6021,7 @@ bbbbbb.
     if (roomShown && !fbuf) paintFrame();
     if (st === 'scene' && tower) renderTower(t);
     else if (st === 'scene') { draw(t); if (zoom) zoomed(t); else obuf.set(buf); }
-    else if (st === 'room') { drawInterior(t); obuf.set(fbuf); robuf.set(ibuf); }
+    else if (st === 'room') { drawInterior(t); obuf.set(fbuf); robuf.set(ibuf.subarray(0, RW * RH)); }
     else if (st === 'swap') {
       drawInterior(t); obuf.set(fbuf);
       const th = clamp((t - view.t0) / DISSOLVE);
@@ -6816,7 +6838,7 @@ bbbbbb.
       roomCv = document.createElement('canvas'); roomCv.className = 'room'; roomCv.width = RW; roomCv.height = RH; roomCv.hidden = true;
       roomCv.setAttribute('aria-hidden', 'true'); plate.append(roomCv); rctx = roomCv.getContext('2d');
       rimg = rctx.createImageData(RW, RH); robuf = new Uint32Array(rimg.data.buffer);
-      ibuf = new Uint32Array(RW * RH); iprev = new Uint32Array(RW * RH); ibase = new Uint32Array(RW * RH);
+      ibuf = new Uint32Array(RW * RH_SQUARE); iprev = new Uint32Array(RW * RH_SQUARE); ibase = new Uint32Array(RW * RH_SQUARE); // (the larger format: either fits)
       roomCv.addEventListener('click', (e) => { // (room pixels)
         if (view.state !== 'room' || !interior) return; const b = roomCv.getBoundingClientRect();
         roomClick(Math.floor(((e.clientX - b.left) / b.width) * RW), Math.floor(((e.clientY - b.top) / b.height) * RH));
