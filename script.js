@@ -1060,6 +1060,7 @@ function engineToggle() {
   else { if (!WIDE.matches) store('entry', 'castle'); applyTheme(nextTheme(), true); openWindow(location.hash, { userAction: false }); }
 }
 window.addEventListener('message', (e) => { if (e.origin === location.origin && e.data && e.data.engine === 'close') closeEngine(); });
+addEventListener('gate', (e) => { if (e.detail === 'terminal') enterEngine(); }); // (the front gate's second way in: gate.js)
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   if (engine && !FRAMED) { e.stopImmediatePropagation(); closeEngine(); return; }
