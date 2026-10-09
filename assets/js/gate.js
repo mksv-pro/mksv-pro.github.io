@@ -2,52 +2,76 @@
    how to visit, the castle or the terminal (the scrying engine in the castle's scriptorium: script.js
    opens it on the 'gate' event).
 
-   Behind it, a halftone: a square grid of rust-coloured dots, each dot's radius and light the value
-   there of a smooth field, a few broad Gaussian swells drifting on slow Lissajous paths over a ramp
-   from the top left. Nothing jumps: the field is continuous in space and time. */
+   Behind it, site percolation on a triangular lattice: each site has its own threshold, drawn once
+   (quenched disorder); a smooth field sweeps over the lattice (Gaussian swells on Lissajous paths, a
+   travelling wave) and a site lights up as the field passes its threshold; lit neighbours are joined.
+   Clusters grow, merge, span and break up as the swells go by, isolated sites flicker at their edges.
+   The field also nudges each site along its gradient (the lattice breathes); all of it continuous in
+   space and time: nothing jumps. */
 (function () {
   const root = document.documentElement;
   const gate = document.getElementById('gate');
   if (!gate || !root.classList.contains('gated')) { if (gate) gate.remove(); return; }
   const cv = gate.querySelector('canvas'); const ctx = cv.getContext('2d');
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const GAP = 23; const RMAX = 3.8; // (css px: the grid's step, the largest dot's radius)
-  let W = 0; let H = 0; let dpr = 1; let raf = 0; let last = 0; let t = 0; let swells = [];
+  const GAP = 26; const RMAX = 2.1; const BANDS = 10; // (css px: the lattice step, the largest dot; alpha levels batched per stroke)
+  let W = 0; let H = 0; let dpr = 1; let raf = 0; let last = 0; let t = 0; let swells = []; let sites = []; let nx = 0; let ny = 0;
   const rnd = Math.random;
+  const smooth = (a, b, x) => { const u = Math.min(1, Math.max(0, (x - a) / (b - a))); return u * u * (3 - 2 * u); };
 
   function resize() {
     dpr = Math.min(2, window.devicePixelRatio || 1); W = innerWidth; H = innerHeight;
     cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.width = `${W}px`; cv.style.height = `${H}px`;
     const m = Math.max(W, H);
-    swells = Array.from({ length: 4 }, (_, k) => ({ // (centre's path, its periods in seconds, its width)
-      cx: rnd(), cy: rnd(), ax: 0.25 + rnd() * 0.25, ay: 0.2 + rnd() * 0.25, px: 70 + rnd() * 60, py: 90 + rnd() * 70,
-      ph: rnd() * 6.28, s: m * (0.1 + rnd() * 0.1), h: k === 0 ? 1 : 0.55 + rnd() * 0.4 }));
+    swells = Array.from({ length: 5 }, () => ({ // (centre's path, its periods in seconds, its width, its height)
+      cx: rnd(), cy: rnd(), ax: 0.3 + rnd() * 0.3, ay: 0.25 + rnd() * 0.3, px: 16 + rnd() * 14, py: 20 + rnd() * 16,
+      ph: rnd() * 6.28, s: m * (0.07 + rnd() * 0.08), h: 0.5 + rnd() * 0.5 }));
+    const dy = GAP * 0.866; nx = Math.ceil(W / GAP) + 2; ny = Math.ceil(H / dy) + 2; sites = [];
+    for (let j = 0; j < ny; j += 1) for (let i = 0; i < nx; i += 1) sites.push({ x0: (i - 1 + (j % 2) * 0.5) * GAP, y0: (j - 1) * dy, u: 0.25 + 0.6 * rnd(), b: 0.6 + 0.4 * rnd() });
   }
-  /** The field at (x, y), time t: 0 (no dot) to 1 (the largest). */
+  /** The field at (x, y), now: roughly 0 to 1.2. */
   function field(x, y) {
-    let v = 0.4 * Math.max(0, 1 - (x / W) * 0.9 - (y / H) * 0.5); // the ramp, bright at the top left
+    let v = 0.18 + 0.12 * Math.sin(x * 0.006 - y * 0.004 + t * 0.45); // a long wave crossing the screen
     swells.forEach((s) => {
       const sx = (s.cx + s.ax * Math.sin((6.283 * t) / s.px + s.ph)) * W; const sy = (s.cy + s.ay * Math.sin((6.283 * t) / s.py + s.ph * 1.7)) * H;
       v += s.h * Math.exp(-((x - sx) ** 2 + (y - sy) ** 2) / (2 * s.s * s.s));
     });
-    return 1 - Math.exp(-2.2 * v); // (saturating softly: no flat plateau where swells overlap)
+    return v;
   }
   function draw() {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-    const nx = Math.ceil(W / GAP); const ny = Math.ceil(H / GAP); const ox = (W - (nx - 1) * GAP) / 2; const oy = (H - (ny - 1) * GAP) / 2;
-    for (let j = 0; j < ny; j += 1) for (let i = 0; i < nx; i += 1) {
-      const x = ox + i * GAP; const y = oy + j * GAP; const v = field(x, y);
-      const r = 0.6 + (RMAX - 0.6) * v; const a = 0.08 + 0.85 * v ** 1.2; // (even the faintest dot shows: the grid stays legible)
-      ctx.fillStyle = `rgba(${Math.round(150 + 50 * v)},${Math.round(62 + 26 * v)},${Math.round(22 + 8 * v)},${a.toFixed(3)})`;
-      ctx.beginPath(); ctx.arc(x, y, r, 0, 6.283); ctx.fill();
+    const e = 3; // (the gradient's step, px)
+    sites.forEach((p) => {
+      const v = field(p.x0, p.y0); const gx = (field(p.x0 + e, p.y0) - v) / e; const gy = (field(p.x0, p.y0 + e) - v) / e;
+      p.x = p.x0 + gx * 260; p.y = p.y0 + gy * 260; // (pushed up the slope: the lattice gathers under a swell)
+      p.on = smooth(p.u - 0.07, p.u + 0.07, v); p.v = v;
+    });
+    const bands = Array.from({ length: BANDS }, () => new Path2D());
+    const at = (i, j) => (i >= 0 && i < nx && j >= 0 && j < ny ? sites[j * nx + i] : null);
+    for (let j = 0; j < ny; j += 1) for (let i = 0; i < nx; i += 1) { // each site's three forward neighbours on the triangular lattice
+      const p = sites[j * nx + i]; if (p.on < 0.02) continue;
+      const odd = j % 2;
+      [at(i + 1, j), at(i + odd, j + 1), at(i - 1 + odd, j + 1)].forEach((q) => {
+        if (!q || q.on < 0.02) return; const a = Math.min(p.on, q.on) * 0.42;
+        const k = Math.min(BANDS - 1, Math.floor(a * BANDS / 0.42)); if (k < 1) return;
+        bands[k].moveTo(p.x, p.y); bands[k].lineTo(q.x, q.y);
+      });
     }
+    ctx.lineWidth = 0.6;
+    bands.forEach((path, k) => { ctx.strokeStyle = `rgba(220,224,232,${((k + 0.5) / BANDS * 0.42).toFixed(3)})`; ctx.stroke(path); });
+    const dots = Array.from({ length: BANDS }, () => new Path2D());
+    sites.forEach((p) => {
+      const a = (0.1 + 0.9 * p.on) * p.b; const r = 0.55 + (RMAX - 0.55) * p.on * Math.min(1, p.v);
+      const k = Math.min(BANDS - 1, Math.floor(a * BANDS)); dots[k].moveTo(p.x + r, p.y); dots[k].arc(p.x, p.y, r, 0, 6.283);
+    });
+    dots.forEach((path, k) => { ctx.fillStyle = `rgba(${k > 7 ? '255,255,255' : '214,218,226'},${((k + 0.5) / BANDS).toFixed(3)})`; ctx.fill(path); });
   }
   function frame(now) {
     t += Math.min(0.05, last ? (now - last) / 1000 : 0.016); last = now;
     draw(); raf = requestAnimationFrame(frame);
   }
   function start() { if (reduce) { draw(); return; } last = 0; cancelAnimationFrame(raf); raf = requestAnimationFrame(frame); }
-  t = rnd() * 200; resize(); start();
+  t = rnd() * 100; resize(); start();
   addEventListener('resize', () => { resize(); if (reduce) draw(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) cancelAnimationFrame(raf); else if (root.classList.contains('gated')) start(); });
 

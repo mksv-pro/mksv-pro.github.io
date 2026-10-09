@@ -1388,7 +1388,7 @@ details.how p { margin: .3rem 0 0; }
 .gate.out { opacity: 0; pointer-events: none; }
 .gate canvas { position: absolute; inset: 0; display: block; }
 .gate-box { position: relative; width: min(46rem, calc(100vw - 2rem)); padding: 2rem 2.2rem; text-align: center;
-  background: rgba(0, 0, 0, .72); box-shadow: 0 0 3rem 2rem rgba(0, 0, 0, .72); }
+  background: rgba(0, 0, 0, .86); box-shadow: 0 0 3rem 2rem rgba(0, 0, 0, .86); }
 .gate-name { margin: 0; font-size: 1.6rem; font-weight: 600; letter-spacing: .04em; color: #fff; }
 .gate-sub { margin: .3rem 0 2rem; font-size: .85rem; color: #9ba0aa; }
 .gate-q { margin: 0 0 1.2rem; font-size: 1rem; font-weight: 400; color: #c9ccd3; }
