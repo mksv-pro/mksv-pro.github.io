@@ -40,6 +40,7 @@
       t = (/[?&]theme=(\w+)/.exec(q) || [])[1] === 'dark' || framed || (!wide && (!touch || e === 'engine')) ? 'dark' : 'hours';
       if (framed) r.classList.add('framed');
       try { if (localStorage.getItem('paper')) r.setAttribute('data-paper', ''); } catch (x) {} // the terminal on paper (cmdline: paper)
+      try { if (localStorage.getItem('glass') && !matchMedia('(prefers-reduced-motion: reduce)').matches) r.setAttribute('data-glass', ''); } catch (x) {} // the terminal behind glass (cmdline: glass)
       var g = null; try { g = localStorage.getItem('gate'); } catch (x) {}
       var re = false; try { re = performance.getEntriesByType('navigation')[0].type === 'reload'; } catch (x) {}
       if ((wide || touch) && !framed && (!q || q === '?touch=1') && (!location.hash || re) && !g) r.classList.add('gated'); // a bare visit or a reload: the front gate asks how (gate.js), unless told to remember; a link to a section skips it

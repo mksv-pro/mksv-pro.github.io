@@ -65,6 +65,10 @@ const T = {
   backTo: (room) => `Back to ${room}, where you left off?`,
   backYes: '[yes, take me]',
   backGone: 'The castle, as it stands today.',
+  youSee: 'You see',
+  examineHint: 'examine &lt;thing&gt; looks closer (x for short).',
+  examineWhat: 'Examine what? look lists what is here.',
+  noThing: (a) => `There is no ${a} here. look lists what is.`,
   planTitle: 'The plan of the castle',
   planNote: (k, n) => `${k} of ${n} rooms walked this visit (inked); click one to go there.`,
   skyAt: (hm) => `The sky over Paris at ${hm}: let go, and it goes back to now.`,
@@ -276,6 +280,11 @@ moreLink.addEventListener('click', (e) => {
   document.addEventListener('pointerdown', (e) => { if (!box.hidden && !box.contains(e.target) && e.target !== msgText) box.hidden = true; });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !box.hidden) { box.hidden = true; e.stopImmediatePropagation(); } }, true);
   msgText.title = 'Click: what was said';
+}
+
+{ // the glass's afterglow: 80 ms of trail on scrolling (cmdline: glass)
+  let off = 0;
+  addEventListener('scroll', () => { if (!root.hasAttribute('data-glass')) return; root.classList.add('scrolling'); clearTimeout(off); off = setTimeout(() => root.classList.remove('scrolling'), 80); }, { passive: true });
 }
 
 /* ---- theme ------------------------------------------------------------- */
@@ -773,6 +782,7 @@ function openWindow(hash, { userAction, animate = userAction }) {
   enterRoom(win.id, !userAction);
   // the hours theme: a section shown is a room of the castle; no hash at all, the landscape
   if (target) { root.dataset.room = win.id; store('lastRoom', win.id); } else delete root.dataset.room;
+  if (FRAMED && target) parent.postMessage({ engine: 'room', id: win.id }, location.origin); // (the castle behind the glass goes there too)
   if (target && userAction && root.getAttribute('data-theme') === 'hours') {
     const empty = win.querySelector('.empty:not([hidden])');
     const hint = !session('hinted') && wideRooms() ? T.lookHint : ''; // once a visit: how the rooms work
@@ -1178,6 +1188,10 @@ function setSpots(rects, items) {
    The same page in an iframe (framed, it takes the terminal: see the head script), in a window over
    the castle. Opening: the room's picture zooms on the engine, then the window grows out of its glass;
    closing runs it back. Esc, [back to the castle] (from inside: postMessage) or a click outside closes. */
+const GEAR_PATH = (() => { // a ten-toothed wheel
+  const pts = []; for (let k = 0; k < 40; k += 1) { const a = (k / 40) * 2 * Math.PI; const r = k % 4 < 2 ? 11 : 8.5; pts.push(`${(r * Math.cos(a)).toFixed(2)},${(r * Math.sin(a)).toFixed(2)}`); }
+  return `M${pts.join('L')}Z`;
+})();
 let engine = null; let engineClosing = []; // (the closing's timers: opened again before they ran, they would undo the new zoom)
 function enterEngine() { // from anywhere: into the scriptorium, then the engine
   if (FRAMED || engine) return;
@@ -1205,7 +1219,9 @@ function openEngine(spot) {
   cv.style.transform = `translate(${vx - fx}px, ${vy - fy}px) scale(${Z})`;
   root.classList.add('engine-on'); cue('door');
   const wrap = document.createElement('div'); wrap.className = 'engine';
-  wrap.innerHTML = `<div class="engine-win" role="dialog" aria-label="${T.engineTitle}"><p class="engine-bar"><span>${T.engineTitle}</span><button type="button" class="engine-x">${T.engineClose}</button></p><iframe title="${T.engineTitle}" src="${location.pathname}"></iframe></div>`;
+  const gear = (c) => `<svg class="engine-gear ${c}" viewBox="-12 -12 24 24" aria-hidden="true"><path d="${GEAR_PATH}"/><circle r="3"/></svg>`;
+  wrap.innerHTML = `<div class="engine-win" role="dialog" aria-label="${T.engineTitle}">${gear('g1')}${gear('g2')}${gear('g3')}<p class="engine-bar"><span>${T.engineTitle}</span>`
+    + `<span class="engine-gauge" aria-hidden="true"><i class="engine-needle"></i></span><button type="button" class="engine-x">${T.engineClose}</button></p><iframe title="${T.engineTitle}" src="${location.pathname}"></iframe></div>`;
   engine = { wrap, cv, fx: vx, fy: vy, ms, from: spot };
   setTimeout(() => {
     if (!engine) return;
@@ -1237,7 +1253,26 @@ function engineToggle() {
   else if (root.getAttribute('data-theme') === 'hours') enterEngine();
   else { if (!WIDE.matches) store('entry', 'castle'); applyTheme(nextTheme(), true); openWindow(location.hash, { userAction: false }); }
 }
-window.addEventListener('message', (e) => { if (e.origin === location.origin && e.data && e.data.engine === 'close') closeEngine(); });
+window.addEventListener('message', (e) => {
+  if (e.origin !== location.origin || !e.data || FRAMED) return;
+  const m = e.data;
+  if (m.engine === 'close') closeEngine();
+  else if (m.engine === 'room' && engine && WORLD[m.id]) { history.replaceState(null, '', `#${m.id}`); openWindow(`#${m.id}`, { userAction: false }); } // walking in the terminal walks the castle behind it
+  else if (m.engine === 'key' && engine) engineTurn(1);
+  else if (m.engine === 'out' && engine) engineGauge(m.n);
+  else if (m.engine === 'err' && engine) { cue('ding'); engineTurn(-3); }
+});
+/* The engine at work: its gears turn a tooth a key, its gauge reads how much the last answer said,
+   its bell rings at a command it does not know. */
+function engineTurn(k) {
+  if (!engine || !engine.wrap) return; engine.turn = (engine.turn || 0) + k * 15;
+  engine.wrap.querySelectorAll('.engine-gear').forEach((g, j) => { g.style.transform = `rotate(${(j % 2 ? -1 : 1) * engine.turn * (j % 2 ? 1.5 : 1)}deg)`; });
+  if (Math.abs(k) === 1 && Math.random() < 0.5) cue('tick');
+}
+function engineGauge(n) {
+  const nd = engine && engine.wrap && engine.wrap.querySelector('.engine-needle'); if (!nd) return;
+  nd.style.transform = `rotate(${-70 + 140 * Math.min(1, Math.log10(1 + n) / 3.6)}deg)`; // (a few words: low; a page: high)
+}
 /** The front gate's ways in (gate.js): the castle (a touch screen showing the terminal goes back up the
  *  tower), the terminal (in the scriptorium's engine; on a touch screen the page itself), the tour. */
 function gateWay(way) {

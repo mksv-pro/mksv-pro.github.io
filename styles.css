@@ -1550,3 +1550,25 @@ canvas.twinkle { display: none; position: absolute; z-index: 1; pointer-events: 
 .plan a text { text-decoration: none; }
 .plan a.here rect { stroke: var(--hi); stroke-width: 3; }
 .plan a:hover rect, .plan a:focus rect { stroke: var(--hi); stroke-width: 3; }
+
+/* the engine at work: three brass wheels at its corners turn with the keys; a gauge in its bar */
+.engine-win { position: relative; }
+.engine-gear { position: absolute; width: 3.2rem; height: 3.2rem; fill: #b8862a; stroke: #5a3c14; stroke-width: 1; transition: transform .12s steps(3, end); pointer-events: none; }
+.engine-gear circle { fill: #5a3c14; }
+.engine-gear.g1 { left: -1.9rem; bottom: -1.6rem; }
+.engine-gear.g2 { left: .7rem; bottom: -2.3rem; width: 2.2rem; height: 2.2rem; }
+.engine-gear.g3 { right: -1.7rem; top: -1.5rem; width: 2.6rem; height: 2.6rem; }
+.engine-gauge { position: relative; width: 2.6rem; height: 1.3rem; margin-left: auto; border: 2px solid #f6e2b0; border-bottom: 0; border-radius: 1.3rem 1.3rem 0 0; background: #2a1c0c; overflow: hidden; }
+.engine-needle { position: absolute; left: calc(50% - 1px); bottom: 0; width: 2px; height: 1.1rem; background: #ff8a3a; transform-origin: bottom center; transform: rotate(-70deg); transition: transform .5s cubic-bezier(.3, 1.6, .5, 1); }
+@media (prefers-reduced-motion: reduce) { .engine-gear, .engine-needle { transition: none; } }
+.engine-on .plate-img { filter: blur(1.5px) brightness(.85); } /* (the castle behind the glass) */
+
+/* the terminal behind glass (cmdline: glass): phosphor glow, the tube's curve as a shading, a short trail on scrolling */
+[data-glass][data-theme="dark"] body { text-shadow: 0 0 .25em color-mix(in srgb, currentColor 55%, transparent); }
+[data-glass][data-theme="dark"] body::after {
+  content: ""; position: fixed; inset: 0; z-index: 90; pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 62%, rgb(0 0 0 / .38) 100%),
+    repeating-linear-gradient(0deg, rgb(0 0 0 / .12) 0 1px, transparent 1px 3px);
+  box-shadow: inset 0 0 6rem rgb(0 0 0 / .45);
+}
+[data-glass][data-theme="dark"].scrolling body { text-shadow: 0 0 .25em color-mix(in srgb, currentColor 55%, transparent), 0 -.15em .1em color-mix(in srgb, currentColor 30%, transparent); }

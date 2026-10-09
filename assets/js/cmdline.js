@@ -26,7 +26,11 @@ function closeCmd() {
 }
 cmdToggle.addEventListener('click', () => (cmdOpen() ? closeCmd() : openCmd()));
 
-function print(html) { cmdOut.innerHTML = html; }
+function print(html) {
+  cmdOut.innerHTML = html;
+  if (FRAMED) parent.postMessage({ engine: 'out', n: cmdOut.textContent.length }, location.origin); // (the engine's gauge)
+}
+if (FRAMED) cmdIn.addEventListener('keydown', () => parent.postMessage({ engine: 'key' }, location.origin)); // (its gears turn)
 
 const DIRS = {
   n: 'n', north: 'n',
@@ -65,6 +69,22 @@ function findRoom(name) {
   if (byLabel) return byLabel;
   const tab = [...document.querySelectorAll('.tabs a')].find((a) => a.textContent.replace(/^\d:/, '').trim() === name);
   return tab ? tab.getAttribute('href').split('#')[1] : null;
+}
+
+/* The room's things, as the castle draws them (roomItems): in words for look, whole for examine. */
+const KIND_WORD = { scroll: 'a scroll', model: 'a working model', book: 'a book', volume: 'a volume', shelf: 'a shelf', letter: 'a letter', banner: 'a banner',
+  course: 'a slate', charter: 'a charter', ledger: 'the book of courses', 'desk-book': 'the notebook', vintage: 'a rack', place: 'a pennant' };
+function thingsHere(win) { return win && win.id ? roomItems(win.id).filter((t) => t.html && !['door', 'ladder', 'stair'].includes(t.kind)) : []; }
+function thingName(t) { const w = KIND_WORD[t.kind]; return w && !t.label.toLowerCase().startsWith(w.split(' ').pop()) ? `${w} (${t.label})` : t.label; }
+function examine(arg) {
+  const win = currentWindow(); const things = thingsHere(win);
+  if (!arg) return print(esc(T.examineWhat));
+  const q = arg.toLowerCase();
+  const t = things.find((x) => x.label.toLowerCase().includes(q)) || things.find((x) => (KIND_WORD[x.kind] || '').includes(q) || x.kind === q);
+  if (!t) return print(esc(T.noThing(arg)));
+  const spot = root.getAttribute('data-theme') === 'hours' && [...document.querySelectorAll('.spot')].find((b) => b.dataset.label === t.label);
+  if (spot) { closeCmd(); spot.click(); return undefined; } // (in the castle: its card)
+  return print(`<div class="examined">${t.html}</div>`);
 }
 
 function walkTo(id) {
@@ -159,10 +179,16 @@ function run(line) {
   switch (cmd) {
     case 'help': case 'h': case '?':
       return showHelp();
-    case 'look': case 'l':
+    case 'look': case 'l': {
+      if (arg) return examine(arg); // (look at the scroll: examine it)
+      const things = thingsHere(win);
       return print(`<b>${esc(roomName(win))}</b><br>${esc(win.dataset.look || '')}<br>`
+        + (things.length ? `<span class="dim">${T.youSee}:</span> ${things.map((t) => `${esc(thingName(t))}`).join(', ')}.<br>` : '')
         + (here && ITEMS[here] && !pack().includes(here) ? `${esc(T.seeHere(ITEMS[here].name))}<br>` : '')
-        + `<span class="dim">${T.exits}:</span> ${exitList(win)}.`);
+        + `<span class="dim">${T.exits}:</span> ${exitList(win)}.<br><span class="dim">${T.examineHint}</span>`);
+    }
+    case 'examine': case 'x': case 'ex': case 'inspect':
+      return examine(arg);
     case 'ls': case 'dir': case 'rooms':
       return print(`<span class="dim">${T.rooms}:</span> ${ROOM_IDS.map((id) => esc(WORLD[id].label)).join('  ')}`);
     case 'map': case 'm':
@@ -196,6 +222,11 @@ function run(line) {
       const on = arg === 'off' ? false : arg === 'on' ? true : !root.hasAttribute('data-paper');
       root.toggleAttribute('data-paper', on); store('paper', on ? '1' : null);
       return print(on ? 'The terminal on paper (paper off to go back).' : 'The terminal in the dark again.');
+    }
+    case 'glass': { // the terminal behind glass: phosphor glow, the screen's curve in its shading, a trail as it scrolls (kept on this device)
+      const on = arg === 'off' ? false : arg === 'on' ? true : !root.hasAttribute('data-glass');
+      root.toggleAttribute('data-glass', on && !reduceMotion); store('glass', on ? '1' : null);
+      return print(reduceMotion ? 'The glass stays plain: this device asks for less motion.' : on ? 'Behind glass (glass off to wipe it).' : 'The glass wiped clean.');
     }
     case 'search': case 'find': case 'grep':
       return search(args);
@@ -284,6 +315,7 @@ function run(line) {
     default: {
       const id = findRoom(words.join(' '));
       if (id) { print(''); return walkTo(id); }
+      if (FRAMED) parent.postMessage({ engine: 'err' }, location.origin); // (its bell)
       return print(esc(T.unknown(line.trim())));
     }
   }
@@ -300,7 +332,7 @@ cmdForm.addEventListener('submit', (e) => {
 /* Tab completes the word under the cursor: a command or a room first, then what that command
    takes; one match is completed, several are completed to their common start and listed. */
 const COMMANDS = ['help', 'look', 'ls', 'map', 'cd', 'take', 'inventory', 'use', 'rumour', 'descend',
-  'cv', 'mail', 'github', 'theme', 'sky', 'weather', 'event', 'photo', 'tour', 'tower', 'village', 'banner', 'music', 'volume', 'keys', 'quit', 'clear', 'go', 'gate', 'search', 'whoami', 'history', 'paper'];
+  'cv', 'mail', 'github', 'theme', 'sky', 'weather', 'event', 'photo', 'tour', 'tower', 'village', 'banner', 'music', 'volume', 'keys', 'quit', 'clear', 'go', 'gate', 'search', 'whoami', 'history', 'paper', 'glass', 'examine'];
 const roomWords = () => ROOM_IDS.map((id) => WORLD[id].label.toLowerCase());
 const ARGS = {
   cd: roomWords, open: roomWords, go: () => ['north', 'south', 'east', 'west'], walk: () => ['north', 'south', 'east', 'west'],
