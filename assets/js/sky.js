@@ -187,3 +187,27 @@ function skyAt(now) {
     lunar: { sep: sep(moonGeo, sunV.map((c) => -c)), umbra: 1.02 * (0.99834 * moonPar - sunR + 4.26e-5), penumbra: 1.02 * (0.99834 * moonPar + sunR + 4.26e-5), moonR },
   };
 }
+
+/* Twelve constellations seen from Paris: their bright stars (J2000 right ascension in hours,
+   declination in degrees; precession ignored, a quarter of a degree in 25 years) and the lines
+   of their usual figures (indices into the stars). */
+const CONSTELLATIONS = {
+  'the Great Bear (the Plough)': { stars: [[11.062, 61.75], [11.031, 56.38], [11.897, 53.69], [12.257, 57.03], [12.900, 55.96], [13.399, 54.93], [13.792, 49.31]], lines: [[0, 1], [1, 2], [2, 3], [3, 0], [3, 4], [4, 5], [5, 6]] },
+  'the Little Bear (Polaris)': { stars: [[2.530, 89.26], [17.537, 86.59], [16.766, 82.04], [15.734, 77.79], [14.845, 74.16], [15.345, 71.83], [16.292, 75.76]], lines: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 3]] },
+  Cassiopeia: { stars: [[0.153, 59.15], [0.675, 56.54], [0.945, 60.72], [1.430, 60.24], [1.907, 63.67]], lines: [[0, 1], [1, 2], [2, 3], [3, 4]] },
+  Orion: { stars: [[5.919, 7.41], [5.419, 6.35], [5.679, -1.94], [5.604, -1.20], [5.533, -0.30], [5.796, -9.67], [5.242, -8.20]], lines: [[0, 1], [0, 2], [1, 4], [2, 3], [3, 4], [2, 5], [4, 6], [5, 6]] },
+  'the Swan (Cygnus)': { stars: [[20.690, 45.28], [20.370, 40.26], [20.770, 33.97], [19.750, 45.13], [19.512, 27.96]], lines: [[0, 1], [1, 4], [2, 1], [1, 3]] },
+  'the Lyre (Vega)': { stars: [[18.616, 38.78], [18.746, 37.61], [18.908, 36.90], [18.982, 32.69], [18.835, 33.36]], lines: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 1]] },
+  'the Eagle (Altair)': { stars: [[19.771, 10.61], [19.846, 8.87], [19.922, 6.41]], lines: [[0, 1], [1, 2]] },
+  'the Lion (Regulus)': { stars: [[10.140, 11.97], [10.122, 16.76], [10.333, 19.84], [10.278, 23.42], [9.879, 26.01], [11.235, 20.52], [11.818, 14.57], [11.237, 15.43]], lines: [[0, 1], [1, 2], [2, 3], [3, 4], [2, 5], [5, 6], [6, 7], [7, 0]] },
+  'the Twins (Castor and Pollux)': { stars: [[7.577, 31.89], [7.755, 28.03], [6.383, 25.13], [7.335, 21.98], [6.629, 16.40]], lines: [[0, 2], [1, 3], [3, 4], [0, 1]] },
+  'the Herdsman (Arcturus)': { stars: [[14.261, 19.18], [14.750, 27.07], [15.258, 33.31], [15.032, 40.39], [14.535, 38.31], [13.911, 18.40]], lines: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 0], [0, 5]] },
+  'the Bull (Aldebaran, the Pleiades)': { stars: [[4.599, 16.51], [4.330, 15.63], [4.477, 19.18], [5.438, 28.61], [5.627, 21.14], [3.791, 24.10]], lines: [[1, 0], [1, 2], [2, 3], [0, 4]] },
+  'the square of Pegasus': { stars: [[23.079, 15.21], [23.063, 28.08], [0.140, 29.09], [0.220, 15.18]], lines: [[0, 1], [1, 2], [2, 3], [3, 0]] },
+};
+/** The constellations' stars as unit vectors (x east, y north, z up) from Paris at `now`. */
+function starsAt(now) {
+  const d = now.getTime() / DAY_MS + 2440587.5 - 2451545.0;
+  const lst = ((280.46061837 + 360.98564736629 * d + LON) % 360) * rad;
+  return Object.entries(CONSTELLATIONS).map(([name, c]) => ({ name, lines: c.lines, stars: c.stars.map(([ra, dec]) => horizontal(lst - ra * 15 * rad, dec * rad)) }));
+}

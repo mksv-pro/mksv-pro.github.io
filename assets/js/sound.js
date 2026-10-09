@@ -534,6 +534,8 @@
         tone(260, 120, 0.18, 0.06, { at, pan }); burst(700, 0.25, 0.05, { at, pan });
       },
       glint: () => chime([2640, 3960], 0.04, 0.5), // a glint of brass or glass
+      coin: () => chime([3520, 5280], 0.03, 0.25), // a coin flicked off the thumb
+      carillon: () => { const f = 523.25 * 2 ** ([0, 2, 4, 5, 7, 9, 11, 12][(o.k || 1) - 1] / 12); chime([f, f * 2.4, f * 3.01, f * 4.17], 0.07, 2.4, true, 0, pan); }, // a bell of the carillon: C major, a bell's partials (hum, tierce...)
       flap: () => { for (let k = 0; k < 5; k += 1) burst(420 + k * 30, 0.07, 0.22, { type: 'lowpass', at: k * 0.11 }); }, // wings beating
       blow: () => burst(1400, 0.35, 0.16, { sweep: 0.3 }), // a breath on a flame
       caw: () => { tone(820, 640, 0.22, 0.05, { type: 'sawtooth', filter: 1500, vibrato: 30, pan }); tone(800, 600, 0.2, 0.045, { type: 'sawtooth', filter: 1500, vibrato: 30, at: 0.3, pan }); }, // a raven

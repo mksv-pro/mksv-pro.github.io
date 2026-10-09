@@ -1519,3 +1519,9 @@ canvas.twinkle { display: none; position: absolute; z-index: 1; pointer-events: 
 .sealed-hint { margin: 0; font-size: .8rem; }
 @media (prefers-reduced-motion: reduce) { .sealed.broken, .wax-bit { animation: none; } }
 [data-theme="hours"] .card-close { z-index: 3; } /* (over a sealed letter too) */
+
+/* the weathervane's compass rose (ui/7-dialogs.js showRose) */
+.rose { display: block; width: min(16rem, 70vw); margin: .5rem auto; }
+.rose .r-a { fill: var(--accent); } .rose .r-b { fill: var(--dim); opacity: .6; }
+.rose text { font: 9px var(--ui); fill: var(--ink); text-anchor: middle; }
+.rose .r-wind { stroke: var(--red); stroke-width: 3; } .rose .r-wind-from { fill: var(--red); }

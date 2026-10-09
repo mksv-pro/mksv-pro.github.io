@@ -18,52 +18,63 @@ function enterEngine() { // from anywhere: into the scriptorium, then the engine
   const t0 = Date.now();
   const wait = () => {
     const b = spots.querySelector('.spot[data-kind="engine"]');
-    if (b && root.classList.contains('room-ready')) setTimeout(() => openEngine(b), 350);
+    if (b && root.classList.contains('room-ready')) setTimeout(openEngine, 350);
     else if (Date.now() - t0 < 8000) setTimeout(wait, 120);
   };
   wait();
 }
-function openEngine(spot) {
+const engineSpot = () => spots.querySelector('.spot[data-kind="engine"]');
+/* The picture zoomed on the engine's glass, brought to the middle of the screen; 0 if no engine is on
+   screen. The spots are rebuilt whenever the room is (a real picture arriving, a resize, frost): a
+   button kept from before is detached, its rect all zeros, and the zoom would head for the top left. */
+function zoomOnEngine(cv, ms) {
+  cv.style.transition = 'none'; cv.style.transform = ''; cv.getBoundingClientRect(); // (still zoomed: measure it unzoomed)
+  const s = engineSpot(); const sr = s && s.getBoundingClientRect();
+  if (!sr || !sr.width) return 0;
+  const cr = cv.getBoundingClientRect(); // (the picture: the landscape's canvas and the room's)
+  const fx = sr.left + sr.width / 2; const fy = sr.top + sr.height * 0.4; // (the glass, in the hood's upper part)
+  cv.style.transformOrigin = `${fx - cr.left}px ${fy - cr.top}px`;
+  cv.getBoundingClientRect();
+  cv.style.transition = `transform ${ms}ms cubic-bezier(.6, 0, .3, 1)`;
+  cv.style.transform = `translate(${innerWidth / 2 - fx}px, ${innerHeight / 2 - fy}px) scale(2.6)`;
+  return sr.width * 2.6;
+}
+function openEngine() {
   if (FRAMED || engine) return;
   engineClosing.forEach(clearTimeout); engineClosing = [];
   const cv = document.querySelector('.plate-img');
-  cv.style.transition = 'none'; cv.style.transform = ''; cv.getBoundingClientRect(); // (still zoomed from a closing: measure it unzoomed)
-  const sr = spot.getBoundingClientRect(); const cr = cv.getBoundingClientRect(); // (the picture: the landscape's canvas and the room's)
-  const fx = sr.left + sr.width / 2; const fy = sr.top + sr.height * 0.4; // (the glass, in the hood's upper part)
-  const Z = 2.6; const ms = reduceMotion ? 0 : 900;
-  cv.style.transformOrigin = `${fx - cr.left}px ${fy - cr.top}px`;
-  cv.style.transition = `transform ${ms}ms cubic-bezier(.6, 0, .3, 1)`;
-  const vx = innerWidth / 2; const vy = innerHeight / 2; // the glass is brought to the middle, where the window opens
-  cv.style.transform = `translate(${vx - fx}px, ${vy - fy}px) scale(${Z})`;
+  const glass = zoomOnEngine(cv, reduceMotion ? 0 : 900); const ms = reduceMotion || !glass ? 0 : 900; // (no engine on screen: no zoom)
   root.classList.add('engine-on'); cue('door');
   const wrap = document.createElement('div'); wrap.className = 'engine';
   const gear = (c) => `<svg class="engine-gear ${c}" viewBox="-12 -12 24 24" aria-hidden="true"><path d="${GEAR_PATH}"/><circle r="3"/></svg>`;
   wrap.innerHTML = `<div class="engine-win" role="dialog" aria-label="${T.engineTitle}">${gear('g1')}${gear('g2')}${gear('g3')}<p class="engine-bar"><span>${T.engineTitle}</span>`
     + `<span class="engine-gauge" aria-hidden="true"><i class="engine-needle"></i></span><button type="button" class="engine-x">${T.engineClose}</button></p><iframe title="${T.engineTitle}" src="${location.pathname}"></iframe></div>`;
-  engine = { wrap, cv, fx: vx, fy: vy, ms, from: spot };
+  engine = { wrap, cv, ms };
   setTimeout(() => {
     if (!engine) return;
     document.body.append(wrap);
     const win = wrap.querySelector('.engine-win'); const wr = win.getBoundingClientRect();
-    const s0 = Math.max(0.04, (sr.width * Z * 0.5) / wr.width); // grown from the glass, as large as it looks zoomed
-    win.style.transform = `translate(${vx - (wr.left + wr.width / 2)}px, ${vy - (wr.top + wr.height / 2)}px) scale(${s0})`; win.style.opacity = '0';
+    const s0 = Math.max(0.04, (glass * 0.5) / wr.width); // grown from the glass, as large as it looks zoomed
+    win.style.transform = `translate(${innerWidth / 2 - (wr.left + wr.width / 2)}px, ${innerHeight / 2 - (wr.top + wr.height / 2)}px) scale(${s0})`; win.style.opacity = '0';
     win.getBoundingClientRect(); // (commit the start)
     win.style.transition = `transform ${reduceMotion ? 0 : 520}ms cubic-bezier(.2, .8, .2, 1), opacity ${reduceMotion ? 0 : 300}ms`;
     win.style.transform = ''; win.style.opacity = '';
-    engine.win = win; engine.s0 = win.style.transform;
+    engine.win = win;
     const fr = wrap.querySelector('iframe'); fr.addEventListener('load', () => { try { fr.contentWindow.focus(); } catch { /* (another origin: never here) */ } }, { once: true });
   }, ms);
   wrap.addEventListener('click', (e) => { if (e.target === wrap || e.target.closest('.engine-x')) closeEngine(); });
 }
+// a resize under the open engine: the zoom's pixels are stale, aimed again once hours.js has laid the room out anew
+addEventListener('resize', () => { if (engine) requestAnimationFrame(() => requestAnimationFrame(() => { if (engine && !zoomOnEngine(engine.cv, 0)) engine.cv.style.transform = ''; })); });
 function closeEngine() {
   if (!engine) return;
-  const { wrap, cv, fx, fy, ms, from } = engine; engine = null;
+  const { wrap, cv, ms } = engine; engine = null;
   const win = wrap.querySelector('.engine-win'); const wr = win.getBoundingClientRect();
-  win.style.transform = `translate(${fx - (wr.left + wr.width / 2)}px, ${fy - (wr.top + wr.height / 2)}px) scale(0.05)`; win.style.opacity = '0';
+  win.style.transform = `translate(${innerWidth / 2 - (wr.left + wr.width / 2)}px, ${innerHeight / 2 - (wr.top + wr.height / 2)}px) scale(0.05)`; win.style.opacity = '0';
   wrap.style.pointerEvents = 'none';
   setTimeout(() => wrap.remove(), reduceMotion ? 0 : 400);
-  engineClosing = [setTimeout(() => { cv.style.transform = ''; }, reduceMotion ? 0 : 400)];
-  engineClosing.push(setTimeout(() => { root.classList.remove('engine-on'); cv.style.transition = ''; cv.style.transformOrigin = ''; if (from.isConnected) from.focus(); }, (reduceMotion ? 0 : 400) + ms));
+  engineClosing = [setTimeout(() => { cv.style.transition = `transform ${ms}ms cubic-bezier(.6, 0, .3, 1)`; cv.style.transform = ''; }, reduceMotion ? 0 : 400)];
+  engineClosing.push(setTimeout(() => { root.classList.remove('engine-on'); cv.style.transition = ''; cv.style.transformOrigin = ''; const s = engineSpot(); if (s) s.focus({ preventScroll: true }); }, (reduceMotion ? 0 : 400) + ms));
 }
 function engineToggle() {
   if (FRAMED) { parent.postMessage({ engine: 'close' }, location.origin); return; }

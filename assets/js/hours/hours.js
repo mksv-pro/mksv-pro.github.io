@@ -3719,8 +3719,9 @@ qqqqqTqqq
     for (let y = 0; y < H; y += 1) {
       const far = clamp(1 - (y - yl0 * 0.6) / (H - yl0 * 0.6)); // 1 up to the far hills, 0 at the bottom
       const a = fog ? 0.12 + 0.6 * far : (0.06 + 0.12 * far) * Math.max(wet, 0.5);
-      for (let x = 0; x < W; x += 1) { const i = y * W + x; if (idxNow[i] >= N_SKY) tint(i, c[0], c[1], c[2], a); }
+      for (let x = 0; x < W; x += 1) { const i = y * W + x; if (idxNow[i] >= N_SKY) tint(i, c[0], c[1], c[2], fog ? a * (1 - fogAt(x, y)) : a); }
     }
+    if (fogClear) for (let k = 0; k < fogClear.length; k += 1) fogClear[k] *= 0.985; // (it closes in again)
   }
   /** Rain streaks or snowflakes, in front of everything; a lightning flash in a storm. */
   function precipitation(put, blend) {
@@ -3918,6 +3919,12 @@ qqqqqTqqq
       if (f) { say(pick(LINES.buyer)); return; }
       const st = [5, 14].find((c) => Math.abs(x - ((mk.x0 + c + lm - zoom.vx) * zoom.Z)) < 8 && Math.abs(y - (scene.riverTop(mk.x0 + c) - 5 - zoom.vy) * zoom.Z) < 8);
       if (st !== undefined) { say(pick(LINES.vendor)); return; }
+    }
+    const wl = scene.hamlet.places.well;
+    if (wl && Math.abs(x - (wl.x + 1 + lm0 - zoom.vx) * zoom.Z) < 8 && y > (wl.yb - 6 - zoom.vy) * zoom.Z && y < (wl.yb + 1 - zoom.vy) * zoom.Z) { // a coin in the well: the splash tells its depth
+      const fall = Math.sqrt((2 * WELL_M) / 9.81); const back = WELL_M / 343; coin = { t0: now(), fall: fall + back }; sfx('coin');
+      setTimeout(() => { sfx('drop'); say(`Plouf, ${(fall + back).toFixed(2)} s after it left your hand: ${fall.toFixed(2)} s falling (√(2h/g)), ${(back * 1000).toFixed(0)} ms for the sound to come back up at 343 m/s. The water is about ${WELL_M} m down.`); }, (fall + back) * 1000);
+      return;
     }
     if (villageHit(x, y)) talk({ kind: 'market' });
   }
@@ -4885,7 +4892,7 @@ qqqqqTqqq
           const fade = 1 - Math.abs(y - (yl0 + yg) / 2) / ((yg - yl0) / 2 + 6);
           for (let x = 0; x < W; x += 1) {
             const n = Math.sin(x * 0.06 + t * 0.25 + y * 0.4) + Math.sin(x * 0.021 - t * 0.13 + y * 0.9) * 0.8;
-            if (n > 0.35) blend(x, y, c, 0.42 * k * fade * Math.min(1, n - 0.35 + 0.3), false);
+            if (n > 0.35) blend(x, y, c, 0.42 * k * fade * Math.min(1, n - 0.35 + 0.3) * (1 - fogAt(x, y)), false);
           }
         }
       }
@@ -5387,7 +5394,88 @@ qqqqqTqqq
         blend(x, y, [255, 230, 160], 0.6 * pulse * (1 - q) ** 1.4 * (1 - 0.35 * f), false);
       }
     }
+    landmarks(t, put, blend);
   }
+
+  /* ---- things of the landscape that answer: the weathervane on the keep, the sundial and the garden of
+     simples by the camp, the true stars and their figures, the fog the pointer parts, the coin in the well,
+     the bell's carillon. Drawn over the rest (landmarks), clicked through hitAt and talk. */
+  const COMPASS = ['north', 'north-north-east', 'north-east', 'east-north-east', 'east', 'east-south-east', 'south-east', 'south-south-east',
+    'south', 'south-south-west', 'south-west', 'west-south-west', 'west', 'west-north-west', 'north-west', 'north-north-west'];
+  const HERBS = [['sage', 'BLADE_SH', 'FL_VIOLET'], ['lavender', 'FERN_SH', 'FL_VIOLET'], ['rosemary', 'PINE', 'FL_BLUE'], ['chamomile', 'GRASS', 'FL_WHITE'],
+    ['thyme', 'FERN', 'BLOSSOM'], ['mint', 'GRASS_HI', 'FL_WHITE'], ['rue', 'WILLOW', 'FL_YEL'], ['borage', 'GRASS_SH', 'FL_BLUE'],
+    ['marigold', 'GRASS', 'RUST_HI'], ['fennel', 'WILLOW_HI', 'FL_YEL'], ['hyssop', 'FERN_SH', 'FL_BLUE'], ['feverfew', 'GRASS_HI', 'FL_WHITE']];
+  const WELL_M = 16; // (the village well's depth to the water, metres)
+  let fogClear = null; let constel = null; let coin = null; let carillonUntil = 0;
+  /** Where the landmarks stand this frame (scene px): the vane on the keep's flagpole, the dial and the
+   *  garden on the meadow left of the wizard. */
+  function landmarkPlaces() {
+    const go = groundOff(scene.fire.y) - scene.M; const mid = shift(RATE[L.MID]) - scene.M; const wz = scene.wizard;
+    const keep = scene.flags.find((f) => f.c === I.FLAG2) || scene.flags[0];
+    return { vane: keep && { x: keep.x + mid, y: keep.y - 4 }, dial: { x: wz.x + go - 13, y: scene.fire.y + 5 }, garden: { x: wz.x + go - 44, y: scene.fire.y + 9, w: 26 } };
+  }
+  function landmarks(t, put, blend) {
+    const P = landmarkPlaces(); const ink = (n) => pal32[I[n]];
+    if (P.vane) { // the weathervane: an arrow pointing into the wind, foreshortened as it turns towards us
+      const dir = (weather.dir ?? 270) * deg; const sx = -Math.sin(dir); const L2 = Math.max(1, Math.round(3 * Math.abs(sx))); const head = sx >= 0 ? 1 : -1; // (east is on the left: we face south)
+      const { x, y } = P.vane; put(x, y + 1, ink('ARM_SH'), false); put(x, y + 2, ink('ARM_SH'), false);
+      for (let k = -L2; k <= L2; k += 1) put(x + k, y, ink('GOLD'), false);
+      put(x + head * (L2 + 1), y, ink('GOLD_HI'), false); put(x + head * L2, y - 1, ink('GOLD'), false); put(x + head * L2, y + 1, ink('GOLD'), false); // its head
+      put(x - head * L2, y - 1, ink('GOLD_SH'), false); put(x - head * (L2 + 1), y - 1, ink('GOLD_SH'), false); // its feather
+    }
+    { // the sundial: a stone pillar, the plate, the gnomon's shadow from the true sun
+      const { x, y } = P.dial;
+      for (let k = 0; k < 4; k += 1) { put(x - 1, y - k, ink('ROCK_SH'), false); put(x, y - k, ink('ROCK'), false); put(x + 1, y - k, ink('ROCK_HI'), false); }
+      for (let k = -3; k <= 3; k += 1) put(x + k, y - 4, ink(Math.abs(k) === 3 ? 'ROCK_SH' : 'STONE_HI'), false);
+      put(x, y - 5, ink('ARM_SH'), false);
+      const sv = bodies && bodies.sun; const alt = sv ? sv[2] : -1;
+      if (bodies && alt > 0.02 && look.night < 0.4) { const v = bodies.sky.sun; const n = Math.hypot(v[0], v[1]) || 1; const len = Math.min(3, 1.2 / Math.tan(alt)); put(x + Math.round((v[0] / n) * len), y - 4 + Math.round((v[1] / n) * len * 0.35), ink('ROCK_DK'), false); }
+    }
+    { // the garden of simples: a wattle edge, a plant for each visit (twelve at most), as the season has it
+      const { x, y, w } = P.garden; const n = Math.min(HERBS.length, visitsOf().n || 1); const m = today().getMonth(); const season = SEASON(m);
+      for (let k = 0; k < w; k += 1) { put(x + k, y, ink(k % 2 ? 'TIMBER' : 'TIMBER_SH'), false); put(x + k, y - 3, ink('DIRT'), false); put(x + k, y - 2, ink('DIRT_SH'), false); put(x + k, y - 1, ink('DIRT'), false); }
+      for (let k = 0; k < n; k += 1) {
+        const [, leaf, flower] = HERBS[k]; const px = x + 1 + Math.round(((k + 0.5) * (w - 2)) / HERBS.length); const tall = 2 + (k % 3);
+        const lc = season === 'winter' ? 'DIRT_SH' : season === 'autumn' && k % 2 ? 'RUST_SH' : leaf;
+        for (let h = 0; h < tall; h += 1) put(px + (h === tall - 1 && k % 2 ? 1 : 0), y - 3 - h, ink(lc), false);
+        if (season === 'spring' || season === 'summer') put(px, y - 3 - tall, ink(flower), false);
+      }
+    }
+    if (look.stars > 0.15 && bodies) { // the true stars of the constellations (the rest of the sky is random); one clicked shows its figure
+      scene.realStars = []; const cs = window.starsAt ? window.starsAt(clockFn()) : [];
+      cs.forEach((c) => c.stars.forEach((v) => { if (v[2] > 0.03) { const [sx, sy] = project(v); scene.realStars.push({ x: sx, y: sy, name: c.name }); blend(sx, sy, [255, 252, 236], look.stars, true); } }));
+      if (constel && t - constel.t0 < 9) {
+        const c = cs.find((q) => q.name === constel.name); const a = look.stars * Math.min(1, (9 - (t - constel.t0)) / 2) * 0.55;
+        if (c) c.lines.forEach(([i, j]) => { const u = c.stars[i]; const v = c.stars[j]; if (u[2] < 0 || v[2] < 0) return; const [x1, y1] = project(u); const [x2, y2] = project(v); const len = Math.hypot(x2 - x1, y2 - y1);
+          for (let d = 2; d < len - 2; d += 2) blend(x1 + ((x2 - x1) * d) / len, y1 + ((y2 - y1) * d) / len, [190, 210, 255], a, true); });
+      } else constel = null;
+    }
+    if (coin) { // the coin tossed in the well (village close-up): its arc into the mouth, then the ring on the water
+      const wl = scene.hamlet.places.well; const e = t - coin.t0; const lm = shift(RATE[L.MID]) - scene.M;
+      if (wl && e < 0.35) put(wl.x + 1 + lm, Math.round(wl.yb - 8 + e * 20), ink('GOLD_HI'), false);
+      if (wl && e > coin.fall && e < coin.fall + 0.6) blend(wl.x + 1 + lm, wl.yb - 1, [200, 230, 255], 0.8, false);
+      if (e > coin.fall + 1.2) coin = null;
+    }
+  }
+  /** The fog parted where the pointer goes (scene px), coming back slowly: a coarse field of how clear it is. */
+  function clearFog(x, y) {
+    if (weather.kind !== 'fog' && !forced.fogsea) return;
+    const cw = Math.ceil(scene.W / 4); const ch = Math.ceil(scene.H / 4); if (!fogClear || fogClear.length !== cw * ch) fogClear = new Float32Array(cw * ch);
+    const cx = Math.floor(x / 4); const cy = Math.floor(y / 4);
+    for (let j = -3; j <= 3; j += 1) for (let i = -3; i <= 3; i += 1) { const X = cx + i; const Y = cy + j; if (X < 0 || Y < 0 || X >= cw || Y >= ch) continue; const k = Y * cw + X; fogClear[k] = Math.min(1, fogClear[k] + 0.35 * Math.max(0, 1 - Math.hypot(i, j) / 3.5)); }
+  }
+  /** What the sundial reads: the apparent solar time at Paris (the clock's time, Paris's longitude, the
+   *  equation of time), against the clock. */
+  function sundialLine() {
+    const d = clockFn(); if (!bodies || bodies.sun[2] < 0.02) return 'The sundial is mute: no sun on it.';
+    const doy = (d - new Date(d.getFullYear(), 0, 0)) / 864e5; const B = (2 * Math.PI * (doy - 81)) / 364;
+    const eot = 9.87 * Math.sin(2 * B) - 7.53 * Math.cos(B) - 1.5 * Math.sin(B); // minutes
+    const sol = (d.getUTCHours() * 60 + d.getUTCMinutes() + 2.3522 * 4 + eot + 1440) % 1440;
+    const hm = (m) => `${Math.floor(m / 60)}:${String(Math.floor(m % 60)).padStart(2, '0')}`;
+    return `The sundial reads ${hm(sol)}, the sun's own time; the clock says ${hm(d.getHours() * 60 + d.getMinutes())} (Paris keeps Central European time, and the equation of time is ${eot >= 0 ? '+' : ''}${eot.toFixed(1)} min today).`;
+  }
+  let roseTo = () => {}; // (the compass rose: ui shows it)
+  const fogAt = (x, y) => (fogClear ? fogClear[Math.floor(y / 4) * Math.ceil(scene.W / 4) + Math.floor(x / 4)] || 0 : 0);
 
   /* ---- the rooms at run time: lighting, animation, the camera between outside and in ---- */
 
@@ -6183,6 +6271,12 @@ qqqqqTqqq
     if (!scene || view.state !== 'scene' || zoom || tower) return null;
     const go = groundOff(scene.fire.y) - scene.M; const { fire, knight, wizard } = scene;
     const inBox = (x0, y0, w, h) => x >= x0 && x < x0 + w && y >= y0 && y < y0 + h;
+    const LM = landmarkPlaces();
+    if (LM.vane && Math.abs(x - LM.vane.x) <= 4 && Math.abs(y - LM.vane.y) <= 3) return { kind: 'vane' };
+    if (Math.abs(x - LM.dial.x) <= 3 && y >= LM.dial.y - 6 && y <= LM.dial.y + 1) return { kind: 'sundial' };
+    if (x >= LM.garden.x && x < LM.garden.x + LM.garden.w && y >= LM.garden.y - 7 && y <= LM.garden.y + 1) return { kind: 'garden' };
+    { const b = scene.bell; const bx = b.x - scene.M + shift(RATE[L.MID]); if (Math.abs(x - bx) <= 2 && y >= b.y && y <= b.y + 4) return { kind: 'bell' }; }
+    if (look.stars > 0.15 && scene.realStars) { const st = scene.realStars.find((q) => Math.hypot(q.x - x, q.y - y) < 3); if (st) return { kind: 'star', name: st.name }; }
     const cat = scene.cats.find((c) => inBox(c.x + go, c.y, c.sp.w, c.sp.h));
     if (cat) return { kind: 'cat', name: Object.keys(SPRITES.cats).find((k) => SPRITES.cats[k] === cat.sp) };
     const sh = scene.shieldSp;
@@ -6246,7 +6340,7 @@ qqqqqTqqq
   /** The curiosities in sight now, for the keyboard ([ and ] go through them, Enter looks): the
    *  scene scanned on a 3 px grid through hitAt, one point per kind (its first hit, centred). */
   let sel = -1; let selList = [];
-  const CURIO_NAMES = { cat: 'a cat', knight: 'the knight', wizard: 'the wizard', fire: 'the fire', shield: "the knight's shield", horse: 'the horse',
+  const CURIO_NAMES = { vane: 'the weathervane', sundial: 'the sundial', garden: 'the garden of simples', bell: 'the bell', star: 'a constellation', cat: 'a cat', knight: 'the knight', wizard: 'the wizard', fire: 'the fire', shield: "the knight's shield", horse: 'the horse',
     cellar: 'the cellar door', heron: 'the heron', mill: 'the windmill', angler: 'the angler', owl: 'the owl', meteor: 'a shooting star', lichen: 'the lichen',
     village: 'the village', watch: 'the watchtower', planet: 'a planet', wmill: 'the water mill', quarry: 'the quarry', falls: 'the waterfall', bees: 'the hives',
     orchard: 'the orchard', ferry: 'the ferryman', flock: 'the flock', joust: 'the tournament', murmuration: 'the starlings', fireflies: 'the fireflies', burn: "Saint John's fire", seep: 'a spring', sapling: 'your oak', gauge: 'the river gauge', dream: "the knight's dream", peddler: 'the peddler', rider: 'the rider', scribe: 'the copyist', ants: 'the ants', shoal: 'the shoal', skip: 'a skimmed stone', facade: "the castle's stone", hunters: "Bruegel's hunters", skaters: 'the skaters' };
@@ -6265,6 +6359,11 @@ qqqqqTqqq
     found(hit.kind); // the curiosity hunt (assets/js/ui)
     sense('touch'); if (['fire', 'bees', 'orchard'].includes(hit.kind)) sense('smell', 2); if (['village', 'market'].includes(hit.kind)) sense('taste', 2); if (hit.kind === 'watch') sense('sight', 2);
     sfx({ horse: 'neigh', cat: 'meow', owl: 'owl' }[hit.kind]);
+    if (hit.kind === 'vane') { const d = weather.dir ?? 270; say(`The weathervane on the keep: the wind from the ${COMPASS[Math.round(d / 22.5) % 16]} (${Math.round(d)}°), ${Math.round(weather.wind ?? 0)} km/h over Paris.`); roseTo(d, weather.wind ?? 0); return; }
+    if (hit.kind === 'sundial') { say(sundialLine()); return; }
+    if (hit.kind === 'garden') { const n = Math.min(HERBS.length, visitsOf().n || 1); say(`Your garden of simples, a plant for each visit: ${HERBS.slice(0, n).map((h) => h[0]).join(', ')}.${n < HERBS.length ? ` Come back: ${HERBS[n][0]} is next.` : ' It is full.'}`); return; }
+    if (hit.kind === 'bell') { scene.ringUntil = now() + 5; sfx('bell'); carillonUntil = now() + 15; say('The bell rings. For a few seconds the keys 1 to 8 play the carillon (with the sound on).'); return; }
+    if (hit.kind === 'star') { constel = { name: hit.name, t0: now() }; say(`The stars of ${hit.name}, where they truly stand over Paris now.`); return; }
     if (hit.kind === 'cat') say(CAT_SAYS[hit.name] || 'A cat looks at you.');
     else if (hit.kind === 'knight' && look.night > 0.7) say('The knight is asleep by the fire. Best not to wake him.');
     else if (hit.kind === 'knight' && quoted && now() - quoted.t < 30) { const q = quoted.q; quoted = null; say(`"That is ${q.author}, ${q.work}." He has read more than he lets on.`); }
@@ -6910,7 +7009,7 @@ qqqqqTqqq
       if (canvas) return;
       plate = o.plate; skyFn = o.sky; reduce = o.reduceMotion; clockFn = o.clock || clockFn;
       heraldry = o.heraldry || heraldry; say = o.say || say; rumour = o.rumour || rumour;
-      freshOf = o.fresh || freshOf; scrubTo = o.scrub || scrubTo; pinsOf = o.pins || pinsOf; marksOf = o.marks || marksOf; ['pointermove', 'keydown', 'pointerdown', 'wheel'].forEach((ev) => addEventListener(ev, () => { lastAct = now(); }, { passive: true }));
+      freshOf = o.fresh || freshOf; scrubTo = o.scrub || scrubTo; pinsOf = o.pins || pinsOf; marksOf = o.marks || marksOf; roseTo = o.rose || roseTo; ['pointermove', 'keydown', 'pointerdown', 'wheel'].forEach((ev) => addEventListener(ev, () => { lastAct = now(); }, { passive: true }));
       itemsOf = o.items || itemsOf; found = o.found || found; curiosOf = o.curios || curiosOf; nowOf = o.now || nowOf; visitsOf = o.visits || visitsOf;
       newsOf = o.news || newsOf; dreamsOf = o.dreams || dreamsOf; tradeWith = o.trade || tradeWith; stalenessOf = o.staleness || stalenessOf; billiardShow = o.billiard || billiardShow; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo; cellarTo = o.cellar || cellarTo; mapsTo = o.maps || mapsTo; goTo = o.go || goTo; doorsOf = o.doors || doorsOf;
       pendingRoom = root.dataset.room || null;
@@ -7029,7 +7128,7 @@ qqqqqTqqq
       };
       canvas.addEventListener('pointerleave', () => { pointer = null; post.hidden = true; });
       canvas.addEventListener('pointermove', (e) => {
-        pointer = scenePoint(e); const hit = isOn() && !zoom ? hitAt(...pointer) : null;
+        pointer = scenePoint(e); if (isOn() && view.state === 'scene' && !zoom && !tower) clearFog(...pointer); const hit = isOn() && !zoom ? hitAt(...pointer) : null;
         canvas.style.cursor = isOn() && (zoom ? zoom.done : hit) ? 'var(--cur-hand)' : '';
         const way = isOn() ? wayAt(...pointer, hit) : null; post.hidden = !way;
         if (way) { post.textContent = way; post.style.left = `${e.clientX + 14}px`; post.style.top = `${e.clientY - 34}px`; }
@@ -7139,6 +7238,8 @@ qqqqqTqqq
     highlight(i) { hl = i; if (interior && lifted !== i) { lifted = i; reshape(); } if (!running && interior && isOn()) render(now()); },
     /** Shift held (or let go): every thing of the room outlined. */
     reveal(on) { if (revealing !== on) { revealing = on; if (!running && interior) render(now()); } },
+    /** A key 1 to 8 just after the bell was rung: a note of the carillon (true when taken). */
+    carillon(k) { if (now() > carillonUntil || view.state !== 'scene') return false; carillonUntil = now() + 15; scene.ringUntil = now() + 1; sfx('carillon', { k }); return true; },
     /** The room drawn again (a card pinned up or taken down). */
     refresh() { if (interior && view.id && view.state === 'room') { interior = makeInterior(view.id); lightInterior(); lifted = -1; openIx = -1; publishSpots(true); if (!running) render(now()); } },
     /** Texture `name` (textures.js) painted into canvas cv in its daylight colours. */

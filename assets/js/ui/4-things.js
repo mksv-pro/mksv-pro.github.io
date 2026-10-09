@@ -246,7 +246,7 @@ function setSpots(rects, items) {
     b.dataset.kind = items[i].kind; b.dataset.i = String(i);
     const html = (Object.getOwnPropertyDescriptor(items[i], 'html') || {}).value; // (not a live card's getter: it runs on opening)
     if (/real-fig|astrolabe/.test(html || '')) b.dataset.detail = ''; // (a picture inside: the magnifier)
-    b.addEventListener('click', () => (items[i].kind === 'engine' ? openEngine(b) : openCard(i, b)));
+    b.addEventListener('click', () => (items[i].kind === 'engine' ? openEngine() : openCard(i, b)));
     return [b];
   }));
 }

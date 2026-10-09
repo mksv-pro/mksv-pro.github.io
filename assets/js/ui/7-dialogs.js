@@ -309,3 +309,20 @@ document.addEventListener('keydown', (e) => {
 addEventListener('keydown', (e) => { if (e.key === 'Shift' && !e.repeat && window.Hours && window.Hours.reveal && root.classList.contains('room-ready')) window.Hours.reveal(true); });
 addEventListener('keyup', (e) => { if (e.key === 'Shift' && window.Hours && window.Hours.reveal) window.Hours.reveal(false); });
 addEventListener('blur', () => { if (window.Hours && window.Hours.reveal) window.Hours.reveal(false); });
+
+/* ---- the weathervane's compass rose: where the wind comes from, how hard ---- */
+function showRose(dir, kmh) {
+  const pts = Array.from({ length: 16 }, (_, k) => { const a = (k * Math.PI) / 8; const r = k % 4 === 0 ? 46 : k % 2 ? 22 : 32; return `${(Math.sin(a) * r).toFixed(1)},${(-Math.cos(a) * r).toFixed(1)}`; });
+  const star = Array.from({ length: 16 }, (_, k) => `0,0 ${pts[k]} ${pts[(k + 1) % 16]}`).map((p, k) => `<polygon points="${p}" class="${k % 2 ? 'r-b' : 'r-a'}"/>`).join('');
+  const a = (dir * Math.PI) / 180; const ax = Math.sin(a) * 40; const ay = -Math.cos(a) * 40;
+  showDialog('The wind over Paris', `<svg class="rose" viewBox="-60 -60 120 120" role="img" aria-label="Wind from ${Math.round(dir)} degrees, ${Math.round(kmh)} km/h">${star}`
+    + ['N', 'E', 'S', 'W'].map((l, k) => `<text x="${[0, 54, 0, -54][k]}" y="${[-50, 4, 58, 4][k]}">${l}</text>`).join('')
+    + `<line x1="${ax.toFixed(1)}" y1="${ay.toFixed(1)}" x2="${(-ax * 0.6).toFixed(1)}" y2="${(-ay * 0.6).toFixed(1)}" class="r-wind"/><circle cx="${ax.toFixed(1)}" cy="${ay.toFixed(1)}" r="3" class="r-wind-from"/></svg>`
+    + `<p>From ${Math.round(dir)}°, ${Math.round(kmh)} km/h (Open-Meteo, Paris). The vane points into the wind.</p>`);
+}
+// the keys 1 to 8 just after the bell was rung: the carillon (and not the menu's shortcuts)
+document.addEventListener('keydown', (e) => {
+  if (!/^[1-8]$/.test(e.key) || e.ctrlKey || e.metaKey || e.altKey || !window.Hours || !window.Hours.carillon) return;
+  if (e.target instanceof Element && e.target.closest('input, textarea')) return;
+  if (window.Hours.carillon(Number(e.key))) { e.preventDefault(); e.stopImmediatePropagation(); }
+}, true);

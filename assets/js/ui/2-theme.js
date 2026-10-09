@@ -58,6 +58,7 @@ function applyTheme(theme, persist) {
       doors: roomDoors, // the doors in the rooms' side walls
       clock: skyNow, // the instant shown: dawn mist, the night's meteor shower
       scrub, // the sun or the moon dragged: another hour
+      rose: (dir, kmh) => showRose(dir, kmh), // the weathervane clicked: the compass rose
       marks: (id) => Object.keys(bookmarks()[id] || {}), // the books left open at a page: a ribbon out of them
       pins: (id) => (pins()[id] || []).map((p) => ({ kind: 'pinned', label: `Pinned: ${p.label}`, html: p.html })), // the cards pinned up on its walls
       found: findCurio, // a curiosity of the landscape, clicked
