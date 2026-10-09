@@ -1476,3 +1476,6 @@ details.how p { margin: .3rem 0 0; }
   details.ledger { display: none !important; }
   .glance { display: grid !important; }
 }
+
+/* the spiral stair down to the cellar (spiralDown), over the picture */
+canvas.spiral { position: fixed; z-index: 3; image-rendering: pixelated; pointer-events: none; }

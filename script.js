@@ -591,6 +591,33 @@ function currentWindow() {
   return windows.find((w) => !w.classList.contains('is-off')) || windows[0];
 }
 
+/** Down the spiral stair to the cellar: seen from above, its steps turning round the newel as we go
+ *  down, darker at each turn; low resolution like the castle, over the picture. `then` (the room)
+ *  starts halfway, as the stair goes dark. */
+function spiralDown(then) {
+  const pic = document.querySelector('.plate-img'); const r = pic.getBoundingClientRect();
+  const cv = document.createElement('canvas'); const W = 192; const H = 108; cv.width = W; cv.height = H; cv.className = 'spiral';
+  Object.assign(cv.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+  document.body.append(cv); const g = cv.getContext('2d'); const im = g.createImageData(W, H); const t0 = performance.now(); let started = false;
+  const frame = (now) => {
+    const p = Math.min(1, (now - t0) / 1300);
+    if (!started && p > 0.55) { started = true; then(); }
+    const rot = p * Math.PI * 1.6; const dark = 1 - 0.75 * p;
+    for (let y = 0; y < H; y += 1) for (let x = 0; x < W; x += 1) {
+      const dx = (x - W / 2) * 0.62; const dy = y - H / 2; const rr = Math.hypot(dx, dy); const th = (Math.atan2(dy, dx) + rot + 4 * Math.PI) % (2 * Math.PI);
+      let v; let warm = 1;
+      if (rr < 10) v = 0.55 + 0.25 * (dx < 0); // the newel, lit from the left
+      else if (rr < 50) { const st = th / (Math.PI / 6); const k = Math.floor(st); v = 0.78 - 0.055 * k; if (st - k < 0.08) v = 0.18; if (rr > 47) v *= 0.6; else if (st - k > 0.92) v += 0.12; } // a step each twelfth of a turn, lower round the turn
+      else { v = 0.16 + ((Math.floor(dy / 5) + Math.floor((Math.atan2(dy, dx) * 24) / Math.PI)) % 2 ? 0.04 : 0); warm = 0.8; } // the stairwell's wall
+      const b = v * dark * 255; const i = (y * W + x) * 4;
+      im.data[i] = b * warm; im.data[i + 1] = b * 0.86 * warm; im.data[i + 2] = b * 0.7; im.data[i + 3] = 255 * (p < 0.8 ? 1 : 1 - (p - 0.8) / 0.2);
+    }
+    g.putImageData(im, 0, 0);
+    if (p < 1) requestAnimationFrame(frame); else cv.remove();
+  };
+  requestAnimationFrame(frame);
+}
+
 function openWindow(hash, { userAction, animate = userAction }) {
   const target = (hash && document.getElementById(decode(hash.slice(1)))) || null;
   const win = target ? target.closest('main > section') : windows[0];
@@ -601,7 +628,8 @@ function openWindow(hash, { userAction, animate = userAction }) {
     tabLinks.forEach((a) => a.removeAttribute('aria-current'));
     root.dataset.room = 'cellar';
     if (userAction) { say(cellar.dataset.look); cue('door'); }
-    if (window.Hours) window.Hours.room('cellar', { animate });
+    const enter = () => { if (window.Hours) window.Hours.room('cellar', { animate }); };
+    if (animate && !reduceMotion) spiralDown(enter); else enter();
     return;
   }
   if (climbing() && (!target || floors().includes(win))) { // the tower: every floor on the page; the one asked for is scrolled to (climbFloor does the rest)
