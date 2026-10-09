@@ -284,6 +284,7 @@ function applyTheme(theme, persist) {
       heraldry: DATA.heraldry,
       say, // the scene's characters answer in the message line
       items: roomItems, // what each room holds, to be drawn as things
+      fresh: (id) => { const seen = lookedAt()[id] || []; return roomItems(id).map((t, k) => (seen.includes(t.label) || ['door', 'ladder', 'hanging'].includes(t.kind) ? -1 : k)).filter((k) => k >= 0); }, // (what the wizard points at)
       spots: setSpots, // and where those things ended up
       rumour: () => RUMOURS[Math.floor(Math.random() * RUMOURS.length)], // the knight tells it
       descend, // the descent (the cellar's steps, >)
@@ -1391,10 +1392,13 @@ function openCard(i, from) {
   card.dataset.side = side;
   card.style.setProperty('--tail-y', `${Math.max(14, Math.min(ch - 14, r.top + r.height / 2 - top))}px`);
   cardFrom = from;
+  try { const seen = lookedAt(); const id = root.dataset.room; seen[id] = [...new Set([...(seen[id] || []), it.label])]; localStorage.setItem('looked-at', JSON.stringify(seen)); } catch { /* (no storage: he points at anything) */ }
   if (window.Hours && window.Hours.opened) window.Hours.opened(i); // (the room answers: the thing out of its place, eyes on it)
   unfold(from, true);
   card.querySelector('.card-close').focus();
 }
+/** What the visitor has looked at, room by room (labels), from localStorage. */
+function lookedAt() { try { return JSON.parse(localStorage.getItem('looked-at')) || {}; } catch { return {}; } }
 /** The card comes out of its thing and goes back into it: from the thing's box to the card's, each
  *  kind its way (a scroll unrolls, a book opens, a letter unfolds in three folds, the rest grows). */
 function unfold(from, out, then) {

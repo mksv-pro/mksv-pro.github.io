@@ -125,6 +125,7 @@ PROBE = """<script>(() => {
   }, 2000));
 })();</script>"""
 # firefox --screenshot shoots at the load event and quits: a slow image holds the event back while the case runs
+HOLD_S = 12
 HOLD = '<img src="/__hold" alt="" style="position:fixed;width:1px">'
 GIF = bytes.fromhex("47494638396101000100800000000000ffffff21f90401000000002c00000000010001000002024401003b")
 
@@ -146,9 +147,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         path = self.path.split("?")[0].split("#")[0]
-        if path == "/__hold": # until the case has reported (or 12 s)
+        if path == "/__hold": # until the case has reported (or HOLD_S)
             t0 = time.time()
-            while self.server.case not in results and time.time() - t0 < 12:
+            while self.server.case not in results and time.time() - t0 < HOLD_S:
                 time.sleep(0.1)
             time.sleep(0.4) # (the screenshot then shows the state reached)
             self.send_response(200)
@@ -193,7 +194,7 @@ def main(only=""):
                             "--screenshot", str(OUT / f"{name}.png"), url],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120)
         t0 = time.time()
-        while name not in results and time.time() - t0 < 15:
+        while name not in results and time.time() - t0 < HOLD_S + 3:
             time.sleep(0.2)
         r = results.get(name, {"errs": ["no report (the page never finished)"], "ok": False})
         good = r["ok"] and not r["errs"]

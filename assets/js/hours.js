@@ -464,6 +464,22 @@ qqqqqTTqqTqq..
 ..qq.qq..qq.qT.
 ............TqT`,
   };
+  // the black cat walking (two frames, facing right), from room to room after the visitor
+  const CAT_WALK = [`
+.............b.b.
+b...........bbbbb
+.b..........bbEbb
+..bbbbbbbbbbbbbb.
+..bbbbbbbbbbbb...
+..b.b......b.b...
+..b..b....b...b..`, `
+.............b.b.
+b...........bbbbb
+.b..........bbEbb
+..bbbbbbbbbbbbbb.
+..bbbbbbbbbbbb...
+...b.b.....bb....
+...b.b......b.b..`];
   // who lives in each room: one standing figure, an adult at the rooms' scale (28 px, five heads;
   // a table's top at his hip), its clothes by letter: H the head's covering, B the body, A the arms
   // (sleeves), L the legs, X an emblem; f skin, e beard (MATS), k the belt; a raven on the falconer's fist
@@ -1022,6 +1038,7 @@ nNnnnn..
     const body = `${'.\n'.repeat(6)}${DRAGON_BODY.trim()}`;
     SPRITES.dragon = [shadeSprite(overlay(body, WING_UP, 0, true)), shadeSprite(overlay(body, WING_DOWN, 13, false))];
     SPRITES.dragonL = SPRITES.dragon.map(flip);
+    SPRITES.catWalk = CAT_WALK.map(shadeSprite); SPRITES.catWalkL = SPRITES.catWalk.map(flip);
     SPRITES.cats = Object.fromEntries(Object.entries(CATS).map(([k, txt]) => [k, { ...shadeSprite(txt), eyes: eyesOf(txt) }]));
     const lf = SPRITES.cats.blackLoaf; // she faces the fire: mirrored
     SPRITES.cats.blackLoaf = { ...flip(lf), eyes: lf.eyes.map(([x, y]) => [lf.w - 1 - x, y]) };
@@ -3809,7 +3826,12 @@ qqqqqTqqq
         while (xa > x0 - 16 && feetFree(xa - 1) && !hides(xa - 1)) xa -= 1;
         while (xb < x0 + 16 && feetFree(xb + 1) && !hides(xb + 1)) xb += 1;
         const stops = [x0, xa, x0, xb].filter((v, k, a) => k === 0 || v !== a[k - 1]);
-        deco.push({ type: 'dweller', x: x0, y: fy - fig.h + 1, w: fig.w, h: fig.h, lines, fig, stops, ph: rng() * 30 });
+        const look = (dx) => { // the face turned a pixel that way (the eyes and the mouth rows, inside the head's columns 3 to 8)
+          const px = fig.px.slice();
+          for (let y = 4; y <= 7; y += 1) for (let x = 3; x <= 8; x += 1) { const from = x - dx; px[y * fig.w + x] = from >= 3 && from <= 8 ? fig.px[y * fig.w + from] : fig.px[3 * fig.w + 4]; }
+          return { ...fig, px };
+        };
+        deco.push({ type: 'dweller', kind, x: x0, y: fy - fig.h + 1, w: fig.w, h: fig.h, lines, fig, figL: look(-1), figR: look(1), stops, ph: rng() * 30 });
       }
     }
     { // contact shadows: under the foot of each thing that stands on the floor, the floor darkened two
@@ -3835,7 +3857,7 @@ qqqqqTqqq
     }
     if (clash) (window.overlaps ||= {})[id] = { W, H, pairs: [...clash].sort((a, b) => b[1] - a[1]) };
     return { id, W, H, idx, out, front, lights, flames, stars, motes, blinks, camps, deco, pools, sills, yf, slots: things ? slots : [], things: things || [], cells: new Float32Array(9 * 14),
-      pix: things ? slots.map((b) => owned.get(b) || null) : [],
+      pix: things ? slots.map((b) => owned.get(b) || null) : [], doors: doorList.map((e) => e.b), catY: floorY(0.3),
       ladderK: things ? things.findIndex((tt) => tt.kind === 'ladder') : -1 };
   }
 
@@ -6579,9 +6601,14 @@ qqqqqTqqq
         const legs = d.stops.map((x, k) => [x, d.stops[(k + 1) % d.stops.length]]);
         const dur = legs.map(([a, b]) => 5 + ((a * 7) % 3) + Math.abs(b - a) / 7); const T = dur.reduce((u, v) => u + v, 0);
         let u = (reduce ? 0 : t + d.ph) % T; let k = 0; while (u > dur[k]) { u -= dur[k]; k += 1; }
-        const [a, b] = legs[k]; const walk = u - (dur[k] - Math.abs(b - a) / 7); // (the pause first, then the walk)
-        const x = walk > 0 ? a + Math.sign(b - a) * Math.min(Math.abs(b - a), walk * 7) : a; d.x = Math.round(x);
-        const y0 = d.y - (walk > 0 && Math.floor(t * 4) % 2 ? 1 : 0); const f = d.fig;
+        const [a, b] = legs[k]; let walk = u - (dur[k] - Math.abs(b - a) / 7); // (the pause first, then the walk)
+        const seen = openIx >= 0 && interior.slots[openIx]; // a card open: he stops where he is and looks at the thing
+        if (!seen) { const x = walk > 0 ? a + Math.sign(b - a) * Math.min(Math.abs(b - a), walk * 7) : a; d.x = Math.round(x); } else walk = 0;
+        const act = d.act !== undefined && t - d.act < 1.2 ? (t - d.act) / 1.2 : -1; // clicked: his own gesture, a second long
+        const hop = act >= 0 && ['contact', 'talks'].includes(d.kind) && act < 0.5 ? (Math.floor(act * 8) % 2) : 0;
+        const y0 = d.y - (walk > 0 && Math.floor(t * 4) % 2 ? 1 : 0) - hop;
+        const f = seen ? (seen.x + seen.w / 2 > d.x + d.w / 2 ? d.figR : d.figL) : d.fig;
+        if (act >= 0) dwellerAct(d, act, y0, put, blend, P);
         for (let y = 0; y < f.h; y += 1) for (let xx = 0; xx < f.w; xx += 1) { const c = f.px[y * f.w + xx]; const X = d.x + xx; const Y = y0 + y; if (c >= 0 && X >= 0 && X < W && Y >= 0 && Y < H) put(X, Y, ipal32[c]); }
       } else if (d.type === 'master') { // four stops along the board: he points at a line, turns to the class, walks on
         const ms = masterAt(d, t); d.x = ms.x; d.facing = ms.facing;
@@ -6630,6 +6657,7 @@ qqqqqTqqq
         const nt = 2 * d.r + 2; for (let k = 0; k < nt; k += 1) { const a = a0 + (k * 2 * Math.PI) / nt; put(d.x + Math.round(Math.cos(a) * (d.r + 1)), d.y + Math.round(Math.sin(a) * (d.r + 1)), P('GOLD_HI')); }
       }
     });
+    drawCat(t, put); drawGuide(t, put, blend);
     interior.camps.forEach((c) => { // the campfire through the window, and the two by it
       const hot = reduce || Math.random() < 0.6;
       if (look.night > 0.3) [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(([dx, dy]) => blend(c.x + dx, c.y + dy, [255, 150, 60], 0.45 * look.night));
@@ -6811,14 +6839,16 @@ qqqqqTqqq
     if (id) {
       fireFed = now(); // (someone keeps the fire while you are away)
       if (!view.id || roomOf(id) !== roomOf(view.id)) sfx('steps', { floor: ['talks', 'contact', 'research', 'cellar'].includes(roomOf(id)) ? 'stone' : 'wood', n: 4 }); // in: on its floor
+      lastOpened = -1;
+      const follow = () => { roomT0 = t; guide = null; guided = false; rcat = { t0: t + 2.5 + Math.random() * 2, side: dir === 'r' ? 'r' : dir === 'l' ? 'l' : Math.random() < 0.5 ? 'l' : 'r' }; };
       if (view.id && ['room', 'swap', 'in', 'climb', 'slide'].includes(view.state)) {
         if (roomOf(id) === roomOf(view.id)) { view.id = id; return; }
         iprev.set(robuf);
-        interior = makeInterior(id); lightInterior();
+        interior = makeInterior(id); lightInterior(); follow();
         view = { state: !anim ? 'room' : typeof dir === 'string' ? 'slide' : dir ? 'climb' : 'swap', id, anchor: id, t0: t, dir };
         setReady(true); travelling(anim);
       } else {
-        interior = makeInterior(id); lightInterior();
+        interior = makeInterior(id); lightInterior(); follow();
         view = { state: anim ? 'in' : 'room', id, anchor: id, t0: t };
         if (!anim) setReady(true);
         travelling(anim);
@@ -7125,15 +7155,93 @@ qqqqqTqqq
   };
   const OUTDOOR = new Set(Object.keys(EVENTS).filter((k) => !['embers', 'banner', 'cinema'].includes(k)));
 
+  /* The black cat follows the visitor in: a few seconds after, through the side the visitor came by,
+     it walks along the floor to the last thing looked at (a thing at table height: up onto it; one on
+     the wall: on the floor under it) and sits there; clicked, it purrs and goes elsewhere. */
+  let lastOpened = -1; let rcat = null; // (kept apart from the interior, which is remade as its pictures come)
+  function catPerch() {
+    const it = interior; const ks = [lastOpened, ...it.slots.map((_, k) => k).sort(() => Math.random() - 0.5)];
+    const k = ks.find((q) => q >= 0 && it.slots[q] && it.pix[q] && it.slots[q].y + it.slots[q].h > it.yf - 26 && it.slots[q].y + it.slots[q].h < it.yf + 20 && (!rcat || !rcat.to || q !== rcat.to.k));
+    const sl = k !== undefined && it.slots[k];
+    return sl ? { k, x: Math.round(sl.x + sl.w / 2 - 3), y: sl.y + 1 } : { k: -1, x: Math.round(it.W * (0.25 + Math.random() * 0.5)), y: it.catY };
+  }
+  function drawCat(t, put) {
+    const c = rcat; if (!c || t < c.t0 || reduce) return;
+    const W = interior.W; const H = interior.H;
+    if (c.x === undefined) { c.x = c.side === 'l' ? -17 : W; c.y = interior.catY; c.to = catPerch(); c.state = 'walk'; c.last = t; }
+    const dt = Math.min(0.1, t - c.last); c.last = t;
+    if (c.state === 'walk') {
+      const d = c.to.x - c.x; c.face = d >= 0 ? 1 : -1; c.x += Math.sign(d) * Math.min(Math.abs(d), dt * 16);
+      if (c.y !== interior.catY) { c.y = interior.catY; }
+      if (Math.abs(c.to.x - c.x) < 0.5) { c.x = c.to.x; c.state = c.to.y < interior.catY ? 'hop' : 'sit'; c.th = t; }
+    } else if (c.state === 'hop') {
+      const e = Math.min(1, (t - c.th) / 0.35); c.y = Math.round(interior.catY + (c.to.y - interior.catY) * e - Math.sin(e * Math.PI) * 6);
+      if (e >= 1) { c.y = c.to.y; c.state = 'sit'; }
+    }
+    const sp = c.state === 'sit' ? SPRITES.cats.thin : (c.face > 0 ? SPRITES.catWalk : SPRITES.catWalkL)[Math.floor(t * 6) % 2];
+    const x0 = Math.round(c.state === 'sit' ? c.x + 3 : c.x - (c.face > 0 ? 10 : 6)); const y0 = Math.round(c.y - sp.h + (c.state === 'sit' && Math.floor(t / 2.3) % 2 ? 0 : 0));
+    c.box = { x: x0, y: y0, w: sp.w, h: sp.h };
+    for (let y = 0; y < sp.h; y += 1) for (let x = 0; x < sp.w; x += 1) { const q = sp.px[y * sp.w + x]; const X = x0 + x; const Y = y0 + y; if (q >= 0 && X >= 0 && X < W && Y >= 0 && Y < H) put(X, Y, ipal32[q]); }
+  }
+  /** The cat clicked: a purr, and off to another place. */
+  function catClick(ix, iy) {
+    const c = rcat; const b = c && c.box;
+    if (!b || ix < b.x - 1 || ix > b.x + b.w || iy < b.y - 1 || iy > b.y + b.h) return false;
+    sfx('purr'); if (c.state === 'sit') { c.y = interior.catY; c.to = catPerch(); c.state = 'walk'; }
+    return true;
+  }
+  /* The wizard as a guide: twenty seconds without a move in a room, he stands in a doorway, points his
+     staff and a trail of sparks goes from its orb to a thing not yet looked at, which glints; once a visit of the room. */
+  let lastAct = 0; let freshOf = () => []; let guide = null; let guided = false; let roomT0 = 0;
+  function drawGuide(t, put, blend) {
+    const it = interior; if (reduce || view.state !== 'room' || !it.things.length) return;
+    if (!guide) {
+      if (guided || t - Math.max(lastAct, roomT0) < 20) return;
+      guided = true;
+      const fresh = (freshOf(it.id) || []).filter((k) => it.slots[k]); if (!fresh.length) return;
+      const d = it.doors[0] || { x: 2, y: it.yf - 30, w: 18, h: 30 };
+      guide = { t0: t, k: fresh[Math.floor(Math.random() * fresh.length)], x: Math.round(d.x + d.w / 2 - 6), yb: d.y + d.h };
+    }
+    const g = guide; const e = t - g.t0; if (e > 6) { guide = null; return; }
+    if (lastAct > g.t0 + 0.5 && e < 5.4) g.t0 = t - 5.4; // (the visitor moved: he goes)
+    const right = g.x > it.W / 2; const sp = right ? (SPRITES.wizardL ||= flip(SPRITES.wizard)) : SPRITES.wizard; // (by a door on the right: facing left)
+    const W = it.W; const H = it.H; const x0 = g.x; const y0 = g.yb - sp.h;
+    const shown = Math.min(1, e / 0.6, (6 - e) / 0.6);
+    for (let y = 0; y < sp.h; y += 1) for (let x = 0; x < sp.w; x += 1) { const q = sp.px[y * sp.w + x]; const X = x0 + x; const Y = y0 + y; if (q >= 0 && X >= 0 && X < W && Y >= 0 && Y < H && bayer(X, Y) < shown) put(X, Y, ipal32[q]); }
+    const sl = it.slots[g.k]; if (!sl) return;
+    const ox = x0 + (right ? sp.w - 1 - ORB[0] : ORB[0]); const oy = y0 + ORB[1]; const tx = sl.x + sl.w / 2; const ty = sl.y + sl.h / 2;
+    if (e > 0.8 && e < 3.6) for (let j = 0; j < 6; j += 1) { // the trail: sparks running from the orb to the thing
+      const f = ((e - 0.8) * 0.8 + j * 0.06) % 1; const X = ox + (tx - ox) * f; const Y = oy + (ty - oy) * f - Math.sin(f * Math.PI) * 12;
+      blend(X, Y, [255, 236, 150], 0.9 - j * 0.1);
+    }
+    if (e > 2.8 && e < 5.4) { const b = 0.5 + 0.5 * Math.sin(t * 9); for (let y = sl.y - 1; y <= sl.y + sl.h; y += 1) { blend(sl.x - 1, y, [255, 228, 150], b); blend(sl.x + sl.w, y, [255, 228, 150], b); } for (let x = sl.x; x < sl.x + sl.w; x += 1) { blend(x, sl.y - 1, [255, 228, 150], b); blend(x, sl.y + sl.h, [255, 228, 150], b); } }
+  }
+
+  /* Each dweller's gesture when clicked (act: 0 to 1 over its second): the smith strikes and sparks
+     fly, the astronomer's eyeglass glints, dust rises off the librarian's book, the guard stamps,
+     the herald lifts his staff, the falconer's raven beats its wings, the cellarer's candle flares,
+     the cartographer's dividers catch the light. */
+  const GESTURE_CUE = { projects: 'anvil', research: 'glint', publications: 'page', contact: 'steps', talks: 'bell', news: 'flap', cellar: 'blow', maproom: 'glint' };
+  function dwellerAct(d, a, y0, put, blend, P) {
+    const cx = d.x + 6; const hand = y0 + 13; const k = d.kind;
+    if (k === 'projects') { for (let j = 0; j < 10; j += 1) { const r = a * 14 * (0.6 + (j % 3) * 0.2); const q = j * 0.62 + 0.3; if (a < 0.6) put(Math.round(cx + 7 + Math.cos(q) * r), Math.round(hand - Math.abs(Math.sin(q)) * r), P(j % 2 ? 'FL_YEL' : 'GOLD_HI')); } }
+    else if (k === 'research' || k === 'maproom') { if (Math.floor(a * 6) % 2 === 0) { put(cx + 1, y0 + 4, P('GOLD_HI')); put(cx + 1, y0 + 3, P('CREAM')); } }
+    else if (k === 'publications') { for (let j = 0; j < 5; j += 1) blend(cx - 3 + j * 2, Math.round(hand - 2 - a * 8 - (j % 2) * 2), [200, 190, 170], 0.6 * (1 - a)); }
+    else if (k === 'talks') { const yt = y0 - 3 - Math.round(Math.sin(a * Math.PI) * 3); put(cx + 6, yt, P('GOLD_HI')); put(cx + 6, yt + 1, P('GOLD')); }
+    else if (k === 'news') { const up = Math.floor(a * 10) % 2; put(d.x + d.w - 2, y0 + 7 - up, P('OUTLINE')); put(d.x + d.w - 1, y0 + 6 - up * 2, P('OUTLINE')); }
+    else if (k === 'cellar') { for (let r = 1; r < 6; r += 1) blend(cx + 7, hand - r, [255, 210, 120], 0.5 * (1 - a) * (1 - r / 6)); put(cx + 7, hand - 1, P('FL_YEL')); }
+  }
+
   /** A click in a room: on the workshop's hearth, a log on the fire. */
   function roomClick(ix, iy) { // (room pixels)
+    if (catClick(ix, iy)) return;
     const f = interior.flames.find((q) => q.hearth && Math.abs(ix - q.x) <= q.w / 2 + 2 && iy > q.y - 18 && iy <= q.y + 2);
     if (f) { fireFed = now(); interior.toldEmbers = false; say(heatOf() > 0.9 ? 'You put a log on the fire; it catches and roars.' : 'The fire burns well.'); sfx('crackle'); return; }
     const pick = (a) => a[Math.floor(Math.random() * a.length)];
     const an = interior.deco.find((q) => q.type === 'anvil' && ix >= q.x - 2 && ix < q.x + q.w + 2 && iy >= q.y - 2 && iy < q.y + q.h);
     if (an) { interior.struck = now(); sfx('anvil'); return; }
     const dw = interior.deco.find((q) => q.type === 'dweller' && ix >= q.x && ix < q.x + q.w && iy >= q.y && iy < q.y + q.h);
-    if (dw) { dw.said = ((dw.said ?? -1) + 1) % dw.lines.length; say(dw.lines[dw.said]); return; }
+    if (dw) { dw.act = now(); sfx(GESTURE_CUE[dw.kind] || 'steps', { floor: 'stone', n: 2 }); return; }
     const m = interior.deco.find((q) => q.type === 'master');
     if (m && m.x !== undefined && ix >= m.x && ix < m.x + SPRITES.master.w && iy > m.yb - SPRITES.master.h && iy <= m.yb) {
       const st = masterAt(m, now()); const pt = real.portraits;
@@ -7569,6 +7677,7 @@ qqqqqTqqq
       if (canvas) return;
       plate = o.plate; skyFn = o.sky; reduce = o.reduceMotion; clockFn = o.clock || clockFn;
       heraldry = o.heraldry || heraldry; say = o.say || say; rumour = o.rumour || rumour;
+      freshOf = o.fresh || freshOf; ['pointermove', 'keydown', 'pointerdown', 'wheel'].forEach((ev) => addEventListener(ev, () => { lastAct = now(); }, { passive: true }));
       itemsOf = o.items || itemsOf; found = o.found || found; curiosOf = o.curios || curiosOf; nowOf = o.now || nowOf; visitsOf = o.visits || visitsOf;
       newsOf = o.news || newsOf; dreamsOf = o.dreams || dreamsOf; tradeWith = o.trade || tradeWith; stalenessOf = o.staleness || stalenessOf; billiardShow = o.billiard || billiardShow; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo; cellarTo = o.cellar || cellarTo; mapsTo = o.maps || mapsTo; goTo = o.go || goTo; doorsOf = o.doors || doorsOf;
       pendingRoom = root.dataset.room || null;
@@ -7765,6 +7874,9 @@ qqqqqTqqq
     },
     highlight(i) { hl = i; if (interior && lifted !== i) { lifted = i; reshape(); } if (!running && interior && isOn()) render(now()); },
     /** The card of thing i is open (-1: closed): the thing leaves its place. */
-    opened(i) { if (interior && openIx !== i) { openIx = i; reshape(); } },
+    opened(i) {
+      if (!interior || openIx === i) return; openIx = i; reshape();
+      if (i >= 0) { lastOpened = i; const c = rcat; if (c && c.state === 'sit') { c.y = interior.catY; c.to = catPerch(); c.state = 'walk'; } }
+    },
   };
 }());

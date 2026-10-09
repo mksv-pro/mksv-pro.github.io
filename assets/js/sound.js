@@ -533,6 +533,12 @@
         for (let k = 0; k < n; k += 1) { tone(900 - k * 40, 500, 0.05, 0.05 * (1 - k * 0.08), { at, pan }); burst(3000, 0.04, 0.05, { at, pan }); at += 0.25 * 0.85 ** (k + 1); }
         tone(260, 120, 0.18, 0.06, { at, pan }); burst(700, 0.25, 0.05, { at, pan });
       },
+      glint: () => chime([2640, 3960], 0.04, 0.5), // a glint of brass or glass
+      flap: () => { for (let k = 0; k < 5; k += 1) burst(420 + k * 30, 0.07, 0.22, { type: 'lowpass', at: k * 0.11 }); }, // wings beating
+      blow: () => burst(1400, 0.35, 0.16, { sweep: 0.3 }), // a breath on a flame
+      caw: () => { tone(820, 640, 0.22, 0.05, { type: 'sawtooth', filter: 1500, vibrato: 30, pan }); tone(800, 600, 0.2, 0.045, { type: 'sawtooth', filter: 1500, vibrato: 30, at: 0.3, pan }); }, // a raven
+      tick: () => burst(4200, 0.015, 0.06, { type: 'highpass' }), // a gear's tooth
+      ding: () => chime([1760, 3520], 0.05, 0.6), // the engine's bell
       boom: () => { burst(70, 1.6, 0.4, { type: 'lowpass' }); for (let k = 0; k < 8; k += 1) burst(3000 + Math.random() * 3000, 0.03, 0.05, { type: 'highpass', at: 0.3 + Math.random() * 0.8 }); },
       bell,
     }[name] || (() => {}))();
