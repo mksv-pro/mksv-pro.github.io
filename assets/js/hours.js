@@ -3945,7 +3945,7 @@ qqqqqTqqq
   let backBuf; let backIdx; let backKey = ''; // the still planes, composed (see draw)
   let ipal32; let interior = null; let ibase; let ibuf; let iprev;
   let view = { state: 'scene', id: null, t0: 0 }; // scene | in | room | out | swap
-  let hoverId = null; let pendingRoom = null; let pendingHoist = false;
+  let hoverId = null; let hoverEl = null; let pendingRoom = null; let pendingHoist = false;
   let heraldry = { own: 'silva', tapestry: [] }; let say = () => {}; let rumour = () => '';
   let curiosOf = () => ({ found: [], all: {} }); let nowOf = () => '';
   let visitsOf = () => ({ n: 1, first: null }); // the visitor's visits (script.js): their oak's rings
@@ -5519,6 +5519,13 @@ qqqqqTqqq
       const bob = Math.floor(t * 3) % 2; const mxc = x0 + Math.floor(hl.w / 2); const myc = hl.y - 4 - bob;
       [[0, 0], [-1, 1], [1, 1], [0, 2], [0, 1]].forEach(([dx, dy]) => put(mxc + dx, myc + dy, pal32[dx === 0 && dy === 1 ? I.GOLD_HI : I.GOLD], false));
       [[0, -1], [-2, 1], [2, 1], [0, 3]].forEach(([dx, dy]) => put(mxc + dx, myc + dy, pal32[I.OUTLINE], false));
+      if (hoverEl && hoverEl.isConnected) { // a dotted thread of light from the menu's line to that part, marching towards it
+        const r = hoverEl.getBoundingClientRect(); const pr = plateRect || plate.getBoundingClientRect();
+        const cx = (r.left + r.width / 2 - pr.left) / px; const cy = (r.top + r.height / 2 - pr.top) / px; const hw = r.width / 2 / px; const hh = r.height / 2 / px;
+        const dx = mxc - cx; const dy = myc + 3 - cy; const k0 = Math.min(Math.abs(dx) > 0 ? hw / Math.abs(dx) : 9, Math.abs(dy) > 0 ? hh / Math.abs(dy) : 9); // (out of the line's box)
+        const len = Math.hypot(dx, dy) * (1 - k0); const sx = cx + dx * k0; const sy = cy + dy * k0;
+        for (let d = (reduce ? 0 : (t * 12) % 4); d < len - 4; d += 4) { const f = d / Math.hypot(dx, dy); blend(sx + dx * f, sy + dy * f, [255, 220, 130], 0.85, false); }
+      }
     }
     if (look.night > 0.2) {
       scene.torches.forEach((tc, k) => {
@@ -7800,9 +7807,9 @@ qqqqqTqqq
       // the wizard answers the menu he holds: sparks while a choice is pointed at, a burst on one
       const pointed = (e) => isOn() && e.target instanceof Element && e.target.closest('.tabs a');
       const roomIn = (a) => (a ? (a.getAttribute('href').split('#')[1] || null) : null);
-      document.addEventListener('pointerover', (e) => { const a = pointed(e); hoverId = roomIn(a) || hoverId; if (a) castUntil = now() + 1.2; });
-      document.addEventListener('pointerout', (e) => { if (pointed(e)) hoverId = null; });
-      document.addEventListener('focusin', (e) => { const a = pointed(e); hoverId = roomIn(a); if (a) castUntil = now() + 1.2; });
+      document.addEventListener('pointerover', (e) => { const a = pointed(e); hoverId = roomIn(a) || hoverId; if (a) { hoverEl = a; castUntil = now() + 1.2; } });
+      document.addEventListener('pointerout', (e) => { if (pointed(e)) { hoverId = null; hoverEl = null; } });
+      document.addEventListener('focusin', (e) => { const a = pointed(e); hoverId = roomIn(a); hoverEl = a || null; if (a) castUntil = now() + 1.2; });
       document.addEventListener('click', (e) => { if (pointed(e)) { castUntil = now() + 0.6; sparkle(24); } });
       // close up, only the market answers (out: the button, or Esc)
       { // the sun or the moon dragged along the sky: another hour of the same day (script.js shifts the clock), back to now when let go
