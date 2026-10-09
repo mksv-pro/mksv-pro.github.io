@@ -78,7 +78,7 @@ CASES = {
     "gate-phone": ("?touch=1", (390, 844), "if (window !== top) await new Promise(() => {}); await wait(1200);",
                    "document.documentElement.classList.contains('gated') && getComputedStyle(document.querySelector('[data-gate=tour]')).display === 'none'"),
     "maproom": ("?theme=hours&sky=noon&weather=clear#maproom", (1920, 1080), "await wait(3500);",
-                "document.documentElement.dataset.room === 'maproom' && document.querySelectorAll('.spot').length >= 6 && getComputedStyle(document.querySelector('main')).width === '1px'"),
+                "document.documentElement.dataset.room === 'maproom' && document.querySelectorAll('.spot').length >= 6 && getComputedStyle(document.querySelector('main')).clipPath !== 'none'"),
     "gate-deeplink": ("#research", (1920, 1080), "await wait(800);", "!document.documentElement.classList.contains('gated')"),
     "phone-banner": ("?theme=dark&sky=noon&weather=clear", (390, 844), "", "document.documentElement.classList.contains('banner') && " + CANVAS),
     "narrow-window": ("?sky=noon&weather=clear", (1100, 800), "",  # (a computer: the terminal, the landscape over the engraving)
