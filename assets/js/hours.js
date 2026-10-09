@@ -2116,11 +2116,11 @@ nNnnnn..
 
   // the labour of the month, as in a book of hours (sower in autumn, reaper in summer...)
   const OVERLAPS = /[?&]overlaps=1/.test(location.search);
-  /* The rooms' standard: every room is drawn at RW x RH, in one of two formats, 16:9 (240 x 135) or,
-     on a squarer window, 4:3 (240 x 180: the same width, so the same places, a higher ceiling); on a
-     canvas of its own scaled by a whole number of device pixels and centred in the plate (layoutRoom).
-     The landscape's canvas round it shows a wall of black brick and a gilt frame (paintFrame). */
-  const RW = 240; const RH_WIDE = 135; const RH_SQUARE = 180; let RH = RH_WIDE;
+  /* The rooms' standard: every room is drawn once at RW x RH (16:9), whatever the window, on a canvas
+     of its own scaled by a whole number of device pixels, the largest that fits, centred (layoutRoom).
+     The rest of the plate is a wall of black brick and a gilt frame (paintFrame): thicker above and
+     below on a squarer window, at the sides on a wider one. */
+  const RW = 240; const RH = 135;
   let roomCv; let rctx; let rimg; let robuf; let roomBox = { l: 0, t: 0, k: 1 }; let fbuf = null; // (roomBox: css px in the plate, k: css px a room pixel)
   const SEASON = (m) => (m <= 1 || m === 11 ? 'winter' : m <= 4 ? 'spring' : m <= 7 ? 'summer' : 'autumn');
   const PEASANT = [`
@@ -5619,8 +5619,6 @@ bbbbbb.
   /** The room's canvas: the largest whole number of device pixels a room pixel that fits the plate, centred. */
   function layoutRoom() {
     const r = plate.getBoundingClientRect(); const dpr = devicePixelRatio || 1;
-    const rh = r.width / r.height < (16 / 9 + 4 / 3) / 2 ? RH_SQUARE : RH_WIDE; // (the format nearer the window's shape)
-    if (rh !== RH) { RH = rh; roomCv.height = RH; rimg = rctx.createImageData(RW, RH); robuf = new Uint32Array(rimg.data.buffer); }
     const kd = Math.max(1, Math.floor(Math.min((r.width * dpr) / RW, (r.height * dpr) / RH))); const k = kd / dpr;
     const l = Math.round(((r.width - RW * k) / 2) * dpr) / dpr; const t = Math.round(((r.height - RH * k) / 2) * dpr) / dpr;
     roomBox = { l, t, k };
@@ -6021,7 +6019,7 @@ bbbbbb.
     if (roomShown && !fbuf) paintFrame();
     if (st === 'scene' && tower) renderTower(t);
     else if (st === 'scene') { draw(t); if (zoom) zoomed(t); else obuf.set(buf); }
-    else if (st === 'room') { drawInterior(t); obuf.set(fbuf); robuf.set(ibuf.subarray(0, RW * RH)); }
+    else if (st === 'room') { drawInterior(t); obuf.set(fbuf); robuf.set(ibuf); }
     else if (st === 'swap') {
       drawInterior(t); obuf.set(fbuf);
       const th = clamp((t - view.t0) / DISSOLVE);
@@ -6838,7 +6836,7 @@ bbbbbb.
       roomCv = document.createElement('canvas'); roomCv.className = 'room'; roomCv.width = RW; roomCv.height = RH; roomCv.hidden = true;
       roomCv.setAttribute('aria-hidden', 'true'); plate.append(roomCv); rctx = roomCv.getContext('2d');
       rimg = rctx.createImageData(RW, RH); robuf = new Uint32Array(rimg.data.buffer);
-      ibuf = new Uint32Array(RW * RH_SQUARE); iprev = new Uint32Array(RW * RH_SQUARE); ibase = new Uint32Array(RW * RH_SQUARE); // (the larger format: either fits)
+      ibuf = new Uint32Array(RW * RH); iprev = new Uint32Array(RW * RH); ibase = new Uint32Array(RW * RH);
       roomCv.addEventListener('click', (e) => { // (room pixels)
         if (view.state !== 'room' || !interior) return; const b = roomCv.getBoundingClientRect();
         roomClick(Math.floor(((e.clientX - b.left) / b.width) * RW), Math.floor(((e.clientY - b.top) / b.height) * RH));
