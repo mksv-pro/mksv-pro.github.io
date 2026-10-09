@@ -116,14 +116,6 @@ def entries(key):
     return "\n\n".join(out)
 
 
-def figure(f):
-    """A work's key figure, in its card (lazy: the list stays light)."""
-    if not f:
-        return ""
-    return (f'\n              <figure class="work-fig"><img src="{{{{root}}}}{f["src"]}" width="{f["w"]}" height="{f["h"]}"'
-            f' loading="lazy" alt="{escape(f["alt"])}"><figcaption>{f["caption"]}</figcaption></figure>')
-
-
 def work():
     """Each piece of work once: its card, its outputs; where it was done (`at`) links to that experience."""
     out = []
@@ -143,7 +135,7 @@ def work():
               <p class="role-line">{p["role"]}{where}</p>
               <p>
 {indent(p["text"], 16)}
-              </p>{figure(p.get("figure"))}{chr(10) + actions(p["actions"], 14) if p.get("actions") else ""}
+              </p>{chr(10) + actions(p["actions"], 14) if p.get("actions") else ""}
             </div>
           </article>""")
     return "\n\n".join(out)

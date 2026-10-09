@@ -259,7 +259,6 @@ broadcasts for the study."""
 id = "nuclear-emulators"
 img = "illum-nuclear.png"
 at = "ijclab"
-figure = { src = "assets/img/projects/nuclear-validation.png", w = 1400, h = 630, caption = "The solver against an independent R-matrix code, on four benchmarks: the cross sections, and their relative difference (median and p5–p95 over 40 draws).", alt = "Four panels, one per benchmark system: cross sections from the DBMM solver and the R-matrix code overlap; below, their relative difference stays between about 1e-6 and 1e-3." }
 title = "Computational emulation of nuclear dynamics"
 date = "2026"
 role = "M1 internship"

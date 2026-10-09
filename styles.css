@@ -1462,9 +1462,6 @@ details.how p { margin: .3rem 0 0; }
 .tl-years li:first-child { translate: 0 0; } .tl-years li:last-child { translate: -100% 0; }
 
 /* a work's key figure; what is under way, at the head of the news; a talk's first slide */
-.work-fig { margin: .6rem 0 .4rem; }
-.work-fig img { display: block; width: 100%; height: auto; background: #fff; }
-.work-fig figcaption { margin-top: .3rem; font-size: .75rem; color: var(--dim); }
 .news li.now { padding: .4rem .6rem; border-left: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .entry .thumb { display: block; margin: .4rem 0; max-width: 160px; height: auto; border: 1px solid var(--rule); }
 
@@ -1481,7 +1478,6 @@ details.how p { margin: .3rem 0 0; }
   a { text-decoration: underline; }
   main a[href^="http"]::after, main a[href^="mailto"]::after { content: " <" attr(href) ">"; font-size: .8em; word-break: break-all; }
   .entry, .project, .pub { break-inside: avoid; }
-  .work-fig img { max-width: 60%; }
   details.ledger { display: none !important; }
   .glance { display: grid !important; }
 }

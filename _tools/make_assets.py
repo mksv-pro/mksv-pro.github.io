@@ -1,6 +1,6 @@
 """Build the site's generated images from _tools/src/ into assets/img/.
 
-Run from the site root:  python _tools/make_assets.py [engraving illuminations monogram figures]
+Run from the site root:  python _tools/make_assets.py [engraving illuminations monogram]
 (the share card, og.png, is photographed from the site by og.py)
 (no argument: all). Needs Pillow + NumPy. Colours must match the tokens at the top of styles.css.
 """
@@ -16,8 +16,6 @@ from colour import rgb
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "_tools" / "src"
 OUT = ROOT / "assets" / "img"
-# Report figures, from the nuclear-emulators project of the EnvS workspace (published as-is, resized).
-FIGURES = ROOT.parent / "projects" / "nuclear-emulators" / "src" / "nuclear_emulators" / "outputs" / "figures"
 
 # (background, ink) of the terminal theme's plate: the engraved lines lit on the dark.
 THEMES = {
@@ -94,20 +92,6 @@ def monogram_rects(ox=0, oy=0):
     return "".join(out)
 
 
-def figures():
-    """Copy two report figures into assets/img/projects/, at most `width` px wide."""
-    dest = OUT / "projects"
-    dest.mkdir(exist_ok=True)
-    for src, name, width in (("f2_validation.png", "nuclear-validation.png", 1400),
-                             ("n40Ca_cat_S00.png", "nuclear-cost-n40Ca.png", 1000)):
-        im = Image.open(FIGURES / src).convert("RGB")
-        if im.width > width:
-            im = im.resize((width, round(im.height * width / im.width)), Image.LANCZOS)
-        im = im.quantize(colors=128, method=Image.Quantize.MEDIANCUT)
-        im.save(dest / name, optimize=True)
-        print(f"figure: {name} {im.width}x{im.height}")
-
-
 def monogram():
     w, h = len(MONOGRAM[0]), len(MONOGRAM)
     n = w + 4  # square favicon, glyph centred
@@ -123,6 +107,6 @@ def monogram():
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
     steps = {"engraving": engraving, "illuminations": lambda: illuminations.build(OUT),
-             "monogram": monogram, "figures": figures}  # the share card: og.py
+             "monogram": monogram}  # the share card: og.py
     for name in sys.argv[1:] or steps:
         steps[name]()
