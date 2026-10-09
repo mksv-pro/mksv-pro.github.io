@@ -464,6 +464,54 @@ qqqqqTTqqTqq..
 ..qq.qq..qq.qT.
 ............TqT`,
   };
+  // the frame's small life (paintFrame, frameLife): Blanc Blanc asleep, a rat, a bat hanging and in
+  // flight, a spider, a torch on its bracket, a snail in the vine
+  const FRAME_SP = {
+    bbLoaf: `
+.b..b.......
+.bbbb.......
+bkbkqqqbbqq.
+qqqqqqqbbqqq
+.qqqqqqqqqqqq
+..qq...qq..qq`,
+    rat: `
+.......dd.
+.ddddddd*d
+dddddddddd
+.d..d..d..`,
+    batHang: `
+..n..
+.nEn.
+nnnnn
+.nnn.`,
+    batA: `
+n.....n
+nn.n.nn
+.nnnnn.
+...n...`,
+    batB: `
+.......
+nnnnnnn
+.nnnnn.
+...n...`,
+    spider: `
+k.k.k
+.kkk.
+kkdkk
+.kkk.
+k.k.k`,
+    torch: `
+.www.
+..w..
+..w..
+aaaaa
+..a..`,
+    snail: `
+..ggg.
+.gkgkg
+.ggggg
+fffffff`,
+  };
   const RAVEN = `
 ....nnn.
 ...nncny
@@ -887,6 +935,8 @@ nNnnnn..
     SPRITES.angler = shadeSprite(ANGLER);
     SPRITES.walkerL = SPRITES.peasant.map(flip);
     SPRITES.rider = RIDER.map(shadeSprite); SPRITES.riderR = SPRITES.rider.map(flip);
+    SPRITES.frame = Object.fromEntries(Object.entries(FRAME_SP).map(([k, v]) => [k, shadeSprite(v)]));
+    SPRITES.frame.ratL = flip(SPRITES.frame.rat); SPRITES.frame.bbSit = SPRITES.cats.spotted;
   }
 
   /* ---- the scene: seven planes of palette indices, generated once per size ---- */
@@ -2121,7 +2171,7 @@ nNnnnn..
      The rest of the plate is a wall of black brick and a gilt frame (paintFrame): thicker above and
      below on a squarer window, at the sides on a wider one. */
   const RW = 240; const RH = 135;
-  let roomCv; let rctx; let rimg; let robuf; let roomBox = { l: 0, t: 0, k: 1 }; let fbuf = null; // (roomBox: css px in the plate, k: css px a room pixel)
+  let roomCv; let rctx; let rimg; let robuf; let roomBox = { l: 0, t: 0, k: 1 }; let fbuf = null; let frameGeo = null; // (roomBox: css px in the plate, k: css px a room pixel)
   const SEASON = (m) => (m <= 1 || m === 11 ? 'winter' : m <= 4 ? 'spring' : m <= 7 ? 'summer' : 'autumn');
   const PEASANT = [`
 ..rr...
@@ -5663,6 +5713,118 @@ bbbbbb.
     if (mx >= 6 && my >= 6) [[x0 - 3, y0 - 3], [x1 + 2, y0 - 3], [x0 - 3, y1 + 2], [x1 + 2, y1 + 2]].forEach(([cx, cy]) => quatrefoil(cx, cy));
     if (my >= 5) { lozenge(Math.round((x0 + x1) / 2), y0 - 3); lozenge(Math.round((x0 + x1) / 2), y1 + 2); }
     if (mx >= 5) { lozenge(x0 - 3, Math.round((y0 + y1) / 2)); lozenge(x1 + 2, Math.round((y0 + y1) / 2)); }
+    frameDeco({ W, H, x0, y0, x1, y1, put, C, ink, goldSh });
+  }
+  /** The frame's furnishing, by the room its margins leave (mL, mR: the sides, mT, mB: above and
+   *  below, outside the fillet): quoins of pale stone, iron straps and studs on the fillet, a vine in
+   *  the margins with a snail, graffiti, two torches on brackets; and where the frame's life goes
+   *  (fg: frameLife). Seeded by the room, so a room keeps its own. */
+  function frameDeco({ W, H, x0, y0, x1, y1, put, C, ink, goldSh }) {
+    const rng = mulberry32((view.id || 'x').length * 977 + 13);
+    const mL = x0 - 4; const mR = W - x1 - 4; const mT = y0 - 4; const mB = H - y1 - 4;
+    const stamp = (sp, X, Y) => { for (let y = 0; y < sp.h; y += 1) for (let x = 0; x < sp.w; x += 1) { const c = sp.px[y * sp.w + x]; if (c >= 0) put(X + x, Y + y, pack(unpack(ipal32[c]))); } };
+    // quoins: pale ashlar round the opening, long and short blocks in turn (d 5..8 out from the room)
+    const q1 = C('ROCK_HI', 0.62); const q2 = C('ROCK', 0.62); const qj = C('ROCK_DK', 0.7);
+    const quoin = (horiz, at, from, to, out) => { let p = from; let k = 0; while (p < to) { const len = k % 2 ? 4 : 7; for (let a = p; a < Math.min(to, p + len); a += 1) for (let d = 0; d < (k % 2 ? 3 : 4); d += 1) { const c = a === p ? qj : d === 0 && out < 0 ? q1 : (a + d) % 5 ? q2 : q1; if (horiz) put(a, at + out * d, c); else put(at + out * d, a, c); } p += len; k += 1; } };
+    if (mT >= 5) quoin(true, y0 - 5, x0 - 8, x1 + 8, -1); if (mB >= 5) quoin(true, y1 + 4, x0 - 8, x1 + 8, 1);
+    if (mL >= 5) quoin(false, x0 - 5, y0 - 4, y1 + 4, -1); if (mR >= 5) quoin(false, x1 + 4, y0 - 4, y1 + 4, 1);
+    // iron on the gilt: hinge straps near the corners, a stud every 12 px along the fillet
+    const iron = C('ARM_SH', 0.9); const ironHi = C('ARM_HI', 0.8);
+    [[x0 + 6, y0 - 3], [x1 - 16, y0 - 3], [x0 + 6, y1 + 2], [x1 - 16, y1 + 2]].forEach(([sx, sy]) => { for (let k = 0; k < 10; k += 1) { put(sx + k, sy, iron); put(sx + k, sy + 1, k % 4 === 1 ? ironHi : iron); } put(sx + 10, sy, iron); });
+    for (let x = x0 + 22; x < x1 - 22; x += 12) { put(x, y0 - 2, ironHi); put(x, y1 + 1, ironHi); }
+    for (let y = y0 + 10; y < y1 - 10; y += 12) { put(x0 - 2, y, ironHi); put(x1 + 1, y, ironHi); }
+    // the vine: a stem winding down each side margin (or along the top and bottom), leaves, berries, a bud
+    const leaf = C('FERN'); const leafSh = C('FERN_SH'); const berry = C('CAP'); const bud = C('FL_BLUE');
+    const busy = []; // (boxes the vine goes round: the torches, the graffiti; [x0, y0, x1, y1])
+    const vine = (horiz, from, to, mid, amp) => {
+      for (let a = from; a < to; a += 1) {
+        const o = Math.round(Math.sin(a * 0.32) * amp); const X = horiz ? a : mid + o; const Y = horiz ? mid + o : a;
+        if (busy.some(([bx0, by0, bx1, by1]) => X >= bx0 - 3 && X <= bx1 + 3 && Y >= by0 - 3 && Y <= by1 + 3)) continue;
+        put(X, Y, goldSh);
+        if (a % 9 === 0) { const sd = Math.sin(a * 0.32 + 1.6) > 0 ? 1 : -1; if (horiz) { put(X, Y + sd, leaf); put(X + 1, Y + sd, leafSh); put(X, Y + 2 * sd, leaf); } else { put(X + sd, Y, leaf); put(X + sd, Y + 1, leafSh); put(X + 2 * sd, Y, leaf); } }
+        if (a % 23 === 11) put(horiz ? X : X - 1, horiz ? Y - 1 : Y, berry);
+        if (a % 37 === 18) put(horiz ? X : X + 1, horiz ? Y + 1 : Y, bud);
+      }
+    };
+    const fg = { torches: [], bats: [], spider: null, rat: null, cat: null };
+    const sn = SPRITES.frame.snail; // a snail on the vine
+    const snailAt = (X, Y) => { stamp(sn, X, Y); busy.push([X, Y, X + sn.w, Y + sn.h]); };
+    if (mL >= 14) snailAt(Math.round((x0 - 9) / 2) - 4, Math.round(y0 + (y1 - y0) * 0.72)); else if (mB >= 14) snailAt(Math.round(x0 + (x1 - x0) * 0.7), Math.round((y1 + 9 + H) / 2) - 6);
+    // graffiti scratched in the brick: a tally, initials, a year (a 3 x 5 hand)
+    const scratch = C('ROCK_SH', 0.75);
+    const GLY = { M: ['1.1', '111', '111', '1.1', '1.1'], S: ['.11', '1..', '.1.', '..1', '11.'], '1': ['.1.', '11.', '.1.', '.1.', '111'], '8': ['111', '1.1', '111', '1.1', '111'] };
+    const write = (txt, X, Y) => [...txt].forEach((ch, k) => (GLY[ch] || []).forEach((row, ry) => [...row].forEach((v, rx) => { if (v === '1') put(X + k * 4 + rx, Y + ry, scratch); })));
+    const tally = (X, Y, n) => { for (let k = 0; k < n; k += 1) { if (k % 5 === 4) for (let d = 0; d < 6; d += 1) put(X + (k - 4) * 2 + d, Y + 4 - Math.floor(d * 0.7), scratch); else for (let y = 0; y < 5; y += 1) put(X + k * 2, Y + y, scratch); } };
+    const gMargin = mR >= 16 ? [x1 + 7, W - 3] : mL >= 16 ? [3, x0 - 7] : null;
+    if (gMargin) { const gx = gMargin[0] + 1; const gy = Math.round(y1 - (y1 - y0) * 0.22); busy.push([gx, gy - 8, gx + 16, gy + 13]); write('MS', gx, gy); tally(gx, gy + 8, 7 + Math.floor(rng() * 6)); if (gMargin[1] - gMargin[0] >= 14) write('1888', gx, gy - 8); } // (Flammarion's year)
+    else if (mB >= 9) { const gx = Math.round(x0 + (x1 - x0) * 0.15); busy.push([gx, y1 + 7, gx + 30, y1 + 12]); write('MS', gx, y1 + 7); tally(gx + 12, y1 + 7, 9); }
+    // torches on iron brackets, either side at a third of the height (or above the top corners)
+    const tSp = SPRITES.frame.torch;
+    const torchAt = (X, Y) => { stamp(tSp, X - 2, Y); fg.torches.push({ x: X, y: Y - 1, ph: rng() * 6 }); busy.push([X - 3, Y - 7, X + 3, Y + 5]); };
+    if (mL >= 11 && mR >= 11) { const ty = Math.round(y0 + (y1 - y0) * 0.3); torchAt(Math.round((x0 - 4) / 2), ty); torchAt(Math.round((x1 + 4 + W) / 2), ty); }
+    else if (mT >= 12) { torchAt(x0 - 12 < 3 ? x0 + 12 : x0 - 12, y0 - 10); torchAt(x1 + 12 > W - 3 ? x1 - 12 : x1 + 12, y0 - 10); }
+    const sideV = (m, xs) => m >= 12 && vine(false, y0 + 4, y1 - 4, xs, Math.min(3, Math.floor((m - 9) / 2)));
+    sideV(mL, Math.round((x0 - 9) / 2)); sideV(mR, Math.round((x1 + 9 + W) / 2));
+    if (mT >= 12) vine(true, x0 + 30, x1 - 30, Math.round((y0 - 9) / 2), Math.min(3, Math.floor((mT - 9) / 2)));
+    if (mB >= 12) vine(true, x0 + 30, x1 - 30, Math.round((y1 + 9 + H) / 2), Math.min(3, Math.floor((mB - 9) / 2)));
+    // the life's places: Blanc Blanc on the lintel (or on a corbel in a side margin), a bat or two
+    // under the top, a spider in an upper corner, a rat's hole at the foot of a side
+    const loaf = SPRITES.frame.bbLoaf; const sit = SPRITES.frame.bbSit;
+    if (mT >= loaf.h + 2) fg.cat = { sp: loaf, x: Math.round(x0 + (x1 - x0) * 0.22), y: y0 - 4 - loaf.h + 1, lying: true }; // (left: the menu hangs on the right)
+    else if (mR >= sit.w + 4 && y1 - y0 > 60) { const cx = Math.round((x1 + 4 + W) / 2) - Math.floor(sit.w / 2); const cy = Math.round(y0 + (y1 - y0) * 0.66); for (let k = -1; k <= sit.w; k += 1) { put(cx + k, cy + sit.h, C('ROCK_HI', 0.6)); put(cx + k, cy + sit.h + 1, C('ROCK_SH', 0.6)); } fg.cat = { sp: sit, x: cx, y: cy, lying: false }; }
+    if (mL >= 8) fg.bats.push({ x: Math.round((x0 - 4) / 2) - 2, y: y0 + 1, ph: rng() * 6 }); if (mT >= 7) fg.bats.push({ x: Math.round(x0 + (x1 - x0) * 0.3), y: 1, ph: rng() * 6 });
+    fg.bats.forEach((b) => { for (let y = 0; y < b.y; y += 1) if (y > b.y - 2) put(b.x + 2, y, ink); });
+    if (mR >= 9) fg.spider = { x: Math.round((x1 + 4 + W) / 2) + 2, top: 0, low: Math.round(y0 + (y1 - y0) * 0.18) }; else if (mT >= 9) fg.spider = { x: x0 + 8, top: 0, low: y0 - 9 };
+    if (mL >= 12) { const hx = Math.round((x0 - 4) / 2) - 1; const hy = y1 - 1; for (let y = -3; y <= 0; y += 1) for (let x = -3; x <= 3; x += 1) if (x * x + (y * 1.6) ** 2 <= 10) put(hx + x, hy + y, C('OUTLINE', 0.5)); fg.rat = { hx, hy, side: 1, lim: Math.max(3, Math.floor(mL / 2) - 6) }; }
+    else if (mB >= 6) fg.rat = { hx: x0 + 4, hy: H - 1, side: 1, lim: Math.min(60, x1 - x0 - 8), floor: true };
+    frameGeo = { ...fg, x0, y0, x1, y1, W, H };
+  }
+
+  /** The frame's life, each frame over the embrasure (obuf): the torches' flames and their light on
+   *  the brick, dust turning in it; Blanc Blanc asleep (his flank rising); the bats (by day hanging, at
+   *  night one out on the wing now and then); the spider down its thread and up; the rat out of its
+   *  hole for a look round, back in at once if the pointer comes near. */
+  function frameLife(t) {
+    const g = frameGeo; if (!g) return;
+    const { W, H, x0, y0, x1, y1 } = g;
+    const inside = (x, y) => x >= x0 && x < x1 && y >= y0 && y < y1;
+    const put = (x, y, c) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && x < W && y >= 0 && y < H && !inside(x, y)) obuf[y * W + x] = c; };
+    const blend = (x, y, rgb, a) => { x = Math.round(x); y = Math.round(y); if (x < 0 || x >= W || y < 0 || y >= H || inside(x, y)) return; const i = y * W + x; obuf[i] = pack(mix(unpack(obuf[i]), rgb, a)); };
+    const blit = (sp, X, Y, dy = 0) => { for (let y = 0; y < sp.h; y += 1) for (let x = 0; x < sp.w; x += 1) { const c = sp.px[y * sp.w + x]; if (c >= 0) put(X + x, Y + y + (y < sp.h / 2 ? dy : 0), c === I.EYE ? pal32[c] : ipal32[c]); } };
+    const F = SPRITES.frame; const night = look.night;
+    g.torches.forEach((tc) => { // the light first (under the flame), then the flame: a few pixels flickering
+      const fl = reduce ? 1 : 0.85 + 0.15 * Math.sin(t * 9 + tc.ph) * Math.sin(t * 5.3 + tc.ph * 2);
+      const R = 16 + 6 * night;
+      for (let y = -R; y <= R; y += 1) for (let x = -R; x <= R; x += 1) { const d = Math.hypot(x, y * 1.2); if (d < R) blend(tc.x + x, tc.y + y, [255, 170, 80], (1 - d / R) ** 2 * (0.32 + 0.25 * night) * fl); }
+      const h = reduce ? 4 : 3 + Math.round(2 * fl + Math.sin(t * 13 + tc.ph));
+      for (let k = 0; k < h; k += 1) { const w = k < h - 2 ? 1 : 0; const sway = reduce ? 0 : Math.round(Math.sin(t * 7 + k + tc.ph) * (k / h)); for (let dx = -w; dx <= w; dx += 1) put(tc.x + dx + sway, tc.y - k, pack(k < 1 ? [255, 250, 210] : k < h - 1 ? [255, 190, 70] : [220, 90, 40])); }
+      if (!reduce) for (let k = 0; k < 4; k += 1) { const a = t * 0.4 + k * 1.7 + tc.ph; blend(tc.x + Math.sin(a * 1.3) * 7, tc.y + 4 + Math.cos(a) * 6, [255, 230, 190], 0.45 * (0.5 + 0.5 * Math.sin(a * 3))); } // dust in the light
+    });
+    if (g.cat) { const c = g.cat; blit(c.sp, c.x, c.y, c.lying && !reduce && Math.floor(t / 2.2) % 2 ? -1 : 0); }
+    g.bats.forEach((b, k) => {
+      const out = night > 0.55 && !reduce;
+      if (!out) { blit(F.batHang, b.x, b.y); return; }
+      const cyc = (t + b.ph * 10) % 40; if (cyc > 9) return; // (one flight in forty seconds)
+      const fx = b.x + Math.round((cyc / 9) * 50 * (k % 2 ? -1 : 1)); const fy = b.y + 6 + Math.round(Math.sin(cyc * 3) * 4);
+      blit(Math.floor(t * 8) % 2 ? F.batA : F.batB, fx, fy);
+    });
+    if (g.spider) { // down its thread and back, a minute a round trip, pausing at the bottom
+      const sp = g.spider; const ph = reduce ? 0.5 : (t % 60) / 60; const f = ph < 0.3 ? ph / 0.3 : ph < 0.6 ? 1 : ph < 0.9 ? 1 - (ph - 0.6) / 0.3 : 0;
+      const y = Math.round(sp.top + (sp.low - sp.top) * f);
+      for (let yy = sp.top; yy < y; yy += 1) blend(sp.x + 2, yy, [220, 220, 230], 0.35);
+      if (f > 0) blit(F.spider, sp.x, y);
+    }
+    if (g.rat && !reduce) { // out every half minute or so for a few seconds, along the foot of the wall
+      const r = g.rat; const near = pointer && Math.hypot(pointer[0] - r.hx, pointer[1] - r.hy) < 26;
+      if (near) r.fled = t + 8;
+      const cyc = (t + 7) % 33; const away = r.fled && t < r.fled;
+      if (!away && cyc < 6) {
+        const f = cyc < 2.5 ? cyc / 2.5 : cyc < 3.5 ? 1 : 1 - (cyc - 3.5) / 2.5; const sp = cyc < 3 ? F.rat : F.ratL;
+        const X = r.hx - 2 + Math.round(f * r.lim); const Y = (r.floor ? H - 1 : r.hy) - sp.h + 1;
+        blit(sp, X, Y);
+        for (let k = 1; k <= 4; k += 1) put(X - k + (sp === F.ratL ? sp.w + 4 : 0), Y + sp.h - 2 + (k > 2 ? 1 : 0), ipal32[I.LEATHER]); // its tail
+      }
+    }
   }
 
   /** Width left to the furniture: on wide screens the parchment hangs over the right half. */
@@ -6019,14 +6181,14 @@ bbbbbb.
     if (roomShown && !fbuf) paintFrame();
     if (st === 'scene' && tower) renderTower(t);
     else if (st === 'scene') { draw(t); if (zoom) zoomed(t); else obuf.set(buf); }
-    else if (st === 'room') { drawInterior(t); obuf.set(fbuf); robuf.set(ibuf); }
+    else if (st === 'room') { drawInterior(t); obuf.set(fbuf); frameLife(t); robuf.set(ibuf); }
     else if (st === 'swap') {
-      drawInterior(t); obuf.set(fbuf);
+      drawInterior(t); obuf.set(fbuf); frameLife(t);
       const th = clamp((t - view.t0) / DISSOLVE);
       for (let y = 0; y < RH; y += 1) for (let x = 0; x < RW; x += 1) { const i = y * RW + x; robuf[i] = bayer(x, y) < th ? ibuf[i] : iprev[i]; }
       if (th >= 1) { view.state = 'room'; travelling(false); }
     } else if (st === 'climb') {
-      drawInterior(t); obuf.set(fbuf);
+      drawInterior(t); obuf.set(fbuf); frameLife(t);
       // a strip, top to bottom: the upper floor, the slab, the lower; the view slides down it (dir 1) or up
       const e = clamp((t - view.t0) / CLIMB); const s = e < 0.5 ? 2 * e * e : 1 - 2 * (1 - e) ** 2;
       const S = Math.max(6, Math.round(RH * 0.06)); const o = Math.round(s * (RH + S));
