@@ -3569,17 +3569,26 @@ qqqqqTqqq
       const cr = Math.max(4, Math.min(7, Math.floor((S(0.98) - S(0.66)) / 4.4))); const cx0 = S(0.66) + cr;
       const lid = cask(cx0, yf - 1, cr); cask(cx0 + 2 * cr + 2, yf + 1, cr); // two, one a little nearer
       candle(cx0, lid - 1, false);
-      of('stair').forEach(([, i]) => { // the stairwell cut in the floor before us: a stone lip all round, the steps
-        // going down away from us, each narrower and darker than the one before, its nosing lit
-        const x0 = S(0.3); const w = Sw(0.36); const y0 = floorY(0.12); const y1 = floorY(0.98); const N = 3;
-        for (let y = y0; y < y1; y += 1) for (let x = x0; x < x0 + w; x += 1) set(x, y, I.OUTLINE);
-        for (let s2 = 0; s2 < N; s2 += 1) { // from the nearest (bottom of the view) to the farthest
-          const f = s2 / N; const sy1 = Math.round(y1 - f * (y1 - y0)); const sy0 = Math.round(y1 - (f + 1 / N) * (y1 - y0));
-          const tread = [I.ROCK_HI, I.ROCK, I.ROCK_SH][s2]; const ins2 = 2 + s2 * 4;
-          for (let y = sy0 + 1; y < sy1; y += 1) for (let x = x0 + ins2; x < x0 + w - ins2; x += 1) set(x, y, y === sy0 + 1 ? I.ROCK_HI : y > sy1 - 3 ? (y === sy1 - 1 ? I.OUTLINE : I.ROCK_DK) : (bayer(x, y) < s2 * 0.2 ? I.ROCK_DK : tread)); // nosing, tread, riser
+      of('stair').forEach(([, i]) => { // the stair down, seen from the front: a well in the floor along the wall, the
+        // steps going down it from left to right, each a hand lower and darker, into the dark; a rail before
+        // it, a lantern on its last post, a board with an arrow at its head
+        const x0 = S(0.27); const w = Sw(0.44); const y0 = floorY(0.06); const y1 = floorY(0.96); const N = 5; const sw = Math.floor((w - 8) / N); const drop = Math.floor((y1 - y0 - 3) / (N + 0.5));
+        for (let y = y0; y < y1; y += 1) for (let x = x0; x < x0 + w; x += 1) set(x, y, I.OUTLINE); // the well
+        for (let k = 0; k < N; k += 1) { // a step: its tread lit, its face in courses below it, darker the deeper
+          const sx = x0 + 1 + k * sw; const top = y0 + 1 + k * drop; const dark = k / N;
+          for (let y = top; y < y1; y += 1) for (let x = sx; x < sx + sw; x += 1) {
+            const fall = clamp((y - top) / (y1 - top)); const course = (y - top) % 4 === 3;
+            const c = y <= top + 1 ? (dark < 0.5 ? I.ROCK_HI : I.ROCK) : x === sx + sw - 1 || course ? I.ROCK_DK : bayer(x, y) < dark * 0.8 + fall * 0.6 ? I.ROCK_DK : dark < 0.4 ? I.ROCK : I.ROCK_SH;
+            set(x, y, c);
+          }
         }
-        rect(x0 - 2, y0 - 2, w + 4, 2, I.ROCK_HI); rect(x0 - 2, y0, 2, y1 - y0, I.ROCK); rect(x0 + w, y0, 2, y1 - y0, I.ROCK_SH); // the lip
-        slots[i] = box(x0 - 3, y0 - 3, w + 6, y1 - y0 + 4);
+        for (let y = y0; y < y1; y += 1) for (let x = x0 + 1 + N * sw; x < x0 + w; x += 1) set(x, y, I.OUTLINE); // on down, into the dark
+        rect(x0 - 2, y0 - 1, w + 4, 1, I.ROCK_HI); rect(x0 - 2, y0, 2, y1 - y0, I.ROCK); rect(x0 + w, y0, 2, y1 - y0, I.ROCK_SH); // the stone lip
+        [x0, x0 + Math.round(w / 2), x0 + w - 1].forEach((px) => rect(px, y1 - 8, 1, 9, I.TIMBER_SH)); rect(x0, y1 - 8, w, 1, I.TIMBER); // the rail before it
+        { const bx = x0 - 10; const by = y1; rect(bx + 3, by - 9, 1, 10, I.TIMBER_SH); rect(bx, by - 15, 8, 7, I.TIMBER); rect(bx, by - 15, 8, 1, I.TIMBER_HI); // a board on its post, by the well's head: an arrow, down
+          rect(bx + 3, by - 14, 2, 3, I.GOLD); rect(bx + 2, by - 11, 4, 1, I.GOLD); rect(bx + 3, by - 10, 2, 1, I.GOLD); }
+        rect(x0 + w - 1, y1 - 11, 1, 3, I.TIMBER_SH); lantern(x0 + w - 1, y1 - 10); // a lantern on the rail's last post, over the way down
+        slots[i] = box(x0 - 11, y0 - 2, w + 13, y1 - y0 + 3);
       });
       { // a cobweb in the vault's left corner; a drop forming on the vault, falling now and then (drawInterior)
         const cx = BR - 2; const cy = Math.round(H * 0.3); // (the right corner: the racks fill the left)

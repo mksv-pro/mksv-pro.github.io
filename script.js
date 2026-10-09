@@ -638,27 +638,38 @@ function twinkle() {
 }
 twinkle();
 
-/** Down the spiral stair to the cellar: seen from above, its steps turning round the newel as we go
- *  down, darker at each turn; low resolution like the castle, over the picture. `then` (the room)
- *  starts halfway, as the stair goes dark. */
-function spiralDown(then) {
+/** Down the stair to the cellar, seen as one goes down it: the steps in perspective sinking towards a
+ *  point ahead, brick walls either side and a vault over them, torches going by, the dark gaining;
+ *  low resolution like the castle, over the picture. `then` (the room) starts halfway. */
+function stairDown(then) {
   const pic = document.querySelector('.plate-img'); const r = pic.getBoundingClientRect();
-  const cv = document.createElement('canvas'); const W = 192; const H = 108; cv.width = W; cv.height = H; cv.className = 'spiral';
+  const cv = document.createElement('canvas'); const W = 192; const H = 108; cv.width = W; cv.height = H; cv.className = 'stairdown';
   Object.assign(cv.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
   document.body.append(cv); const g = cv.getContext('2d'); const im = g.createImageData(W, H); const t0 = performance.now(); let started = false;
+  const A = 30; const SLOPE = 1.25; // (depth scale; how fast the stair widens towards us)
   const frame = (now) => {
-    const p = Math.min(1, (now - t0) / 1300);
-    if (!started && p > 0.55) { started = true; then(); }
-    const rot = p * Math.PI * 1.6; const dark = 1 - 0.75 * p;
+    const p = Math.min(1, (now - t0) / 1500);
+    if (!started && p > 0.6) { started = true; then(); }
+    const travel = p * 1.6; const vx = W / 2; const vy = 30 + Math.sin(travel * 3 * Math.PI * 2) * 1.2; // (five steps down, a bob at each)
+    const dim = 1 - 0.7 * p;
+    const torches = [];
+    for (let n = 1; n < 6; n += 1) { const st = n * 2.5 - (travel % 2.5); if (st > 0.4) [-1, 1].forEach((side) => torches.push([vx + side * SLOPE * (A / st) * 0.95, vy + (A / st) * 0.25, st])); }
     for (let y = 0; y < H; y += 1) for (let x = 0; x < W; x += 1) {
-      const dx = (x - W / 2) * 0.62; const dy = y - H / 2; const rr = Math.hypot(dx, dy); const th = (Math.atan2(dy, dx) + rot + 4 * Math.PI) % (2 * Math.PI);
-      let v; let warm = 1;
-      if (rr < 10) v = 0.55 + 0.25 * (dx < 0); // the newel, lit from the left
-      else if (rr < 50) { const st = th / (Math.PI / 6); const k = Math.floor(st); v = 0.78 - 0.055 * k; if (st - k < 0.08) v = 0.18; if (rr > 47) v *= 0.6; else if (st - k > 0.92) v += 0.12; } // a step each twelfth of a turn, lower round the turn
-      else { v = 0.16 + ((Math.floor(dy / 5) + Math.floor((Math.atan2(dy, dx) * 24) / Math.PI)) % 2 ? 0.04 : 0); warm = 0.8; } // the stairwell's wall
-      const b = v * dark * 255; const i = (y * W + x) * 4;
-      im.data[i] = b * warm; im.data[i + 1] = b * 0.86 * warm; im.data[i + 2] = b * 0.7; im.data[i + 3] = 255 * (p < 0.8 ? 1 : 1 - (p - 0.8) / 0.2);
+      const dy = y - vy; const dx = Math.abs(x - vx); let v; let warm = 1;
+      const kk = dy > 0 ? (A / dy + travel) * 3 : 0; const nose = dy > 0 ? A / (Math.floor(kk) / 3 - travel + 1e-3) : 0; // (three steps a depth unit; the row of this step's nosing)
+      if (dy > 0 && dx <= Math.min(dy, nose > 0 ? nose : dy) * SLOPE) { // the stair: each step a band, lit at its nosing, in shadow under the next; its edge on the walls a stair too
+        const sd = A / dy; const f = kk - Math.floor(kk);
+        v = (f > 0.82 ? 0.78 : f < 0.22 ? 0.1 : 0.5) / (1 + sd * 0.1);
+      } else { // the walls and the vault: joints running to the point ahead, courses across them
+        const q = Math.max(dx / SLOPE, Math.abs(dy), 0.5); const sd = A / q; const k = (sd + travel) * 2;
+        const ang = Math.atan2(dy, dx); const joint = Math.abs(((ang * 7) % 1 + 1) % 1 - 0.5) > 0.45 || k - Math.floor(k) < 0.08;
+        v = (joint ? 0.1 : dy < 0 && dx < -dy * SLOPE ? 0.2 : 0.34) / (1 + sd * 0.1); warm = 0.9;
+      }
+      let glow = 0; torches.forEach(([tx, ty, st]) => { const d = Math.hypot(x - tx, (y - ty) * 1.3); glow += Math.max(0, 1 - d / (14 / Math.sqrt(st))) * 0.5; });
+      const b = Math.min(1, v + glow * 0.6) * dim * 255; const i = (y * W + x) * 4;
+      im.data[i] = b * warm; im.data[i + 1] = b * 0.82 * warm; im.data[i + 2] = b * 0.62; im.data[i + 3] = 255 * (p < 0.82 ? 1 : 1 - (p - 0.82) / 0.18);
     }
+    torches.forEach(([tx, ty, st]) => { if (st < 6) { const k = (Math.round(ty) * W + Math.round(tx)) * 4; if (k >= 0 && k < im.data.length - 4) { im.data[k] = 255; im.data[k + 1] = 190; im.data[k + 2] = 90; } } }); // (the flames)
     g.putImageData(im, 0, 0);
     if (p < 1) requestAnimationFrame(frame); else cv.remove();
   };
@@ -685,7 +696,7 @@ function openWindow(hash, { userAction, animate = userAction }) {
     root.dataset.room = 'cellar';
     if (userAction) { say(cellar.dataset.look); cue('door'); }
     const enter = () => { if (window.Hours) window.Hours.room('cellar', { animate }); };
-    if (animate && !reduceMotion) spiralDown(enter); else enter();
+    if (animate && !reduceMotion) stairDown(enter); else enter();
     return;
   }
   if (climbing() && (!target || floors().includes(win))) { // the tower: every floor on the page; the one asked for is scrolled to (climbFloor does the rest)
