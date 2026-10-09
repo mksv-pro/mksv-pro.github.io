@@ -286,6 +286,7 @@ function applyTheme(theme, persist) {
       rumour: () => RUMOURS[Math.floor(Math.random() * RUMOURS.length)], // the knight tells it
       descend, // the descent (the cellar's steps, >)
       cellar: () => { location.hash = '#cellar'; }, // the door in the rock: into the cellar
+      maps: () => { location.hash = '#maproom'; }, // the cartographer's sign in the village: up to the map room
       doors: roomDoors, // the doors in the rooms' side walls
       clock: skyNow, // the instant shown: dawn mist, the night's meteor shower
       found: findCurio, // a curiosity of the landscape, clicked
@@ -582,7 +583,7 @@ function enterRoom(id, quiet = false) {
 /* ---- one window at a time, addressed by the URL hash ------------------- */
 
 const tabLinks = [...document.querySelectorAll('.tabs a[href^="#"]')];
-const windows = [...document.querySelectorAll('main > section:not([hidden]):not(#cellar)')];
+const windows = [...document.querySelectorAll('main > section:not([hidden]):not(#cellar):not(#maproom)')];
 const host = document.querySelector('.host');
 const isIndex = tabLinks.length > 0;
 
@@ -622,6 +623,15 @@ function openWindow(hash, { userAction, animate = userAction }) {
   const target = (hash && document.getElementById(decode(hash.slice(1)))) || null;
   const win = target ? target.closest('main > section') : windows[0];
   towerLayout();
+  if (target && win === maproom && !climbing()) { // the map room (by the cartographer's sign in the village): out of the menu, the castle's only
+    if (root.getAttribute('data-theme') !== 'hours') return;
+    windows.forEach((w) => w.classList.add('is-off'));
+    tabLinks.forEach((a) => a.removeAttribute('aria-current'));
+    root.dataset.room = 'maproom';
+    if (userAction) { say(maproom.dataset.look); cue('door'); }
+    if (window.Hours) window.Hours.room('maproom', { animate });
+    return;
+  }
   if (target && win === cellar && !climbing()) { // the castle's cellar (through the door in the rock): a room of its own, out of the menu
     if (root.getAttribute('data-theme') !== 'hours') { descend(); return; }
     windows.forEach((w) => w.classList.add('is-off'));
@@ -691,6 +701,7 @@ roofSlot.className = 'floor-slot roof';
 let floor; // (undefined: not yet placed)
 const roofLine = msgText.textContent;
 const cellar = document.getElementById('cellar'); // the tower's foot (shown by applyTheme in the tower only)
+const maproom = document.getElementById('maproom'); // the map room (the castle's, reached from the village)
 const floors = () => (cellar && !cellar.hidden ? [...windows, cellar] : windows);
 const slotOf = (id) => (id ? document.getElementById(id).querySelector(':scope > .floor-slot') : roofSlot);
 function mount(slot) { // the live picture into frame `slot`; the frame left keeps its last picture
@@ -882,6 +893,11 @@ function roomItemsOf(id) {
     });
     case 'talks': return of('.entry', 'banner', (el) => ({ label: text(el.querySelector('h3')), html: el.innerHTML }));
     case 'teaching': return of('.entry', 'course', (el) => ({ label: text(el.querySelector('h3')), html: el.innerHTML }));
+    case 'maproom': // a pennant for each place of the path: what is told of it, and what was done there
+      return (DATA.heraldry.tapestry || []).filter(([aid]) => REALM_NAMES[aid]).map(([aid, name, desc]) => {
+        const done = [...document.querySelectorAll(`#experience .entry[data-arms="${aid}"]`)].map((el) => `<li><a href="#at-${aid}">${esc(text(el.querySelector('h3')))}</a>: ${esc(text(el.querySelector('.role-line')))}</li>`);
+        return { kind: 'place', arms: aid, label: name, html: `<h3>${esc(name)}</h3><p>${esc(desc)}</p>${done.length ? `<ul>${done.join('')}</ul>` : ''}<p class="dim">${esc(REALM_NAMES[aid])}</p>` };
+      });
     case 'cellar': // a rack for each year of study, and the steps on down (the descent)
       return [...vintages().map((v) => ({ kind: 'vintage', label: `${T.vintage} ${v.year}`, html: `<p class="dim">${esc(v.note)}</p>${v.html}` })),
         { kind: 'stair', label: T.stairDown, act: descend }];
@@ -1359,6 +1375,7 @@ dialog.addEventListener('click', (e) => {
   if (go) {
     dialog.close(); const k = go.dataset.go;
     if (k === 'cellar') { if (root.getAttribute('data-theme') === 'hours') location.hash = '#cellar'; else descend(); return; }
+    if (k === 'maproom') { location.hash = '#maproom'; return; }
     if (root.dataset.room) leaveRoom();
     setTimeout(() => { if (window.Hours) window.Hours[k === 'tower' ? 'tower' : 'village'](); }, root.dataset.room ? 900 : 0);
     return;
@@ -1484,7 +1501,7 @@ function realmHtml() {
 }
 function showMap() {
   const realm = root.getAttribute('data-theme') === 'hours' && window.Hours;
-  const domain = realm ? `<h3>The domain</h3><p class="domain">${[['village', 'the village and its market'], ['tower', 'up the watchtower'], ['cellar', 'down to the cellar']]
+  const domain = realm ? `<h3>The domain</h3><p class="domain">${[['village', 'the village and its market'], ['tower', 'up the watchtower'], ['maproom', 'the map room'], ['cellar', 'down to the cellar']]
     .map(([k, l]) => `<button type="button" data-go="${k}">[${l}]</button>`).join(' ')}</p>` : '';
   showDialog(T.mapTitle, mapHtml(here) + domain + (realm ? realmHtml() : ''));
   if (realm) window.Hours.realm(dialog.querySelector('canvas.realm'));

@@ -501,6 +501,7 @@ qqqqqTTqqTqq..
     projects: ['h', 'h', 'f', 'd', 'a', false, ['The smith wipes his hands: "Each of those models works. Ask it, it will show you."', 'The smith: "The bucket is for quenching. Not for drinking."']],
     publications: ['p', 'p', 'p', 'h', 'g', true, ['The librarian, in a whisper: "Face out on the shelf of honour: the one book of this house so far."', 'The librarian: "The ladder slides. Mind the cat."']],
     contact: ['a', 'a', 'a', 'd', 'r', false, ['The guard: "Letters go in the slot. The register is on the table, if you would sign."', 'The guard: "No one passes after the bell. Except the cat."']],
+    maproom: ['p', 'w', 'w', 'd', 'g', true, ['The cartographer, dividers in hand: "Every place on it was walked, not copied. Orsay is off the edge: I ran out of vellum."', 'The cartographer: "The pennants are in the colours of each house. Click one: it will tell you what was done there."']],
     talks: ['r', 'u', 'r', 'd', 'g', false, ['The herald, his staff under his arm: "Each scroll on the table is a talk given. The chairs remember who sat in them."', 'The herald: "The clock is right twice a day. The other times it is astronomical."']],
     cellar: ['h', 'd', 'd', 'h', 'r', true, ['The cellarer, a candle in his hand: "One rack for each year. The young ones are still settling."', 'The cellarer: "Mind the steps. The drip has been there since the vault was built."']],
     news: ['d', 'v', 'v', 'h', 'g', false, ['The falconer, a raven on his fist: "They bring the news as it comes. Dated, always."', 'The falconer: "That one is Hugin. The other two never tell me their names."']],
@@ -2229,6 +2230,7 @@ nNnnnn..
     about: 'the scriptorium', experience: 'the observatory', work: 'the workshop',
     publications: 'the library', talks: 'the great hall', teaching: 'the schoolroom',
     news: 'the rookery', contact: 'the gatehouse', cellar: 'the cellar', // (the cellar: the tower's foot, phones only)
+    maproom: 'the map room', // (out of the menu: up from the cartographer's shop in the village)
   };
   // a section's room kind: the drawing keeps the rooms' old names (the observatory is 'research', the
   // workshop 'projects'); a project page is the workshop too
@@ -2400,6 +2402,7 @@ bbbbbbbb
       research: { side: 0.11, mat: 'stone' }, projects: { side: 0.15, mat: 'brick' },
       talks: { side: 0.09, mat: 'ashlar', pillars: true }, teaching: { side: 0.17, mat: 'lime', sideWindow: true },
       news: { side: 0.16, mat: 'boards' }, contact: { side: 0.2, mat: 'ashlar' }, cellar: { side: 0.18, mat: 'ashlar' },
+      maproom: { side: 0.14, mat: 'wainscot' },
     };
     const SHAPE = ROOM_NAMES[id] ? SHAPES[kind] : null;
     const box3d = Boolean(SHAPE);
@@ -2436,7 +2439,8 @@ bbbbbbbb
       for (let x = 0; x < W; x += 1) set(x, top, I.TIMBER_HI);
     }
     const STONE = [I.ROCK_HI, I.ROCK, I.ROCK_SH, I.ROCK_DK];
-    if (kind === 'about') {
+    if (kind === 'maproom') { plaster(0, [I.LIME_HI, I.LIME, I.LIME_SH]); panels(yf - 22, yf, 14, 40); }
+    else if (kind === 'about') {
       plaster(0, [I.PLASTER_HI, I.PLASTER, I.PLASTER_SH]); panels(yf - 26, yf, 18, 40);
       for (let x = 0; x < W; x += 1) { // a frieze painted under the beams: ochre bands, a red running scroll
         set(x, 7, I.GOLD_SH); set(x, 15, I.GOLD_SH); const u = x % 12;
@@ -3500,6 +3504,29 @@ qqqqqTqqq
         [[4, 0], [10, 1], [17, 0]].forEach(([dx, dy]) => rect(kx + dx, ky - 3 - dy, 5, 3, I.BEARD_HI)); // the letters showing
       }
       for (let k = 0; k < 7; k += 1) set(S(0.1) + Math.floor(rng() * S(0.8)), floorY(0.2 + rng() * 0.6), I.BEARD_SH); // feathers
+    } else if (kind === 'maproom') { // the map room: the realm engraved large on the back wall (as drawRealm), a pennant for each place
+      const mx0 = S(0.08); const mx1 = S(0.92); const my0 = 14; const my1 = yf - 34; const Wm = mx1 - mx0; const Hm = my1 - my0;
+      rect(mx0 - 3, my0 - 3, Wm + 6, Hm + 6, I.TIMBER); rect(mx0 - 3, my0 - 3, Wm + 6, 1, I.TIMBER_HI); rect(mx0 - 3, my1 + 2, Wm + 6, 1, I.TIMBER_SH); // its frame
+      const P = (lon, lat) => [mx0 + Math.round(((lon - 2.22) / 0.25) * Wm), my0 + Math.round(((48.905 - lat) / 0.09) * Hm)];
+      for (let y = my0; y < my1; y += 1) for (let x = mx0; x < mx1; x += 1) set(x, y, (x * 7 + y * 13) % 29 === 0 ? I.BEARD : I.BEARD_HI); // the vellum, its grain
+      const blob = (lon, lat, rx, ry) => { const [cx, cy] = P(lon, lat); for (let y = -ry; y <= ry; y += 1) for (let x = -rx; x <= rx; x += 1) if ((x / rx) ** 2 + (y / ry) ** 2 <= 1 && (x + y) % 3) set(cx + x, cy + y, I.FERN); };
+      blob(2.25, 48.862, Math.round(Wm * 0.04), Math.round(Hm * 0.1)); blob(2.435, 48.835, Math.round(Wm * 0.05), Math.round(Hm * 0.07)); // the woods of Boulogne and Vincennes
+      for (let a = 0; a < 6.283; a += 0.02) { const [x, y] = P(2.345 + Math.cos(a) * 0.105, 48.858 + Math.sin(a) * 0.038); if (Math.floor(a * 60) % 2) set(x, y, I.WALL_SH); } // the old walls' ring
+      const SEINE2 = [[2.47, 48.815], [2.41, 48.83], [2.37, 48.845], [2.35, 48.853], [2.33, 48.86], [2.30, 48.862], [2.29, 48.857], [2.27, 48.849], [2.255, 48.838], [2.243, 48.832], [2.236, 48.845], [2.248, 48.868], [2.258, 48.889], [2.23, 48.905]];
+      for (let k = 1; k < SEINE2.length; k += 1) { const [x0, y0] = P(...SEINE2[k - 1]); const [x1, y1] = P(...SEINE2[k]); const m = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)); for (let j = 0; j <= m; j += 1) { const x = Math.round(x0 + ((x1 - x0) * j) / m); const y = Math.round(y0 + ((y1 - y0) * j) / m); set(x, y, I.WATER); set(x, y + 1, I.WATER); } }
+      { const [ix, iy] = P(2.347, 48.8545); rect(ix - 2, iy, 5, 1, I.PATH); set(ix, iy - 1, I.ROOF); } // the Île de la Cité
+      for (let k = 0; k < 9; k += 1) { const a = (k / 8) * Math.PI * 2; set(mx1 - 7 + Math.round(Math.cos(a) * 4), my0 + 6 + Math.round(Math.sin(a) * 4), I.GOLD_SH); } set(mx1 - 7, my0 + 1, I.CLOTH); set(mx1 - 7, my0 + 6, I.GOLD); // a compass rose
+      things.forEach((t, k) => { // a pennant in the place's field colour (those of Orsay at the map's foot, off its edge)
+        const at = REALM[t.arms]; if (!at) return;
+        const [px0, py0] = P(...at); const x = clamp(px0, mx0 + 3, mx1 - 7); const y = clamp(py0 + (k % 2) * 3, my0 + 8, my1 - 2);
+        rect(x, y - 8, 1, 9, I.OUTLINE); rect(x + 1, y - 8, 4, 3, fieldOf(t.arms)); rect(x + 1, y - 5, 2, 1, fieldOf(t.arms)); set(x + 1, y - 8, I.GOLD_HI); rect(x - 1, y + 1, 3, 1, I.OUTLINE);
+        slots[k] = box(x - 2, y - 9, 8, 12);
+      });
+      const tb = table3d(S(0.5), Sw(0.34)); // the chart table: dividers, a rolled map, a candle
+      rect(tb.l + 4, tb.back, 10, 2, I.BEARD_HI); set(tb.l + 4, tb.back, I.BEARD); // a rolled map
+      for (let k = 0; k < 5; k += 1) { set(tb.r - 12 + k, tb.back + 1 + Math.floor(k / 2), I.ARM_HI); set(tb.r - 12 + k, tb.back + 3 - Math.floor(k / 2), I.ARM_HI); } // the dividers
+      candle(Math.round((tb.l + tb.r) / 2), tb.back + 1, false);
+      chainLamp(S(0.2), 8); chainLamp(S(0.8), 8);
     } else if (kind === 'cellar') { // the cellar: a rack for each year of study, casks, the steps on down
       { // a barrel vault: above the back wall's arch, its curved courses going dark into the corners
         const yA = (x) => Math.round(H * 0.34 * (1 - Math.sqrt(Math.max(0, 1 - ((x - W / 2) / (W / 2)) ** 2))));
@@ -3932,7 +3959,7 @@ qqqqqTqqq
   }
   let fireFed = 0; // when a log last went on the workshop's fire (it burns down in three minutes)
   const heatOf = () => clamp(1 - (now() - fireFed - 90) / 90, 0.15, 1);
-  let found = () => {}; let itemsOf = () => []; let spotsTo = () => {}; let descendTo = () => {}; let cellarTo = () => descendTo(); let doorsOf = () => []; let hl = -1; // the room's things, their hotspots, the one pointed at
+  let found = () => {}; let itemsOf = () => []; let spotsTo = () => {}; let descendTo = () => {}; let cellarTo = () => descendTo(); let mapsTo = () => {}; let doorsOf = () => []; let hl = -1; // the room's things, their hotspots, the one pointed at
   let scene = null; let look = null; let skyFn; let reduce = false; let px = 3;
   let running = false; let visible = true; let raf = 0; let last = 0; let tick = 0;
   let bodies = null; let lastEclipse = null; let label0 = ''; let castUntil = 0;
@@ -4494,7 +4521,7 @@ qqqqqTqqq
     if (!running && isOn()) render(now());
   }
   // the village's shop signs, after those Atget photographed (_tools/fetch_atget.py, same order): a ground, a 5 x 4 emblem
-  const SIGN_INK = { G: 'GOLD', W: 'FL_WHITE', I: 'OUTLINE', S: 'STONE_HI', Y: 'FL_YEL', B: 'T_AZURE' };
+  const SIGN_INK = { G: 'GOLD', W: 'FL_WHITE', I: 'OUTLINE', S: 'STONE_HI', Y: 'FL_YEL', B: 'T_AZURE', R: 'CLOTH' };
   const SHOP_SIGNS = [
     ['CLOTH', ['.GG.G', 'GGGG.', '.GGG.', 'G..G.']], // Au Griffon
     ['T_AZURE', ['W..W.', 'WW.WW', '.W..W', '.....']], // Aux deux Pigeons
@@ -4591,13 +4618,15 @@ qqqqqTqqq
     const at = real.atget; zoom.signs = []; // the shop signs Atget photographed in old Paris, one on an iron bracket by each house's door
     const front = scene.hamlet.doors.filter(([, Y]) => Y >= Math.max(...scene.hamlet.doors.map((q) => q[1])) - 3); // (the row along the bank: the back row's would hang over its roofs)
     const tv0 = scene.hamlet.places.tavern; const eaves = scene.hamlet.eaves; let ks = 0;
+    const shops = front.filter(([X]) => !(tv0 && X >= tv0.x && X < tv0.x + tv0.w)); const carto = shops[shops.length - 1]; // (the last house on the bank: the cartographer's, the map room over it)
     if (at) front.forEach(([X, Y]) => { // a small painted board with the sign's emblem, out from the wall's corner on an iron arm, as signs hang across a street
-      if (ks >= SHOP_SIGNS.length || ks >= at.captions.length || (tv0 && X >= tv0.x && X < tv0.x + tv0.w)) return; // (the tavern has its own sign)
+      const isCarto = carto && X === carto[0] && Y === carto[1];
+      if (!isCarto && (ks >= SHOP_SIGNS.length || ks >= at.captions.length || (tv0 && X >= tv0.x && X < tv0.x + tv0.w))) return; // (the tavern has its own sign)
       const e = eaves.filter((q) => X > q[0] && X < q[1] && q[2] < Y && Y - q[2] < 16).sort((p, q) => q[2] - p[2])[0]; if (!e) return;
-      const k = ks; ks += 1;
+      const k = isCarto ? 'maps' : ks; if (!isCarto) ks += 1;
       const free = (x0, x1) => !eaves.some((q) => q !== e && q[2] > e[2] - 6 && q[0] < x1 && q[1] > x0); // (no house there, at that height)
       const left = free(e[0] - 3, e[0] + 1) || !free(e[1], e[1] + 4); // the door's side (left) unless a neighbour stands against it
-      const [ground, rows] = SHOP_SIGNS[k]; const w = 7; const h = 6; const arm = w + 2;
+      const [ground, rows] = isCarto ? ['CREAM', ['..R..', '.RGR.', 'RGGGR', '.RGR.']] : SHOP_SIGNS[k]; const w = 7; const h = 6; const arm = w + 2; // (the cartographer's: a compass rose)
       const wx = left ? Math.round(ox(e[0] + 1)) : Math.round(ox(e[1])); const ay = Math.round(oy(e[2] + 1)) + 1; // the wall's corner, under the eaves
       const ax0 = left ? wx - arm : wx; const sx = left ? wx - arm : wx + 2; const sy = ay + 2;
       rect(ax0, ay, arm, 1, P('ARM_SH')); put(left ? wx - 1 : wx, ay + 1, P('ARM_SH')); put(left ? wx - 2 : wx + 1, ay + 2, P('ARM_SH')); // the arm and its strut
@@ -4634,6 +4663,7 @@ qqqqqTqqq
     const pick = (a) => a[Math.floor(Math.random() * a.length)];
     const who = (zoom.actors || []).find((a) => Math.abs(x - a.sx) <= 3 && y < (a.y - zoom.vy + 1) * zoom.Z && y > (a.y - zoom.vy) * zoom.Z - 14);
     const sg = (zoom.signs || []).find((q) => x >= q.x && x < q.x + q.w && y >= q.y && y < q.y + q.h);
+    if (sg && sg.k === 'maps') { say("The cartographer's sign, a compass rose. Up the stairs over the shop: the map room."); mapsTo(); return; }
     if (sg && real.atget) { const c = real.atget.captions[sg.k]; say(`A shop sign: "${c.name}", after one at ${c.text.replace(/^(.*), photographed by (.*) \((.*)\)\.$/, '$1 that $2 photographed ($3).')}`); return; }
     if (who) {
       if (who.role === 'drunk') { // his walk, and what the walks so far add up to
@@ -7492,7 +7522,7 @@ qqqqqTqqq
       plate = o.plate; skyFn = o.sky; reduce = o.reduceMotion; clockFn = o.clock || clockFn;
       heraldry = o.heraldry || heraldry; say = o.say || say; rumour = o.rumour || rumour;
       itemsOf = o.items || itemsOf; found = o.found || found; curiosOf = o.curios || curiosOf; nowOf = o.now || nowOf; visitsOf = o.visits || visitsOf;
-      newsOf = o.news || newsOf; dreamsOf = o.dreams || dreamsOf; tradeWith = o.trade || tradeWith; stalenessOf = o.staleness || stalenessOf; billiardShow = o.billiard || billiardShow; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo; cellarTo = o.cellar || cellarTo; doorsOf = o.doors || doorsOf;
+      newsOf = o.news || newsOf; dreamsOf = o.dreams || dreamsOf; tradeWith = o.trade || tradeWith; stalenessOf = o.staleness || stalenessOf; billiardShow = o.billiard || billiardShow; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo; cellarTo = o.cellar || cellarTo; mapsTo = o.maps || mapsTo; doorsOf = o.doors || doorsOf;
       pendingRoom = root.dataset.room || null;
       label0 = plate.getAttribute('aria-label');
       realIx(); // (the real things' index: credits now, the things when wanted)

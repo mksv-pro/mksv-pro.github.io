@@ -848,7 +848,7 @@ dialog.dungeon canvas {
 
 /* the castle's rooms: the text is in the things */
 [data-theme="hours"]:is([data-room="about"], [data-room="experience"], [data-room="work"], [data-room="publications"],
-  [data-room="talks"], [data-room="teaching"], [data-room="news"], [data-room="contact"], [data-room="cellar"]) main {
+  [data-room="talks"], [data-room="teaching"], [data-room="news"], [data-room="contact"], [data-room="cellar"], [data-room="maproom"]) main {
   position: fixed; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); padding: 0; border: 0;
 }
 .spots, .card[hidden] { display: none; }
