@@ -7248,6 +7248,7 @@ qqqqqTqqq
   }
   /* The wizard as a guide: twenty seconds without a move in a room, he stands in a doorway, points his
      staff and a trail of sparks goes from its orb to a thing not yet looked at, which glints; once a visit of the room. */
+  let scrubTo = () => {}; let scrubbed = false; // (the hour dragged by the sun: script.js)
   let lastAct = 0; let freshOf = () => []; let guide = null; let guided = false; let roomT0 = 0;
   function drawGuide(t, put, blend) {
     const it = interior; if (reduce || view.state !== 'room' || !it.things.length) return;
@@ -7736,7 +7737,7 @@ qqqqqTqqq
       if (canvas) return;
       plate = o.plate; skyFn = o.sky; reduce = o.reduceMotion; clockFn = o.clock || clockFn;
       heraldry = o.heraldry || heraldry; say = o.say || say; rumour = o.rumour || rumour;
-      freshOf = o.fresh || freshOf; ['pointermove', 'keydown', 'pointerdown', 'wheel'].forEach((ev) => addEventListener(ev, () => { lastAct = now(); }, { passive: true }));
+      freshOf = o.fresh || freshOf; scrubTo = o.scrub || scrubTo; ['pointermove', 'keydown', 'pointerdown', 'wheel'].forEach((ev) => addEventListener(ev, () => { lastAct = now(); }, { passive: true }));
       itemsOf = o.items || itemsOf; found = o.found || found; curiosOf = o.curios || curiosOf; nowOf = o.now || nowOf; visitsOf = o.visits || visitsOf;
       newsOf = o.news || newsOf; dreamsOf = o.dreams || dreamsOf; tradeWith = o.trade || tradeWith; stalenessOf = o.staleness || stalenessOf; billiardShow = o.billiard || billiardShow; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo; cellarTo = o.cellar || cellarTo; mapsTo = o.maps || mapsTo; goTo = o.go || goTo; doorsOf = o.doors || doorsOf;
       pendingRoom = root.dataset.room || null;
@@ -7804,7 +7805,23 @@ qqqqqTqqq
       document.addEventListener('focusin', (e) => { const a = pointed(e); hoverId = roomIn(a); if (a) castUntil = now() + 1.2; });
       document.addEventListener('click', (e) => { if (pointed(e)) { castUntil = now() + 0.6; sparkle(24); } });
       // close up, only the market answers (out: the button, or Esc)
-      canvas.addEventListener('click', (e) => { if (view.state === 'room' && interior) { roomClick(...scenePoint(e)); return; } if (tower) { if (tower.on) towerClick(...scenePoint(e)); return; } if (zoom) { villageClick(...scenePoint(e)); return; } const pt = scenePoint(e); const h = isOn() && hitAt(...pt); if (h) talk(h); else if (isOn()) skim(...pt); });
+      { // the sun or the moon dragged along the sky: another hour of the same day (script.js shifts the clock), back to now when let go
+        let scrub = null;
+        canvas.addEventListener('pointerdown', (e) => {
+          if (!bodies || view.state !== 'scene' || zoom || tower || !isOn()) return;
+          const [x, y] = scenePoint(e); const near = (b) => b && b[2] > -0.03 && Math.hypot(x - b[0], y - b[1]) < 9; // (above the horizon)
+          if (!near(bodies.sun) && !near(bodies.moon)) return;
+          scrub = { x: e.clientX, moved: false }; try { canvas.setPointerCapture(e.pointerId); } catch { /* (a pointer the browser no longer knows) */ }
+          canvas.style.cursor = 'grabbing'; e.preventDefault();
+        });
+        canvas.addEventListener('pointermove', (e) => {
+          if (!scrub) return; const dx = (e.clientX - scrub.x) / (scene.W * px); // (the scene's width: twelve hours)
+          scrub.moved ||= Math.abs(e.clientX - scrub.x) > 3; scrubTo(dx * 12 * 3600e3);
+        });
+        const let0 = () => { if (!scrub) return; scrubbed = scrub.moved; scrub = null; canvas.style.cursor = ''; scrubTo(null); };
+        canvas.addEventListener('pointerup', let0); canvas.addEventListener('pointercancel', let0);
+      }
+      canvas.addEventListener('click', (e) => { if (scrubbed) { scrubbed = false; return; } if (view.state === 'room' && interior) { roomClick(...scenePoint(e)); return; } if (tower) { if (tower.on) towerClick(...scenePoint(e)); return; } if (zoom) { villageClick(...scenePoint(e)); return; } const pt = scenePoint(e); const h = isOn() && hitAt(...pt); if (h) talk(h); else if (isOn()) skim(...pt); });
       document.addEventListener('keydown', (e) => { // [ ] through the curiosities in sight, Enter to look
         if (!isOn() || view.state !== 'scene' || zoom || tower || e.ctrlKey || e.metaKey || e.altKey) return;
         if (e.target instanceof Element && e.target.closest('input, textarea, dialog')) return;
@@ -7947,6 +7964,8 @@ qqqqqTqqq
       ladderF = clamp(ladderF + k * 0.08); return ladderSpot(d);
     },
     highlight(i) { hl = i; if (interior && lifted !== i) { lifted = i; reshape(); } if (!running && interior && isOn()) render(now()); },
+    /** Where the sun is, in viewport px (null below the horizon or in a room). */
+    sunAt() { if (!bodies || view.state !== 'scene' || bodies.sun[2] < -0.03) return null; const r = plate.getBoundingClientRect(); return [r.left + bodies.sun[0] * px, r.top + bodies.sun[1] * px]; },
     /** Is the window of the room open (sound.js lets the outside in)? */
     windowOpen() { return Boolean(interior && view.state === 'room' && opens.get(interior.id)); },
     /** The card of thing i is open (-1: closed): the thing leaves its place. */

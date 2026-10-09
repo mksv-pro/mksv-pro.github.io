@@ -62,6 +62,7 @@ const T = {
   realmTitle: 'The realm',
   realmLabel: 'A pixel map of Paris: the Seine, and a pennant where each of the schools stands.',
   leave: '[leave the room \u00b7 Esc]',
+  skyAt: (hm) => `The sky over Paris at ${hm}: let go, and it goes back to now.`,
   narrowTheme: 'The castle needs a wider window: hours opens on screens from 1200 px.',
   notebook: 'The notebook on the desk',
   vintage: 'Vintage', stairDown: 'The steps going down',
@@ -293,6 +294,7 @@ function applyTheme(theme, persist) {
       go: (id) => { location.hash = `#${id}`; }, // a part of the castle clicked: into its room
       doors: roomDoors, // the doors in the rooms' side walls
       clock: skyNow, // the instant shown: dawn mist, the night's meteor shower
+      scrub, // the sun or the moon dragged: another hour
       found: findCurio, // a curiosity of the landscape, clicked
       curios: () => ({ found: curios(), all: CURIOS }), // for the gatehouse's cabinet
       now: nowHtml, // the tavern's slate: what is going on, from the page itself
@@ -1821,7 +1823,20 @@ if (Object.hasOwn(SKY_ALT, skyParam || '')) session('sky', skyParam);
 /** The instant the sky shows: now, or the hour of today whose sun altitude is SKY_ALT[name],
  *  morning side for dawn, evening side for dusk and night (found by bisection). */
 const AT = new Date(new URLSearchParams(location.search).get('at') || ''); // ?at=2026-08-12T18:10Z: an instant to preview (eclipses)
+let skyShift = 0; // (ms: the sun dragged across the sky, hours.js scrub)
 function skyNow() {
+  const at0 = skyBase(); return skyShift ? new Date(at0.getTime() + skyShift) : at0;
+}
+/** The sun or moon dragged by `ms` (null: let go, the sky goes back to now in a second and a half). */
+let scrubRaf = 0;
+function scrub(ms) {
+  cancelAnimationFrame(scrubRaf);
+  if (ms !== null) { skyShift = ms; scrubRaf = requestAnimationFrame(() => { updateSky(); const d = skyNow(); say(T.skyAt(`${d.getHours()}:${pad(d.getMinutes())}`)); }); return; }
+  const from = skyShift; const t0 = performance.now();
+  const back = (now) => { const e = Math.min(1, (now - t0) / 1500); skyShift = from * (1 - e) ** 2; updateSky(); if (e < 1) scrubRaf = requestAnimationFrame(back); else { skyShift = 0; updateSky(); } };
+  scrubRaf = requestAnimationFrame(back);
+}
+function skyBase() {
   if (!Number.isNaN(AT.getTime())) return AT;
   const name = session('sky');
   const now = new Date();
