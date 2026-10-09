@@ -67,9 +67,9 @@ CASES = {
                       "if (window !== top) await new Promise(() => {}); enterEngine(); await wait(5000); closeEngine(); await wait(250);"
                       " openEngine(document.querySelector('.spot[data-kind=engine]')); await wait(2500);",
                       "document.querySelectorAll('.engine').length === 1 && !!document.querySelector('.engine-win iframe') && /scale/.test(document.querySelector('.plate-img').style.transform)"),
-    "room-slide": ("?theme=hours&sky=noon&weather=clear#about", (1600, 900),  # (next door: through the wall, not a dissolve)
-                   "await wait(3000); location.hash = '#work'; await wait(150); window.mid = document.documentElement.classList.contains('travelling'); await wait(1500);",
-                   "window.mid && document.documentElement.dataset.room === 'work' && document.documentElement.classList.contains('room-ready')"),
+    "room-fade": ("?theme=hours&sky=noon&weather=clear#about", (1600, 900),  # (a room to another: a short dithered fade, in place)
+                  "await wait(3000); location.hash = '#teaching'; await wait(800);",
+                  "document.documentElement.dataset.room === 'teaching' && document.documentElement.classList.contains('room-ready') && !document.documentElement.classList.contains('travelling')"),
     "card-pin": ("?theme=hours&sky=noon&weather=clear#experience", (1600, 900),  # (pinned up, found on the wall, taken down)
                  "await wait(3000); localStorage.removeItem('pins'); document.querySelector('.spot[data-kind=scroll]').click(); await wait(600);"
                  " document.querySelector('.card-pin').click(); await wait(800); const b = [...document.querySelectorAll('.spot')].find((x) => /^Pinned/.test(x.dataset.label));"

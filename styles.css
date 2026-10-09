@@ -1132,7 +1132,7 @@ html.climb[data-theme] .engine-win { width: 100vw; height: 100dvh; max-width: no
 .domain button { font: inherit; color: var(--accent); background: none; border: 0; cursor: pointer; padding: 0 .2rem; min-height: 24px; }
 .domain button:hover, .domain button:focus-visible { color: var(--hi); }
 
-/* a figure alive in a card (script.js waveFig) */
+/* a figure alive in a card (script.js collisionFig) */
 .pub-fig { margin: .8rem 0; } .pub-fig canvas { display: block; width: 100%; max-width: 26rem; height: auto; color: var(--ink); image-rendering: auto; }
 .pub-fig figcaption { font-size: .8rem; opacity: .8; }
 

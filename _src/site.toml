@@ -131,8 +131,7 @@ tapestry = [
 
 # ---- the world: a grid of rooms (column c, row r) and the doors between them ----------
 # Exits are derived from it: a door to the room above is "north", and so on. Map label:
-# `label`; exit text: `exit`, else `label`. `page` rooms are project pages, the rest index
-# sections.
+# `label`; exit text: `exit`, else `label`. Each room is a section of the index.
 
 [world]
 links = [
@@ -249,8 +248,10 @@ kind = "research"
 from = "2023-06"
 to = "2023-08"
 role = "Research assistant · with Julia Cagé"
-text = """Media ownership and content bias: built a large dataset of French television
-broadcasts for the study."""
+text = """For <i>Hosting Media Bias: Evidence from the Universe of French Broadcasts, 2002-2020</i>
+(Cagé, Hengel, Hervé &amp; Urvoy), where I am thanked as a research assistant: built part of the
+dataset of French radio and television shows, hosts and guests, used to measure who slants the news."""
+actions = [{ label = "paper", href = "https://hal.science/hal-03878119" }]
 
 # ---- work (cards in Work: an illumination `img`, a short text, links out): each piece of work once,
 # its outputs as actions; `at`: the experience it was done in (its arms id), if any ---------

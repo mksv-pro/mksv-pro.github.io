@@ -765,8 +765,8 @@ function openWindow(hash, { userAction, animate = userAction }) {
     tabLinks.forEach((a) => a.removeAttribute('aria-current'));
     root.dataset.room = 'cellar';
     if (userAction) { say(cellar.dataset.look); cue('door'); }
-    const enter = () => { if (window.Hours && root.dataset.room === 'cellar') window.Hours.room('cellar', { animate }); };
-    if (animate && !reduceMotion) stairDown(enter); else enter();
+    const enter = (anim) => { if (window.Hours && root.dataset.room === 'cellar') window.Hours.room('cellar', { animate: anim }); };
+    if (animate && !reduceMotion) stairDown(() => enter(false)); else enter(animate); // (down the stair: the cellar is there as it ends, never the landscape again)
     return;
   }
   if (climbing() && (!target || floors().includes(win))) { // the tower: every floor on the page; the one asked for is scrolled to (climbFloor does the rest)
@@ -778,7 +778,6 @@ function openWindow(hash, { userAction, animate = userAction }) {
   }
   if (!windows.includes(win)) return; // e.g. the skip link's #main: leave the windows alone
 
-  const was = root.dataset.room; // (the room left: next door, the way is through the door between them)
   windows.forEach((w) => w.classList.toggle('is-off', w !== win));
   tabLinks.forEach((a) => {
     if (a.getAttribute('href') === `#${win.id}`) a.setAttribute('aria-current', 'page');
@@ -795,8 +794,7 @@ function openWindow(hash, { userAction, animate = userAction }) {
     say([win.dataset.look, empty && empty.textContent.trim(), hint].filter(Boolean).join(' '));
   }
   if (target && userAction && root.getAttribute('data-theme') === 'hours') cue('door'); // into a room
-  const way = target && was && was !== win.id && WORLD[was] ? doorWay(was, win.id) : null; // (from door to door: next door, or across the rooms between)
-  if (window.Hours) window.Hours.room(target ? win.id : null, { animate, dir: way ? (way.length === 1 ? way[0].dir : way) : 0 });
+  if (window.Hours) window.Hours.room(target ? win.id : null, { animate });
   else root.classList.toggle('room-ready', Boolean(target)); // no castle (yet): show the text at once
   if (!userAction) return;
   win.classList.add('opening');
@@ -1000,7 +998,7 @@ function roomItemsOf(id) {
         ...of('.pub', 'book', (el) => { // its title becomes the book's heading
           const c = el.cloneNode(true); const t = c.querySelector('.pub-title');
           if (t) t.outerHTML = `<h3>${t.innerHTML}</h3>`;
-          const fig = /nuclear-emulators/.test(el.innerHTML) ? '<figure class="pub-fig"><canvas width="260" height="80"></canvas><figcaption>A wave packet meets a nuclear barrier: part goes through, part comes back (computed as you watch).</figcaption></figure>' : '';
+          const fig = /nuclear-emulators/.test(el.innerHTML) ? '<figure class="pub-fig"><canvas width="260" height="80"></canvas><figcaption>Two nuclei collide: Coulomb repulsion, the nuclear pull once they touch, friction. Head on they fuse and spin as one; grazing, they swerve or graze and part (computed as you watch).</figcaption></figure>' : '';
           return { label: text(el.querySelector('.pub-title')), html: c.innerHTML + fig };
         }),
         ...(lib.shelves || []).map(([sid, name], k) => {
@@ -1112,56 +1110,52 @@ function nowHtml() {
     + (projects.length ? `<p><b>At the workbench:</b> ${projects.join('; ')}.</p>` : '') + fareHtml(false);
 }
 
-/* The report's figure, alive: a wave packet meets a nuclear barrier (Woods-Saxon), part through,
-   part back; |psi|^2 by Crank-Nicolson on a 1D grid (hbar = m = 1). The dynamics the emulators
-   in the report learn to reproduce, not one of its results. */
-function waveFig(canvas) {
-  const N = 220; const dx = 0.25; const dt = 0.05; const L = N * dx;
-  const V = Array.from({ length: N }, (_, j) => { const x = j * dx - L * 0.55; return 1.3 / (1 + Math.exp((Math.abs(x) - 2.2) / 0.35)); });
-  let re; let im;
-  const reset = () => {
-    re = new Float64Array(N); im = new Float64Array(N);
-    for (let j = 0; j < N; j += 1) { const x = j * dx - L * 0.25; const g = Math.exp(-(x * x) / 4); re[j] = g * Math.cos(1.5 * x); im[j] = g * Math.sin(1.5 * x); }
+/* The report's figure, alive: a collision between two nuclei (an illustration of the physics the
+   emulators deal with, not one of the report's results). */
+function collisionFig(canvas) {
+  /* Two nuclei, 12 and 16 nucleons, thrown at each other in their centre-of-mass frame at a random
+     impact parameter: the Coulomb push, a Woods-Saxon pull and friction once their surfaces touch.
+     Head on, they are caught in the pocket and spin as one (fusion); grazing, they touch, turn a
+     little and fly apart (deep-inelastic); far off, they only swerve (Rutherford). Units: px, px/s. */
+  const pack = (n, turn) => { // nucleons on a close-packed (hexagonal) grid, the n nearest the middle; protons filled, neutrons hollow
+    const pts = [];
+    for (let q = -4; q <= 4; q += 1) for (let k = -4; k <= 4; k += 1) pts.push({ x: 4.2 * (q + k / 2), y: 4.2 * k * 0.866 });
+    pts.sort((p1, p2) => Math.hypot(p1.x, p1.y) - Math.hypot(p2.x, p2.y));
+    const nuc = pts.slice(0, n).map((p, k) => ({ x: p.x * Math.cos(turn) - p.y * Math.sin(turn), y: p.x * Math.sin(turn) + p.y * Math.cos(turn), p: (k * 7) % 3 !== 1 && k % 2 === 0 }));
+    return { R: Math.max(...nuc.map((p) => Math.hypot(p.x, p.y))) + 2, n, nuc };
   };
+  const A = pack(12, 0.3); const B = pack(16, 1.1); const Rc = A.R + B.R; const m1 = A.n; const m2 = B.n; const mu = (m1 * m2) / (m1 + m2);
+  const K = 9000; const V0 = 2600; const a = 2.2; const g0 = 9; // (Coulomb, nuclear depth, diffuseness, friction)
+  const ws = (r) => 1 / (1 + Math.exp((r - Rc) / a));
+  let r; let v; let th; let t0; // relative position and velocity, the pair's spin angle, the run's start
+  const reset = () => { const b = Math.random() * Rc * 1.4; r = [-150, b]; v = [95 + Math.random() * 25, 0]; th = 0; t0 = 0; };
   reset();
-  const step = () => { // (1 + iH dt/2) psi' = (1 - iH dt/2) psi, Thomas algorithm on the complex tridiagonal system
-    const a = dt / (4 * dx * dx); const br = new Float64Array(N); const bi = new Float64Array(N);
-    for (let j = 0; j < N; j += 1) {
-      const l = j ? j - 1 : j; const r = j < N - 1 ? j + 1 : j; const d = 2 * a + (dt / 2) * V[j];
-      // rhs = psi - i (dt/2) H psi, with (dt/2) H psi = -a (psi_r + psi_l) + d psi
-      const hr = -a * (re[r] + re[l]) + d * re[j]; const hi = -a * (im[r] + im[l]) + d * im[j];
-      br[j] = re[j] + hi; bi[j] = im[j] - hr;
-    }
-    const cr = new Float64Array(N); const ci = new Float64Array(N); const dr = new Float64Array(N); const di = new Float64Array(N);
-    // matrix: diag 1 + i d_j, off-diag -i a
-    for (let j = 0; j < N; j += 1) {
-      let mRe = 1; let mIm = 2 * a + (dt / 2) * V[j]; let rRe = br[j]; let rIm = bi[j]; // the diagonal, 1 + i d_j; the rhs
-      if (j) { // m -= (-i a) * c[j-1]; r -= (-i a) * d[j-1]
-        mRe -= a * ci[j - 1]; mIm += a * cr[j - 1]; rRe -= a * di[j - 1]; rIm += a * dr[j - 1];
-      }
-      const den = mRe * mRe + mIm * mIm;
-      cr[j] = (-a * mIm) / den; ci[j] = (-a * mRe) / den; // c = (-i a) / m
-      dr[j] = (rRe * mRe + rIm * mIm) / den; di[j] = (rIm * mRe - rRe * mIm) / den;
-    }
-    for (let j = N - 1; j >= 0; j -= 1) {
-      if (j < N - 1) { dr[j] -= cr[j] * re[j + 1] - ci[j] * im[j + 1]; di[j] -= cr[j] * im[j + 1] + ci[j] * re[j + 1]; }
-      re[j] = dr[j]; im[j] = di[j];
-    }
+  const step = (dt) => {
+    const d = Math.hypot(r[0], r[1]); const u = [r[0] / d, r[1] / d];
+    const fr = K / (d * d) - (V0 / a) * ws(d) * (1 - ws(d)); // (minus the potential's slope: Coulomb out, the nuclear pull in)
+    const g = g0 * ws(d) * mu; const vr = v[0] * u[0] + v[1] * u[1]; const vt = [v[0] - vr * u[0], v[1] - vr * u[1]]; // (friction while they overlap: hard along the line between them, light across it, so a caught pair keeps turning)
+    const f = [u[0] * (fr - g * vr) - 0.08 * g * vt[0], u[1] * (fr - g * vr) - 0.08 * g * vt[1]];
+    v = [v[0] + (f[0] / mu) * dt, v[1] + (f[1] / mu) * dt]; r = [r[0] + v[0] * dt, r[1] + v[1] * dt];
+    th = Math.atan2(r[1], r[0]);
   };
-  let tick = 0;
-  const draw = () => {
+  let last = 0;
+  const draw = (now) => {
     if (!canvas.isConnected) return;
-    for (let k = 0; k < 4; k += 1) step();
-    if ((tick += 1) > 260) { reset(); tick = 0; }
+    const dt = Math.min(0.05, last ? (now - last) / 1000 : 0.016); last = now; t0 += dt;
+    for (let k = 0; k < 8; k += 1) step(dt / 8);
+    if (Math.hypot(r[0], r[1]) > 170 || t0 > 7) reset();
     const g = canvas.getContext('2d'); const w = canvas.width; const h = canvas.height; const ink = getComputedStyle(canvas).color;
-    g.clearRect(0, 0, w, h); g.strokeStyle = ink; g.globalAlpha = 0.35; g.beginPath();
-    V.forEach((v, j) => { const x = (j / N) * w; const y = h - 4 - v * h * 0.5; if (j) g.lineTo(x, y); else g.moveTo(x, y); }); g.stroke();
-    g.globalAlpha = 1; g.beginPath();
-    for (let j = 0; j < N; j += 1) { const x = (j / N) * w; const y = h - 4 - (re[j] ** 2 + im[j] ** 2) * h * 0.8; if (j) g.lineTo(x, y); else g.moveTo(x, y); }
-    g.stroke();
+    g.clearRect(0, 0, w, h); g.strokeStyle = ink; g.fillStyle = ink; g.lineWidth = 1;
+    const cx = w / 2; const cy = h / 2;
+    const body = (nu, x, y, ang) => nu.nuc.forEach((p) => {
+      const px = x + p.x * Math.cos(ang) - p.y * Math.sin(ang); const py = y + p.x * Math.sin(ang) + p.y * Math.cos(ang);
+      g.beginPath(); g.arc(px, py, 1.8, 0, 6.283); if (p.p) g.fill(); else g.stroke();
+    });
+    const M = m1 + m2; const spin = ws(Math.hypot(r[0], r[1])) > 0.5 ? th : 0; // (stuck together: they turn with the line between them)
+    body(A, cx - (r[0] * m2) / M, cy - (r[1] * m2) / M, spin); body(B, cx + (r[0] * m1) / M, cy + (r[1] * m1) / M, spin);
     if (!reduceMotion) requestAnimationFrame(draw);
   };
-  draw();
+  requestAnimationFrame(draw);
 }
 
 /** hours.js hands over where the objects are (viewport px) and what they are. */
@@ -1325,18 +1319,6 @@ document.addEventListener('keydown', (e) => {
   if (FRAMED && !document.querySelector('dialog[open]') && $('cmdline').hidden) parent.postMessage({ engine: 'close' }, location.origin);
 }, true);
 
-/** The shortest way from room a to room b through the doors: [{ id, dir }], each room entered and the
- *  side wall its door is in as seen from the room left ('l' or 'r'); null if there is none. */
-function doorWay(a, b) {
-  const prev = { [a]: null }; const q = [a];
-  while (q.length) {
-    const r = q.shift(); if (r === b) break;
-    roomDoors(r).forEach((d) => { if (!(d.go in prev)) { prev[d.go] = [r, d.dir === 'w' || d.dir === 'n' ? 'l' : 'r']; q.push(d.go); } });
-  }
-  if (!(b in prev)) return null;
-  const way = []; for (let r = b; prev[r]; r = prev[r][0]) way.unshift({ id: r, dir: prev[r][1] });
-  return way;
-}
 /** The doors out of room `id`, from the section's exits: { dir: n|e|s|w, label, go }. */
 function roomDoors(id) {
   const sec = document.getElementById(id);
@@ -1505,7 +1487,7 @@ function openCard(i, from) {
   const deco = { letter: ['wax'], charter: ['hang-seal'], hanging: ['hang-seal'], scroll: ['roll at-top', 'roll at-bottom'] }[it.kind] || [];
   deco.forEach((c) => card.insertAdjacentHTML('beforeend', `<span class="deco ${c}" aria-hidden="true"></span>`));
   cue(it.kind === 'letter' ? 'seal' : it.kind === 'letterbox' ? 'drop' : 'card'); // (the letterbox: a letter falling inside the door)
-  const runFigs = () => card.querySelectorAll('.pub-fig canvas').forEach((cv) => { if (!cv.running) { cv.running = true; waveFig(cv); } }); // (a property: the pages are clones)
+  const runFigs = () => card.querySelectorAll('.pub-fig canvas').forEach((cv) => { if (!cv.running) { cv.running = true; collisionFig(cv); } }); // (a property: the pages are clones)
   runFigs(); setTimeout(runFigs, 400); setTimeout(runFigs, 1500); // (and again once a book has been paginated)
   card.querySelectorAll('.real-fig').forEach(paintFig); // the real things' pictures (paintings, films...)
   card.querySelectorAll('canvas.astrolabe').forEach((cv) => { // the astrolabe, kept set while its card is open
