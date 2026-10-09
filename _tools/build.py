@@ -21,7 +21,7 @@ import json
 import re
 import textwrap
 import tomllib
-from html import escape
+from html import escape, unescape
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -99,9 +99,12 @@ def entries(key):
         role = e.get("role") or e.get("venue", "")
         if e.get("kind"):
             role = f'<span class="kind">{e["kind"]}</span> {role}'
+        role = " &middot; ".join(x for x in (role, e.get("level"), e.get("hours")) if x)  # (a course's level and volume)
         anchor = f' id="at-{e["arms"]}"' if key == "experience" and e.get("arms") else ""
         body = f'\n              <p>\n{indent(e["text"], 16)}\n              </p>' if e.get("text") else ""
         acts = f'\n{actions(e["actions"], 14)}' if e.get("actions") else ""
+        if e.get("thumb"):  # (a talk's first slide)
+            body += f'\n              <img class="thumb" src="{{{{root}}}}{e["thumb"]}" alt="The first slide" loading="lazy" width="160" height="90">'
         arms = f' data-arms="{e["arms"]}"' if e.get("arms") else ""
         out.append(f"""            <li class="entry"{anchor}{arms}>
               <div class="entry-head">
@@ -111,6 +114,14 @@ def entries(key):
               <p class="role-line">{role}</p>{body}{acts}
             </li>""")
     return "\n\n".join(out)
+
+
+def figure(f):
+    """A work's key figure, in its card (lazy: the list stays light)."""
+    if not f:
+        return ""
+    return (f'\n              <figure class="work-fig"><img src="{{{{root}}}}{f["src"]}" width="{f["w"]}" height="{f["h"]}"'
+            f' loading="lazy" alt="{escape(f["alt"])}"><figcaption>{f["caption"]}</figcaption></figure>')
 
 
 def work():
@@ -133,7 +144,7 @@ def work():
               <p class="role-line">{p["role"]}{where}</p>
               <p>
 {indent(p["text"], 16)}
-              </p>
+              </p>{figure(p.get("figure"))}
 {actions(p["actions"], 14)}
             </div>
           </article>""")
@@ -160,8 +171,14 @@ def publications():
 
 
 def news():
-    return "\n".join(f'            <li>{when(n["date"])} <span>{" ".join(n["text"].split())}</span></li>'
-                     for n in DATA["news"])
+    """The news, newest first; what is under way (`now`) at their head."""
+    out = []
+    if now := DATA.get("now"):
+        y, _, m = now["date"].partition("-")
+        out.append(f'            <li class="now"><time datetime="{now["date"]}">Now, {MONTHS[int(m) - 1]} {y}</time>'
+                   f' <span>{" ".join(now["text"].split())}</span></li>')
+    return "\n".join(out + [f'            <li>{when(n["date"])} <span>{" ".join(n["text"].split())}</span></li>'
+                             for n in DATA["news"]])
 
 
 def tabs():
@@ -193,6 +210,54 @@ def exits(room, root):
     return ("          <div class=\"exits\">\n"
             "            <span class=\"exits-label\">Obvious exits:</span>\n"
             "            <ul>\n" + "\n".join(lis) + "\n            </ul>\n          </div>")
+
+
+def glance():
+    """The site in twenty seconds, under the header's statement (the terminal's): now, the latest work
+    (and its report, when the newest reference is that work's), how to write."""
+    now = [x["about"].split(",")[0].replace("MSc ", "") for x in DATA["education"] if x.get("now")]
+    rows = [("Now", f"MSc {' &middot; '.join(now)}")] if now else []
+    pub = DATA["publications"][0] if DATA["publications"] else None
+    if DATA["work"]:
+        w = DATA["work"][0]
+        report = ' &middot; <a href="{{hash}}#publications">[report]</a>' if pub and pub.get("work") == w["id"] else ""
+        rows.append(("Latest work", f'<a href="{{{{hash}}}}#{w["id"]}">{w["title"]}</a> ({w["date"][:4]}){report}'))
+    if pub and not (DATA["work"] and pub.get("work") == DATA["work"][0]["id"]):
+        rows.append(("Latest paper", f'<a href="{{{{hash}}}}#publications">{pub["title"]}</a>'))
+    rows.append(("Write", f'<a href="mailto:{DATA["site"]["email"]}">{DATA["site"]["email"]}</a>'))
+    return ('          <dl class="glance">\n' + "\n".join(f"            <div><dt>{k}</dt><dd>{v}</dd></div>" for k, v in rows)
+            + "\n          </dl>")
+
+
+def timeline():
+    """Studies and posts on one axis of years (About): a bar each, packed in as few rows as they allow;
+    a post's bar leads to its entry. Academic years run September to June."""
+    def years(e):
+        if e.get("from"):
+            a = [int(x) for x in e["from"].split("-")]
+            b = [int(x) for x in (e.get("to") or e["from"]).split("-")]
+            return a[0] + (a[1] - 1) / 12, b[0] + b[1] / 12
+        ys = [int(y) for y in re.findall(r"\d{4}", e["dates"])]
+        return ys[0] + 8 / 12, ys[-1] + 6 / 12
+    items = [("study", unescape(re.split(r"[,;]", re.sub("<[^>]+>", "", x["degree"]))[0]), unescape(x["school"]), None, *years(x))
+             for x in DATA["education"]]
+    items += [("post", unescape(x["org"]), unescape(x.get("role", "")), x.get("arms"), *years(x)) for x in DATA["experience"]]
+    y0 = int(min(i[4] for i in items)); y1 = int(max(i[5] for i in items)) + 1
+    lanes = {}
+    out = []
+    for kind, label, sub, arms, a, b in sorted(items, key=lambda i: (i[0] != "study", i[4])):
+        rows = lanes.setdefault(kind, [])
+        row = next((k for k, end in enumerate(rows) if end <= a), len(rows))
+        if row == len(rows):
+            rows.append(b)
+        else:
+            rows[row] = b
+        tag = f'a href="#at-{arms}"' if arms else "span"
+        out.append(f'              <li class="tl-{kind}" style="--a:{(a - y0) / (y1 - y0):.4f};--b:{(b - y0) / (y1 - y0):.4f};--row:{row}">'
+                   f'<{tag} title="{escape(sub)}">{escape(label)}</{tag.split()[0]}></li>')
+    ticks = "".join(f'<li style="--a:{(y - y0) / (y1 - y0):.4f}">{y}</li>' for y in range(y0, y1 + 1))
+    return (f'          <figure class="timeline" style="--study:{len(lanes.get("study", []))};--post:{len(lanes.get("post", []))}" aria-label="Studies and positions, by year">\n'
+            f'            <ol class="tl-bars">\n' + "\n".join(out) + f'\n            </ol>\n            <ol class="tl-years" aria-hidden="true">{ticks}</ol>\n          </figure>')
 
 
 def jsonld():
@@ -296,6 +361,8 @@ BLOCKS = {
                                   for x in DATA["education"] if x.get("now")),
     "languages": lambda: " &middot; ".join(f"{n}&nbsp;<span class=\"meta\">({lvl})</span>" for n, lvl in DATA["person"]["languages"]),
     "coursework": coursework,
+    "glance": glance,
+    "timeline": timeline,
     "drawn_to": lambda: "\n".join(f"                <li>{x}</li>" for x in DATA["person"]["drawn_to"]),
 }
 

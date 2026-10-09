@@ -135,6 +135,7 @@ const T = {
   <div><dt>rumour</dt><dd>listen to the knight</dd></div>
   <div><dt>engine</dt><dd>the terminal, and back</dd></div>
   <div><dt>gate</dt><dd>the front page asks again</dd></div>
+  <div><dt>search &lt;words&gt; &middot; /</dt><dd>what in the site holds them</dd></div>
 </dl></section>
 <section><h3>Music</h3>
 <dl class="keys">
@@ -1560,7 +1561,7 @@ document.addEventListener('keydown', (e) => {
   if (konamiAt === KONAMI.length) { konamiAt = 0; toggleWizard(); return; }
 
   const act = {
-    ':': openCmd, '?': showHelp, m: showMap, i: showInventory, '>': descend, p: togglePhoto,
+    ':': openCmd, '/': () => { openCmd(); cmdIn.value = 'search '; }, '?': showHelp, m: showMap, i: showInventory, '>': descend, p: togglePhoto,
     ',': () => say(here ? pickUp(here) : T.nothingHere),
   }[e.key];
   if (act) { e.preventDefault(); act(); return; }

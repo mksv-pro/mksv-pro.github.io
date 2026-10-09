@@ -9,9 +9,18 @@ tabs = ["about", "experience", "work", "publications", "talks", "teaching", "new
 tab_hints = { about = "who I am, CV", experience = "positions held", work = "projects and code", publications = "papers and reports", talks = "talks given", teaching = "courses taught", news = "latest news", contact = "email and links" }
 
 talks = []
-# { title = "…", date = "YYYY-MM", venue = "Event, City", actions = [{ label = "slides", href = "…" }] }
+# { title = "…", date = "YYYY-MM", venue = "Event, City", thumb = "assets/img/talks/….png" (the first slide, optional),
+#   actions = [{ label = "slides", href = "…" }] }
 teaching = []
-# { title = "Course name (TD)", date = "YYYY", venue = "Level, University" }
+# { title = "Course name (TD)", date = "YYYY", venue = "University", level = "L2", hours = "24 h",
+#   actions = [{ label = "materials", href = "…" }] }
+
+# what is under way, said in two lines and dated: at the head of News (the raven's newest letter)
+[now]
+date = "2026-10"
+text = """Starting two MSc at once, Physics of Complex Systems (Paris-Saclay) and Quantum Information
+(Sorbonne), alongside the Economics &amp; Finance MSc at Dauphine; extending the urban
+morphogenesis model with reinforcement learning."""
 
 [site]
 url = "https://mksv-pro.github.io/"
@@ -275,6 +284,7 @@ broadcasts for the study."""
 [[work]]
 id = "nuclear-emulators"
 at = "ijclab"
+figure = { src = "assets/img/projects/nuclear-validation.png", w = 1400, h = 630, caption = "The solver against an independent R-matrix code, on four benchmarks: the cross sections, and their relative difference (median and p5–p95 over 40 draws).", alt = "Four panels, one per benchmark system: cross sections from the DBMM solver and the R-matrix code overlap; below, their relative difference stays between about 1e-6 and 1e-3." }
 title = "Computational emulation of nuclear dynamics"
 date = "2026"
 role = "M1 internship"

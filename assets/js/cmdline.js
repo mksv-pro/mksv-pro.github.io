@@ -128,6 +128,20 @@ function musicCmd([sub = '', ...rest]) {
   });
 }
 
+/** search: each entry of the site (a post, a work, a reference, a talk, a course, a news, a line of the
+ *  About sheet, a year of courses) that holds every word, accents aside; by section, linked to it. */
+function search(words) {
+  if (!words.length) return print(esc('search <words>: what in the site holds them, by section.'));
+  const norm = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, ' ').toLowerCase();
+  const ws = words.map(norm);
+  const found = [...document.querySelectorAll('main > section.pane')].map((sec) => [sec, [...sec.querySelectorAll('.entry, article.project, .pub, .news li, .sheet > div, .ledger-year, .ledger-prog')]
+    .filter((el) => ws.every((w) => norm(el.textContent).includes(w)))]).filter(([, f]) => f.length);
+  if (!found.length) return print(esc(`Nothing in the site holds "${words.join(' ')}".`));
+  const head = (el) => (el.querySelector('h3, .pub-title, dt, time') || el).textContent.replace(/\s+/g, ' ').trim().slice(0, 90);
+  return print(`<dl class="found">${found.map(([sec, f]) => `<div><dt><a href="#${sec.id}">${esc(sec.querySelector('h2').textContent.replace(/~/g, '').trim())}</a></dt>`
+    + `<dd>${f.slice(0, 6).map((el) => esc(head(el))).join('<br>')}${f.length > 6 ? `<br><span class="dim">and ${f.length - 6} more</span>` : ''}</dd></div>`).join('')}</dl>`);
+}
+
 function run(line) {
   const words = line.trim().toLowerCase().split(/\s+/);
   let [cmd, ...args] = words;
@@ -171,6 +185,8 @@ function run(line) {
     case 'descend': case '>': case 'down':
       closeCmd();
       return descend();
+    case 'search': case 'find': case 'grep':
+      return search(args);
     case 'gate': // the front gate asks again on the next bare visit (after "remember my choice")
       store('gate', null);
       return print('The front gate will ask again on your next visit.');
@@ -272,7 +288,7 @@ cmdForm.addEventListener('submit', (e) => {
 /* Tab completes the word under the cursor: a command or a room first, then what that command
    takes; one match is completed, several are completed to their common start and listed. */
 const COMMANDS = ['help', 'look', 'ls', 'map', 'cd', 'take', 'inventory', 'use', 'rumour', 'descend',
-  'cv', 'mail', 'github', 'theme', 'sky', 'weather', 'event', 'photo', 'tour', 'tower', 'village', 'banner', 'music', 'volume', 'keys', 'quit', 'clear', 'go', 'gate'];
+  'cv', 'mail', 'github', 'theme', 'sky', 'weather', 'event', 'photo', 'tour', 'tower', 'village', 'banner', 'music', 'volume', 'keys', 'quit', 'clear', 'go', 'gate', 'search'];
 const roomWords = () => ROOM_IDS.map((id) => WORLD[id].label.toLowerCase());
 const ARGS = {
   cd: roomWords, open: roomWords, go: () => ['north', 'south', 'east', 'west'], walk: () => ['north', 'south', 'east', 'west'],
