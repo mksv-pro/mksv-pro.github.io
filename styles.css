@@ -1479,3 +1479,9 @@ details.how p { margin: .3rem 0 0; }
 
 /* the spiral stair down to the cellar (spiralDown), over the picture */
 canvas.spiral { position: fixed; z-index: 3; image-rendering: pixelated; pointer-events: none; }
+
+/* a wooden signpost by the pointer, where a way in the landscape leads somewhere (hours.js) */
+.signpost { position: fixed; z-index: 6; pointer-events: none; padding: .15rem .55rem .2rem; font: .8rem/1.3 var(--ui);
+  color: #f4ecd8; background: #6a4028; border: 2px solid #2a1d14; box-shadow: inset 0 2px 0 #8a5a3a, inset 0 -2px 0 #462a1a; }
+.signpost::before { content: "\2192\00a0"; color: #f6d77a; }
+.signpost::after { content: ""; position: absolute; left: .7rem; top: 100%; width: 4px; height: .9rem; background: #462a1a; border: 2px solid #2a1d14; border-top: 0; }

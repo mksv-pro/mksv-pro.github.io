@@ -287,6 +287,7 @@ function applyTheme(theme, persist) {
       descend, // the descent (the cellar's steps, >)
       cellar: () => { location.hash = '#cellar'; }, // the door in the rock: into the cellar
       maps: () => { location.hash = '#maproom'; }, // the cartographer's sign in the village: up to the map room
+      go: (id) => { location.hash = `#${id}`; }, // a part of the castle clicked: into its room
       doors: roomDoors, // the doors in the rooms' side walls
       clock: skyNow, // the instant shown: dawn mist, the night's meteor shower
       found: findCurio, // a curiosity of the landscape, clicked

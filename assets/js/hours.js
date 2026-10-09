@@ -1578,7 +1578,7 @@ nNnnnn..
     const rooms = {};
     const room = (id, x, y, w, h) => { rooms[id] = { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) }; };
     const obs = observatory(-19, 7, 47);
-    room('experience', obs.x0 - 1, obs.t0 - obs.ww / 2 - 5, obs.ww + 2, crest - obs.t0 + obs.ww / 2 + 5);
+    room('research', obs.x0 - 1, obs.t0 - obs.ww / 2 - 5, obs.ww + 2, crest - obs.t0 + obs.ww / 2 + 5);
     const castleTop = Math.round(crest - 56 * v - 15 * v - 4); // over the tallest spire
     const tall = tower(9, 8, 56, 15, { flag: I.FLAG2 });
     // the belfry: an opening high in the tall tower, where the bell hangs (rung each planetary hour)
@@ -1596,7 +1596,7 @@ nNnnnn..
     gallery(obs.x0 + obs.ww, kp.x0 - 1, Math.round(crest - 31 * v));
     const chimney = hall(6, 20, 25, 9);
     room('publications', cx + 6 * u, crest - 25 * v - 9 * v, 7 * u, 25 * v + 9 * v - 12 * v);
-    room('work', cx + 13 * u, crest - 25 * v - 9 * v - 4, 7 * u, 25 * v + 13 * v - 12 * v);
+    room('projects', cx + 13 * u, crest - 25 * v - 9 * v - 4, 7 * u, 25 * v + 13 * v - 12 * v);
     const right = tower(21, 9, 39, 13, { flag: I.FLAG });
     room('teaching', right.x0 - 1, right.t0 - 13 * v, right.ww + 2, crest - right.t0 + 13 * v - 12 * v);
     // curtain wall: uneven crenellations, walkway, banners, ivy
@@ -1713,7 +1713,7 @@ nNnnnn..
           rect(x, yb - 4, w, 1, I.TIMBER_SH);
           for (let yy = yb - h + 1; yy < yb - 4; yy += 1) { set(x - 1, yy, I.WALL_HI); set(x + w, yy, I.WALL_SH); set(x + 3, yy, I.TIMBER_SH); set(x + w - 4, yy, I.TIMBER_SH); }
           set(x + 1, yb - 6, I.TIMBER_SH); set(x + 2, yb - 7, I.TIMBER_SH); // a brace
-          windows.push({ pts: [[x + 5, yb - 7], [x + 1, yb - 2], [x + w - 2, yb - 2]], lit: true });
+          windows.push({ pts: [[x + 5, yb - 7], [x + 1, yb - 2], [x + w - 2, yb - 2]], lit: true, village: true, tavern: true });
           set(x + w, yb - 6, I.TIMBER_SH); set(x + w + 1, yb - 6, I.TIMBER_SH); rect(x + w + 1, yb - 5, 2, 2, I.GOLD); set(x + w + 2, yb - 4, I.GOLD_SH);
         }
         const rh = gable(x, yb, w, h, kind === 'thatch' ? THATCH : TILES);
@@ -1721,7 +1721,7 @@ nNnnnn..
         const dxd = kind === 'tavern' ? Math.floor(w / 2) - 1 : 1 + (j % 3);
         set(x + dxd, yb - 1, I.TIMBER_SH); set(x + dxd, yb - 2, I.TIMBER_SH); // a door
         doors.push([x + dxd, yb]); eaves.push([x - 1, x + w, yb - h]);
-        if (kind !== 'tavern') windows.push({ pts: [[x + w - 3, yb - 3]], lit: rng() < 0.6 });
+        if (kind !== 'tavern') windows.push({ pts: [[x + w - 3, yb - 3]], lit: rng() < 0.6, village: true });
       }
       // the back row first, up the slope: the bank's row stands in front of it
       [[3, 10, 6, 'barn'], [24, 4, 11, 'dovecote'], [40, 8, 5, 'roof'], [63, 7, 5, 'thatch']].forEach(([dx, w, h, kind], j) => {
@@ -2197,7 +2197,7 @@ nNnnnn..
 
     return {
       W, H, Ws, WE, M, planes, rows, yHor, castleTop, rooms, yl0, yg, windows, flags, torches, sentries, chimney, stars, clouds,
-      bell, keepTop, tallTip: tallTip && { x: tallTip.x, y: tallTip.y }, cellar, riverTop, riverBot,
+      bell, keepTop, tallTip: tallTip && { x: tallTip.x, y: tallTip.y }, cellar, riverTop, riverBot, path: { x: pathX, w: pathW },
       ferry: null, hoist: null, ringUntil: 0,
       fire, knight, wizard, blades, cats, field, season, shieldSp: null,
       peasant: field.none ? null : { x: Math.round((field.x0 + field.x1) / 2), dir: 1, seeds: [] },
@@ -3959,7 +3959,7 @@ qqqqqTqqq
   }
   let fireFed = 0; // when a log last went on the workshop's fire (it burns down in three minutes)
   const heatOf = () => clamp(1 - (now() - fireFed - 90) / 90, 0.15, 1);
-  let found = () => {}; let itemsOf = () => []; let spotsTo = () => {}; let descendTo = () => {}; let cellarTo = () => descendTo(); let mapsTo = () => {}; let doorsOf = () => []; let hl = -1; // the room's things, their hotspots, the one pointed at
+  let found = () => {}; let itemsOf = () => []; let spotsTo = () => {}; let descendTo = () => {}; let cellarTo = () => descendTo(); let mapsTo = () => {}; let goTo = () => {}; let doorsOf = () => []; let hl = -1; // the room's things, their hotspots, the one pointed at
   let scene = null; let look = null; let skyFn; let reduce = false; let px = 3;
   let running = false; let visible = true; let raf = 0; let last = 0; let tick = 0;
   let bodies = null; let lastEclipse = null; let label0 = ''; let castUntil = 0;
@@ -5371,7 +5371,7 @@ qqqqqTqqq
         }
       });
     }
-    if (scene.geese) { // autumn: a V of geese going south-west, wings beating
+    if (scene.geese) { // a V of geese, wings beating: south-west in autumn, back north-east in March
       const gc = pack(mix(look.bird, [90, 90, 96], 0.3));
       scene.geese.forEach((g, k) => {
         const up = (Math.floor(t * 3) + k) % 2;
@@ -5419,14 +5419,16 @@ qqqqqTqqq
     // the castle's life: windows (glowing at night), pennants, torches, chimney smoke, sentries
     const wl = pal32[I.WIN_LIT]; const wd = pal32[I.WIN_DARK];
     if (scene.scribeWin && scribeLate()) scene.scribeWin.lit = true;
+    const hh = clockFn().getHours(); const abed = hh >= 23 || hh < 6; // (the village goes to bed at eleven; the tavern keeps its lamps)
     scene.windows.forEach((w) => {
-      w.pts.forEach(([x, y]) => put(mx(x), y, w.lit ? wl : wd, false));
+      const lit = w.lit && !(abed && w.village && !w.tavern);
+      w.pts.forEach(([x, y]) => put(mx(x), y, lit ? wl : wd, false));
       if (w === scene.scribeWin && scribeLate()) { // the copyist bent over his desk, against the candlelight; his hand moves
         const [x0, y0] = w.pts[0]; const sil = pal32[I.OUTLINE];
         put(mx(x0 + 1), y0, sil, false); put(mx(x0 + 1), y0 + 1, sil, false); put(mx(x0), y0 + 1, sil, false);
         if (reduce || Math.floor(t * 2) % 3) put(mx(x0 + 2), y0 + 1, sil, false);
       }
-      if (w.lit && w.big && look.night > 0.3) {
+      if (lit && w.big && look.night > 0.3) {
         const [x, y] = w.pts[1];
         [[-1, 0], [-1, 1], [2, 0], [2, 1]].forEach(([dx, dy]) => blend(mx(x + dx), y + dy, [255, 170, 70], 0.18 * look.night, false));
       }
@@ -6907,6 +6909,9 @@ qqqqqTqqq
     if (inBox(mmx - ml, mhy - ml, 2 * ml + 1, 2 * ml + 14)) return { kind: 'mill' };
     if (inBox(wizard.x + go, wizard.y, SPRITES.wizard.w, SPRITES.wizard.h)) return { kind: 'wizard' };
     const wi = idxNow[y * scene.W + x]; // the castle's stone itself (its colour after Monet)
+    const lmid = shift(RATE[L.MID]) - scene.M; // a part of the castle that is a room (its tower, its hall): in through it
+    const part = Object.entries(scene.rooms).find(([, a]) => inBox(a.x + lmid, a.y, a.w, a.h));
+    if (part) return { kind: 'room', id: Object.keys(KIND).find((k) => KIND[k] === part[0]) || part[0] };
     if (y < scene.gate.crest && y > scene.castleTop && [I.WALL_HI, I.WALL, I.WALL_SH, I.WALL_DK].includes(wi) && Math.abs(x - (scene.M + Math.round(0.64 * scene.Ws) - scene.M + shift(RATE[L.MID]))) < 40) return { kind: 'facade' };
     return null;
   }
@@ -6996,6 +7001,7 @@ qqqqqTqqq
     else if (hit.kind === 'owl') say('The owl turns its head right round and hoots: "Who-oo?"');
     else if (hit.kind === 'hunters') say('Hunters coming home through the snow, their hounds trailing behind them (out of Bruegel\'s "Hunters in the Snow", 1565).');
     else if (hit.kind === 'skaters') say('Skaters on the frozen river (out of Bruegel\'s "Hunters in the Snow", 1565).');
+    else if (hit.kind === 'room') { say(`In through ${ROOM_NAMES[hit.id]}.`); goTo(hit.id); }
     else if (hit.kind === 'facade') {
       const w = monetTint();
       say(w ? `The castle's stone at this hour, in this weather: the colour Claude Monet gave Rouen cathedral's in "${w.title}" (${w.year}), one of the thirty canvases he painted of the same portal from dawn to dusk.` : 'The castle\'s walls, grey in the dark.');
@@ -7128,7 +7134,10 @@ qqqqqTqqq
     // the countryside: the mill turns with the wind (still in a calm), the hamlet's chimneys smoke,
     // the ducks paddle and turn, geese pass in autumn, shooting stars on clear nights
     if (!reduce) scene.millAngle += Math.min(weather.wind, 60) * 0.0025;
-    if (scene.chimneys.length && Math.random() < 0.08) {
+    // (the hearths are fed at the hours of meals: smoke at breakfast and supper, some at noon, a thread
+    // by night; more of it in winter, less in summer)
+    const hc = clockFn().getHours(); const meal = hc >= 6 && hc < 9 ? 1.8 : hc >= 17 && hc < 22 ? 1.8 : hc >= 11 && hc < 14 ? 1 : hc >= 23 || hc < 5 ? 0.2 : 0.45;
+    if (scene.chimneys.length && Math.random() < 0.045 * meal * ({ winter: 1.6, summer: 0.6 }[scene.season] || 1)) {
       const c = scene.chimneys[Math.floor(Math.random() * scene.chimneys.length)];
       scene.fumes.push({ x: c.x, y: c.y, r: 1, age: 0, life: 40 + Math.random() * 30 });
     }
@@ -7136,13 +7145,14 @@ qqqqqTqqq
       d.x += d.dir * 0.06;
       if (d.x < d.a || d.x > d.b || Math.random() < 0.002) d.dir = -d.dir;
     });
-    if (!scene.geese && scene.season === 'autumn' && look.night < 0.3 && Math.random() < 0.0012) {
-      const y0 = Math.round(yHor * (0.2 + Math.random() * 0.25));
-      scene.geese = Array.from({ length: 9 }, (_, k) => ({ x: span + 10 + Math.ceil(k / 2) * 5, y: y0 + Math.ceil(k / 2) * (k % 2 ? 3 : -3) }));
+    const back = today().getMonth() === 2; // (in March they come back the other way, north-east)
+    if (!scene.geese && (scene.season === 'autumn' || back) && look.night < 0.3 && Math.random() < 0.0012) {
+      const y0 = Math.round(yHor * (0.2 + Math.random() * 0.25)); const dir = back ? 1 : -1; // (the V's point leads)
+      scene.geese = Array.from({ length: 9 }, (_, k) => ({ x: (back ? -10 : span + 10) - dir * Math.ceil(k / 2) * 5, y: y0 + Math.ceil(k / 2) * (k % 2 ? 3 : -3), dir }));
     }
     if (scene.geese) {
-      scene.geese.forEach((g) => { g.x -= 0.8; g.y += 0.05; });
-      if (scene.geese.every((g) => g.x < -6)) scene.geese = null;
+      scene.geese.forEach((g) => { g.x += 0.8 * (g.dir || -1); g.y += 0.05; });
+      if (scene.geese.every((g) => ((g.dir || -1) < 0 ? g.x < -6 : g.x > span + 6))) scene.geese = null;
     }
     if (look.night > 0.6 && weather.cover < 0.6 && !reduce && Math.random() < (meteorRate(clockFn()) * 8) / (3600 * 12)) {
       const dir = Math.random() < 0.5 ? -1 : 1; const v = 2 + Math.random() * 2;
@@ -7522,7 +7532,7 @@ qqqqqTqqq
       plate = o.plate; skyFn = o.sky; reduce = o.reduceMotion; clockFn = o.clock || clockFn;
       heraldry = o.heraldry || heraldry; say = o.say || say; rumour = o.rumour || rumour;
       itemsOf = o.items || itemsOf; found = o.found || found; curiosOf = o.curios || curiosOf; nowOf = o.now || nowOf; visitsOf = o.visits || visitsOf;
-      newsOf = o.news || newsOf; dreamsOf = o.dreams || dreamsOf; tradeWith = o.trade || tradeWith; stalenessOf = o.staleness || stalenessOf; billiardShow = o.billiard || billiardShow; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo; cellarTo = o.cellar || cellarTo; mapsTo = o.maps || mapsTo; doorsOf = o.doors || doorsOf;
+      newsOf = o.news || newsOf; dreamsOf = o.dreams || dreamsOf; tradeWith = o.trade || tradeWith; stalenessOf = o.staleness || stalenessOf; billiardShow = o.billiard || billiardShow; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo; cellarTo = o.cellar || cellarTo; mapsTo = o.maps || mapsTo; goTo = o.go || goTo; doorsOf = o.doors || doorsOf;
       pendingRoom = root.dataset.room || null;
       label0 = plate.getAttribute('aria-label');
       realIx(); // (the real things' index: credits now, the things when wanted)
@@ -7597,8 +7607,22 @@ qqqqqTqqq
         if (e.key === 'Escape') { e.preventDefault(); zoomTo(false); }
         else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); e.stopImmediatePropagation(); zoom.pan = (zoom.pan || 0) + (e.key === 'ArrowLeft' ? -8 : 8); }
       }, true);
-      canvas.addEventListener('pointerleave', () => { pointer = null; });
-      canvas.addEventListener('pointermove', (e) => { pointer = scenePoint(e); canvas.style.cursor = isOn() && (zoom ? zoom.done : hitAt(...scenePoint(e))) ? 'pointer' : ''; });
+      // a wooden signpost by the pointer where a way leads somewhere: the path, the village, the watchtower, the cellar door
+      const post = document.createElement('div'); post.className = 'signpost'; post.hidden = true; document.body.append(post);
+      const WAYS = { village: 'to the village and its market', watch: 'up the watchtower', cellar: 'down to the cellar' };
+      const wayAt = (x, y, hit) => {
+        if (!scene || view.state !== 'scene' || zoom || tower) return null;
+        if (hit && WAYS[hit.kind]) return WAYS[hit.kind];
+        const p = scene.path; const yy = Math.round(y);
+        return yy >= 0 && yy < scene.H && p.x[yy] > -50 && Math.abs(x - (p.x[yy] - scene.M + groundOff(yy))) <= p.w[yy] + 1 ? 'to the castle: its rooms are in the menu' : null;
+      };
+      canvas.addEventListener('pointerleave', () => { pointer = null; post.hidden = true; });
+      canvas.addEventListener('pointermove', (e) => {
+        pointer = scenePoint(e); const hit = isOn() && !zoom ? hitAt(...pointer) : null;
+        canvas.style.cursor = isOn() && (zoom ? zoom.done : hit) ? 'pointer' : '';
+        const way = isOn() ? wayAt(...pointer, hit) : null; post.hidden = !way;
+        if (way) { post.textContent = way; post.style.left = `${e.clientX + 14}px`; post.style.top = `${e.clientY - 34}px`; }
+      });
       sync();
     },
     /** New minute, or another hour asked for with `sky`: relight the same scene. */
