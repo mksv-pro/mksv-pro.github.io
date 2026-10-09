@@ -1,6 +1,6 @@
 'use strict';
 
-// The site as a dungeon, seen in first person: one chamber per room of WORLD (script.js),
+// The site as a dungeon, seen in first person: one chamber per room of WORLD (ui/1-core.js),
 // corridors along its LINKS, a plaque in each chamber that opens the room. Grid-step movement
 // as in Dungeon Master; DDA raycasting, one ray per column (Lodev's formulation); 1-bit output
 // through a 4x4 Bayer threshold, in the theme's colours. Loaded on the first descent.
@@ -281,7 +281,7 @@
 
   function act() {
     const x = gx + DX[face]; const y = gy + DY[face];
-    if (cellAt(x, y) === 3) { // a rack: the vintages are the years of study (script.js)
+    if (cellAt(x, y) === 3) { // a rack: the vintages are the years of study (ui/7-dialogs.js)
       const v = opts.vintages(); const n = v.length ? v[(x * 7 + y * 13) % v.length] : null;
       msg.textContent = n ? `A bottle labelled ${n}` : 'The labels have faded.';
       return;

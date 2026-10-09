@@ -1,3 +1,4 @@
+// (one global scope across assets/js/ui/*.js, loaded in order: check.py lints them joined)
 'use strict';
 
 /* ---- command line (:) --------------------------------------------------- */

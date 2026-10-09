@@ -1,7 +1,7 @@
 """Pixel assets for the hours theme: _tools/icons.txt -> assets/img/icons/<name>.svg, the pixel
 frame of the boxes (frame.svg, a 9-slice for border-image) and the menu's pointer (cursor.svg).
 
-Same shading rule as shadeSprite in assets/js/hours.js: each material lit on its right side and,
+Same shading rule as shadeSprite in assets/js/hours/hours.js: each material lit on its right side and,
 dithered, on top; shaded on the left and underneath; a 1 px outline around the silhouette.
 """
 import json

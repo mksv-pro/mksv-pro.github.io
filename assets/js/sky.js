@@ -2,12 +2,12 @@
 'use strict';
 
 /* ---- the sky over Paris: sun, moon, planetary hours, the armillary's rings ----------
-   Pure functions, no DOM: script.js (almanac, hours theme) and armillary.js use them. */
+   Pure functions, no DOM: assets/js/ui (almanac, hours theme) and armillary.js use them. */
 
 const LAT = 48.8566;
 const LON = 2.3522;
 const DAY_MS = 86400000;
-// DAY_RULER[weekday] indexes the Chaldean order (T.planet in script.js), Sunday first.
+// DAY_RULER[weekday] indexes the Chaldean order (T.planet in assets/js/ui), Sunday first.
 const DAY_RULER = [3, 6, 2, 5, 1, 4, 0];
 const rad = Math.PI / 180;
 

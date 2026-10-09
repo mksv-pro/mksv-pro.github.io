@@ -3,7 +3,7 @@
 /* The hours theme's plate: a pixel-art landscape under the sky over Paris at the true hour. A
    castle on a rock above a lake, mountains, a forest edge; in front, a knight resting at a bonfire
    and a wizard who holds the menu (the .tabs box is placed over his hat through --wiz-x/--wiz-y).
-   Loaded by script.js with the theme: window.Hours.start({ plate, sky, reduceMotion }), then
+   Loaded by ui/1-core.js with the theme: window.Hours.start({ plate, sky, reduceMotion }), then
    update() once a minute.
 
    The scene is generated once per size (seeded: every visit sees the same place) as seven planes
@@ -18,7 +18,7 @@
    grass, firelight. */
 
 (function () {
-  const REAL_BASE = new URL('../data/real/', document.currentScript.src); // (things from the real world: see realGet)
+  const REAL_BASE = new URL('../../data/real/', document.currentScript.src); // (things from the real world: see realGet)
   let FPS_MS = 83; // ~12 frames a second: pixel fire looks right at that rate (halved on a slow machine, see frame)
   let renderMs = 0; let lite = false;
   const deg = Math.PI / 180;
@@ -139,332 +139,11 @@
 
   /* ---- sprites: silhouettes in material letters, shaded and outlined by shadeSprite ---- */
 
-  const KNIGHT = `
-............rr..............
-...........rrr..............
-..........aaaaa.............
-.........aaaaaaa............
-.........aaaaaaaa...........
-.........aaaaakkkk..........
-.........aaaaaaaaa..........
-.........aaaaaakaka.........
-..........aaaaaaaa..........
-...........kkkkkk...........
-.......ddddrrllllrr.........
-......ddddrrlllllrrr........
-......dddrrrlllllrrrr.......
-.....ddddrrrrlllllrrr.......
-.....ddddrrrrrlllllrr.......
-.....ddddrrrrrrllllllll.....
-.....ddddrrrgrrrlllllllll...
-.....ddddrrgggrrr..llllllhh.
-....dddddrrrgrrrr....mmmhhh.
-....ddddgggggggmmmmmmmmmmm..
-....ddddmmmmmmmmmmmmmmmmmm..
-...wwwwwwwwwwwwwwww...mmmm..
-...wwwwwwwwwwwwwwww...mmmm..
-...wwwwwwwwwwwwwwww...mmmm..
-....wwwwwwwwwwwwww....mmmm..
-......................mmmm..
-......................mmmmm.
-......................mmmmmmm`;
-  const KNIGHT_HEAD = 11; // rows (outline included) above the shoulders: they sink as he breathes
+  const { KNIGHT, KNIGHT_HEAD, WIZARD, ORB, HORSE, DEER, OWL, HERON, MINSTREL, ANGLER, SNOWMAN, DUCK, WIZ_HEAD_X, RIDER, DREAMS, DRAGON_BODY, WING_UP, WING_DOWN, DRAGON_MOUTH, CATS, WORLD_MAP, PERSON, NEAR_SP, FRAME_SP, RAVEN, GLYPHS, PEASANT, PUPIL, MONK, HAIR, TUNIC } = window.HOURS_ART; // (the drawings: hours/art.js)
 
-  const WIZARD = `
-....p..............
-....pp.........*...
-....ppp.......***..
-...pppp........*...
-...ppypp.......w...
-...pppppp......w...
-..ppppppp......w...
-..pppppppp.....w...
-ppppppppppppp..w...
-...ffffff......w...
-...ffffkf......w...
-...eefffff.....w...
-..eeeeeeee....fw...
-..eeeeeeeevvvvvw...
-.uueeeeeeevvvv.w...
-.uuueeeeeevv...w...
-.uuuueeeeeu....w...
-.uuuuueeeuu....w...
-.uuuuuueeuu....w...
-.uuuuuuuuuu....w...
-.uuuugggguu....w...
-.uuuuuuuuuu....w...
-uuuuyuuuuuu....w...
-uuuuuuuuuuuu...w...
-uuuuuuuuuuuu...w...
-uuuuuuuuuyuu...w...
-uuuuuuuuuuuuu..w...
-uuuuuuuuuuuuu..w...
-.uuuuuuuuuuuu..w...
-..hhh....hhh...w...`;
-  const ORB = [16, 3]; // the staff's orb in the shaded wizard
 
-  // the countryside's animals (h brown, b black, t fawn, q white, a grey, k outline, g gold)
-  const HORSE = [`
-.........................................
-..............hhhhhhhhhhhhhhhhhhh........
-.............hhhhhhhhhhhhhhhhhhhhhh..bb..
-............bhhhhhhhhhhhhhhhhhhhhhhh.bb..
-...........bhhhhhhhhhhhhhhhhhhhhhhhh.bb..
-..........bhhhhhhhhhhhhhhhhhhhhhhhhh.bb..
-.........bhhhhhhhhhhhhhhhhhhhhhhhhhh.bb..
-........bhhhhhhhhhhhhhhhhhhhhhhhhhhhhbb..
-.......bhhhhhhhhhhhhhhhhhhhhhhhhhhhhh.bb.
-......bhhhhhh.hhhhhhhhhhhhhhhhhhhhhhh.bb.
-.....bbhhhhhh.hhhhhhhhhhhhhhhhhhhhhhh.bb.
-.....bhhhhhh...hhhhhhhhhhhhhhhhhhhhhh.bb.
-....hhhhhhh.....oo.oo.........hhhhhh..bb.
-...hhhhhhhh.....oo.oo..........hhhhh..bb.
-..bhhhhhhh......oo.oo..........hhhhh...bb
-.bhhhhhhh.......oo.oo..........oohoo...bb
-..hhhhhhh.......oo.oo..........oo.oo...bb
-.hhhhhhh........oo.oo..........oo.oo...bb
-.hhhhh..........oo.oo..........oo.oo...bb
-.hhhkh..........oo.oo..........oo.oo.....
-.hhhhh..........oo.oo..........oo.oo.....
-hhhhhh..........oo.oo..........oo.oo.....
-hhhhh...........oo.oo..........oo.oo.....
-hhhhh...........oo.oo..........oo.oo.....
-.hhhh...........oo.oo..........oo.oo.....
-.hhhh...........oo.oo..........oo.oo.....
-................oo.oo..........oo.oo.....
-................kk.kk..........kk.kk.....
-.........................................`,
-`
-.........................................
-..............hhhhhhhhhhhhhhhhhhh........
-.............hhhhhhhhhhhhhhhhhhhhhh..bb..
-............bhhhhhhhhhhhhhhhhhhhhhhh.bb..
-...........bhhhhhhhhhhhhhhhhhhhhhhhh.bb..
-..........bhhhhhhhhhhhhhhhhhhhhhhhhh.bb..
-.........bhhhhhhhhhhhhhhhhhhhhhhhhhh.bb..
-........bhhhhhhhhhhhhhhhhhhhhhhhhhhhhbb..
-.......bhhhhhhhhhhhhhhhhhhhhhhhhhhhhh.bb.
-......bhhhhhh.hhhhhhhhhhhhhhhhhhhhhhh..bb
-.....bbhhhhhh.hhhhhhhhhhhhhhhhhhhhhhh..bb
-.....bhhhhhh...hhhhhhhhhhhhhhhhhhhhhh..bb
-....hhhhhhh.....oo.oo.........hhhhhh...bb
-...hhhhhhhh.....oo.oo..........hhhhh...bb
-..bhhhhhhh......oo.oo..........hhhhh....b
-.bhhhhhhh.......oo.oo..........oohoo....b
-..hhhhhhh.......oo.oo..........oo.oo....b
-.hhhhhhh........oo.oo..........oo.oo....b
-.hhhhh..........oo.oo..........oo.oo....b
-.hhhkh..........oo.oo..........oo.oo.....
-.hhhhh..........oo.oo..........oo.oo.....
-hhhhhh..........oo.oo..........oo.oo.....
-hhhhh...........oo.oo..........oo.oo.....
-hhhhh...........oo.oo..........oo.oo.....
-.hhhh...........oo.oo..........oo.oo.....
-.hhhh...........oo.oo..........oo.oo.....
-................oo.oo..........oo.oo.....
-................kk.kk..........kk.kk.....
-.........................................`];
-  const DEER = [`
-.........t..
-........ttt.
-........tktt
-.......tt...
-.qtttttttt..
-qtttttttttt.
-.tttttttt...
-.t.t...t.t..
-.t.t...t.t..
-.k.k...k.k..`, `
-............
-............
-............
-............
-.qtttttttt..
-qtttttttttt.
-.tttttttt.t.
-.t.t...t.ttk
-.t.t...t.ttt
-.k.k...k.k..`];
-  const OWL = `
-.h.h.
-hhhhh
-tEhEt
-hhghh
-htttt
-.hhh.
-.g.g.`;
-  const HERON = `
-..kaa.
-ggaaa.
-...aa.
-....a.
-...aa.
-..aaaa
-..aaaa
-...aa.
-...k..
-...k..`;
-  const MINSTREL = `
-..rr.....
-.rppr....
-..ff.....
-..fkf....
-..ff.....
-.uuuu....
-uuuuuwww.
-uuuuwwgww
-.uuu..ww.
-.uuu.....
-.dd.dd...
-.dd.dd...
-.kk.kk...`;
-  const ANGLER = `
-..hh....
-.hhhh...
-..ff....
-..fk....
-.dddd.w.
-dddddw..
-.ddddd..
-.hhhhh..`;
-  const SNOWMAN = `
-...bbb...
-..bbbbb..
-.bbbbbbb.
-..qqqqq..
-..qkqkq..
-..qqqxx..
-...qqq...
-.qqqqqqq.
-qqqqkqqqq
-qqqqqqqqq
-qqqqkqqqq
-.qqqqqqq.`;
-  const DUCK = `
-.hh....
-ghkh...
-.hhhhhh
-..hhhh.`;
-  const WIZ_HEAD_X = 9;
-  // the messenger on his horse, two strides (facing left, up the road)
-  const RIDER = [`
-......rr.......
-.....rffr......
-.....rrrr......
-....arrrra.....
-.....rrrr......
-.hh..rrrrhhhhh.
-hkhhhhhhhhhhhhh
-.hhhhhhhhhhhhhh
-..hhhhhhhhhhhh.
-..h.h.....h.h..
-..h..h...h..h..
-..k...k.k...k..`, `
-......rr.......
-.....rffr......
-.....rrrr......
-....arrrra.....
-.....rrrr......
-.hh..rrrrhhhhh.
-hkhhhhhhhhhhhhh
-.hhhhhhhhhhhhhh
-..hhhhhhhhhhhh.
-...hh.....hh...
-...hh.....hh...
-...kk.....kk...`];
-  // what the knight dreams of (1, 2: two colours, see dream), one picture a subject
-  const DREAMS = {
-    nucleus: [/nucle|scatter|r-matrix|isotop/i, ['..1..', '.121.', '12121', '.121.', '..1..'], ['CAP', 'WING']],
-    spins: [/quantum|spin|qubit|qaoa/i, ['1.2.1', '.....', '2.1.2', '.....', '1.2.1'], ['CAP', 'WING']],
-    city: [/urban|city|morpho|dla|fractal/i, ['..1..', '.111.', '1.1.1', '..1..', '.1.1.'], ['GOLD', 'GOLD']],
-    orbits: [/n-body|gravit|orbit|planet/i, ['.1.1.', '1...1', '..2..', '1...1', '.1.1.'], ['ARM', 'GOLD']],
-    bell: [/market|financ|stochast|mean-field|econom|dataset/i, ['..1..', '.111.', '.111.', '11111', '11111'], ['GOLD', 'GOLD']],
-  };
 
-  const DRAGON_BODY = `
-...................................x....
-.................................xxxx...
-................................xxxxxx..
-..............................xxxxxcxxx.
-.................xxxxxxxx....xxxxxxxxxxx
-x.............xxxxxxxxxxxxxxxxxxxx..cc..
-xx..........xxxxxxxxxxxxxxxxxxxx........
-.xx.......xxxxxggggggggggxxxxx..........
-..xxxxxxxxxxxggggggggggxxxxx............
-...xxxxxxx......xx....xx................
-.............xxxx....xxxx...............`;
-  const WING_UP = `
-..................z
-................zzzz
-..............zzzzzz
-............zzzZzzzz
-..........zzzzZzzzzZ
-........zzzzzZzzzzZz
-......zzzzzzZzzzzZzz
-.....zzzzzzZzzzzZzzz
-......zzzzZzzzzZzzzz
-........zzzzzzzZzzzz
-...........zzzzzzzzz`;
-  const WING_DOWN = `
-...............zzzzzzzzz
-..............zzzzzzZzz
-..............zzzzzZzzzz
-.............zzzzzZzzzZz
-............zzzzZzzzZzzz
-...........zzzZzzzZzzz
-..........zzZzzzZzzz
-..........zZzzzZzz
-..........zzzzzz
-...........zzz`;
-  const DRAGON_MOUTH = [41, 13]; // in the shaded frame, facing right
 
-  // the four cats of the camp ('E' are the eyes: they shine and blink) and the rookery's raven
-  const CATS = {
-    blackLoaf: `
-...........b..b
-..........bbbbb
-...bbbbbbbbEbEb
-..bbbbbbbbbbbbb
-.bbbbbbbbbbqqb.
-bbbbbbbbbbbqqb.
-bbbbbbbbbbbbb..
-.bbbbbbbbbbbb..
-bbbbbbb........`, // white on the throat
-    spotted: `
-.b..b....
-.bbbb....
-bEbEq....
-qqqqq....
-.qqqqb...
-.qbbqqq..
-qqbbqqqq.
-qqqqqbbq.
-qqqqqbbqq
-qqqqqqqqqb.
-.qq.qqqbbbbb`, // white with black patches
-    thin: `
-b.b...
-bbb...
-EbE...
-bbb...
-.b....
-.bb...
-.bbb..
-.bbb..
-.bbbb.
-.bbbb.b
-.b.bbb.`,
-    whiteTabby: `
-.q.q..........
-.qqqq.........
-qEqETq........
-qqqqqTTqqTqq..
-.qqTTqqqqTTqqq
-.qqqqqTTqqqqqq
-..qq.qq..qq.qT.
-............TqT`,
-  };
-  const WORLD_MAP = '0000000000000000fc0000003cfe7c38ffff3ffe327fffff03ff01bfffff01ff81ffff6001fe03dfffa000fc03fffff4006003fbdfc0003803fd99c0000f03fc09800007c1fc07c00007f07c07e00007e07c00600003c07a01f00003803801f80003003001f0000200000014000200000000000000000000000100000000ff1fffffffffffffffffffffffffffffffff'; // 48 x 24 land/sea, 7.5 deg cells from 180 W and 90 N, a row in 12 hex digits (for the library's globe)
   /* Each room's floor, rug and vault, from textures.js (its `textures` command shows them all). */
   const ROOM_LOOK = {
     about: { floor: 'oakPlanks', rug: 'medallion' }, publications: { floor: 'herringbone', rug: 'kilim' }, research: { floor: 'flagstones' },
@@ -473,38 +152,6 @@ qqqqqTTqqTqq..
   };
   /** Texture `name`'s colour index at (x, y), from textures.js (stone if it has not come). */
   const texAt = (name, x, y) => { const t = window.TEXTURES && window.TEXTURES[name]; return t ? I[t.fn(x, y)] ?? I.ROCK : I.ROCK; };
-  // who lives in each room: one standing figure, an adult at the rooms' scale (28 px, five heads;
-  // a table's top at his hip), its clothes by letter: H the head's covering, B the body, A the arms
-  // (sleeves), L the legs, X an emblem; f skin, e beard (MATS), k the belt; a raven on the falconer's fist
-  const PERSON = `
-....HHHH....
-...HHHHHH...
-..HHHHHHHH..
-...ffffff...
-...fkffkf...
-...ffffff...
-...eeffee...
-....eeee....
-...BBBBBB...
-..BBBBBBBB..
-.ABBBBBBBBA.
-.ABBBBBBBBA.
-.ABBBXXBBBA.
-.ABBBXXBBBA.
-.ABBBBBBBBA.
-.ABBBBBBBBA.
-.ffkkkkkkff.
-...BBBBBB...
-...BBBBBB...
-..BBBBBBBB..
-..BBBBBBBB..
-..BBBBBBBB..
-...LL..LL...
-...LL..LL...
-...LL..LL...
-...LL..LL...
-...LL..LL...
-..hhh..hhh..`;
   const DWELLERS = { // [H, B, A, L, X, beard?, what they say]
     research: ['u', 'u', 'u', 'd', 'g', true, ['The astronomer, without looking up: "Saturn rises at ten. Come back then."', 'The astronomer: "The labs send their reports rolled and sealed. I read them by the candle, after the stars."']],
     projects: ['h', 'h', 'f', 'd', 'a', false, ['The smith wipes his hands: "Each of those models works. Ask it, it will show you."', 'The smith: "The bucket is for quenching. Not for drinking."']],
@@ -515,122 +162,6 @@ qqqqqTTqqTqq..
     cellar: ['h', 'd', 'd', 'h', 'r', true, ['The cellarer, a candle in his hand: "One rack for each year. The young ones are still settling."', 'The cellarer: "Mind the steps. The drip has been there since the vault was built."']],
     news: ['d', 'v', 'v', 'h', 'g', false, ['The falconer, a raven on his fist: "They bring the news as it comes. Dated, always."', 'The falconer: "That one is Hugin. The other two never tell me their names."']],
   };
-  // a piece in the foreground of each room, cut by the bottom edge: it gives the floor its depth
-  const NEAR_SP = {
-    about: `
-.wwwwwww.
-wwwwwwwww
-.w.....w.
-.w.....w.
-.w.....w.`, // a stool
-    research: `
-hhhhhhhhhhhh
-hgggggggggggh
-hhhhhhhhhhhhh
-hhhhhggghhhhh
-hhhhhhhhhhhhh
-hhhhhhhhhhhhh`, // a chest of instruments, brass-bound
-    projects: `
-.aaaaaaa.
-awwwwwwwa
-.wwwwwww.
-.aaaaaaa.
-.wwwwwww.
-.wwwwwww.`, // the quenching bucket
-    publications: `
-..rrrrr..
-.uuuuuuu.
-..hhhhhh.
-.rrrrrrr.
-uuuuuuuu.`, // books stacked on the floor
-    talks: `
-wwwwwwwwwwww
-wwwwwwwwwwww
-w.........w.
-w.........w.`, // the end of a bench
-    teaching: `
-.hhhh.
-hhhhhh
-hhghhh
-hhhhhh
-hhhhhh`, // a satchel
-    news: `
-...w...
-wwwwwww
-...w...
-...w...
-...w...
-..www..`, // a perch on its stand
-    contact: `
-hhhhhhhhhhh
-hahhhhhhaah
-hhhhhhhhhhh
-hhhhhghhhhh
-hhhhhhhhhhh`, // a traveller's trunk
-    cellar: `
-..wwwwwww..
-.waawwwaaw.
-wwwwwwwwwww
-wwaawwwaaww
-.wwwwwwwww.`, // a cask on its side
-  };
-  // the frame's small life (paintFrame, frameLife): Blanc Blanc asleep, a rat, a bat hanging and in
-  // flight, a spider, a torch on its bracket, a snail in the vine
-  const FRAME_SP = {
-    bbLoaf: `
-.b..b.......
-.bbbb.......
-bkbkqqqbbqq.
-qqqqqqqbbqqq
-.qqqqqqqqqqqq
-..qq...qq..qq`,
-    rat: `
-.......dd.
-.ddddddd*d
-dddddddddd
-.d..d..d..`,
-    batHang: `
-..n..
-.nEn.
-nnnnn
-.nnn.`,
-    batA: `
-n.....n
-nn.n.nn
-.nnnnn.
-...n...`,
-    batB: `
-.......
-nnnnnnn
-.nnnnn.
-...n...`,
-    spider: `
-k.k.k
-.kkk.
-kkdkk
-.kkk.
-k.k.k`,
-    torch: `
-.www.
-..w..
-..w..
-aaaaa
-..a..`,
-    snail: `
-..ggg.
-.gkgkg
-.ggggg
-fffffff`,
-  };
-  const RAVEN = `
-....nnn.
-...nncny
-...nnnnyy
-..nnnnn.
-.nnNnnn.
-nnNnnnn.
-nNnnnn..
-...h.h..`;
   /** Where the eyes ('E') are in a shaded sprite (outline adds one pixel all round). */
   const eyesOf = (text) => text.trim().split('\n').flatMap((r, y) => [...r].map((c, x) => (c === 'E' ? [x + 1, y + 1] : null)).filter(Boolean));
 
@@ -646,82 +177,12 @@ nNnnnn..
   const bayer = (x, y) => BAYER[(y & 3) * 4 + (x & 3)];
   const NEIGH = [[1, 0], [-1, 0], [0, 1], [0, -1]];
 
-  function mulberry32(a) {
-    return function () {
-      a |= 0; a = (a + 0x6d2b79f5) | 0;
-      let t = Math.imul(a ^ (a >>> 15), 1 | a);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
+  const { mulberry32, noise1, fbm, lichenInit, lichenGrow, lichenDim, ferryNew, ferryRow, fluidNew, fluidStep, waveStep, antsNew, antsStep, shoalStep, marketGame, boltNew, boltGrow } = window.HOURS_PHYSICS; // (the small simulations: hours/physics.js)
 
-  /** Smooth 1D value noise in [0, 1], period n. */
-  function noise1(rng, n = 64) {
-    const t = Array.from({ length: n }, rng);
-    return (x) => {
-      const i = Math.floor(x); const f = x - i;
-      const a = t[((i % n) + n) % n]; const b = t[(((i + 1) % n) + n) % n];
-      return a + (b - a) * f * f * (3 - 2 * f);
-    };
-  }
   /* ---- lichen on the castle rock: diffusion-limited aggregation (Witten & Sander 1981) ----
      on[i]: 1 rock, 2 + k lichen of patch k, over the MID plane. Walkers start on a ring just outside a patch,
      step to a 4-neighbour (only over rock) and stick, with probability `stick`, on touching it;
      too far, they start again. */
-  function lichenInit(plane, WE, H, y0, y1, rng, rock) {
-    const on = new Uint8Array(WE * H); const list = [];
-    for (let y = y0; y < y1; y += 1) for (let x = 0; x < WE; x += 1) if (rock.has(plane[y * WE + x])) { on[y * WE + x] = 1; list.push(y * WE + x); }
-    const patches = [];
-    for (let tries = 0; patches.length < 3 && list.length && tries < 400; tries += 1) {
-      const i = list[Math.floor(rng() * list.length)]; const x = i % WE; const y = (i - x) / WE;
-      if (y < y0 + 3 || patches.some((p) => Math.hypot(p.x - x, p.y - y) < 18)) continue;
-      on[i] = 2 + patches.length; patches.push({ x, y, cells: [[x, y]], r: 0, w: null, sum: [x, y, x * x + y * y], hist: [], species: patches.length % 3 === 1 ? 'xanthoria' : 'lecanora' });
-    }
-    return { on, WE, patches, max: 120, stick: 0.3 }; // (sticking below 1: a crust more than a fern)
-  }
-  /** Spend `budget` walker steps over the patches still growing; returns the cells added. */
-  function lichenGrow(lc, budget) {
-    const { on, WE } = lc; let added = 0;
-    const live = lc.patches.filter((p) => p.cells.length < lc.max);
-    if (!live.length) return 0;
-    const per = Math.ceil(budget / live.length);
-    lc.patches.forEach((p, k) => {
-      if (p.cells.length >= lc.max) return;
-      const me = 2 + k; // (a walker takes hold on its own patch only: they would merge, and r with them)
-      for (let s = 0; s < per && p.cells.length < lc.max; s += 1) {
-        if (!p.w) { // launch on a ring just outside the patch, on rock
-          const a = Math.random() * 6.283; const R = p.r + 5;
-          const x = Math.round(p.x + Math.cos(a) * R); const y = Math.round(p.y + Math.sin(a) * R);
-          if (on[y * WE + x] !== 1) continue;
-          p.w = [x, y];
-        }
-        const [x, y] = p.w; const d = [[1, 0], [-1, 0], [0, 1], [0, -1]][Math.floor(Math.random() * 4)];
-        const nx = x + d[0]; const ny = y + d[1];
-        if (on[ny * WE + nx] === 1) p.w = [nx, ny]; // (off the rock: it stays where it is)
-        const [wx, wy] = p.w;
-        if (Math.hypot(wx - p.x, wy - p.y) > 2 * p.r + 10) { p.w = null; continue; }
-        const touch = on[wy * WE + wx + 1] === me || on[wy * WE + wx - 1] === me || on[(wy + 1) * WE + wx] === me || on[(wy - 1) * WE + wx] === me;
-        if (touch && Math.random() < lc.stick) {
-          on[wy * WE + wx] = me; p.cells.push([wx, wy]); p.r = Math.max(p.r, Math.hypot(wx - p.x, wy - p.y)); p.w = null; added += 1;
-          const n = p.cells.length; const q = p.sum; q[0] += wx; q[1] += wy; q[2] += wx * wx + wy * wy;
-          const rg2 = q[2] / n - (q[0] / n) ** 2 - (q[1] / n) ** 2; // radius of gyration, squared
-          if (n >= 10) p.hist.push([Math.log(n), 0.5 * Math.log(rg2)]);
-        }
-      }
-    });
-    return added;
-  }
-  /** Fractal dimension D from each patch's growth, N ~ Rg^D (least squares of log N on log Rg),
-   *  averaged over the patches. (Mass within r of the seed undercounts on clusters this small:
-   *  the outer rim is still filling in: 0.9 to 1.3 where this gives 1.6 to 1.8.) */
-  function lichenDim(lc) {
-    const fit = (pts) => {
-      const mx = pts.reduce((a, q) => a + q[1], 0) / pts.length; const my = pts.reduce((a, q) => a + q[0], 0) / pts.length;
-      return pts.reduce((a, q) => a + (q[1] - mx) * (q[0] - my), 0) / pts.reduce((a, q) => a + (q[1] - mx) ** 2, 0);
-    };
-    const ds = lc.patches.filter((p) => p.hist.length >= 10).map((p) => fit(p.hist));
-    return ds.length ? ds.reduce((a, d) => a + d, 0) / ds.length : null;
-  }
 
   /* ---- the ferryman: tabular Q-learning (Watkins 1989) of a river crossing. State: the row
      reached (0..L) and the drift from the jetty's line (-X..X); action: an oar stroke to either
@@ -730,64 +191,13 @@ nNnnnn..
      Reward: minus the landing error at the far jetty, minus a little per stroke. One table for
      both ways (the current pushes the same way); a constant step size so he re-learns when the
      wind turns. ---- */
-  const FX = 8; // the drift he can be off by, either side
-  function ferryNew(L) { // his prior: the jetty is where to be (Q = -|drift|); the current he must learn
-    const Q = new Float32Array((L + 1) * (2 * FX + 1) * 3);
-    for (let i = 0; i < Q.length; i += 1) Q[i] = -Math.abs((Math.floor(i / 3) % (2 * FX + 1)) - FX);
-    return { L, Q, r: 0, dx: 0, px: 0, dir: 1, wait: 60, errs: [], n: 0 };
-  }
-  const fq = (f, r, dx, a) => f.Q[((r * (2 * FX + 1)) + dx + FX) * 3 + a];
-  function ferryChoose(f) {
-    const eps = Math.max(0.05, 0.5 * 0.95 ** f.n);
-    if (Math.random() < eps) return Math.floor(Math.random() * 3);
-    let best = 0; for (let a = 1; a < 3; a += 1) if (fq(f, f.r, f.dx, a) > fq(f, f.r, f.dx, best)) best = a;
-    return best;
-  }
   /** The current, in px a row: the real wind's west-east part, held under what one stroke undoes. */
   const ferryCurrent = () => clamp(windX() * 0.6, -0.9, 0.9);
-  /** One row of the crossing: act, drift, learn. Returns the landing error when he lands. */
-  function ferryRow(f, current) {
-    const a = ferryChoose(f); const drift = current + (Math.random() - 0.5) * 1.2;
-    const dx2 = clamp(Math.round(f.dx + (a - 1) + drift), -FX, FX); const r2 = f.r + 1;
-    const cost = a === 1 ? 0 : 0.05; const i = ((f.r * (2 * FX + 1)) + f.dx + FX) * 3 + a;
-    let target; let landed = null;
-    if (r2 >= f.L) { landed = Math.abs(dx2); target = -cost - landed; }
-    else target = -cost + Math.max(fq(f, r2, dx2, 0), fq(f, r2, dx2, 1), fq(f, r2, dx2, 2));
-    f.Q[i] += 0.3 * (target - f.Q[i]);
-    f.r = r2; f.dx = dx2; f.last = a;
-    return landed;
-  }
 
   /* ---- the campfire's smoke: stable fluids (Stam 1999) on a small grid over the flames. Each step:
      smoke and heat come in at the bottom; warm smoke rises (buoyancy), the real wind leans it; the
      velocity is made divergence-free (a pressure solve, Gauss-Seidel), then carries itself and the
      smoke along, semi-Lagrangian (unconditionally stable: the step never blows up). ---- */
-  function fluidNew(w, h) { const n = w * h; return { w, h, u: new Float32Array(n), v: new Float32Array(n), d: new Float32Array(n), p: new Float32Array(n), div: new Float32Array(n) }; }
-  function fluidAdvect(f, q, u, v) {
-    const { w, h } = f; const out = new Float32Array(w * h);
-    for (let y = 1; y < h - 1; y += 1) for (let x = 1; x < w - 1; x += 1) {
-      const i = y * w + x; const sx = clamp(x - u[i], 0.5, w - 1.5); const sy = clamp(y - v[i], 0.5, h - 1.5);
-      const x0 = Math.floor(sx); const y0 = Math.floor(sy); const fx = sx - x0; const fy = sy - y0; const j = y0 * w + x0;
-      out[i] = (q[j] * (1 - fx) + q[j + 1] * fx) * (1 - fy) + (q[j + w] * (1 - fx) + q[j + w + 1] * fx) * fy;
-    }
-    return out;
-  }
-  function fluidProject(f) {
-    const { w, h, u, v, p, div } = f;
-    for (let y = 1; y < h - 1; y += 1) for (let x = 1; x < w - 1; x += 1) { const i = y * w + x; div[i] = -0.5 * (u[i + 1] - u[i - 1] + v[i + w] - v[i - w]); p[i] = 0; }
-    for (let it = 0; it < 14; it += 1) for (let y = 1; y < h - 1; y += 1) for (let x = 1; x < w - 1; x += 1) { const i = y * w + x; p[i] = (div[i] + p[i - 1] + p[i + 1] + p[i - w] + p[i + w]) / 4; }
-    for (let y = 1; y < h - 1; y += 1) for (let x = 1; x < w - 1; x += 1) { const i = y * w + x; u[i] -= 0.5 * (p[i + 1] - p[i - 1]); v[i] -= 0.5 * (p[i + w] - p[i - w]); }
-  }
-  function fluidStep(f, src, wind) {
-    const { w, h } = f; const cx = w >> 1;
-    f.k = (f.k || 0) + 1; const sway = Math.sin(f.k * 0.07) * 0.5 + Math.sin(f.k * 0.023) * 0.4; // (the flames gutter)
-    for (let x = cx - 2; x <= cx + 2; x += 1) { const i = (h - 3) * w + x; f.d[i] = Math.min(2, f.d[i] + src * (0.4 + Math.random() * 0.6)); f.v[i] -= 0.12; f.u[i] += sway * 0.3 + (Math.random() - 0.5) * 1.2; }
-    for (let i = 0; i < w * h; i += 1) { f.v[i] = f.v[i] * 0.99 - 0.007 * f.d[i]; f.u[i] = f.u[i] * 0.995 + wind * 0.004 * (1 - (i / w) / h); }
-    fluidProject(f); const u2 = fluidAdvect(f, f.u, f.u, f.v); f.v = fluidAdvect(f, f.v, f.u, f.v); f.u = u2; fluidProject(f);
-    const d = fluidAdvect(f, f.d, f.u, f.v); const d2 = new Float32Array(w * h); // carried, then spread a little: the plume widens as it rises
-    for (let y = 1; y < h - 1; y += 1) for (let x = 1; x < w - 1; x += 1) { const i = y * w + x; d2[i] = (d[i] * 0.8 + (d[i - 1] + d[i + 1] + d[i - w] + d[i + w]) * 0.05) * 0.988; }
-    f.d = d2;
-  }
 
   /* ---- skimming stones: the river's surface as a 2D wave equation (leapfrog, damped, banks held
      still), in the MID plane's coordinates; a stone's touches set it ringing ---- */
@@ -795,15 +205,6 @@ nNnnnn..
     const y0 = s0.yl0 - 3; const h = s0.yg + 2 - y0; const w = s0.WE; const mid = s0.planes[L.MID];
     const wet = new Uint8Array(w * h); for (let y = 0; y < h; y += 1) for (let x = 0; x < w; x += 1) { const c = mid[(y0 + y) * w + x]; wet[y * w + x] = c === I.WATER || c === I.WATER_HI ? 1 : 0; }
     return { w, h, y0, wet, u: new Float32Array(w * h), up: new Float32Array(w * h), live: 0 };
-  }
-  function waveStep(wv) {
-    const { w, h, wet } = wv; const un = new Float32Array(w * h); let e = 0;
-    for (let y = 1; y < h - 1; y += 1) for (let x = 1; x < w - 1; x += 1) {
-      const i = y * w + x; if (!wet[i]) continue;
-      const lap = wv.u[i - 1] + wv.u[i + 1] + wv.u[i - w] + wv.u[i + w] - 4 * wv.u[i];
-      un[i] = (2 * wv.u[i] - wv.up[i] + 0.3 * lap) * 0.975; e += Math.abs(un[i]);
-    }
-    wv.up = wv.u; wv.u = un; wv.live = e > 0.5 ? 1 : 0;
   }
 
   /* ---- the tavern's last customer, at night: a random walk along the bank, a pace either way at
@@ -873,50 +274,10 @@ nNnnnn..
      takes the short way with p = (k + ts)^2 / ((k + ts)^2 + (k + tl)^2), t the pheromone on each,
      and marks the way it took when it gets there; the marks fade. The short way's ants come back
      sooner, so it is marked faster, and the colony settles on it: no ant knows which is shorter. */
-  function antsNew(x0, y0) {
-    const walk = (dip) => { // an arc from the nest to the apple, a pixel a step (its length: the time it takes)
-      const out = [[x0, y0]];
-      for (let u = 0; u <= 1; u += 0.002) {
-        const p = [x0 + Math.round(30 * u), y0 + Math.round(Math.sin(u * Math.PI) * dip)]; const q = out[out.length - 1];
-        if (p[0] !== q[0] || p[1] !== q[1]) out.push(p);
-      }
-      return out;
-    };
-    const ways = [walk(1.5), walk(-10)]; // short, and long: round the pebble
-    return { x0, y0, ways, tau: [1, 1], k: 5, ants: Array.from({ length: 16 }, (_, j) => ({ way: j % 2, s: -j * 3, dir: 1 })), picks: [] };
-  }
-  function antsStep(a) {
-    a.tau = a.tau.map((v) => v * 0.997); // the marks fade
-    const choose = () => { const [s0, l0] = a.tau.map((v) => (a.k + v) ** 2); const w = Math.random() < s0 / (s0 + l0) ? 0 : 1; a.picks.push(w); if (a.picks.length > 40) a.picks.shift(); return w; };
-    a.ants.forEach((n) => {
-      if (n.s < 0) { n.s += 1; return; } // (still in the nest: they leave one by one)
-      n.s += 1; const len = a.ways[n.way].length;
-      if (n.s < len) return;
-      a.tau[n.way] += 1; // there: mark the way taken, turn round, choose again
-      n.dir = -n.dir; n.way = choose(); n.s = 0;
-    });
-  }
   const antAt = (a, n) => { const w = a.ways[n.way]; const k = Math.min(w.length - 1, Math.max(0, n.s)); return n.dir > 0 ? w[k] : w[w.length - 1 - k]; };
 
   /* ---- a shoal in the river on bright days (Reynolds 1987): each fish steers towards its neighbours'
      middle and heading, away from any too close, and keeps to the water ---- */
-  function shoalStep(f, x0, x1, top, bot) {
-    f.forEach((a) => {
-      let cx = 0; let cy = 0; let vx = 0; let vy = 0; let n = 0; let sx = 0; let sy = 0;
-      f.forEach((b) => {
-        if (a === b) return; const d = Math.hypot(b.x - a.x, b.y - a.y);
-        if (d < 12) { cx += b.x; cy += b.y; vx += b.vx; vy += b.vy; n += 1; }
-        if (d < 2.5) { sx += a.x - b.x; sy += a.y - b.y; }
-      });
-      if (n) { a.vx += ((cx / n - a.x) * 0.004) + ((vx / n - a.vx) * 0.06); a.vy += ((cy / n - a.y) * 0.004) + ((vy / n - a.vy) * 0.06); }
-      a.vx += sx * 0.05 + (Math.random() - 0.5) * 0.02; a.vy += sy * 0.05 + (Math.random() - 0.5) * 0.01;
-      if (a.x < x0 + 4) a.vx += 0.02; if (a.x > x1 - 4) a.vx -= 0.02;
-      const t0 = top(Math.round(a.x)) + 2; const b0 = bot(Math.round(a.x)) - 2;
-      if (a.y < t0) a.vy += 0.03; if (a.y > b0) a.vy -= 0.03;
-      const sp = Math.hypot(a.vx, a.vy); const k = sp > 0.45 ? 0.45 / sp : sp < 0.12 ? 0.12 / (sp || 1) : 1;
-      a.vx *= k; a.vy *= k * 0.6; a.x += a.vx; a.y += a.vy;
-    });
-  }
 
   /* ---- the Saturday market's crowd: a stationary mean-field game (Lasry & Lions 2007) on a line
      of N places along the bank. Cost of standing at x: the crush there (kappa N m(x)) less the
@@ -924,47 +285,7 @@ nNnnnn..
      gamma. Solved by fictitious play (Cardaliaguet & Hadikhanloo 2017): the best reply to the
      average crowd so far, the crowd that reply makes, averaged in. gap: L1 distance between the
      crowd found and the one its own best reply makes (0 at a Nash equilibrium). */
-  function marketGame(pull, { kappa = 0.35, eps = 0.04, sigma = 0.06, gamma = 0.95, rounds = 300 } = {}) {
-    const N = pull.length; const Q = new Float64Array(N * 3); const V = new Float64Array(N); const pol = new Float64Array(N * 3);
-    let mbar = new Float64Array(N).fill(1 / N); let m = mbar.slice();
-    const reply = (iters) => { // soft value iteration against the crowd mbar (warm-started: V carries over)
-      for (let it = 0; it < iters; it += 1) {
-        for (let x = 0; x < N; x += 1) {
-          const c = kappa * N * mbar[x] - pull[x]; let mn = Infinity;
-          for (let a = 0; a < 3; a += 1) {
-            const y = x + a - 1; const q = y < 0 || y >= N ? Infinity : c + (a === 1 ? 0 : eps) + gamma * V[y];
-            Q[x * 3 + a] = q; mn = Math.min(mn, q);
-          }
-          let z = 0; for (let a = 0; a < 3; a += 1) z += Math.exp(-(Q[x * 3 + a] - mn) / sigma);
-          V[x] = mn - sigma * Math.log(z);
-          for (let a = 0; a < 3; a += 1) pol[x * 3 + a] = Math.exp(-(Q[x * 3 + a] - mn) / sigma) / z;
-        }
-      }
-    };
-    const forward = (iters) => { // the crowd that policy makes, run towards its stationary law
-      for (let it = 0; it < iters; it += 1) {
-        const m2 = new Float64Array(N);
-        for (let x = 0; x < N; x += 1) for (let a = 0; a < 3; a += 1) if (pol[x * 3 + a]) m2[x + a - 1] += m[x] * pol[x * 3 + a];
-        m = m2;
-      }
-    };
-    for (let k = 0; k < rounds; k += 1) {
-      reply(k ? 20 : 200); forward(k ? 40 : 400);
-      mbar = mbar.map((v, x) => v + (m[x] - v) / (k + 2));
-    }
-    reply(300); m = mbar.slice(); forward(2000); // how far mbar is from the crowd its own best reply makes
-    const gap = m.reduce((s, v, x) => s + Math.abs(v - mbar[x]), 0);
-    return { m: mbar, pol, gap, rounds };
-  }
 
-  function fbm(rng, oct = 4) {
-    const ns = Array.from({ length: oct }, () => noise1(rng));
-    return (x) => {
-      let s = 0; let a = 1; let w = 0;
-      for (let k = 0; k < oct; k += 1) { s += a * ns[k](x * 2 ** k); w += a; a /= 2; }
-      return s / w;
-    };
-  }
 
   /** Shaded sprite from a silhouette: each material is lit on the side facing the fire (+x) and,
    *  dithered, on top; shaded on the far side and underneath. Seams between parts and a 1 px
@@ -2242,7 +1563,7 @@ nNnnnn..
     maproom: 'the map room', // (out of the menu: up from the cartographer's shop in the village)
   };
   // a section's room kind: the drawing keeps the rooms' old names (the observatory is 'research', the
-  // workshop 'projects'); a project page is the workshop too
+  // workshop 'projects')
   const KIND = { experience: 'research', work: 'projects' };
   // each room its light, to know it at a glance: the cast of its walls (r, g, b factors) and what its
   // candles turn things to (lights in drawInterior): the scriptorium amber, the observatory blue, the
@@ -2276,17 +1597,6 @@ nNnnnn..
     return armsCache[id];
   }
 
-  // a chalk hand for the schoolroom's equations: 5 rows, each glyph its own width (Greek letters wider)
-  const GLYPHS = {
-    i: ['1', '0', '1', '1', '1'], 'ħ': ['100', '111', '100', '111', '101'], '∂': ['010', '001', '011', '101', '010'],
-    'ψ': ['10101', '10101', '01110', '00100', '00100'], '/': ['001', '001', '010', '100', '100'], t: ['010', '111', '010', '010', '011'],
-    '=': ['000', '111', '000', '111', '000'], H: ['101', '101', '111', '101', '101'], 'ρ': ['000', '010', '101', '110', '100'],
-    D: ['110', '101', '101', '101', '110'], '∇': ['11111', '10001', '01010', '00100', '00000'], '²': ['11', '01', '10', '11', '00'],
-    Z: ['111', '001', '010', '100', '111'], 'Σ': ['111', '100', '010', '100', '111'], e: ['000', '111', '111', '100', '111'],
-    x: ['000', '101', '010', '101', '000'], p: ['000', '111', '101', '111', '100'], '-': ['000', '000', '111', '000', '000'],
-    'β': ['010', '101', '110', '101', '110'], E: ['111', '100', '110', '100', '111'], u: ['000', '101', '101', '101', '111'],
-    '+': ['000', '010', '111', '010', '000'], '(': ['01', '10', '10', '10', '01'], ')': ['10', '01', '01', '01', '10'], 0: ['111', '101', '101', '101', '111'],
-  };
   const CHALK = ['iħ∂ψ/∂t=Hψ', '∂ρ/∂t=D∇²ρ', 'Z=Σexp(-βE)', '-∂u/∂t+H(∇u)=0'];
 
   // the labour of the month, as in a book of hours (sower in autumn, reaper in summer...)
@@ -2298,72 +1608,7 @@ nNnnnn..
   const RW = 240; const RH = 135;
   let roomCv; let rctx; let rimg; let robuf; let roomBox = { l: 0, t: 0, k: 1 }; let fbuf = null; let frameGeo = null; // (roomBox: css px in the plate, k: css px a room pixel)
   const SEASON = (m) => (m <= 1 || m === 11 ? 'winter' : m <= 4 ? 'spring' : m <= 7 ? 'summer' : 'autumn');
-  const PEASANT = [`
-..rr...
-.rffr..
-.rffr..
-.hhhh.f
-hhhhhh.
-.hhhh..
-.hhhh..
-.h..h..
-.h..h..`, `
-..rr...
-.rffr..
-.rffr..
-.hhhh..
-hhhhhh.
-.hhhhf.
-.hhhh..
-..hh...
-..hh...`];
 
-  // pupils seen from behind, seated: 1 hair, 2 tunic (filled in per pupil); the last one has a question
-  const PUPIL = [`
-..111..
-.11111.
-1111111
-1111111
-f11111f
-.11111.
-..1f1..
-.22222.
-2222222
-2222222
-2222222
-2222222`, `
-........f
-..111...2
-.11111..2
-1111111.2
-1111111.2
-f11111f2.
-.11111.2.
-..1f1.2..
-.222222..
-2222222..
-2222222..
-2222222..`];
-  // the copyist, a Benedictine in his black habit, seated in profile facing right, his hood down (his writing hand: deco 'copyist')
-  const MONK = `
-..nnn...
-.nnfff..
-.nffkf..
-.nfffff.
-..fff...
-..bbb...
-.bbbbb..
-bbbbbbb.
-bbbbbbbb
-bbbbbb..
-bbbbbb..
-bbbbbbb.
-bbbbbbbb
-bbbbbbbb
-bbbbbbbb
-.bb..bb.`;
-  const HAIR = ['h', 'b', 't', 'g', 'h', 'b'];
-  const TUNIC = ['r', 'u', 'd', 'p', 'u', 'r'];
   const pupilCache = {};
   const pupil = (k) => {
     const key = `${k % 6}${k === 4 ? 'q' : ''}`; // the fifth asks a question
@@ -2371,7 +1616,7 @@ bbbbbbbb
     return pupilCache[key];
   };
 
-  function generateInterior(id, W, H, Wi, sup) {
+  function generateInterior(id, W, H) {
     const rng = mulberry32(id.split('').reduce((a, c) => a * 31 + c.charCodeAt(0), 7));
     const idx = new Uint8Array(W * H); const out = new Uint8Array(W * H);
     const front = new Uint8Array(W * H); let frontOn = false; // what stands before a figure walking at the back (the schoolroom's desks and pupils)
@@ -2405,7 +1650,6 @@ bbbbbbbb
     // each room its shape, after what it is (flat beamed ceilings: one great building): a plain box,
     // a deep library lined with shelves, a narrow stone tower room, a sooty brick workshop, a wide
     // hall on pillars, a schoolroom lit from the side, a plank-lined rookery, a stone gate passage
-    // (project pages stay the flat workshop)
     const SHAPES = {
       about: { side: 0.17, mat: 'wainscot' }, publications: { side: 0.25, mat: 'shelves' },
       research: { side: 0.11, mat: 'stone' }, projects: { side: 0.15, mat: 'brick' },
@@ -2413,7 +1657,7 @@ bbbbbbbb
       news: { side: 0.16, mat: 'boards' }, contact: { side: 0.2, mat: 'ashlar' }, cellar: { side: 0.18, mat: 'ashlar' },
       maproom: { side: 0.14, mat: 'wainscot' },
     };
-    const SHAPE = ROOM_NAMES[id] ? SHAPES[kind] : null;
+    const SHAPE = SHAPES[kind] || SHAPES.contact;
     const box3d = Boolean(SHAPE);
     const BL = box3d ? Math.round(W * SHAPE.side) : 0; const BR = W - BL;
     const sideBot = (x) => (x < BL ? H - (H - yf) * (x / BL) : x >= BR ? H - (H - yf) * ((W - 1 - x) / BL) : yf);
@@ -2737,23 +1981,9 @@ bbbbbbbb
     }
     function lantern(x, y) { set(x, y - 1, I.OUTLINE); rect(x - 1, y, 3, 3, I.ARM_SH); set(x, y + 1, I.WIN_LIT); flames.push({ x, y: y + 1, small: true }); lights.push({ x, y: y + 1, r: 0.3 * H }); }
 
-    /* the text's holder stands where the text is (`sup`: its box, from the page, in this room's
-       pixels); the room's other things keep to its left */
-    const S0 = sup || { x: Math.round(W * 0.56), y: Math.round(H * 0.2), w: Math.round(W * 0.4), h: Math.round(H * 0.45) };
-    const x0 = S0.x; const x1 = S0.x + S0.w; const top = S0.y; const bot = Math.min(H - 4, S0.y + S0.h);
-    const stage = sup ? Math.max(30, x0 - 4) : Wi;
-    const s = (f) => Math.round(f * stage);
     const floorY = (k) => yf + Math.round(k * (H - yf)); // k in [0, 1]: from the wall to the near edge
     const cat = (name, x, yb) => { const c = SPRITES.cats[name]; if (c) stamp(c, x, yb - c.h); };
 
-    function easelUnder(dt) {
-      const t = Math.min(dt, floorY(0.2)); const fy = floorY(0.5);
-      rect(x0 - 2, t, x1 - x0 + 4, 2, I.TIMBER_HI); // the ledge the sheet rests on
-      [[x0 + 4, x0 - 6], [x1 - 4, x1 + 6]].forEach(([ta, fa]) => { for (let y = t + 2; y < fy; y += 1) { const k = (y - t) / (fy - t); set(ta + (fa - ta) * k, y, I.TIMBER_SH); set(ta + (fa - ta) * k + 1, y, I.TIMBER); } });
-      rect(x0, Math.round((t + fy) / 2), x1 - x0, 1, I.TIMBER_SH);
-      rect(Math.round((x0 + x1) / 2), Math.max(6, top - 6), 1, 6, I.TIMBER_SH); // the mast behind, its clamp
-      rect(Math.round((x0 + x1) / 2) - 2, Math.max(6, top - 2), 5, 2, I.ARM_SH);
-    }
     function chandelier(cx0, y0 = 12) { // hangs from the beams on its chain: a ring of candles
       for (let y = 4; y < y0; y += 1) set(cx0, y, y % 2 ? I.ARM_SH : I.ARM);
       rect(cx0 - 7, y0, 15, 1, I.ARM_SH); rect(cx0 - 6, y0 + 1, 13, 1, I.ARM);
@@ -2860,7 +2090,7 @@ bbbbbbbb
       }
     }
 
-    const things = ROOM_NAMES[id] ? (itemsOf(id) || []) : null; // null: a project page, its text on the easel
+    const things = itemsOf(id) || [];
     const slots = [];
     // a thing's own pixels (what drawing it changed in its box, with what was under), so the room can
     // lift it when pointed at and take it out of its place while its card is open: mark(() => draw it, return its box)
@@ -2871,9 +2101,9 @@ bbbbbbbb
       for (let y = Math.max(0, b.y - 1); y <= Math.min(H - 1, b.y + b.h); y += 1) for (let x = Math.max(0, b.x - 1); x <= Math.min(W - 1, b.x + b.w); x += 1) { const i = y * W + x; if (idx[i] !== snap[i]) px.push(i, snap[i], idx[i]); }
       owned.set(b, px); return b;
     };
-    if (things) {
+    { // the room's things
     /* ---- the rooms of the castle: each piece of the section is a thing in the room ---------
-       (script.js lists them: `things`); laid out on a table seen from a little above, a shelf,
+       (assets/js/ui lists them: `things`); laid out on a table seen from a little above, a shelf,
        a wall, a board; a second row when the first is full, so more content only means more
        things. slots[i]: where thing i is, for its hotspot. */
     const S = (f) => Math.round(BL + f * (BR - BL)); // a place on the back wall (fraction of it)
@@ -2893,14 +2123,6 @@ bbbbbbbb
       return { l: Math.round(xc - half + depth + 1), r: Math.round(xc + half - depth - 1), back: yTop + 3, front: yTop + depth };
     }
     /** n places along [l, r], `per` apart at least; overflow goes to further rows. Drawn back rows first. */
-    function spread(n, l, r, per) {
-      const fit = Math.max(1, Math.floor((r - l) / per)); const out = [];
-      for (let k = 0; k < n; k += 1) {
-        const row = Math.floor(k / fit); const inRow = Math.min(fit, n - row * fit);
-        out.push({ k, row, xc: Math.round(l + (((k % fit) + 0.5) * (r - l)) / inRow) });
-      }
-      return out.sort((a, b) => b.row - a.row);
-    }
     /** The places a holder of width r - l has, one every `per` px: their middles. A room's places are
      *  its own, whatever it holds: what comes later takes the next free one, nothing moves. */
     const places = (l, r, per) => { const fit = Math.max(1, Math.floor((r - l) / per)); return Array.from({ length: fit }, (_, k) => Math.round(l + ((k + 0.5) * (r - l)) / fit)); };
@@ -3098,7 +2320,7 @@ bbbbbbbb
         extra.push({ t: { kind: 'hours', label: 'The book of hours', get html() { return cards.hours(); } }, b: box(lx - 2, top - 15, 31, 20) });
       }
       { // the scrying engine, alone in the right corner on a stone dais: an old cabinet of oak and brass,
-        // keys like an organ's, a round glass that glows; the terminal opens in it (script.js: openEngine).
+        // keys like an organ's, a round glass that glows; the terminal opens in it (ui/5-engine.js: openEngine).
         // Its screen, orb and halo live in drawInterior
         const ex = BR - 26; const eb = yf + 4; const cb = eb - 3; // (cb: the cabinet's foot, on four legs)
         rect(ex - 3, eb - 1, 26, 3, I.ROCK); rect(ex - 3, eb - 1, 26, 1, I.ROCK_HI); rect(ex - 3, eb + 2, 26, 1, I.ROCK_DK); // the dais
@@ -3696,8 +2918,8 @@ qqqqqTqqq
     };
     /** The first free place for a w x h piece: each x of `xs` at y, then a little lower or higher. */
     const placeOn = (xs, y, w, h) => { for (const d of [0, 4, -4, 8, -8, 12]) for (const x of xs) if (wallFree(x, y + d, w, h)) return [Math.round(x), Math.round(y + d)]; return null; };
-    // the cards the visitor pinned up (script.js: pins): each a small sheet nailed to the wall, its card again on a click
-    if (things) {
+    // the cards the visitor pinned up (ui/4-things.js: pins): each a small sheet nailed to the wall, its card again on a click
+    {
       const along = [0.06, 0.94, 0.14, 0.86, 0.22, 0.78, 0.3, 0.7, 0.38, 0.62].map(S);
       (pinsOf(id) || []).forEach((t) => {
         const p = placeOn(along, Math.round(H * 0.3), 7, 10) || placeOn(along, Math.round(H * 0.5), 7, 10); if (!p) return;
@@ -3880,23 +3102,11 @@ qqqqqTqqq
       feet.forEach(([x, y]) => [[0, 1], [1, 1], [1, 2], [2, 2]].forEach(([dx, dy]) => { const X = x + dx; const Y = y + dy; if (Y >= H || X >= W || furn[Y * W + X]) return; const i = Y * W + X; if (DARK[idx[i]] !== undefined && bayer(X, Y) < (dy === 1 ? 0.75 : 0.4)) idx[i] = DARK[idx[i]]; }));
     }
     extra.forEach(({ t, b }) => { slots[things.length] = b; things.push(t); }); // the hangings and the doors can be looked at too
-    } else { // a project page: the workshop, its text on the blueprint on the easel
-      easelUnder(bot);
-      const hx = s(0.05); const hw = Math.max(18, s(0.32)); const hy = yf - 24;
-      rect(hx - 3, hy - 5, hw + 6, 29, I.BRICK_SH); rect(hx - 3, hy - 5, hw + 6, 2, I.BRICK_HI);
-      rect(hx, hy, hw, 24, I.OUTLINE);
-      for (let y = 0; y < hy - 5; y += 1) rect(hx + hw / 2 - 4, y, 8, 1, y % 3 ? I.BRICK : I.BRICK_SH); // the flue
-      flames.push({ x: hx + hw / 2, y: yf - 1, hearth: true, w: hw - 4 }); lights.push({ x: hx + hw / 2, y: yf - 6, r: 0.6 * H, hearth: true });
-      const ax = s(0.52); rect(ax, floorY(0.3) - 9, 12, 3, I.ARM_HI); rect(ax, floorY(0.3) - 9, 12, 1, I.BLADE); rect(ax + 3, floorY(0.3) - 6, 6, 3, I.ARM_SH); rect(ax + 2, floorY(0.3) - 3, 8, 3, I.ARM_SH); set(ax - 1, floorY(0.3) - 8, I.ARM); // anvil
-      rect(s(0.45), Math.round(H * 0.28), s(0.45), 1, I.TIMBER_SH); // the tool rack
-      for (let k = 0; k < 6; k += 1) { const tx = s(0.48) + k * Math.max(3, s(0.07)); rect(tx, Math.round(H * 0.28) + 1, 1, 6 + (k % 3) * 2, k % 2 ? I.ARM_SH : I.TIMBER); rect(tx - 1, Math.round(H * 0.28) + 6 + (k % 3) * 2, 3, 2, I.ARM_HI); }
-      deco.push({ type: 'gear', x: s(0.78), y: Math.round(H * 0.5), r: 4, sp: 0.8 }, { type: 'gear', x: s(0.78) + 8, y: Math.round(H * 0.5) + 4, r: 3, sp: -1.1 });
-      lantern(s(0.9), Math.round(H * 0.18));
     }
     if (clash) (window.overlaps ||= {})[id] = { W, H, pairs: [...clash].sort((a, b) => b[1] - a[1]) };
-    return { id, W, H, idx, out, front, lights, flames, stars, motes, blinks, camps, deco, pools, sills, yf, slots: things ? slots : [], things: things || [], cells: new Float32Array(9 * 14),
-      pix: things ? slots.map((b) => owned.get(b) || null) : [], doors: doorList.map((e) => e.b),
-      ladderK: things ? things.findIndex((tt) => tt.kind === 'ladder') : -1 };
+    return { id, W, H, idx, out, front, lights, flames, stars, motes, blinks, camps, deco, pools, sills, yf, slots, things, cells: new Float32Array(9 * 14),
+      pix: slots.map((b) => owned.get(b) || null), doors: doorList.map((e) => e.b),
+      ladderK: things.findIndex((tt) => tt.kind === 'ladder') };
   }
 
   /* ---- palette from the sun's altitude -------------------------------- */
@@ -3985,11 +3195,11 @@ qqqqqTqqq
   let hoverId = null; let pendingRoom = null; let pendingHoist = false;
   let heraldry = { own: 'silva', tapestry: [] }; let say = () => {}; let rumour = () => '';
   let curiosOf = () => ({ found: [], all: {} }); let nowOf = () => '';
-  let visitsOf = () => ({ n: 1, first: null }); // the visitor's visits (script.js): their oak's rings
-  let newsOf = () => null; let dreamsOf = () => []; let tradeWith = () => ''; // (script.js: the latest news, the knight's dreams, the peddler's bargain)
+  let visitsOf = () => ({ n: 1, first: null }); // the visitor's visits (ui/1-core.js): their oak's rings
+  let newsOf = () => null; let dreamsOf = () => []; let tradeWith = () => ''; // (ui/2-theme.js: the latest news, the knight's dreams, the peddler's bargain)
   let pointer = null; // where the mouse is over the landscape, scene px (the black cat watches it)
-  let billiardShow = () => {}; // the tavern's billiard table (script.js: a dialog)
-  let stalenessOf = () => 0; // days since the visitor was last in a room (script.js): its cobwebs
+  let billiardShow = () => {}; // the tavern's billiard table (ui/7-dialogs.js: a dialog)
+  let stalenessOf = () => 0; // days since the visitor was last in a room (assets/js/ui): its cobwebs
   let ladderF = 0.15; // where the library's ladder stands on its rail, 0..1 (kept between visits)
   /* what the visitor has used most this visit, for the great hall's tapestry (La Dame à la licorne):
      touch the clicks, taste the village and its tavern, smell the fire and the orchard, hearing the
@@ -4022,7 +3232,7 @@ qqqqqTqqq
   let running = false; let visible = true; let raf = 0; let last = 0; let tick = 0;
   let bodies = null; let lastEclipse = null; let label0 = ''; let castUntil = 0;
   let par = 0; let parTarget = 0; // pointer parallax, -1 (left) .. 1 (right)
-  // the weather over Paris (script.js, from Open-Meteo): kind clear|cloudy|overcast|fog|drizzle|rain|snow|storm,
+  // the weather over Paris (assets/js/ui, from Open-Meteo): kind clear|cloudy|overcast|fog|drizzle|rain|snow|storm,
   // cover 0..1 (cloud cover), wind (km/h)
   let weather = { kind: 'clear', cover: 0.3, wind: 10, dir: 270 };
 
@@ -4034,41 +3244,6 @@ qqqqqTqqq
      ~ phi^eta, phi the potential (0 on the channel and the cloud, 1 at the ground), relaxed between
      steps (SOR); eta ~ 1.6 gives the forked bolts of real lightning (eta 1: a DLA bush, higher: a rod). A bolt grows
      over a few frames before it can strike; cells 2 px. ---- */
-  function boltNew(w, h, x0, y0) {
-    const phi = Float32Array.from({ length: w * h }, (_, i) => Math.floor(i / w) / (h - 1));
-    const on = new Uint8Array(w * h); const par = new Int32Array(w * h).fill(-1); const c0 = w >> 1;
-    on[c0] = 1; phi[c0] = 0;
-    return { w, h, x0, y0, phi, on, par, cells: [c0], done: false, main: null };
-  }
-  function boltGrow(b, steps, eta = 1.6) {
-    const { w, h, phi, on, par } = b;
-    for (let s0 = 0; s0 < steps && !b.done; s0 += 1) {
-      for (let it = 0; it < 4; it += 1) {
-        for (let y = 1; y < h - 1; y += 1) {
-          for (let x = 0; x < w; x += 1) {
-            const i = y * w + x; if (on[i]) continue;
-            const l = phi[x ? i - 1 : i + 1]; const r = phi[x < w - 1 ? i + 1 : i - 1];
-            phi[i] += 1.85 * ((l + r + phi[i - w] + phi[i + w]) / 4 - phi[i]);
-          }
-        }
-      }
-      const cand = []; let tot = 0; // the channel's free neighbours, weighted
-      b.cells.forEach((i) => {
-        const x = i % w; // (eight neighbours: the channel may run on the diagonal)
-        [x > 0 ? i - 1 : -1, x < w - 1 ? i + 1 : -1, i + w, i - w, x > 0 ? i + w - 1 : -1, x < w - 1 ? i + w + 1 : -1].forEach((j) => {
-          if (j < w || j >= w * h || on[j]) return;
-          const p = Math.max(0, phi[j]) ** eta; tot += p; cand.push([j, i, p]);
-        });
-      });
-      if (!tot) { b.done = true; break; }
-      let r = Math.random() * tot; let k = 0; while (k < cand.length - 1 && (r -= cand[k][2]) > 0) k += 1;
-      const [j, from] = cand[k];
-      on[j] = 1; phi[j] = 0; par[j] = from; b.cells.push(j);
-      if (j >= w * (h - 1)) { // it has reached the ground: the main channel, back up the tree
-        b.done = true; b.main = new Set(); for (let q = j; q >= 0; q = par[q]) b.main.add(q);
-      }
-    }
-  }
 
   const TC = 2 / Math.log(1 + Math.SQRT2);
   let loom = null;
@@ -4157,7 +3332,7 @@ qqqqqTqqq
   const MASTER_TALK = ['"The partition function, children: the whole of a system in one sum."', '"Who is whispering at the back? I have eyes in my cap."',
     '"Schrodinger first: write it out three times, neatly."', '"Diffusion is patience: every particle wanders, and the crowd spreads."', '"Hands up, not voices."'];
 
-  /** A figure of a real asset in a card: script.js paints its canvas (Hours.paint) and turns its frames. */
+  /** A figure of a real asset in a card: ui/4-things.js paints its canvas (Hours.paint) and turns its frames. */
   const figHtml = (name, i, n) => `<figure class="real-fig" data-real="${name}" data-i="${i}" data-n="${n}"><canvas></canvas><figcaption></figcaption>`
     + (n > 1 ? '<p class="real-steps"><button type="button" data-real-step="-1">[&#9664;]</button> <button type="button" data-real-step="1">[&#9654;]</button></p>' : '') + '</figure>';
   const SIGNS = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
@@ -4303,7 +3478,7 @@ qqqqqTqqq
   /** The copyist works late in the scriptorium: from dusk to one in the morning, his window lit. */
   const scribeLate = () => { const h = clockFn().getHours(); return look.night > 0.2 && (h >= 16 || h < 1); };
   const wetness = () => (WET[weather.kind] ? 1 : clamp(1 - (weather.dryH ?? 99) / 12));
-  let clockFn = () => new Date(); // the instant the sky shows (script.js: now, or a previewed hour)
+  let clockFn = () => new Date(); // the instant the sky shows (assets/js/ui: now, or a previewed hour)
   // meteor showers: [month (0-11), day of peak, ZHR, half-width in days]; IMO calendar, rounded
   const SHOWERS = [[0, 3, 110, 0.6], [3, 22, 18, 1], [4, 6, 50, 4], [7, 12, 100, 4], [9, 8, 10, 0.5],
     [9, 21, 20, 3], [10, 17, 15, 1], [11, 14, 150, 1.5]];
@@ -6216,31 +5391,10 @@ qqqqqTqqq
 
   /* ---- the rooms at run time: lighting, animation, the camera between outside and in ---- */
 
-  /* A project page's text sits on the workshop's easel: its box in fractions of the room (it
-     hangs from `top`, under the menu); the room draws the easel there and the page puts the
-     text box on it (--sup-*). The castle's rooms lay out their own things instead. */
-  const PLACE = { x: 0.43, w: 0.47, top: 0.15, h: 0.56 };
-  function placeOf(W, H) {
-    const p = PLACE; const k = roomBox.k;
-    const pr = plate.getBoundingClientRect(); const menu = document.querySelector('.tabs');
-    const mb = menu ? Math.ceil((menu.getBoundingClientRect().bottom - pr.top - roomBox.t) / k) + 2 : 4; // keep under the menu
-    const x = Math.round(p.x * W); const w = Math.round(p.w * W);
-    const y = Math.max(Math.round(p.top * H), mb); const h = Math.min(Math.round(p.h * H), Math.round(H * 0.78) - y);
-    return { x, w, y, h };
-  }
-  /** Hand the text box's place to the page, in viewport pixels. */
-  function placeText(pl) {
-    const r = plate.getBoundingClientRect(); const k = roomBox.k;
-    const set = (n, v) => root.style.setProperty(n, `${Math.round(v)}px`);
-    set('--sup-l', r.left + roomBox.l + pl.x * k); set('--sup-w', pl.w * k);
-    set('--sup-t', r.top + roomBox.t + pl.y * k); set('--sup-h', pl.h * k);
-  }
-  /** A room, at the standard size (RW x RH); a project page keeps its text on the easel. */
+  /** A room, at the standard size (RW x RH). */
   function makeInterior(id) {
     layoutRoom();
-    const pl = ROOM_NAMES[id] ? null : placeOf(RW, RH);
-    if (pl) placeText(pl);
-    const r = generateInterior(id, RW, RH, Math.round(interiorStage(RW)), pl);
+    const r = generateInterior(id, RW, RH);
     for (let k = 0; k < 30; k += 1) stepCells(r.cells, 9, 14); // a hearth already burning
     return r;
   }
@@ -6403,11 +5557,6 @@ qqqqqTqqq
         for (let k = 1; k <= 4; k += 1) put(X - k + (sp === F.ratL ? sp.w + 4 : 0), Y + sp.h - 2 + (k > 2 ? 1 : 0), ipal32[I.LEATHER]); // its tail
       }
     }
-  }
-
-  /** Width left to the furniture: on wide screens the parchment hangs over the right half. */
-  function interiorStage(W) { // (W: the room's width)
-    return getComputedStyle(plate.parentElement).position === 'fixed' && !root.classList.contains('climb') ? Math.round(W * 0.46) : W;
   }
 
   /** Indoor colours under a dim ambient, darker towards the corners and the beams; the window's
@@ -6930,7 +6079,7 @@ qqqqqTqqq
     if (roomShown) rctx.putImageData(rimg, 0, 0);
   }
 
-  /** Go into room `id` (null: back out to the landscape); `dir` (the tower, script.js climbFloor):
+  /** Go into room `id` (null: back out to the landscape); `dir` (the tower, ui/3-rooms.js climbFloor):
    *  the floor below (1) or above (-1), reached through the floor slab instead of a dissolve. */
   function goRoom(id, animate, dir = 0) {
     if (!scene) { pendingRoom = id; return; }
@@ -7104,7 +6253,7 @@ qqqqqTqqq
   }
   const sfx = (name, o) => { if (window.Sound) window.Sound.cue(name, o); }; // (silent unless the sound is on)
   function talk(hit) {
-    found(hit.kind); // the curiosity hunt (script.js)
+    found(hit.kind); // the curiosity hunt (assets/js/ui)
     sense('touch'); if (['fire', 'bees', 'orchard'].includes(hit.kind)) sense('smell', 2); if (['village', 'market'].includes(hit.kind)) sense('taste', 2); if (hit.kind === 'watch') sense('sight', 2);
     sfx({ horse: 'neigh', cat: 'meow', owl: 'owl' }[hit.kind]);
     if (hit.kind === 'cat') say(CAT_SAYS[hit.name] || 'A cat looks at you.');
@@ -7264,7 +6413,7 @@ qqqqqTqqq
      staff and a trail of sparks goes from its orb to a thing not yet looked at, which glints; once a visit of the room. */
   const session0 = (k, v) => { try { if (v === undefined) return sessionStorage.getItem(k); sessionStorage.setItem(k, v); } catch { /* (no storage: every load) */ } return null; };
   let pinsOf = () => [];
-  let scrubTo = () => {}; let scrubbed = false; // (the hour dragged by the sun: script.js)
+  let scrubTo = () => {}; let scrubbed = false; // (the hour dragged by the sun: assets/js/ui)
   let lastAct = 0; let freshOf = () => []; let guide = null; let guided = false; let roomT0 = 0;
   function drawGuide(t, put, blend) {
     const it = interior; if (reduce || view.state !== 'room' || !it.things.length) return;
@@ -7820,7 +6969,7 @@ qqqqqTqqq
       document.addEventListener('focusin', (e) => { const a = pointed(e); hoverId = roomIn(a); if (a) castUntil = now() + 1.2; });
       document.addEventListener('click', (e) => { if (pointed(e)) { castUntil = now() + 0.6; sparkle(24); } });
       // close up, only the market answers (out: the button, or Esc)
-      { // the sun or the moon dragged along the sky: another hour of the same day (script.js shifts the clock), back to now when let go
+      { // the sun or the moon dragged along the sky: another hour of the same day (assets/js/ui shifts the clock), back to now when let go
         let scrub = null;
         canvas.addEventListener('pointerdown', (e) => {
           if (!bodies || view.state !== 'scene' || zoom || tower || !isOn()) return;
@@ -7884,7 +7033,7 @@ qqqqqTqqq
       relight();
       if (!running && isOn()) render(now());
     },
-    /** Into the room of section `id`, or back out (null); script.js calls it as the hash changes. */
+    /** Into the room of section `id`, or back out (null); assets/js/ui calls it as the hash changes. */
     room(id, { animate = true, dir = 0 } = {}) { if (banner()) { root.classList.toggle('room-ready', Boolean(id)); return; } goRoom(id, animate, dir); },
     /** A still of room `id` at this hour, as a data URL (the tower's frames not yet visited); null
      *  while the picture is on its way somewhere (asked again later). The live room is put back. */

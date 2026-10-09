@@ -12,7 +12,7 @@ Template syntax, applied in this order:
 
 Each page starts with a front block:  <!--page\nkey: value\n...\n-->
 Keys: path (output path), tab, title, description, msg (default: the newest news' msg),
-scripts (space-separated, from the site root), absolute (yes: root-absolute paths, for 404.html,
+absolute (yes: root-absolute paths, for 404.html,
 which GitHub Pages serves at any depth).
 """
 import functools
@@ -272,7 +272,7 @@ def jsonld():
 
 
 def site_json():
-    """What script.js and dungeon.js need: the world, and where the objects lead."""
+    """What assets/js/ui and dungeon.js need: the world, and where the objects lead."""
     bib = next((p["bib"] for p in DATA["publications"] if p.get("bib")), None)
     doc = {"world": ROOMS, "links": LINKS, "email": DATA["site"]["email"],
            "github": DATA["site"]["github"], "bib": bib and f"assets/bib/{bib}",
@@ -365,9 +365,6 @@ def render(src):
     home = root or "./"
     # Section links on the index must stay bare "#id" (windowed panes).
     is_index = rel == "index.html"
-    page_js = meta.get("scripts", "").split()
-    scripts = "".join(f'\n  <script src="{root}{s}?v={short_hash(s)}" defer></script>'
-                      for s in page_js)
     s = DATA["site"]
     values = {
         "root": root,
@@ -377,7 +374,6 @@ def render(src):
         "description": meta["description"],
         "msg": meta.get("msg") or DATA["news"][0]["msg"],
         "canonical": url_of(rel),
-        "scripts": scripts,
         "og_image": SITE + "assets/img/og.png",
         "name_tag": "h1" if is_index else "p",
         "name": s["name"], "role": s["role"], "place": s["place"],

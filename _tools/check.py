@@ -165,6 +165,29 @@ def shots(out, port=8766):
         server.terminate()
 
 
+def check_ui_scope():
+    """The page's scripts (assets/js/ui/*.js) share one global scope, loaded in order: joined, with
+    deno lint (when installed), a name used before any file declares it or declared and never used shows."""
+    import shutil
+    if not shutil.which("deno"):
+        print("  (deno not installed: skipped)")
+        return
+    parts = sorted((ROOT / "assets/js/ui").glob("*.js"))
+    body = "\n".join(p.read_text().replace("// deno-lint-ignore-file no-unused-vars", "") for p in parts)
+    with tempfile.TemporaryDirectory() as d:
+        f = Path(d, "ui-joined.js")
+        f.write_text(body)
+        r = subprocess.run(["deno", "lint", "--rules-include=no-undef", "--rules-exclude=no-var,prefer-const,no-inner-declarations,no-window,no-window-prefix", str(f)],
+                           capture_output=True, text=True)
+        out = re.sub(r"\x1b\[[0-9;]*m", "", r.stdout + r.stderr)
+        # (no-undef knows no browser: its globals, and sky.js's, which loads first, are fine)
+        known = set("cancelAnimationFrame devicePixelRatio document Element getComputedStyle history Image innerHeight innerWidth "
+                    "IntersectionObserver matchMedia parent requestAnimationFrame ResizeObserver moon planetaryHour rad skyAt".split())
+        bad = [e for e in re.findall(r"error\[([\w-]+)\]: ([^\n]*)", out) if not (e[0] == "no-undef" and e[1].split()[0] in known)]
+        for rule, msg in bad:
+            fail(f"ui scripts, joined: {rule}: {msg}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--external", action="store_true")
@@ -173,6 +196,7 @@ def main():
     print("freshness"); check_fresh()
     print("pages"); check_pages(a.external)
     print("contrast"); check_contrast()
+    print("ui scope"); check_ui_scope()
     if a.shots:
         print("screenshots"); shots(a.shots)
     print(f"{len(errors)} problem(s)" if errors else "all checks passed")

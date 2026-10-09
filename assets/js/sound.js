@@ -6,7 +6,7 @@
    planetary hour. Inside: each room its own sound, an echo in the stone ones, the weather
    muffled. A soft lute air, composed as it plays (Dorian by day, Aeolian and sparser by night).
    cue(name, o): the page's events (a page turned, a seal broken, a door, a horse, thunder after
-   a bolt, footsteps...). state() (script.js) says what the page shows, and where things stand on
+   a bolt, footsteps...). state() (assets/js/ui) says what the page shows, and where things stand on
    the screen (pan, -1 left .. 1 right): sounds come from their side. setVolume(0..1), setMusic(bool). */
 
 (function () {

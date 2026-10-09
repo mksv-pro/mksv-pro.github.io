@@ -4,7 +4,7 @@ the vellum, no outline, one SVG pixel per image pixel (shown at the UI pixel, --
   python3 _tools/ornaments.py        -> assets/img/orn/*.svg
 
 Each kind comes in several designs, all on the same canvas (the design centred in it), so the
-page can swap one for another without changing any size; script.js picks a design per text.
+page can swap one for another without changing any size; assets/js/ui picks a design per text.
 
 band-*:    under a title, a tile repeated across (canvas height 19): vine, interlace, lozenges,
            leaves, ribbon

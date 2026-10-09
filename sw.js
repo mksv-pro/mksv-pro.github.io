@@ -1,7 +1,7 @@
 /* Offline: the site read without a network once it has been visited. Pages network first (the
    newest when online), their last copy when not; the site's own files from the cache at once and
    refreshed behind (stale-while-revalidate); the CV and the front page kept from the start. Other
-   origins (the weather, the sky's data) are left to the network. Registered by script.js, on the
+   origins (the weather, the sky's data) are left to the network. Registered by assets/js/ui, on the
    real site only (not on a local port). */
 const CACHE = 'mksv-v1';
 const KEEP = ['./', 'index.html', 'assets/Mike_Silva_CV.pdf', 'styles.css'];

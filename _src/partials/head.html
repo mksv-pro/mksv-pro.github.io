@@ -21,13 +21,13 @@
 
   <script>
     // Before first paint, so the look never flashes. The castle (hours) is the site; the terminal
-    // is the same page framed in the castle's scrying engine (script.js: openEngine), or the whole
+    // is the same page framed in the castle's scrying engine (ui/5-engine.js: openEngine), or the whole
     // page below 75rem or upright: on a computer always (the castle needs the room), on a touch screen for
     // who chose it (localStorage entry=engine); a touch screen otherwise gets the castle as a
     // cut-away tower, a floor per section (.climb). ?theme=dark previews the terminal unframed,
     // ?touch=1 a touch screen.
     // data-sky (day|night) picks the hours theme's palette: night once the sun is 3 deg below
-    // Paris's horizon (low-precision solar position, ~0.5 deg; script.js keeps it current).
+    // Paris's horizon (low-precision solar position, ~0.5 deg; assets/js/ui keeps it current).
     (function () {
       var t = null, s = null, r = document.documentElement;
       try { s = sessionStorage.getItem('sky'); } catch (e) {}

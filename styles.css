@@ -1,6 +1,6 @@
 /* Two themes on one layout.
    terminal (dark): a roguelike TUI lit by a dithered engraving.
-   hours:           a pixel-art book of hours, the landscape as the page (assets/js/hours.js).
+   hours:           a pixel-art book of hours, the landscape as the page (assets/js/hours/hours.js).
    Palette contrast against --bg and --panel is >= 5:1 for every text token
    (checked by _tools/check.py; image colours in _tools/make_assets.py must match). */
 
@@ -61,7 +61,7 @@
 }
 
 /* hours: a book of hours in pixel art. Day = vellum, lapis, vermilion, sinople; night (sun
-   3 deg below the horizon, data-sky set by script.js) = the bonfire's watch. --gold is
+   3 deg below the horizon, data-sky set by assets/js/ui) = the bonfire's watch. --gold is
    decoration only (rules, lettrines), never text. */
 [data-theme="hours"] {
   --bg: #f2ead8;
@@ -102,7 +102,7 @@
 
 html {
   scroll-behavior: smooth;
-  /* --tabs-h: the sticky tab bar's real height, kept by script.js (it wraps on narrow screens) */
+  /* --tabs-h: the sticky tab bar's real height, kept by assets/js/ui (it wraps on narrow screens) */
   scroll-padding-top: calc(var(--msg-h) + var(--tabs-h, 3rem) + 1rem);
   scroll-padding-bottom: calc(var(--status-h) + 1rem);
 }
@@ -391,48 +391,9 @@ a.illum:hover img { box-shadow: 0 0 0 2px var(--accent); }
 .entry-head h3 a { color: inherit; text-decoration-color: var(--accent); }
 kbd { font-family: var(--ui); color: var(--hi); border: 1px solid var(--rule); padding: 0 .35ch; }
 
-/* ---- project pages ---------------------------------------------------- */
-
-.project-page .room { font-size: 1.4rem; }
-.project-page > .role-line { text-align: center; }
-.project-page > .actions { justify-content: center; margin: 0 0 1.5rem; }
-.sub {
-  margin: 2rem 0 .75rem;
-  font: 400 1.05rem/1.4 var(--ui);
-  color: var(--hi);
-}
-.sub::before { content: "## "; color: var(--accent); }
-.bullets { padding-left: 1.4em; }
-.bullets li { margin-bottom: .35rem; }
-.bullets li::marker { content: "- "; color: var(--accent); }
-.fig { margin: 1.5rem 0; }
-.fig img {
-  display: block; width: 100%; height: auto;
-  background: #fff; /* report figures are drawn on white */
-  box-shadow: 0 0 0 1px var(--rule);
-}
-.fig-narrow img { max-width: 36rem; margin: 0 auto; }
-.fig figcaption, .demo figcaption { margin-top: .5rem; font-size: .85rem; color: var(--dim); }
-.caveat { font-size: .85rem; color: var(--dim); border-left: 2px solid var(--rule); padding-left: 1ch; }
-
-/* live demos: a low-resolution canvas scaled up without smoothing */
-.demo { margin: 1.5rem 0; }
-.demo canvas {
-  display: block;
-  width: min(100%, 482px);
-  aspect-ratio: 1;
-  margin: 0 auto;
-  image-rendering: pixelated;
-  box-shadow: 0 0 0 1px var(--rule);
-}
-.demo figcaption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .25rem 1rem; font-family: var(--ui); }
-.demo-ctl button, .dlg-foot button {
-  font: inherit; color: var(--accent); background: none; border: 0; padding: 0 .3ch;
-  min-height: 1.75rem; cursor: pointer;
-}
-.demo-ctl button:hover, .dlg-foot button:hover { color: var(--hi); }
-.demo-ctl button[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
-.demo-read { font-variant-numeric: tabular-nums; }
+/* the dialogs' footer buttons */
+.dlg-foot button { font: inherit; color: var(--accent); background: none; border: 0; padding: 0 .3ch; min-height: 1.75rem; cursor: pointer; }
+.dlg-foot button:hover { color: var(--hi); }
 
 /* ---- command line (:), above the status line --------------------------- */
 
@@ -656,7 +617,7 @@ dialog.dungeon canvas {
 }
 
 
-/* ---- hours: the page is the landscape (wide screens only: head script, script.js) ---------
+/* ---- hours: the page is the landscape (wide screens only: head script, assets/js/ui) ---------
    Boxes are drawn on the interface's pixel grid (--upx: half the scene's pixel, set by
    hours.js), with the 9-slice frame of _tools/icons.py. */
 
@@ -810,10 +771,9 @@ dialog.dungeon canvas {
 [data-theme="hours"] .illum[data-img="dla"] { background-image: url("assets/img/trame-dla.png"); }
 [data-theme="hours"] .illum[data-img="nbody"] { background-image: url("assets/img/trame-nbody.png"); }
 
-/* ---- the castle's rooms (hours.js, script.js): the landscape is home; a section is a room.
+/* ---- the castle's rooms (hours.js, assets/js/ui): the landscape is home; a section is a room.
    Its pieces are things drawn in the room, a button over each opens a card beside it; main
-   stays in the page for readers without the picture, out of sight. A project page is the
-   workshop, its text on the blueprint the room draws (--sup-*). */
+   stays in the page for readers without the picture, out of sight. */
 [data-theme="hours"]:not([data-room]) main { display: none; }
 [data-theme="hours"][data-room] .host { display: none; }
 /* on the way in or out, the interface waits until the camera has arrived */
@@ -848,8 +808,7 @@ dialog.dungeon canvas {
 }
 
 /* the castle's rooms: the text is in the things */
-[data-theme="hours"]:is([data-room="about"], [data-room="experience"], [data-room="work"], [data-room="publications"],
-  [data-room="talks"], [data-room="teaching"], [data-room="news"], [data-room="contact"], [data-room="cellar"], [data-room="maproom"]) main {
+[data-theme="hours"][data-room] main {
   position: fixed; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); padding: 0; border: 0;
 }
 .spots, .card[hidden] { display: none; }
@@ -876,7 +835,7 @@ dialog.dungeon canvas {
 }
 [data-theme="hours"] .spot:is(:hover, :focus-visible)::after { opacity: 1; }
 
-/* paper read by candlelight: the day's vellum tokens, at any hour (cards, the blueprint's ink below) */
+/* paper read by candlelight: the day's vellum tokens, at any hour (cards) */
 [data-theme="hours"] :is(.card, [data-room] main) {
   --bg: #f2ead8; --panel: #efe2c2; --rule: #a8884a; --ink: #2b2118; --hi: #140e08;
   --accent: #1f43a0; --dim: #554b3a; --red: #9c2219; --green: #285f33; --bar: #e0cfa4;
@@ -916,37 +875,7 @@ dialog.dungeon canvas {
   font: 1.3rem/1 var(--ui); color: var(--red); background: none; border: 0; cursor: pointer;
 }
 
-/* a project page: the text on the blueprint the workshop draws (hours.js PLACE, --sup-*):
-   blue paper, a white grid, a dashed border, two red pins, light ink */
-[data-theme="hours"][data-room] main {
-  position: fixed; z-index: 3;
-  left: var(--sup-l, 50vw); top: var(--sup-t, 20vh); width: var(--sup-w, 44rem); max-height: var(--sup-h, 60vh);
-  overflow-y: auto; overscroll-behavior: contain;
-  padding: 1.1rem clamp(1rem, 2.5vw, 2rem) 1.3rem;
-  --ink: #eef2f8; --hi: #ffffff; --accent: #ffd76a; --dim: #c4cedc; --red: #ffb7a6; --green: #b6eec0;
-  --panel: transparent; --rule: rgb(255 255 255 / .4);
-  --demo-bg: #17406f; --demo-ink: #ffd76a; /* the live demos (script.js Demo), in the blueprint's colours */
-  --bg: #17406f; /* text on accent (a pressed demo button) */
-  scrollbar-color: #ffd76a #17406f;
-  color-scheme: dark; color: var(--ink);
-  background:
-    radial-gradient(circle at 1.1rem .9rem, #e04848 0 .3rem, #7a1a1a .35rem, transparent .4rem),
-    radial-gradient(circle at calc(100% - 1.1rem) .9rem, #e04848 0 .3rem, #7a1a1a .35rem, transparent .4rem),
-    repeating-linear-gradient(0deg, rgb(255 255 255 / .09) 0 1px, transparent 1px 1.25rem),
-    repeating-linear-gradient(90deg, rgb(255 255 255 / .09) 0 1px, transparent 1px 1.25rem),
-    #1f4d8c;
-  outline: 1px dashed rgb(255 255 255 / .55); outline-offset: -.6rem;
-  box-shadow: calc(2 * var(--upx, 2px)) calc(3 * var(--upx, 2px)) 0 rgb(10 6 4 / .45);
-}
-[data-theme="hours"][data-room]:not(.room-ready) main { opacity: 0; pointer-events: none; }
-@media (prefers-reduced-motion: no-preference) {
-  [data-theme="hours"].room-ready main { animation: come-in .36s steps(4, end); }
-}
-[data-theme="hours"][data-room] main .pane { border: 0; background: none; box-shadow: none; padding: 0; margin: 0; }
-[data-theme="hours"][data-room] main .pane-tab { display: none; }
-[data-theme="hours"][data-room] main .room { margin-top: .6rem; }
-
-/* ---- the tower (narrow screens, .climb: head script, script.js towerLayout): every section is
+/* ---- the tower (narrow screens, .climb: head script, ui/3-rooms.js towerLayout): every section is
    on the page, a leaf of vellum in the stone, floor after floor, the roof's view (the landscape)
    first. Upright, nothing stays on the screen: each floor opens with its room in a frame
    (.floor-slot); the one live picture sits in the frame most in sight, the others keep a snapshot
@@ -1113,7 +1042,7 @@ html.climb[data-theme] .engine-win { width: 100vw; height: 100dvh; max-width: no
 @media print {
   :root, [data-theme] { --bg: #fff; --panel: #fff; --ink: #000; --hi: #000; --dim: #444; --accent: #000; --red: #000; --rule: #999; }
   body { padding: 0; background: #fff; font-size: 10pt; }
-  .msgline, .plate, .tabs, .status, .almanac, .monogram, .skip-link, .illum, .cmdline, .demo, .exits, .rip { display: none !important; }
+  .msgline, .plate, .tabs, .status, .almanac, .monogram, .skip-link, .illum, .cmdline, .exits, .rip { display: none !important; }
   main > section:not(#cellar) { display: block !important; }
   #cellar { display: none !important; } /* (the tower's way down: nothing to print) */
   .project { display: block; }
@@ -1132,7 +1061,7 @@ html.climb[data-theme] .engine-win { width: 100vw; height: 100dvh; max-width: no
 .domain button { font: inherit; color: var(--accent); background: none; border: 0; cursor: pointer; padding: 0 .2rem; min-height: 24px; }
 .domain button:hover, .domain button:focus-visible { color: var(--hi); }
 
-/* a figure alive in a card (script.js collisionFig) */
+/* a figure alive in a card (ui/4-things.js collisionFig) */
 .pub-fig { margin: .8rem 0; } .pub-fig canvas { display: block; width: 100%; max-width: 26rem; height: auto; color: var(--ink); image-rendering: auto; }
 .pub-fig figcaption { font-size: .8rem; opacity: .8; }
 
@@ -1171,13 +1100,13 @@ html.photo :is(.msgline, .host, .tabs, .status, .spots, .card, .leave, main, .cm
 .ledger .flow li, .card .ledger-year .flow li { white-space: normal; } /* long titles wrap on narrow screens */
 [data-theme="hours"] .card[data-kind="ledger"]:not([hidden]) { width: min(46rem, 58vw); }
 
-/* ---- the castle's texts as manuscript (script.js: illuminate, bind) -------------------------
+/* ---- the castle's texts as manuscript (ui/6-cards.js: illuminate, bind) -------------------------
    Ruled margins, a rubricated title between fleurons over a vine scroll, a blue initial with a
    red tendril down the margin, lozenge bullets, a tailpiece; ornaments from _tools/ornaments.py,
    drawn at the UI pixel. The books open as a two-page spread with a gutter and folios. */
 [data-theme="hours"] .card {
   --lapis: #2a4caa; --rubric: #a82c1c; --gilt: #8a621a; --op: var(--upx, 2px);
-  /* the ornaments of this text: script.js picks a design of each kind per text (these are the fallback) */
+  /* the ornaments of this text: assets/js/ui picks a design of each kind per text (these are the fallback) */
   --orn-band: url("assets/img/orn/band-vine.svg"); --orn-fleuron: url("assets/img/orn/fleuron-quatrefoil.svg");
   --orn-tail: url("assets/img/orn/tail-triangle.svg"); --orn-tendril: url("assets/img/orn/tendril-r.svg");
 }
@@ -1229,7 +1158,7 @@ html.photo :is(.msgline, .host, .tabs, .status, .spots, .card, .leave, main, .cm
   content: ""; display: block; width: calc(33 * var(--op)); height: calc(15 * var(--op)); margin: 1.4rem auto .3rem;
   background: var(--orn-tail) center / contain no-repeat; image-rendering: pixelated;
 }
-/* the books: a spread of two pages (script.js paginates), a shadow in the gutter, folios under it */
+/* the books: a spread of two pages (assets/js/ui paginates), a shadow in the gutter, folios under it */
 [data-theme="hours"] .card.as-book:not([hidden]) { width: min(60rem, 68vw); }
 [data-theme="hours"] .card.as-book .card-body { max-height: none; overflow: visible; padding: 1.2rem 2.2rem .7rem; background: none; }
 [data-theme="hours"] .card .spread {
@@ -1298,7 +1227,7 @@ html.photo :is(.msgline, .host, .tabs, .status, .spots, .card, .leave, main, .cm
 html.og :is(.msgline, .tabs, .status, .spots, .card, .leave, main, .cmdline, .links, .statement, .almanac, .photo-bar, dialog) { visibility: hidden; }
 html.og :is(.msgline, .status) { display: none; }
 html.og { --msg-h: 0px; --status-h: 0px; } /* the scene takes the whole frame */
-/* what each thing is made of (script.js, openCard): a letter's wax seal, a charter's seal hanging
+/* what each thing is made of (ui/6-cards.js, openCard): a letter's wax seal, a charter's seal hanging
    on its cord, a scroll's rolled ends; ornaments from _tools/ornaments.py */
 [data-theme="hours"] .card .deco { position: absolute; pointer-events: none; image-rendering: pixelated; }
 [data-theme="hours"] .card .wax { right: 1.6rem; bottom: 1.1rem; width: calc(16 * var(--op)); height: calc(16 * var(--op)); background: url("assets/img/orn/seal.svg") center / contain no-repeat; }
@@ -1344,7 +1273,7 @@ details.how p { margin: .3rem 0 0; }
 .astro-fig canvas { width: min(100%, 20rem); height: auto; image-rendering: pixelated; border-radius: 50%; }
 .astro-fig figcaption { font-size: .9em; margin-top: .3rem; text-align: left; }
 
-/* ---- the scrying engine: the terminal framed in the castle (script.js: openEngine) ---------- */
+/* ---- the scrying engine: the terminal framed in the castle (ui/5-engine.js: openEngine) ---------- */
 .engine-on .plate-img { overflow: hidden; }
 .engine-on .spots { visibility: hidden; }
 .engine { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: rgba(12, 9, 6, .45); }
@@ -1363,7 +1292,7 @@ details.how p { margin: .3rem 0 0; }
 .framed, .framed body { scrollbar-color: #8a6420 #12100c; }
 
 /* ---- the castle's chrome: a herald's ribbon on top, a heraldic band below (the terminal keeps
-   its message and status lines; the words swap in script.js: .lbl[data-castle]) ---------------- */
+   its message and status lines; the words swap in assets/js/ui: .lbl[data-castle]) ---------------- */
 [data-theme="hours"] .msgline {
   padding-left: 3.4rem; color: #3a2414; background: linear-gradient(#f4e6c2, #e6d09c);
   border-bottom: 2px solid #a8781e; box-shadow: inset 0 -3px 0 #d6bb80, 0 2px 0 #5a3c14;
@@ -1515,7 +1444,7 @@ canvas.stairdown { position: fixed; z-index: 3; image-rendering: pixelated; poin
 .history { margin: 0; padding-left: 2.5ch; }
 .glance.shown { display: grid !important; margin: .4rem 0 0; }
 
-/* fig. 0's twinkling stars (script.js twinkle): the terminal's engraving only, over it in the figure */
+/* fig. 0's twinkling stars (ui/3-rooms.js twinkle): the terminal's engraving only, over it in the figure */
 canvas.twinkle { display: none; position: absolute; z-index: 1; pointer-events: none; }
 [data-theme="dark"]:not(.banner) canvas.twinkle { display: block; }
 [data-theme="dark"][data-paper] canvas.twinkle { filter: invert(1) sepia(.35); }
