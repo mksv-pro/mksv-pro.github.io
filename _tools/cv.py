@@ -154,7 +154,9 @@ def section(title):
 def education():
     out = [section("Education")]
     for e in DATA["education"]:
-        out.append(f"\n\\entry{{{tex(e['school'])}}}{{{tex(e['city'])}}}{{{tex(e['degree'])}}}{{{dates(e['dates'])}}}\n"
+        if e.get("cv_skip"):  # (told on another entry's line: cv_degree, cv_dates there)
+            continue
+        out.append(f"\n\\entry{{{tex(e['school'])}}}{{{tex(e['city'])}}}{{{tex(e.get('cv_degree', e['degree']))}}}{{{dates(e.get('cv_dates', e['dates']))}}}\n"
                    f"\\coursework{{{tex(e['coursework'])}}}\n")
     return "".join(out)
 

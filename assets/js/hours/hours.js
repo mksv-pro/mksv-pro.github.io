@@ -147,7 +147,7 @@
   /* Each room's floor, rug and vault, from textures.js (its `textures` command shows them all). */
   const ROOM_LOOK = {
     about: { floor: 'oakPlanks', rug: 'medallion' }, publications: { floor: 'herringbone', rug: 'kilim' }, research: { floor: 'flagstones' },
-    projects: { floor: 'brickBasket' }, talks: { floor: 'checkerMarble', vault: 'starsVault' }, teaching: { floor: 'terracotta' },
+    projects: { floor: 'brickBasket' }, talks: { floor: 'checkerMarble', vault: 'starsVault' }, teaching: { floor: 'basketParquet' },
     news: { floor: 'rushes' }, contact: { floor: 'cobbles' }, cellar: { floor: 'beatenEarth' }, maproom: { floor: 'basketParquet', rug: 'kilim' },
   };
   /** Texture `name`'s colour index at (x, y), from textures.js (stone if it has not come). */

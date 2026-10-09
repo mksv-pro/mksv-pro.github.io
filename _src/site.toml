@@ -71,12 +71,22 @@ about = "MSc Quantum Information, Sorbonne Université"
 [[education]]
 school = "Université Paris Dauphine-PSL"
 city = "Paris, France"
-degree = "MSc Economics &amp; Finance, first year"
-dates = "2025–2027"
-coursework = "stochastic calculus, time-series econometrics, derivatives pricing, risk management, computational finance."
+degree = "MSc Economics &amp; Finance"
+dates = "2026–2027 (expected)"
+cv_degree = "MSc Economics &amp; Finance; BSc Economics &amp; Finance, third year (L3, 2025–2026)"
+cv_dates = "2025–2027 (expected)"
+coursework = "derivatives, portfolio management, time-series econometrics, macroeconomics."
 now = true
 arms = "dauphine"
 about = "MSc Economics &amp; Finance, Paris Dauphine-PSL"
+
+[[education]]
+school = "Université Paris Dauphine-PSL"
+city = "Paris, France"
+degree = "BSc Economics &amp; Finance, third year (L3)"
+dates = "2025–2026"
+cv_skip = true
+coursework = "financial products and markets, portfolio management, computing for finance, econometrics, insurance."
 
 [[education]]
 school = "Université Paris Cité"
@@ -124,7 +134,7 @@ tapestry = [
   ["sciencespo", "Sciences Po", "Research assistant"],
   ["ceremade", "CEREMADE", "Visiting research student"],
   ["pariscite", "Université Paris Cité", "MSc Fundamental Physics"],
-  ["dauphine", "Université Paris Dauphine-PSL", "MSc Economics & Finance"],
+  ["dauphine", "Université Paris Dauphine-PSL", "BSc Economics & Finance (L3); MSc Economics & Finance"],
   ["ijclab", "IJCLab", "Research intern"],
   ["saclay", "Université Paris-Saclay", "MSc Physics of Complex Systems"],
 ]
@@ -242,7 +252,7 @@ org = "Sciences Po Paris"
 cv_org = "Sciences Po"
 city = "Paris, France"
 cv_role = "Research Assistant, supervised by Julia Cagé"
-cv_text = "Built a large-scale dataset of French television broadcasts for a study of media ownership and content bias."
+cv_text = "Research assistant for <i>Hosting Media Bias</i> (Cagé et al.): built part of its dataset of French broadcasts."
 arms = "sciencespo"
 kind = "research"
 from = "2023-06"
@@ -346,7 +356,7 @@ courses = ["Statistical Physics I & II", "Quantum Mechanics I & II", "Condensed 
 [[coursework]]
 years = "2025–2026"
 school = "Université Paris Dauphine-PSL"
-programme = "Economics & Finance"
+programme = "BSc Economics & Finance (L3)"
 courses = ["Financial Products and Markets", "Portfolio Management", "Computing for Finance (Python, VBA)",
   "Mathematical Tools for Finance", "Mathematics for Economics", "Statistics", "Econometrics", "Microeconomics",
   "Macroeconomics", "Industrial Economics", "Advanced Accounting", "Insurance", "Technical Analysis", "English"]
