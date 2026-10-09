@@ -464,6 +464,7 @@ qqqqqTTqqTqq..
 ..qq.qq..qq.qT.
 ............TqT`,
   };
+  const WORLD_MAP = '0000000000000000fc0000003cfe7c38ffff3ffe327fffff03ff01bfffff01ff81ffff6001fe03dfffa000fc03fffff4006003fbdfc0003803fd99c0000f03fc09800007c1fc07c00007f07c07e00007e07c00600003c07a01f00003803801f80003003001f0000200000014000200000000000000000000000100000000ff1fffffffffffffffffffffffffffffffff'; // 48 x 24 land/sea, 7.5 deg cells from 180 W and 90 N, a row in 12 hex digits (for the library's globe)
   // the black cat walking (two frames, facing right), from room to room after the visitor
   const CAT_WALK = [`
 .............b.b.
@@ -3732,11 +3733,11 @@ qqqqqTqqq
       if (p) for (let k = 0; k < 3; k += 1) { const hx = p[0] + k * 6; rect(hx, p[1] + 3, 4, 1, I.ARM_SH); rect(hx, p[1], 1, 3, I.ARM); rect(hx + 3, p[1], 1, 3, I.ARM); set(hx + 1, p[1] + 3, I.ARM); }
     } else if (kind === 'publications') {
       const gx = floorFree([S(0.12), S(0.86), S(0.2), S(0.78)], 0.6, 9, 15);
-      if (gx !== null) { // a terrestrial globe on its stand, before the bookcases
+      if (gx !== null) { // a terrestrial globe on its stand, before the bookcases (the sphere drawn live: drawInterior, 'globe')
         const fy = floorY(0.6); const cx = gx + 4; const cy = fy - 12;
-        for (let yy = -4; yy <= 4; yy += 1) for (let xx = -4; xx <= 4; xx += 1) if (xx * xx + yy * yy <= 17) set(cx + xx, cy + yy, (xx * 2 + yy * 3 + 40) % 7 < 3 ? I.FERN : xx + yy < -2 ? I.WATER_HI : I.WATER);
         for (let q = -0.6; q <= 3.8; q += 0.08) set(cx + Math.round(Math.cos(q) * 5), cy + Math.round(Math.sin(q) * 5), I.GOLD_SH); // its meridian
         rect(cx, cy + 5, 1, 5, I.TIMBER_SH); rect(cx - 3, fy - 1, 7, 1, I.TIMBER); set(cx - 3, fy, I.TIMBER_SH); set(cx + 3, fy, I.TIMBER_SH);
+        deco.push({ type: 'globe', x: cx, y: cy, r: 4.2 });
       }
       const pubs0 = things.map((t, i) => [t, i]).filter(([t]) => t.kind === 'book');
       const lx = pubs0.length ? floorFree([S(0.32), S(0.68), S(0.26), S(0.74), S(0.2), S(0.8), S(0.38), S(0.62)], 0.72, 13, 8) : null;
@@ -6647,6 +6648,22 @@ qqqqqTqqq
           if (r < 1.3) put(X, Y, pack([170 + 80 * a, 210 + 40 * a, 255])); else if (r < 2.4) put(X, Y, pack([70 + 60 * a, 110 + 60 * a, 170 + 50 * a])); else if (r < 3.2) blend(X, Y, [160, 200, 255], 0.35 * a);
         }
         put(d.ox - 2, d.oy - 1, pack([255, 255, 255])); // (a glint on the glass)
+      } else if (d.type === 'globe') { // the Earth turning under the hand, lit by the real sun (night side dark)
+        const now0 = clockFn(); const doy = (now0 - new Date(now0.getFullYear(), 0, 0)) / 864e5;
+        const dec = -23.44 * Math.cos((2 * Math.PI * (doy + 10)) / 365) * deg; const slon = (12 - (now0.getUTCHours() + now0.getUTCMinutes() / 60)) * 15 * deg; // the subsolar point
+        const sun = [Math.cos(dec) * Math.sin(slon), Math.sin(dec), Math.cos(dec) * Math.cos(slon)];
+        const dt = Math.min(0.1, t - (globe.t || t)); globe.t = t;
+        if (!globe.drag) { globe.lon += globe.vel * dt; globe.vel *= 0.35 ** dt; } // (let go: it spins on, slowing)
+        const R = d.r; const lon0 = globe.lon;
+        for (let y = -5; y <= 5; y += 1) for (let x = -5; x <= 5; x += 1) {
+          const u = (x + 0.5) / (R + 0.5); const v = (y + 0.5) / (R + 0.5); const q = u * u + v * v; if (q > 1) continue;
+          const z = Math.sqrt(1 - q); const lat = Math.asin(-v); const lon = lon0 + Math.atan2(u, z);
+          const ci = Math.floor(((((lon / deg) + 180) % 360) + 360) % 360 / 7.5); const ri = Math.min(23, Math.max(0, Math.floor((90 - lat / deg) / 7.5)));
+          const land = (parseInt(WORLD_MAP[ri * 12 + (ci >> 2)], 16) >> (3 - (ci & 3))) & 1;
+          const p3 = [Math.cos(lat) * Math.sin(lon), Math.sin(lat), Math.cos(lat) * Math.cos(lon)];
+          const day = p3[0] * sun[0] + p3[1] * sun[1] + p3[2] * sun[2] > -0.05 * bayer(d.x + x, d.y + y);
+          put(d.x + x, d.y + y, P(day ? (land ? (lat / deg < -66 ? 'SNOW' : 'FERN') : q < 0.3 && u + v < 0 ? 'WATER_HI' : 'WATER') : land ? 'FG_PINE' : 'T_NAVY'));
+        }
       } else if (d.type === 'gear') { // a brass wheel: a solid disc, its rim, spokes and teeth that turn, the axle
         const a0 = reduce ? 0 : t * d.sp;
         for (let y = -d.r; y <= d.r; y += 1) for (let x = -d.r; x <= d.r; x += 1) {
@@ -7196,6 +7213,7 @@ qqqqqTqqq
   /* The black cat follows the visitor in: a few seconds after, through the side the visitor came by,
      it walks along the floor to the last thing looked at (a thing at table height: up onto it; one on
      the wall: on the floor under it) and sits there; clicked, it purrs and goes elsewhere. */
+  const globe = { lon: 2.35 * deg, vel: 0, drag: null }; // the library's globe: Paris facing us until turned
   let lastOpened = -1; let rcat = null; // (kept apart from the interior, which is remade as its pictures come)
   function catPerch() {
     const it = interior; const ks = [lastOpened, ...it.slots.map((_, k) => k).sort(() => Math.random() - 0.5)];
@@ -7733,6 +7751,21 @@ qqqqqTqqq
       roomCv.setAttribute('aria-hidden', 'true'); plate.append(roomCv); rctx = roomCv.getContext('2d');
       rimg = rctx.createImageData(RW, RH); robuf = new Uint32Array(rimg.data.buffer);
       ibuf = new Uint32Array(RW * RH); iprev = new Uint32Array(RW * RH); ibase = new Uint32Array(RW * RH);
+      { // the globe turns under a drag (and spins on when let go)
+        const at = (e) => { const b = roomCv.getBoundingClientRect(); return [((e.clientX - b.left) / b.width) * RW, ((e.clientY - b.top) / b.height) * RH, b.width / RW]; };
+        const gl = () => interior && view.state === 'room' && interior.deco.find((q) => q.type === 'globe');
+        roomCv.addEventListener('pointerdown', (e) => {
+          const g = gl(); if (!g) return; const [x, y, k] = at(e); if (Math.hypot(x - g.x, y - g.y) > g.r + 2) return;
+          globe.drag = { x: e.clientX, lon: globe.lon, k, last: e.clientX, tl: performance.now() }; globe.vel = 0; try { roomCv.setPointerCapture(e.pointerId); } catch { /* (a pointer the browser no longer knows) */ } roomCv.style.cursor = 'grabbing';
+        });
+        roomCv.addEventListener('pointermove', (e) => {
+          const g = gl(); const d = globe.drag;
+          if (d) { const per = 1 / (d.k * (g ? g.r : 4)); globe.lon = d.lon - (e.clientX - d.x) * per; const now1 = performance.now(); const dt = Math.max(1, now1 - d.tl) / 1000; globe.vel = -((e.clientX - d.last) * per) / dt; d.last = e.clientX; d.tl = now1; return; }
+          const [x, y] = at(e); roomCv.style.cursor = g && Math.hypot(x - g.x, y - g.y) <= g.r + 2 ? 'grab' : '';
+        });
+        const drop = () => { if (!globe.drag) return; if (performance.now() - globe.drag.tl > 120) globe.vel = 0; globe.drag = null; roomCv.style.cursor = ''; };
+        roomCv.addEventListener('pointerup', drop); roomCv.addEventListener('pointercancel', drop);
+      }
       roomCv.addEventListener('click', (e) => { // (room pixels)
         if (view.state !== 'room' || !interior) return; const b = roomCv.getBoundingClientRect();
         roomClick(Math.floor(((e.clientX - b.left) / b.width) * RW), Math.floor(((e.clientY - b.top) / b.height) * RH));
