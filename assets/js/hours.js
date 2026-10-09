@@ -465,6 +465,14 @@ qqqqqTTqqTqq..
 ............TqT`,
   };
   const WORLD_MAP = '0000000000000000fc0000003cfe7c38ffff3ffe327fffff03ff01bfffff01ff81ffff6001fe03dfffa000fc03fffff4006003fbdfc0003803fd99c0000f03fc09800007c1fc07c00007f07c07e00007e07c00600003c07a01f00003803801f80003003001f0000200000014000200000000000000000000000100000000ff1fffffffffffffffffffffffffffffffff'; // 48 x 24 land/sea, 7.5 deg cells from 180 W and 90 N, a row in 12 hex digits (for the library's globe)
+  /* Each room's floor, rug and vault, from textures.js (its `textures` command shows them all). */
+  const ROOM_LOOK = {
+    about: { floor: 'oakPlanks', rug: 'medallion' }, publications: { floor: 'herringbone', rug: 'kilim' }, research: { floor: 'flagstones' },
+    projects: { floor: 'brickBasket' }, talks: { floor: 'checkerMarble', vault: 'starsVault' }, teaching: { floor: 'terracotta' },
+    news: { floor: 'rushes' }, contact: { floor: 'cobbles' }, cellar: { floor: 'beatenEarth' }, maproom: { floor: 'basketParquet', rug: 'kilim' },
+  };
+  /** Texture `name`'s colour index at (x, y), from textures.js (stone if it has not come). */
+  const texAt = (name, x, y) => { const t = window.TEXTURES && window.TEXTURES[name]; return t ? I[t.fn(x, y)] ?? I.ROCK : I.ROCK; };
   // who lives in each room: one standing figure, an adult at the rooms' scale (28 px, five heads;
   // a table's top at his hip), its clothes by letter: H the head's covering, B the body, A the arms
   // (sleeves), L the legs, X an emblem; f skin, e beard (MATS), k the belt; a raven on the falconer's fist
@@ -2440,6 +2448,7 @@ bbbbbbbb
       for (let x = 0; x < W; x += 1) set(x, top, I.TIMBER_HI);
     }
     const STONE = [I.ROCK_HI, I.ROCK, I.ROCK_SH, I.ROCK_DK];
+    const LOOK = ROOM_LOOK[kind] || ROOM_LOOK.contact; // its floor, its rugs, its vault (textures.js)
     if (kind === 'maproom') { plaster(0, [I.LIME_HI, I.LIME, I.LIME_SH]); panels(yf - 22, yf, 14, 40); }
     else if (kind === 'about') {
       plaster(0, [I.PLASTER_HI, I.PLASTER, I.PLASTER_SH]); panels(yf - 26, yf, 18, 40);
@@ -2468,7 +2477,7 @@ bbbbbbbb
       const bay = kind === 'talks' ? 40 : 30;
       for (let x = 0; x < W; x += 1) for (let y = 0; y < 9; y += 1) {
         const u = ((x % bay) / bay) * 2 - 1; const rib = Math.abs(y - (8 - Math.round(8 * u * u))) < 1;
-        set(x, y, rib ? I.ROCK_HI : y === 8 ? I.ROCK_DK : (x + y * 3) % 7 === 0 ? I.ROCK_SH : I.ROCK);
+        set(x, y, rib ? I.ROCK_HI : y === 8 ? I.ROCK_DK : LOOK.vault ? texAt(LOOK.vault, x, y) : (x + y * 3) % 7 === 0 ? I.ROCK_SH : I.ROCK);
       }
     } else if (kind === 'publications') { // coffers, dark blue, a gilt stud at each crossing
       for (let x = 0; x < W; x += 1) for (let y = 0; y < 8; y += 1) {
@@ -2492,21 +2501,12 @@ bbbbbbbb
     }
     for (let x = 0; x < W; x += 1) { set(x, yf - 1, I.TIMBER_SH); set(x, yf - 2, kind === 'talks' || kind === 'contact' ? I.ROCK_SH : I.TIMBER); } // skirting
 
-    /* the floor in perspective: seams run to a vanishing point, rows close up with distance */
+    /* the floor in perspective: each pixel's place on the floor (u across, v in depth, in floor units:
+       a unit a pixel at the near edge) looked up in the room's floor texture */
     const vx = box3d ? W / 2 : W * 0.42; const vy = yf - (H - yf) * 1.4;
-    const flag = kind === 'talks' || kind === 'contact' || kind === 'research' || kind === 'cellar';
     for (let y = yf; y < H; y += 1) {
-      const k = (y - yf) / (H - yf);
-      const rowN = Math.floor(Math.pow(k, 0.62) * (flag ? 5 : 8));
-      const prevN = Math.floor(Math.pow(Math.max(0, (y - 1 - yf) / (H - yf)), 0.62) * (flag ? 5 : 8));
-      for (let x = 0; x < W; x += 1) {
-        const u0 = (x - vx) / (y - vy) * (H - vy); // where this seam would meet the bottom edge
-        const seam = Math.abs(((u0 / (flag ? 18 : 9)) % 1 + 1) % 1) < (flag ? 0.1 : 0.14);
-        const across = rowN !== prevN && (flag || (Math.floor(u0 / 9) + rowN) % 2 === 0);
-        const t = noise2(x, y);
-        if (flag) set(x, y, seam || across ? I.ROCK_DK : t > 0.6 ? I.ROCK_SH : t < 0.3 ? I.ROCK_HI : I.ROCK);
-        else set(x, y, seam || across ? I.TIMBER_SH : t > 0.65 ? I.TIMBER_SH : t < 0.2 ? I.TIMBER_HI : I.TIMBER);
-      }
+      const z = (H - vy) / (y - vy); // (1 at the near edge, more further back)
+      for (let x = 0; x < W; x += 1) set(x, y, texAt(LOOK.floor, Math.floor(vx + (x - vx) * z + 600), Math.floor((H - y) * z * 1.6 + 40)));
     }
     const pools = []; // pale light under each window (lit in lightInterior, no dither)
     const sills = []; // the windows' sills, where the season's vase stands
@@ -2731,8 +2731,9 @@ bbbbbbbb
       }
       return rows;
     }
-    function rug(x, y, w) {
-      for (let r = 0; r < 4; r += 1) for (let k = 0; k < w; k += 1) set(x + k, y + r, r === 0 || r === 3 || k === 0 || k === w - 1 ? I.GOLD_SH : (k + r) % 4 === 0 ? I.GOLD : I.CLOTH_SH);
+    function rug(x, y, w) { // a fringed border, the room's weave inside (textures.js, squashed: we see it from above, far off)
+      for (let r = 0; r < 4; r += 1) for (let k = 0; k < w; k += 1) set(x + k, y + r, r === 0 || r === 3 || k === 0 || k === w - 1 ? I.GOLD_SH : texAt(LOOK.rug || 'kilim', k * 2, r * 4 + 2));
+      for (let k = 1; k < w - 1; k += 2) { set(x + k, y - 1, I.BEARD_SH); set(x + k, y + 4, I.BEARD_SH); } // (the fringe)
     }
     function lantern(x, y) { set(x, y - 1, I.OUTLINE); rect(x - 1, y, 3, 3, I.ARM_SH); set(x, y + 1, I.WIN_LIT); flames.push({ x, y: y + 1, small: true }); lights.push({ x, y: y + 1, r: 0.3 * H }); }
 
@@ -7980,6 +7981,12 @@ qqqqqTqqq
     highlight(i) { hl = i; if (interior && lifted !== i) { lifted = i; reshape(); } if (!running && interior && isOn()) render(now()); },
     /** The room drawn again (a card pinned up or taken down). */
     refresh() { if (interior && view.id && view.state === 'room') { interior = makeInterior(view.id); lightInterior(); lifted = -1; openIx = -1; publishSpots(true); if (!running) render(now()); } },
+    /** Texture `name` (textures.js) painted into canvas cv in its daylight colours. */
+    swatch(cv, name) {
+      const g = cv.getContext('2d'); const im = g.createImageData(cv.width, cv.height);
+      for (let y = 0; y < cv.height; y += 1) for (let x = 0; x < cv.width; x += 1) { const [r, gg, b] = hex(DAYLIGHT[texAt(name, x, y)]); im.data.set([r, gg, b, 255], (y * cv.width + x) * 4); }
+      g.putImageData(im, 0, 0);
+    },
     /** The castle's name for room `id` ('the workshop'). */
     roomName(id) { return ROOM_NAMES[id] || null; },
     /** Where the sun is, in viewport px (null below the horizon or in a room). */

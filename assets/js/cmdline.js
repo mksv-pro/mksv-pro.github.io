@@ -231,6 +231,12 @@ function run(line) {
       root.toggleAttribute('data-glass', on && !reduceMotion); store('glass', on ? '1' : null);
       return print(reduceMotion ? 'The glass stays plain: this device asks for less motion.' : on ? 'Behind glass (glass off to wipe it).' : 'The glass wiped clean.');
     }
+    case 'textures': { // the castle's textures (textures.js), each a swatch with its name and where it goes
+      const all = window.TEXTURES; if (!all || !window.Hours || !window.Hours.swatch) return print('The textures come with the castle: open it first (theme).');
+      print(`<div class="swatches">${Object.entries(all).map(([k, t]) => `<figure><canvas width="48" height="32" data-tex="${k}"></canvas><figcaption>${k} <span class="dim">${t.use}</span></figcaption></figure>`).join('')}</div>`);
+      cmdOut.querySelectorAll('canvas[data-tex]').forEach((cv) => window.Hours.swatch(cv, cv.dataset.tex));
+      return undefined;
+    }
     case 'search': case 'find': case 'grep':
       return search(args);
     case 'gate': // the front gate asks again on the next bare visit (after "remember my choice")
@@ -335,7 +341,7 @@ cmdForm.addEventListener('submit', (e) => {
 /* Tab completes the word under the cursor: a command or a room first, then what that command
    takes; one match is completed, several are completed to their common start and listed. */
 const COMMANDS = ['help', 'look', 'ls', 'map', 'cd', 'take', 'inventory', 'use', 'rumour', 'descend',
-  'cv', 'mail', 'github', 'theme', 'sky', 'weather', 'event', 'photo', 'tour', 'tower', 'village', 'banner', 'music', 'volume', 'keys', 'quit', 'clear', 'go', 'gate', 'search', 'whoami', 'history', 'paper', 'glass', 'examine'];
+  'cv', 'mail', 'github', 'theme', 'sky', 'weather', 'event', 'photo', 'tour', 'tower', 'village', 'banner', 'music', 'volume', 'keys', 'quit', 'clear', 'go', 'gate', 'search', 'whoami', 'history', 'paper', 'glass', 'examine', 'textures'];
 const roomWords = () => ROOM_IDS.map((id) => WORLD[id].label.toLowerCase());
 const ARGS = {
   cd: roomWords, open: roomWords, go: () => ['north', 'south', 'east', 'west'], walk: () => ['north', 'south', 'east', 'west'],

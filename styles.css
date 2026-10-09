@@ -1567,3 +1567,9 @@ canvas.twinkle { display: none; position: absolute; z-index: 1; pointer-events: 
   box-shadow: inset 0 0 6rem rgb(0 0 0 / .45);
 }
 [data-glass][data-theme="dark"].scrolling body { text-shadow: 0 0 .25em color-mix(in srgb, currentColor 55%, transparent), 0 -.15em .1em color-mix(in srgb, currentColor 30%, transparent); }
+
+/* the textures command: a swatch each */
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); gap: .5rem .8rem; max-height: 60vh; overflow: auto; }
+.swatches figure { margin: 0; }
+.swatches canvas { display: block; width: 96px; height: 64px; image-rendering: pixelated; border: 1px solid var(--rule); }
+.swatches figcaption { font-size: .75rem; }

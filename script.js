@@ -5,6 +5,7 @@ const SITE = new URL('.', document.currentScript.src); // the site root: script.
 const DUNGEON_SRC = document.currentScript.dataset.dungeon; // loaded on the first descent
 const HOURS_SRC = document.currentScript.dataset.hours; // loaded with the hours theme
 const ARMS_SRC = document.currentScript.dataset.arms; // its coats of arms, before it
+const TEX_SRC = document.currentScript.dataset.textures; // and its textures
 const SOUND_SRC = document.currentScript.dataset.sound; // ambient sound, loaded when switched on
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 // the sections' old names (before experience and work), in links made since: read as the new ones
@@ -329,7 +330,7 @@ function applyTheme(theme, persist) {
       s.onerror = reject;
       document.head.append(s);
     });
-    hoursLoading ||= load(ARMS_SRC).then(() => load(HOURS_SRC)).then(() => window.Hours.start({
+    hoursLoading ||= load(ARMS_SRC).then(() => load(TEX_SRC)).then(() => load(HOURS_SRC)).then(() => window.Hours.start({
       plate: document.querySelector('.plate-img'),
       sky: () => skyAt(skyNow()),
       reduceMotion,
