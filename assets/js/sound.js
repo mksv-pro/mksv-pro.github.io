@@ -492,6 +492,7 @@
     if (takes[name]) { play(name); return; }
     const pan = o.pan ?? (!s.room && s.pan ? s.pan[PAN_OF[name]] || 0 : 0); const outW = s.room ? 0.15 : 1;
     ({
+      drop: () => { burst(900, 0.05, 0.12, { sweep: 0.6 }); burst(240, 0.06, 0.18, { type: 'lowpass', at: 0.12, echo: true }); }, // a letter slid in, falling inside the door
       anvil: () => { chime([1180, 2640, 3910], 0.09, 0.9, true); burst(180, 0.08, 0.2, { type: 'lowpass' }); }, // the hammer, once
       page: () => { // a leaf lifted, flapping over, laid down: three rustles and a soft slap
         burst(1800, 0.18, 0.32, { sweep: 2.4 }); burst(3200, 0.12, 0.22, { type: 'highpass', at: 0.12 });

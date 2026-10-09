@@ -1225,7 +1225,7 @@ function openCard(i, from) {
   card.querySelectorAll(':scope > .deco').forEach((d) => d.remove());
   const deco = { letter: ['wax'], charter: ['hang-seal'], hanging: ['hang-seal'], scroll: ['roll at-top', 'roll at-bottom'] }[it.kind] || [];
   deco.forEach((c) => card.insertAdjacentHTML('beforeend', `<span class="deco ${c}" aria-hidden="true"></span>`));
-  cue(it.kind === 'letter' ? 'seal' : 'card');
+  cue(it.kind === 'letter' ? 'seal' : it.kind === 'letterbox' ? 'drop' : 'card'); // (the letterbox: a letter falling inside the door)
   const runFigs = () => card.querySelectorAll('.pub-fig canvas').forEach((cv) => { if (!cv.running) { cv.running = true; waveFig(cv); } }); // (a property: the pages are clones)
   runFigs(); setTimeout(runFigs, 400); setTimeout(runFigs, 1500); // (and again once a book has been paginated)
   card.querySelectorAll('.real-fig').forEach(paintFig); // the real things' pictures (paintings, films...)
