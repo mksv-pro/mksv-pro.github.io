@@ -6667,6 +6667,7 @@ qqqqqTqqq
   const ZOOMS = [1, 2, 3, 4, 6]; // integer steps: the pixels stay square all the way in
   const STEP = 0.09; const DISSOLVE = 0.32; // seconds per step; the dithered cross-fade
   const CLIMB = 0.55; // seconds through a floor slab (the tower)
+  const SLIDE = 0.6; // seconds through a side door to the next room
   /** The slab's stone, mortar and edge, dimmed at night as the rooms are. */
   const slabColours = () => { const k = 1 - 0.55 * look.night; return [[118, 104, 92], [74, 64, 58], [40, 34, 32]].map((c) => pack(c.map((v) => v * k))); };
 
@@ -6728,6 +6729,25 @@ qqqqqTqqq
         }
       }
       if (e >= 1) { view.state = 'room'; travelling(false); }
+    } else if (st === 'slide') {
+      drawInterior(t); obuf.set(fbuf); frameLife(t);
+      // through a side door: a strip, left to right, of the room on the left, the wall's thickness, the
+      // room on the right; the view pans along it towards the door taken (dir 'l': the room comes in from the left)
+      const e = clamp((t - view.t0) / SLIDE); const s = e < 0.5 ? 2 * e * e : 1 - 2 * (1 - e) ** 2;
+      const S = 14; const o = Math.round(s * (RW + S));
+      const x0 = view.dir === 'r' ? o : RW + S - o;
+      const left = (i) => (view.dir === 'r' ? iprev[i] : ibuf[i]); const right = (i) => (view.dir === 'r' ? ibuf[i] : iprev[i]);
+      const stone = slabColours();
+      for (let x = 0; x < RW; x += 1) {
+        const xx = x0 + x;
+        for (let y = 0; y < RH; y += 1) {
+          const i = y * RW + x;
+          if (xx < RW) robuf[i] = left(y * RW + xx);
+          else if (xx >= RW + S) robuf[i] = right(y * RW + xx - RW - S);
+          else { const c = xx - RW; robuf[i] = c === 0 || c === S - 1 ? stone[2] : y % 5 === 4 || (c + ((y / 5) | 0) * 4) % 8 === 0 ? stone[1] : stone[0]; } // (the wall in courses, its faces dark)
+        }
+      }
+      if (e >= 1) { view.state = 'room'; travelling(false); }
     } else {
       const e = t - view.t0; const n = ZOOMS.length;
       const into = st === 'in';
@@ -6752,7 +6772,8 @@ qqqqqTqqq
   }
 
   /** Go into room `id` (null: back out to the landscape); `dir` (the tower, script.js climbFloor):
-   *  the floor below (1) or above (-1), reached through the floor slab instead of a dissolve. */
+   *  the floor below (1) or above (-1), reached through the floor slab instead of a dissolve; 'l' or
+   *  'r': the next room through the door in that side wall, the view panning through the wall. */
   function goRoom(id, animate, dir = 0) {
     if (!scene) { pendingRoom = id; return; }
     if (zoom) { zoom = null; root.classList.remove('village'); backBtn.remove(); }
@@ -6762,11 +6783,11 @@ qqqqqTqqq
     if (id) {
       fireFed = now(); // (someone keeps the fire while you are away)
       if (!view.id || roomOf(id) !== roomOf(view.id)) sfx('steps', { floor: ['talks', 'contact', 'research', 'cellar'].includes(roomOf(id)) ? 'stone' : 'wood', n: 4 }); // in: on its floor
-      if (view.id && (view.state === 'room' || view.state === 'swap' || view.state === 'in' || view.state === 'climb')) {
+      if (view.id && ['room', 'swap', 'in', 'climb', 'slide'].includes(view.state)) {
         if (roomOf(id) === roomOf(view.id)) { view.id = id; return; }
         iprev.set(robuf);
         interior = makeInterior(id); lightInterior();
-        view = { state: !anim ? 'room' : dir ? 'climb' : 'swap', id, anchor: id, t0: t, dir };
+        view = { state: !anim ? 'room' : typeof dir === 'string' ? 'slide' : dir ? 'climb' : 'swap', id, anchor: id, t0: t, dir };
         setReady(true); travelling(anim);
       } else {
         interior = makeInterior(id); lightInterior();
@@ -7484,7 +7505,7 @@ qqqqqTqqq
     const dt = lastMs ? Math.min(0.1, (ms - lastMs) / 1000) : 0;
     lastMs = ms;
     par += (parTarget - par) * (1 - Math.exp(-dt / 0.2));
-    let dirty = view.state === 'in' || view.state === 'out' || view.state === 'swap' || view.state === 'climb' || !!zoom || !!tower;
+    let dirty = ['in', 'out', 'swap', 'climb', 'slide'].includes(view.state) || !!zoom || !!tower;
     if (ms - last >= FPS_MS) {
       last = ms;
       if (view.state !== 'room') { stepFire(); step(now()); }

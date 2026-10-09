@@ -709,6 +709,7 @@ function openWindow(hash, { userAction, animate = userAction }) {
   }
   if (!windows.includes(win)) return; // e.g. the skip link's #main: leave the windows alone
 
+  const was = root.dataset.room; // (the room left: next door, the way is through the door between them)
   windows.forEach((w) => w.classList.toggle('is-off', w !== win));
   tabLinks.forEach((a) => {
     if (a.getAttribute('href') === `#${win.id}`) a.setAttribute('aria-current', 'page');
@@ -724,7 +725,8 @@ function openWindow(hash, { userAction, animate = userAction }) {
     say([win.dataset.look, empty && empty.textContent.trim(), hint].filter(Boolean).join(' '));
   }
   if (target && userAction && root.getAttribute('data-theme') === 'hours') cue('door'); // into a room
-  if (window.Hours) window.Hours.room(target ? win.id : null, { animate });
+  const door = target && was && was !== win.id && roomDoors(was).find((d) => d.go === win.id);
+  if (window.Hours) window.Hours.room(target ? win.id : null, { animate, dir: door ? (door.dir === 'w' || door.dir === 'n' ? 'l' : 'r') : 0 });
   else root.classList.toggle('room-ready', Boolean(target)); // no castle (yet): show the text at once
   if (!userAction) return;
   win.classList.add('opening');
