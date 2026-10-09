@@ -1404,8 +1404,16 @@ details.how p { margin: .3rem 0 0; }
 .gate-choices button span { font-size: .8rem; line-height: 1.5; color: #a4a9b3; }
 .gate-choices button:is(:hover, :focus-visible) { border-color: #e6e8ec; background: rgba(255, 255, 255, .05); outline: none; }
 .gate-foot { margin: 1.4rem 0 0; font-size: .75rem; color: #6e737d; }
-.gate-foot label { cursor: pointer; }
-.gate-foot input { accent-color: #c9ccd3; vertical-align: -2px; margin: 0 .35rem 0 0; }
+.gate-foot label { display: inline-flex; align-items: center; gap: .55rem; cursor: pointer; color: #8a8f99; }
+.gate-foot label:hover { color: #c9ccd3; }
+.gate-foot input { /* a square in the cards' thin line; checked, a smaller square inside it */
+  appearance: none; flex: none; width: .8rem; height: .8rem; margin: 0; border: 1px solid #4a4f59; background: transparent; cursor: pointer;
+  transition: border-color .2s, box-shadow .2s;
+}
+.gate-foot label:hover input { border-color: #c9ccd3; }
+.gate-foot input:checked { border-color: #e6e8ec; box-shadow: inset 0 0 0 2px #000, inset 0 0 0 6px #e6e8ec; }
+.gate-foot input:focus-visible { outline: 1px solid #e6e8ec; outline-offset: 2px; }
+.gate-hint { margin: .35rem 0 0; font-size: .7rem; color: #5a5f69; }
 .gate-more { display: flex; justify-content: center; gap: 1.6rem; margin: 1.1rem 0 0; font-size: .8rem; }
 .gate-more :is(a, button) { font: inherit; color: #c9ccd3; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline 1px; text-underline-offset: .25em; }
 .gate-more :is(a, button):is(:hover, :focus-visible) { color: #fff; }
