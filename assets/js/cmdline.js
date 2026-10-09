@@ -200,8 +200,11 @@ function run(line) {
       print('');
       return walkTo(id);
     }
-    case 'take': case 'get': case 'pick': case ',':
+    case 'take': case 'get': case 'pick': case ',': { // take <thing>: pinned to the room's wall (the castle draws it); alone, the room's curio
+      const t = arg && thingsHere(win).find((x) => x.label.toLowerCase().includes(arg.toLowerCase()));
+      if (t && here) return print(esc((pinToggle(here, t) ? T.pinnedUp : T.takenDown)(t.label)));
       return print(esc(here ? pickUp(here) : T.nothingHere));
+    }
     case 'i': case 'inv': case 'inventory':
       return showInventory();
     case 'use': case 'apply': case 'read': case 'quaff':

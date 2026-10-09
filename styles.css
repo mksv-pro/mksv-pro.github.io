@@ -916,6 +916,12 @@ html:not(.climb)[data-theme="hours"][data-room] .tabs:not(:hover, :focus-within)
 [data-theme="hours"] .card .sheet div { grid-template-columns: 8ch 1fr; }
 [data-theme="hours"] .card .illum { float: left; margin: 0 1rem .5rem 0; }
 [data-theme="hours"] .card .illum img { width: 96px; height: 96px; }
+.card-pin { display: none; }
+[data-theme="hours"] .card-pin:not([hidden]) {
+  display: block; position: absolute; bottom: .35rem; right: .6rem; padding: .1rem .3rem;
+  font: italic .9rem "EB Garamond", Georgia, serif; color: var(--red); background: none; border: 0; cursor: var(--cur-hand, pointer);
+}
+[data-theme="hours"] .card-pin:hover, [data-theme="hours"] .card-pin:focus-visible { text-decoration: underline; }
 [data-theme="hours"] .card-close {
   position: absolute; top: .3rem; right: .4rem; padding: .1rem .4rem;
   font: 1.3rem/1 var(--ui); color: var(--red); background: none; border: 0; cursor: pointer;

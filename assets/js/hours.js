@@ -3671,6 +3671,18 @@ qqqqqTqqq
     };
     /** The first free place for a w x h piece: each x of `xs` at y, then a little lower or higher. */
     const placeOn = (xs, y, w, h) => { for (const d of [0, 4, -4, 8, -8, 12]) for (const x of xs) if (wallFree(x, y + d, w, h)) return [Math.round(x), Math.round(y + d)]; return null; };
+    // the cards the visitor pinned up (script.js: pins): each a small sheet nailed to the wall, its card again on a click
+    if (things) {
+      const along = [0.06, 0.94, 0.14, 0.86, 0.22, 0.78, 0.3, 0.7, 0.38, 0.62].map(S);
+      (pinsOf(id) || []).forEach((t) => {
+        const p = placeOn(along, Math.round(H * 0.3), 7, 10) || placeOn(along, Math.round(H * 0.5), 7, 10); if (!p) return;
+        const [x, y] = p; const before = idx.slice();
+        set(x + 3, y, I.OUTLINE); rect(x, y + 1, 7, 9, I.BEARD); rect(x, y + 1, 7, 1, I.BEARD_HI); rect(x + 6, y + 2, 1, 8, I.BEARD_SH); set(x, y + 9, I.BEARD_SH);
+        for (let k = 0; k < 3; k += 1) rect(x + 1, y + 3 + k * 2, k === 2 ? 3 : 5, 1, I.BEARD_SH); set(x + 3, y + 1, I.OUTLINE); set(x + 5, y + 8, I.T_GULES); // (lines of writing, the nail, a red seal)
+        const b = box(x - 1, y - 1, 9, 12); const px = []; for (let yy = b.y; yy < b.y + b.h; yy += 1) for (let xx = b.x; xx < b.x + b.w; xx += 1) { const i = yy * W + xx; if (i >= 0 && i < W * H && idx[i] !== before[i]) px.push(i, before[i], idx[i]); }
+        owned.set(b, px); extra.push({ t, b });
+      });
+    }
     function sconce(x, y) { // an iron bracket out from the wall, a candle in its cup (y: the cup)
       rect(x - 1, y, 3, 1, I.ARM); set(x, y + 1, I.ARM_SH); set(x + 1, y + 2, I.ARM_SH); rect(x + 1, y + 3, 2, 3, I.ARM_SH); set(x + 1, y + 3, I.ARM);
       candle(x, y - 1, false);
@@ -7275,6 +7287,7 @@ qqqqqTqqq
   /* The wizard as a guide: twenty seconds without a move in a room, he stands in a doorway, points his
      staff and a trail of sparks goes from its orb to a thing not yet looked at, which glints; once a visit of the room. */
   const session0 = (k, v) => { try { if (v === undefined) return sessionStorage.getItem(k); sessionStorage.setItem(k, v); } catch { /* (no storage: every load) */ } return null; };
+  let pinsOf = () => [];
   let scrubTo = () => {}; let scrubbed = false; // (the hour dragged by the sun: script.js)
   let lastAct = 0; let freshOf = () => []; let guide = null; let guided = false; let roomT0 = 0;
   function drawGuide(t, put, blend) {
@@ -7764,7 +7777,7 @@ qqqqqTqqq
       if (canvas) return;
       plate = o.plate; skyFn = o.sky; reduce = o.reduceMotion; clockFn = o.clock || clockFn;
       heraldry = o.heraldry || heraldry; say = o.say || say; rumour = o.rumour || rumour;
-      freshOf = o.fresh || freshOf; scrubTo = o.scrub || scrubTo; ['pointermove', 'keydown', 'pointerdown', 'wheel'].forEach((ev) => addEventListener(ev, () => { lastAct = now(); }, { passive: true }));
+      freshOf = o.fresh || freshOf; scrubTo = o.scrub || scrubTo; pinsOf = o.pins || pinsOf; ['pointermove', 'keydown', 'pointerdown', 'wheel'].forEach((ev) => addEventListener(ev, () => { lastAct = now(); }, { passive: true }));
       itemsOf = o.items || itemsOf; found = o.found || found; curiosOf = o.curios || curiosOf; nowOf = o.now || nowOf; visitsOf = o.visits || visitsOf;
       newsOf = o.news || newsOf; dreamsOf = o.dreams || dreamsOf; tradeWith = o.trade || tradeWith; stalenessOf = o.staleness || stalenessOf; billiardShow = o.billiard || billiardShow; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo; cellarTo = o.cellar || cellarTo; mapsTo = o.maps || mapsTo; goTo = o.go || goTo; doorsOf = o.doors || doorsOf;
       pendingRoom = root.dataset.room || null;
@@ -7991,6 +8004,8 @@ qqqqqTqqq
       ladderF = clamp(ladderF + k * 0.08); return ladderSpot(d);
     },
     highlight(i) { hl = i; if (interior && lifted !== i) { lifted = i; reshape(); } if (!running && interior && isOn()) render(now()); },
+    /** The room drawn again (a card pinned up or taken down). */
+    refresh() { if (interior && view.id && view.state === 'room') { interior = makeInterior(view.id); lightInterior(); lifted = -1; openIx = -1; publishSpots(true); if (!running) render(now()); } },
     /** The castle's name for room `id` ('the workshop'). */
     roomName(id) { return ROOM_NAMES[id] || null; },
     /** Where the sun is, in viewport px (null below the horizon or in a room). */

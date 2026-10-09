@@ -69,6 +69,10 @@ const T = {
   examineHint: 'examine &lt;thing&gt; looks closer (x for short).',
   examineWhat: 'Examine what? look lists what is here.',
   noThing: (a) => `There is no ${a} here. look lists what is.`,
+  pin: '[pin it to the wall]',
+  unpin: '[take it down]',
+  pinnedUp: (l) => `You pin it to the wall: ${l}.`,
+  takenDown: (l) => `You take it down: ${l}.`,
   planTitle: 'The plan of the castle',
   planNote: (k, n) => `${k} of ${n} rooms walked this visit (inked); click one to go there.`,
   skyAt: (hm) => `The sky over Paris at ${hm}: let go, and it goes back to now.`,
@@ -342,6 +346,7 @@ function applyTheme(theme, persist) {
       doors: roomDoors, // the doors in the rooms' side walls
       clock: skyNow, // the instant shown: dawn mist, the night's meteor shower
       scrub, // the sun or the moon dragged: another hour
+      pins: (id) => (pins()[id] || []).map((p) => ({ kind: 'pinned', label: `Pinned: ${p.label}`, html: p.html })), // the cards pinned up on its walls
       found: findCurio, // a curiosity of the landscape, clicked
       curios: () => ({ found: curios(), all: CURIOS }), // for the gatehouse's cabinet
       now: nowHtml, // the tavern's slate: what is going on, from the page itself
@@ -1069,9 +1074,23 @@ const card = document.createElement('div');
 card.className = 'card';
 card.hidden = true;
 card.setAttribute('role', 'dialog');
-card.innerHTML = `<button type="button" class="card-close" aria-label="${T.close}">&times;</button><div class="card-body"></div>`;
+card.innerHTML = `<button type="button" class="card-close" aria-label="${T.close}">&times;</button><button type="button" class="card-pin"></button><div class="card-body"></div>`;
 document.body.append(card);
 let spotItems = []; let cardFrom = null;
+
+/* Cards pinned up: a card's seal pins it to the wall of its room as a small sheet (hours.js draws it;
+   its card again on a click), or takes it down. Kept on this device, by room: [{ label, html }]. */
+const pins = () => { try { return JSON.parse(store('pins') || '{}'); } catch { return {}; } };
+const pinned = (id, label) => (pins()[id] || []).some((p) => p.label === label);
+function pinToggle(id, it) {
+  const all = pins(); const here0 = all[id] || []; const label = it.kind === 'pinned' ? it.label.replace(/^Pinned: /, '') : it.label;
+  const on = !here0.some((p) => p.label === label);
+  all[id] = on ? [...here0, { label, html: it.html }].slice(-6) : here0.filter((p) => p.label !== label); // (six at most a room)
+  store('pins', JSON.stringify(all)); cue(on ? 'seal' : 'page');
+  if (window.Hours && window.Hours.refresh) window.Hours.refresh();
+  if (FRAMED) parent.postMessage({ engine: 'pins' }, location.origin); // (the castle behind the glass draws it too)
+  return on;
+}
 
 /** What is going on, gathered from the page: the studies under way, the last news, the projects. */
 /** Today's fare at the tavern (hours.js: from Taillevent's Viandier), as HTML; '' before it has come. */
@@ -1258,6 +1277,7 @@ window.addEventListener('message', (e) => {
   const m = e.data;
   if (m.engine === 'close') closeEngine();
   else if (m.engine === 'room' && engine && WORLD[m.id]) { history.replaceState(null, '', `#${m.id}`); openWindow(`#${m.id}`, { userAction: false }); } // walking in the terminal walks the castle behind it
+  else if (m.engine === 'pins' && window.Hours && window.Hours.refresh) window.Hours.refresh();
   else if (m.engine === 'key' && engine) engineTurn(1);
   else if (m.engine === 'out' && engine) engineGauge(m.n);
   else if (m.engine === 'err' && engine) { cue('ding'); engineTurn(-3); }
@@ -1463,6 +1483,8 @@ function openCard(i, from) {
   card.classList.toggle('as-book', book); card.classList.remove('one-leaf');
   card.dataset.kind = it.kind;
   card.setAttribute('aria-label', it.label);
+  { const pb = card.querySelector('.card-pin'); const id = root.dataset.room; const can = id && WORLD[id] && it.html && !['door', 'archive'].includes(it.kind);
+    pb.hidden = !can; if (can) { const on = it.kind === 'pinned' || pinned(id, it.label); pb.textContent = on ? T.unpin : T.pin; pb.onclick = () => { pinToggle(id, it); closeCard(false); }; } }
   card.hidden = false;
   if (!book && card.droll) body.insertAdjacentHTML('beforeend', card.droll);
   // what each kind of thing is made of: a letter is sealed, a charter has its seal hanging on a
