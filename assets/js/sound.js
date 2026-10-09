@@ -440,7 +440,7 @@
 
   function tick() { // every 250 ms: the beds follow the page; events now and then
     const s = state(); const wx = s.wx || {}; const wet0 = { drizzle: 0.3, showers: 0.6, rain: 0.8, storm: 1 }[wx.kind] || 0;
-    const inside = Boolean(s.room); const room = inside ? 0.6 : 1; const outW = inside ? 0.12 : 1; const pan = (inside || s.place ? {} : s.pan) || {};
+    const inside = Boolean(s.room); const room = inside ? 0.6 : 1; const outW = inside ? (s.open ? 0.6 : 0.12) : 1; // (a window open: the weather comes in) const pan = (inside || s.place ? {} : s.pan) || {};
     set(master.gain, s.on ? volume * 0.55 : 0, 0.4);
     useVerb(inside ? (RV[s.room] ? s.room : 'out') : 'out'); placeMusic(s);
     set(beds.fire.g.gain, (s.room === 'work' || s.room === 'workshop' ? 0.12 : 0.05) * room); set(beds.fire.p.pan, pan.fire || 0, 0.3);
@@ -470,7 +470,7 @@
       crackleAt += -Math.log(1 - Math.random()) / rate;
     }
     if (inside && wx.kind === 'storm' && Math.random() < 0.012) burst(90, 3, 0.35, { type: 'lowpass' }); // thunder, muffled by the walls (outside, each bolt brings its own: cue)
-    if (inside) { roomSounds(s.room); return; }
+    if (inside) { roomSounds(s.room); if (s.open && wx.kind !== 'storm' && wet0 < 0.7) birds(s); return; }
     if ((wx.wind || 0) > 6 && Math.random() < Math.min(0.06, wx.wind / 600)) tone(160, 120, 0.7, 0.03, { type: 'sawtooth', filter: 300, vibrato: 7, pan: pan.mill }); // the mill creaks
     if (wx.kind !== 'storm' && wet0 < 0.7) birds(s);
     if (!s.night && Math.random() < 0.01) for (let k = 0; k < 2; k += 1) tone(420, 360, 0.12, 0.04, { type: 'square', filter: 700, at: k * 0.18, pan: pan.ducks }); // ducks

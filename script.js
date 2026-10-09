@@ -413,7 +413,7 @@ function soundState() {
   const room = root.dataset.room || null;
   return {
     on: soundOn && root.getAttribute('data-theme') === 'hours' && !document.hidden,
-    wx: currentWx(), night: root.getAttribute('data-sky') === 'night', room,
+    wx: currentWx(), night: root.getAttribute('data-sky') === 'night', room, open: Boolean(window.Hours && window.Hours.windowOpen && window.Hours.windowOpen()),
     echo: ['talks', 'experience', 'contact', 'work'].includes(room), // the stone rooms
     summer: [5, 6, 7].includes(new Date().getMonth()),
     ...(() => { // where, close up; the hour in Paris (the angelus, the birds); what goes on in the village

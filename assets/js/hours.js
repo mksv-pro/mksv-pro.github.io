@@ -6666,8 +6666,14 @@ qqqqqTqqq
       put(c.x + 4, c.y, pal32[I.ROBE]); put(c.x + 4, c.y - 1, pal32[I.ROBE]); put(c.x + 4, c.y - 2, pal32[I.HAT]); // the wizard
     });
     const lit = ROOM_LIGHT[roomOf(interior.id)] || candleLit;
+    const out1 = blown.get(interior.id); const gust = opens.get(interior.id) ? 3.5 : 1; // (blown candles; a draught from an open window)
+    flames.forEach((f, k) => { f.off = Boolean(out1 && out1.has(k)); });
+    lights.forEach((l) => { l.off = !l.hearth && flames.some((f) => f.off && Math.abs(f.x - l.x) <= 1 && Math.abs(f.y - l.y) <= 2); });
+    const dark = flames.some((f) => !f.hearth) && flames.every((f) => f.hearth || f.off);
+    if (dark) for (let i = 0; i < W * H; i += 1) if (!out[i]) { const c = unpack(ibuf[i]); ibuf[i] = pack(look.night > 0.3 ? [c[0] * 0.42, c[1] * 0.48, c[2] * 0.68] : c.map((v) => v * 0.82)); } // (no candle: the moon's blue, or the day's grey)
     lights.forEach((l, k) => { // warm, stepped, flickering; further by night (nothing else lights the room then)
-      const R = l.r * (1 + 0.25 * look.night) * (l.hearth ? 0.35 + 0.65 * heatOf() : 1) * (1 + (reduce ? 0 : 0.05 * Math.sin(t * 11 + k * 2) + 0.03 * Math.sin(t * 23 + k)));
+      if (l.off) return;
+      const R = l.r * (1 + 0.25 * look.night) * (l.hearth ? 0.35 + 0.65 * heatOf() : 1) * (1 + (reduce ? 0 : gust * (0.05 * Math.sin(t * 11 + k * 2) + 0.03 * Math.sin(t * 23 + k))));
       for (let y = Math.max(0, Math.floor(l.y - R)); y < Math.min(H, l.y + R); y += 1) {
         for (let x = Math.max(0, Math.floor(l.x - R)); x < Math.min(W, l.x + R); x += 1) {
           const i = y * W + x;
@@ -6695,8 +6701,12 @@ qqqqqTqqq
         }
         return;
       }
-      const hot = reduce || Math.random() < 0.7;
-      put(f.x, f.y, fc[7]); put(f.x, f.y - 1, fc[hot ? 6 : 5]);
+      if (f.off) { // a wisp of smoke for two seconds, then nothing
+        const e = f.smoke ? t - f.smoke : 9; if (e < 2) for (let j = 0; j < 4; j += 1) blend(f.x + Math.round(Math.sin(e * 5 + j) * (j * 0.5)), f.y - 1 - j - Math.round(e * 3), [170, 165, 160], 0.6 * (1 - e / 2) * (1 - j / 5));
+        return;
+      }
+      const hot = reduce || Math.random() < 0.7 / gust;
+      put(f.x + (gust > 1 && !reduce && Math.random() < 0.3 ? (Math.random() < 0.5 ? -1 : 1) : 0), f.y, fc[7]); put(f.x, f.y - 1, fc[hot ? 6 : 5]);
       if (!f.small && hot) put(f.x, f.y - 2, fc[4]);
     });
   }
@@ -6709,14 +6719,42 @@ qqqqqTqqq
   const slabColours = () => { const k = 1 - 0.55 * look.night; return [[118, 104, 92], [74, 64, 58], [40, 34, 32]].map((c) => pack(c.map((v) => v * k))); };
 
   function setReady(on) { root.classList.toggle('room-ready', on); publishSpots(on); }
+  /* The windows open on a click (and shut on the next): the mullion and the transom gone, the sky and
+     the land whole in the opening, the two casements folded back against the wall either side; the
+     weather comes in (sound.js: outdoor sounds louder; the candles gutter). By room, for the visit. */
+  const opens = new Map();
+  function openWindow(it, { x0, w, y, top }) {
+    const W = it.W; const h = y - 1 - top; const r = w / 2; const mx = x0 + Math.floor(r) - 1; const ty = top + Math.round(h * 0.45);
+    for (let yy = top; yy < top + h; yy += 1) for (const xx of [mx, mx + 1]) { const src = yy * W + (xx === mx ? mx - 1 : mx + 2); it.idx[yy * W + xx] = it.idx0[src]; it.out[yy * W + xx] = 1; }
+    for (let xx = x0; xx < x0 + w; xx += 1) { if (xx === mx || xx === mx + 1) continue; it.idx[ty * W + xx] = it.idx0[(ty - 1) * W + xx]; it.out[ty * W + xx] = 1; }
+    it.idx[ty * W + mx] = it.idx[(ty - 1) * W + mx]; it.idx[ty * W + mx + 1] = it.idx[(ty - 1) * W + mx + 1];
+    [x0 - 6, x0 + w + 3].forEach((lx) => { // a casement: a timber frame, leaded glass, three wide
+      for (let yy = top + Math.round(r * 0.5); yy < top + h; yy += 1) for (let xx = lx; xx < lx + 3; xx += 1) {
+        if (xx < 0 || xx >= W) continue; const edge = xx === lx || xx === lx + 2 || yy === top + Math.round(r * 0.5) || yy === top + h - 1;
+        it.idx[yy * W + xx] = edge ? I.TIMBER_SH : (yy % 3 === 0 ? I.OUTLINE : I.SLATE); it.out[yy * W + xx] = 0;
+      }
+    });
+  }
+  /* The candles blow out on a click (and light again on the next): their flame and their light gone, a
+     wisp of smoke; all out, the room is left to the window (by night, blue moonlight). By room, for the visit. */
+  const blown = new Map(); // room id -> set of flame indices
+  function candleClick(ix, iy) {
+    const k = interior.flames.findIndex((f) => !f.hearth && Math.abs(ix - f.x) <= 2 && iy >= f.y - 3 && iy <= f.y + 4);
+    if (k < 0) return false;
+    const set0 = blown.get(interior.id) || new Set(); const f = interior.flames[k];
+    if (set0.has(k)) { set0.delete(k); sfx('crackle'); } else { set0.add(k); f.smoke = now(); sfx('blow'); }
+    blown.set(interior.id, set0); return true;
+  }
+
   /* A thing pointed at is lifted (a book drawn up out of its row by two pixels, the rest by one); the
      thing whose card is open has left its place (what was under it shows). From interior.pix. */
   let lifted = -1; let openIx = -1;
   const LIFT = { book: 2, volume: 2, ledger: 0, 'desk-book': 0, register: 0 };
   function reshape() {
     const it = interior; if (!it || !it.pix) return;
-    if (!it.idx0) it.idx0 = it.idx.slice();
-    it.idx.set(it.idx0);
+    if (!it.idx0) { it.idx0 = it.idx.slice(); it.out0 = it.out.slice(); }
+    it.idx.set(it.idx0); it.out.set(it.out0);
+    if (opens.get(it.id)) it.sills.forEach((sl) => openWindow(it, sl));
     const W = it.W; const lift = (k) => LIFT[(it.things[k] || {}).kind] ?? 1;
     const off = (k, d) => {
       const px = it.pix[k]; if (!px) return;
@@ -7235,6 +7273,9 @@ qqqqqTqqq
   /** A click in a room: on the workshop's hearth, a log on the fire. */
   function roomClick(ix, iy) { // (room pixels)
     if (catClick(ix, iy)) return;
+    if (candleClick(ix, iy)) return;
+    const sl = interior.sills.find((q) => ix >= q.x0 - 1 && ix <= q.x0 + q.w && iy >= q.top && iy < q.y);
+    if (sl) { const on = !opens.get(interior.id); opens.set(interior.id, on); reshape(); sfx(on ? 'glint' : 'drop'); say(on ? 'You open the window: the air of Paris comes in.' : 'You shut the window.'); return; }
     const f = interior.flames.find((q) => q.hearth && Math.abs(ix - q.x) <= q.w / 2 + 2 && iy > q.y - 18 && iy <= q.y + 2);
     if (f) { fireFed = now(); interior.toldEmbers = false; say(heatOf() > 0.9 ? 'You put a log on the fire; it catches and roars.' : 'The fire burns well.'); sfx('crackle'); return; }
     const pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -7873,6 +7914,8 @@ qqqqqTqqq
       ladderF = clamp(ladderF + k * 0.08); return ladderSpot(d);
     },
     highlight(i) { hl = i; if (interior && lifted !== i) { lifted = i; reshape(); } if (!running && interior && isOn()) render(now()); },
+    /** Is the window of the room open (sound.js lets the outside in)? */
+    windowOpen() { return Boolean(interior && view.state === 'room' && opens.get(interior.id)); },
     /** The card of thing i is open (-1: closed): the thing leaves its place. */
     opened(i) {
       if (!interior || openIx === i) return; openIx = i; reshape();
