@@ -2402,16 +2402,16 @@ bbbbbb.
         let cx0 = Math.floor(rng() * W); for (let y = top + Math.floor(rng() * 10); y < top + 14; y += 1) { cx0 += rng() < 0.5 ? 0 : (rng() < 0.5 ? -1 : 1); set(cx0, y, sh); }
       }
     }
-    function panels(top, bottom, pw) { // wooden panelling: stiles, rails, sunk panels
+    function panels(top, bottom, pw, rh = 14) { // wooden panelling: stiles, rails (every rh rows), sunk panels
       for (let y = top; y < bottom; y += 1) for (let x = 0; x < W; x += 1) {
-        const stile = x % pw < 2; const rail = (y - top) % 14 < 2 || y >= bottom - 2;
-        const edge = x % pw === 2 || (y - top) % 14 === 2;
+        const stile = x % pw < 2; const rail = (y - top) % rh < 2 || y >= bottom - 2;
+        const edge = x % pw === 2 || (y - top) % rh === 2;
         set(x, y, stile || rail ? (x % pw === 0 || (y - top) % 14 === 0 ? I.TIMBER_HI : I.TIMBER) : edge ? I.TIMBER_SH : (noise2(x, y) > 0.55 ? I.TIMBER_SH : I.TIMBER));
       }
       for (let x = 0; x < W; x += 1) set(x, top, I.TIMBER_HI);
     }
     const STONE = [I.ROCK_HI, I.ROCK, I.ROCK_SH, I.ROCK_DK];
-    if (kind === 'about') { plaster(0, [I.PLASTER_HI, I.PLASTER, I.PLASTER_SH]); panels(yf - Math.round(H * 0.26), yf, 10); }
+    if (kind === 'about') { plaster(0, [I.PLASTER_HI, I.PLASTER, I.PLASTER_SH]); panels(yf - 26, yf, 18, 40); } // (one row of tall plain panels: a wainscot, not a chest of drawers)
     else if (kind === 'publications') panels(0, yf, 12);
     else if (kind === 'research') stones(6, 3, STONE);
     else if (kind === 'projects') { // brick, blackened by the forge towards the top
@@ -2957,32 +2957,43 @@ bbbbbb.
       extra.push({ t: { kind: 'mobilier', label: c.name, get html() { return `<h3>${escHtml(c.name)}</h3><p>${escHtml(c.text)}.</p>${provenance('mobilier', k)}`; } }, b: box(x - 1, y0 - 1, sp.w + 2, sp.h + 2) });
     }
 
-    if (kind === 'about') { // the scriptorium: a notebook open on the table, the charters of the schools on the wall
+    if (kind === 'about') { // the scriptorium, laid out left to right along the back wall: the bookcase, the
+      // great book of courses on its lectern, the copyist at his desk, the table under the window, the book
+      // of hours on its lectern, the scrying engine alone in the corner on a stone dais; the charters above
       const ww = 20; windowArch(S(0.5) - Math.round(ww / 2), winY(38), ww, 38); // the great window, over the table
-      const shX = S(box3d ? 0.83 : 0.8); // the bookcase's left side; the table narrows to leave the book of hours its 29 px before it
-      const copyR = Math.max(S(0.25) - 10, S(0.14) + 12) + 22; // (the copyist's right, before the table)
-      const tb = table3d(S(0.48), yf - 16, Math.max(22, Math.min(Math.round((BR - BL) * 0.34), 2 * (shX - 26 - S(0.48)), 2 * (S(0.48) - copyR - 2))));
-      of('desk-book').forEach(([, i]) => { openBook(S(0.48) - 9, tb.front, 18); slots[i] = box(S(0.48) - 10, tb.front - 6, 20, 7); });
+      const shTop = Math.round(H * 0.3); shelf(S(0.01), shTop, Sw(0.11), yf - shTop); // the bookcase, against the left
+      const ch = of('charter'); const half = Math.ceil(ch.length / 2); // the charters either side of the window, over all the rest
+      spread(half, S(0.1), S(0.43), 22).forEach(({ k, row, xc }) => { const [t, i] = ch[k]; slots[i] = charter(xc, Math.round(H * 0.12) + row * 28, t.arms); });
+      spread(ch.length - half, S(0.58), S(0.8), 22).forEach(({ k, row, xc }) => { const [t, i] = ch[half + k]; slots[i] = charter(xc, Math.round(H * 0.12) + row * 28, t.arms); });
+      { // the great book of courses, open on its lectern: a post, a slanted desk, the book, a red ribbon
+        const lc = S(0.2); const lx = lc - 11; const top = yf - 22;
+        rect(lc - 1, top + 6, 3, yf - top - 6, I.TIMBER_SH); rect(lc - 5, yf - 1, 11, 1, I.TIMBER_SH); // post and foot
+        for (let k = 0; k < 23; k += 1) set(lx + k, top + 4 + Math.floor(k / 8), I.TIMBER_HI); // the desk
+        rect(lx, top + 1, 23, 1, I.GOLD_SH); openBook(lx + 1, top + 1, 21); // the book, its gilt edge
+        for (let k = 0; k < 5; k += 1) set(lc, top + k, I.CLOTH); // the ribbon
+        of('ledger').forEach(([, i]) => { slots[i] = box(lx - 1, top - 6, 25, 12); });
+      }
+      { // the copyist on his stool at a sloping desk his own size, an inkhorn in it (realGet: cards.copyist)
+        const fy = floorY(0.12); const mx = S(0.28); const sp = shadeSprite(MONK);
+        rect(mx, fy - 5, 7, 1, I.TIMBER_HI); rect(mx + 1, fy - 4, 1, 5, I.TIMBER_SH); rect(mx + 5, fy - 4, 1, 5, I.TIMBER_SH); // the stool
+        stamp(sp, mx, fy - 5 - sp.h + 2);
+        const dx = mx + 9; const top = fy - 17; // the desk: a slanted board on two legs, the page on it
+        rect(dx + 1, top + 6, 1, fy - top - 6, I.TIMBER_SH); rect(dx + 10, top + 3, 1, fy - top - 3, I.TIMBER_SH); rect(dx, fy, 12, 1, I.OUTLINE);
+        for (let k = 0; k < 12; k += 1) { set(dx + k, top + 5 - Math.floor(k / 3), I.TIMBER_HI); set(dx + k, top + 6 - Math.floor(k / 3), I.TIMBER); }
+        for (let k = 1; k < 10; k += 1) { set(dx + k, top + 4 - Math.floor(k / 3), I.BEARD_HI); set(dx + k, top + 3 - Math.floor(k / 3), k % 2 ? I.BEARD_SH : I.BEARD_HI); }
+        set(dx + 11, top + 1, I.OUTLINE); set(dx + 11, top, I.LEATHER_SH); set(dx + 12, top - 1, I.BEARD_HI); // the inkhorn, a quill in it
+        deco.push({ type: 'copyist', x: dx + 1, y: top + 3 });
+        realGet('rose');
+        extra.push({ t: { kind: 'copyist', label: 'The copyist', get html() { return cards.copyist(); } }, b: box(mx - 1, top - 3, 24, fy - top + 4) });
+      }
+      const tb = table3d(S(0.53), yf - 16, 28); // the table under the window: the notebook, two candles, the hourglass
+      of('desk-book').forEach(([, i]) => { openBook(S(0.53) - 8, tb.front, 16); slots[i] = box(S(0.53) - 9, tb.front - 6, 18, 7); });
       candle(tb.l - 1, tb.back, true); candle(tb.r + 1, tb.back, false);
       deco.push({ type: 'hourglass', x: tb.r - 4, y: tb.front - 10 });
-      const ch = of('charter');
-      const half = Math.ceil(ch.length / 2); // the charters either side of the window
-      spread(half, S(0), S(0.41), 20).forEach(({ k, row, xc }) => { const [t, i] = ch[k]; slots[i] = charter(xc, Math.round(H * 0.14) + row * 26, t.arms); });
-      spread(ch.length - half, S(0.59), S(0.81), 20).forEach(({ k, row, xc }) => { const [t, i] = ch[half + k]; slots[i] = charter(xc, Math.round(H * 0.14) + row * 26, t.arms); });
-      // right of the table, back to front: the book of hours on its lectern (right of the window when as
-      // high as it, under the charters), the engine before it, the bookcase only where both leave it room
-      const bh = realGet('heures'); const chLow = Math.round(H * 0.14) + 21 + 16;
-      const winR = S(0.5) + Math.ceil(ww / 2) + 3; let top = yf - 22;
-      let lx = Math.max(tb.r + 3, top - 15 < yf - 28 + 3 ? winR : 0, Math.min(S(0.7), shX - 30));
-      if (lx + 29 >= S(0.59) - 10 && lx <= S(0.81) + 10) top = Math.min(yf - 12, Math.max(top, chLow));
-      const hoursAt = bh ? [lx - 2, lx + 29] : null;
-      // the engine stands before the lectern's post, below its pages; beside it when the room is too low for that
-      const below = floorY(0.72) - 31 > top + 1; // (its hood under the pages; the slanted desk may hide behind it)
-      const ex = !hoursAt ? Math.min(BR - 24, S(0.74)) : below ? Math.min(BR - 24, lx + 3) : Math.min(BR - 24, hoursAt[1] + 1);
-      const shTop = Math.round(H * 0.3);
-      if (shX >= (hoursAt ? hoursAt[1] : ex + 22) + 1) shelf(shX, shTop, Math.max(16, BR - shX - 2), yf - shTop);
+      rug(S(0.36), floorY(0.62), Sw(0.3));
+      const bh = realGet('heures'); // the book of hours, open at this month's page, on its lectern right of the window
       if (bh) {
-        const pg = bh.small; const m = today().getMonth();
+        const lx = S(0.63); const top = yf - 22; const pg = bh.small; const m = today().getMonth();
         rect(lx + 12, top + 6, 3, yf - top - 6, I.TIMBER_SH); rect(lx + 8, yf - 1, 11, 1, I.TIMBER_SH); // its post and foot
         for (let k = 0; k < 28; k += 1) set(lx + k, top + 4 + Math.floor(k / 9), I.TIMBER_HI); // the slanted desk
         rect(lx, top - 13, 13, 16, I.BEARD_HI); for (let r = 0; r < 6; r += 1) rect(lx + 2, top - 11 + r * 2, 9 - (r % 2) * 2, 1, I.BEARD_SH); // the left page: text
@@ -2991,11 +3002,12 @@ bbbbbb.
         rect(lx + 13, top - 13, 1, 16, I.LEATHER_SH); rect(lx - 1, top + 3, 28, 1, I.LEATHER); // the gutter, the binding
         extra.push({ t: { kind: 'hours', label: 'The book of hours', get html() { return cards.hours(); } }, b: box(lx - 2, top - 15, 31, 20) });
       }
-      rug(S(0.3), floorY(0.6), Math.round((BR - BL) * 0.36));
-      { // the scrying engine: an old cabinet of oak and brass, keys like an organ's, a round glass
-        // that glows; the terminal opens in it (script.js: openEngine). Its screen and orb live in drawInterior
-        const eb = floorY(0.72); const cb = eb - 3; // (ex: above; cb: the cabinet's foot, on four legs)
-        [0, 3, 16, 19].forEach((dx) => rect(ex + dx, cb + 1, 1, 3, dx === 0 || dx === 19 ? I.TIMBER_SH : I.OUTLINE)); rect(ex + 1, eb + 1, 18, 1, I.OUTLINE); // the legs, the shadow
+      { // the scrying engine, alone in the right corner on a stone dais: an old cabinet of oak and brass,
+        // keys like an organ's, a round glass that glows; the terminal opens in it (script.js: openEngine).
+        // Its screen, orb and halo live in drawInterior
+        const ex = BR - 26; const eb = yf + 4; const cb = eb - 3; // (cb: the cabinet's foot, on four legs)
+        rect(ex - 3, eb - 1, 26, 3, I.ROCK); rect(ex - 3, eb - 1, 26, 1, I.ROCK_HI); rect(ex - 3, eb + 2, 26, 1, I.ROCK_DK); // the dais
+        [0, 3, 16, 19].forEach((dx) => rect(ex + dx, cb + 1, 1, 1, dx === 0 || dx === 19 ? I.TIMBER_SH : I.OUTLINE)); // the legs
         rect(ex, cb - 8, 20, 9, I.TIMBER_SH); rect(ex + 1, cb - 7, 18, 7, I.TIMBER); rect(ex, cb - 8, 20, 1, I.TIMBER_HI); // the cabinet
         [[2, 7], [11, 7]].forEach(([dx, w]) => { rect(ex + dx, cb - 6, w, 5, I.TIMBER_HI); rect(ex + dx + 1, cb - 5, w - 2, 3, I.TIMBER); }); // two panels
         [[0, -8], [19, -8], [0, 0], [19, 0]].forEach(([dx, dy]) => set(ex + dx, cb + dy, I.GOLD)); // brass corners
@@ -3009,79 +3021,60 @@ bbbbbb.
         for (let k = 0; k < 3; k += 1) { set(ex, ht + 4 + k * 4, I.GOLD); set(ex + 1, ht + 4 + k * 4, I.GOLD_HI); set(ex, ht + 5 + k * 4, I.GOLD_SH); } // three dials, on the side
         rect(ex + 18, ht + 8, 2, 1, I.ARM_SH); rect(ex + 20, ht + 5, 1, 4, I.ARM_SH); set(ex + 20, ht + 4, I.CLOTH); set(ex + 21, ht + 4, I.CLOTH); // the crank
         rect(ex + 9, ht - 3, 2, 3, I.GOLD_SH); set(ex + 8, ht - 1, I.GOLD); set(ex + 11, ht - 1, I.GOLD); // the stem, its collar
-        const eb2 = cb; // (the deco's anchors below)
-        deco.push({ type: 'engine', x: ex + 5, y: ht + 3, w: 10, h: 10, ox: ex + 10, oy: ht - 6 });
+        deco.push({ type: 'engine', x: ex + 5, y: ht + 3, w: 10, h: 10, ox: ex + 10, oy: ht - 6, halo: true });
         lights.push({ x: ex + 10, y: ht + 8, r: 0.16 * H });
-        extra.push({ t: { kind: 'engine', label: 'The scrying engine: the site as a terminal', html: '' }, b: box(ex - 1, ht - 8, 24, eb2 - ht + 13) });
+        extra.push({ t: { kind: 'engine', label: 'The scrying engine: the site as a terminal', html: '' }, b: box(ex - 3, ht - 8, 26, cb - ht + 13) });
       }
-      { // the copyist at his sloping desk, an inkhorn in it; he copies the Roman de la Rose (realGet: cards.copyist)
-        const fy = floorY(0.32); const mx = Math.max(S(0.25) - 10, S(0.14) + 12); const sp = shadeSprite(MONK); // (right of the lectern of courses)
-        rect(mx + 1, fy - 5, 6, 1, I.TIMBER_HI); rect(mx + 2, fy - 4, 1, 4, I.TIMBER_SH); rect(mx + 5, fy - 4, 1, 4, I.TIMBER_SH); // the stool
-        stamp(sp, mx, fy - sp.h + 1);
-        const dx = mx + 9; const top = fy - 11; // the desk: a slanted board on a post, the page on it
-        rect(dx + 4, top + 4, 1, fy - top - 4, I.OUTLINE); rect(dx + 5, top + 4, 1, fy - top - 4, I.TIMBER_SH); rect(dx + 1, fy, 8, 1, I.OUTLINE);
-        for (let k = 0; k < 10; k += 1) { set(dx + k, top + 3 - Math.floor(k / 4), I.TIMBER_HI); set(dx + k, top + 4 - Math.floor(k / 4), I.OUTLINE); }
-        for (let k = 1; k < 8; k += 1) { set(dx + k, top + 2 - Math.floor(k / 4), I.BEARD_HI); set(dx + k, top + 1 - Math.floor(k / 4), k % 2 ? I.BEARD_SH : I.BEARD_HI); }
-        set(dx + 9, top, I.OUTLINE); set(dx + 9, top - 1, I.LEATHER_SH); // the inkhorn
-        deco.push({ type: 'copyist', x: dx, y: top });
-        realGet('rose');
-        extra.push({ t: { kind: 'copyist', label: 'The copyist', get html() { return cards.copyist(); } }, b: box(mx - 1, fy - 16, 22, 17) });
-      }
-      { // the great book of courses, open on a lectern left of the desk (gilt edges, a red ribbon)
-        const lx = S(0.14) - 8; rect(lx + 7, yf - 13, 3, 13, I.TIMBER_SH); rect(lx + 3, yf - 1, 11, 1, I.TIMBER_SH);
-        for (let k = 0; k < 17; k += 1) set(lx + k, yf - 14 + Math.floor(k / 6), I.TIMBER_HI);
-        rect(lx - 1, yf - 16, 19, 1, I.GOLD_SH); openBook(lx, yf - 16, 17);
-        for (let k = 0; k < 4; k += 1) set(lx + 8, yf - 17 + k, I.CLOTH);
-        of('ledger').forEach(([, i]) => { slots[i] = box(lx - 2, yf - 22, 21, 10); });
-      }
-    } else if (kind === 'research') { // the observatory: the labs' reports, rolled and sealed, on the chart table
-      { // the astrolabe on its shackle, on the wall left of the telescope (its card: cards.astrolabe)
-        const ax = S(0.1); const ay = Math.round(H * 0.5); realGet('astrolabe');
-        for (let y = -8; y <= 8; y += 1) for (let x = -8; x <= 8; x += 1) { const r = Math.hypot(x, y); if (r <= 8.2) set(ax + x, ay + y, r > 6.8 ? I.GOLD : r > 6 ? I.GOLD_SH : (x * 3 + y * 5) % 7 === 0 ? I.OUTLINE : I.GOLD_SH); }
-        for (let k = -5; k <= 5; k += 1) { set(ax + k, ay - Math.round(Math.sqrt(Math.max(0, 25 - k * k)) * 0.6) + 1, I.GOLD_HI); } // the rete's ecliptic
-        set(ax, ay, I.CREAM); set(ax, ay - 9, I.GOLD); set(ax - 1, ay - 10, I.GOLD); set(ax + 1, ay - 10, I.GOLD); set(ax, ay - 11, I.GOLD_HI); // the pin, the throne, the ring
-        extra.push({ t: { kind: 'astrolabe', label: 'The astrolabe', get html() { return cards.astrolabe(); } }, b: box(ax - 9, ay - 12, 19, 22) });
-      }
+    } else if (kind === 'research') { // the observatory, left to right: the loom (the Ising weave), the
+      // telescope on its tripod aimed out of the window, the window under the dome, the astrolabe, the
+      // chart table with a map of the sky and the labs' reports, the orrery; the labs' star charts above
       for (let y = 4; y < Math.round(H * 0.42); y += 1) {
         const half = Math.sqrt(Math.max(0, 1 - ((Math.round(H * 0.42) - y) / (H * 0.4)) ** 2)) * W * 0.5; // (over the side walls too: the dome caps the whole tower)
         for (let x = 0; x < W; x += 1) if (Math.abs(x - W / 2) > half) set(x, y, (x + Math.round(y * 1.5)) % 9 === 0 ? I.SLATE_HI : (x + y) % 5 ? I.SLATE_SH : I.SLATE);
       }
-      const sw = 22; windowArch(S(0.5) - Math.round(sw / 2), winY(42), sw, 42); // the observing window, wide open
-      for (let k = 0; k < 22; k += 1) { const tx = S(0.2) + k; const ty = floorY(0.1) - 20 - Math.round(k * 0.75); set(tx, ty, k < 4 ? I.GOLD_SH : I.ARM_HI); set(tx, ty + 1, I.ARM_SH); if (k > 15) set(tx, ty - 1, I.ARM); } // the telescope, at the slit
-      [-5, 0, 5].forEach((dx) => { for (let r = 0; r < 20; r += 1) set(S(0.21) + dx * (r / 20), floorY(0.1) - 20 + r, I.TIMBER_SH); });
-      const orX = Math.min(S(0.9), BR - 10); // the orrery, by the table's end: the table stops short of it
-      const tb = table3d(S(0.62), yf - 16, Math.max(24, Math.min(Sw(0.4), 2 * (orX - 12 - S(0.62)))));
-      spread(n, tb.l, tb.r, 16).forEach(({ k, row, xc }) => { slots[k] = scrollThing(xc, row ? tb.back + 1 : tb.front, things[k].arms); });
-      candle(tb.r - 2, tb.back, true); // (to read the charts by at night)
-      deco.push({ type: 'orrery', x: orX, y: floorY(0.1) - 14 });
-      // the labs' hangings, either side of the slit, out from its edges; a place each, clear of the
-      // astrolabe, of the telescope's tube when they hang that low, of each other (none if no room)
-      const winL = S(0.5) - Math.round(sw / 2) - 3; const winR = S(0.5) - Math.round(sw / 2) + sw + 3; const hy = Math.round(H * 0.18);
-      const taken = []; if (hy + 27 > Math.round(H * 0.5) - 13) taken.push([S(0.1) - 10, S(0.1) + 10]); if (hy + 27 > floorY(0.1) - 37) taken.push([S(0.2) - 6, S(0.2) + 23]); // (the astrolabe, the tube: when as high)
+      const sw = 22; const wx0 = S(0.47) - Math.round(sw / 2); const wy0 = winY(42); windowArch(wx0, wy0, sw, 42); // the observing window, wide open
+      const winL = wx0 - 3; const winR = wx0 + sw + 3; const hy = Math.round(H * 0.18);
+      { // the telescope: a brass tube on a wooden tripod, its eyepiece low, its mouth to the window's sky
+        const fx = S(0.3); const fy = floorY(0.08); const hx = fx; const hy0 = fy - 22; // the tripod's head
+        [[-7, 0], [0, 2], [7, 0]].forEach(([dx, dy]) => { for (let r = 0; r <= 22; r += 1) set(Math.round(hx + (dx * r) / 22), hy0 + r + Math.round((dy * r) / 22), r === 22 ? I.TIMBER_SH : I.TIMBER); });
+        const tx0 = hx - 6; const ty0 = hy0 + 4; const tx1 = wx0 + 6; const ty1 = wy0 + 14; const n2 = Math.max(Math.abs(tx1 - tx0), Math.abs(ty1 - ty0));
+        for (let k = 0; k <= n2; k += 1) { const x = Math.round(tx0 + ((tx1 - tx0) * k) / n2); const y = Math.round(ty0 + ((ty1 - ty0) * k) / n2); const w2 = k > n2 * 0.6 ? 2 : 1; for (let d = 0; d <= w2; d += 1) set(x, y + d, d === 0 ? I.GOLD_HI : d === w2 ? I.GOLD_SH : I.GOLD); }
+        rect(tx0 - 2, ty0, 3, 2, I.ARM_SH); // the eyepiece
+        deco.push({ type: 'eyepiece', x: tx0 - 2, y: ty0 });
+      }
+      { // the astrolabe on its shackle, right of the window (its card: cards.astrolabe)
+        const ax = winR + 9; const ay = wy0 + 18; const R = 6; realGet('astrolabe');
+        for (let y = -R; y <= R; y += 1) for (let x = -R; x <= R; x += 1) { const r = Math.hypot(x, y); if (r <= R + 0.2) set(ax + x, ay + y, r > R - 1.2 ? I.GOLD : (x * 3 + y * 5) % 7 === 0 ? I.OUTLINE : I.GOLD_SH); }
+        for (let k = -4; k <= 4; k += 1) set(ax + k, ay - Math.round(Math.sqrt(Math.max(0, 16 - k * k)) * 0.6) + 1, I.GOLD_HI); // the rete
+        set(ax, ay, I.CREAM); set(ax, ay - R - 1, I.GOLD); set(ax, ay - R - 2, I.GOLD_HI); // the pin, the ring
+        extra.push({ t: { kind: 'astrolabe', label: 'The astrolabe', get html() { return cards.astrolabe(); } }, b: box(ax - R - 1, ay - R - 3, 2 * R + 3, 2 * R + 4) });
+      }
+      // the labs' star charts, either side of the window, out from its edges (none where no room)
+      const taken = [[winR + 1, winR + 17]];
       const fits = (xc) => xc - 10 >= BL + 1 && xc + 11 <= BR - 2 && !taken.some(([a0, b0]) => xc + 11 >= a0 && xc - 10 <= b0);
-      let rightmost = winR;
       hangs.forEach((e, k) => {
         const sides = k < Math.ceil(hangs.length / 2) ? [-1, 1] : [1, -1];
         for (const d of sides) {
           let xc = d < 0 ? winL - 11 : winR + 10; while (!fits(xc) && xc - 10 > BL && xc + 11 < BR) xc += d;
           if (!fits(xc)) continue;
-          hanging(xc, hy, e, k); taken.push([xc - 10, xc + 11]); if (d > 0) rightmost = Math.max(rightmost, xc + 11); break;
+          hanging(xc, hy, e, k); taken.push([xc - 10, xc + 11]); break;
         }
       });
-      { // the loom, right of the hangings: its weave runs in drawInterior
-        const a = rightmost + 5; const b = BR - 5;
-        const w = Math.min(24, (b - a - 4) & ~1); const h = 28; const y0 = Math.round(H * 0.18);
-        if (w >= 12) {
-          const x = Math.round((a + b - w) / 2);
-          rect(x - 4, y0, w + 8, 1, I.TIMBER_SH); set(x - 5, y0, I.GOLD); set(x + w + 4, y0, I.GOLD); // the beam
-          rect(x - 1, y0 + 2, w + 2, h + 2, I.GOLD_SH); // the selvedge
-          for (let xx = 0; xx < w + 2; xx += 2) set(x - 1 + xx, y0 + h + 4, I.GOLD); // the fringe
-          deco.push({ type: 'ising', x, y: y0 + 3, w, h });
-          extra.push({ t: { kind: 'loom', label: "The weaver's loom", get html() { return loomCard(); } }, b: box(x - 5, y0, w + 10, h + 5) });
-        }
+      const orX = BR - 12; // the orrery, at the table's end
+      const tb = table3d(S(0.72), yf - 16, Math.max(30, Math.min(46, 2 * (orX - 12 - S(0.72)))));
+      { const cx0 = tb.l + 2; const cw = tb.r - tb.l - 4; for (let y = 0; y < 4; y += 1) for (let x = 0; x < cw; x += 1) set(cx0 + x, tb.back - 2 + y, y === 0 || y === 3 ? I.BEARD_SH : (x * 7 + y * 3) % 11 === 0 ? I.GOLD_HI : I.T_NAVY); } // the map of the sky, unrolled
+      spread(n, tb.l, tb.r, 14).forEach(({ k, xc }) => { slots[k] = scrollThing(xc, tb.front + 2, things[k].arms); });
+      candle(tb.r - 2, tb.back - 3, true); // (to read the charts by at night)
+      deco.push({ type: 'orrery', x: orX, y: floorY(0.1) - 14 });
+      { // the loom: two posts from the floor, a beam at the top and one at the foot, the weave between
+        const w = 22; const h = 28; const x = S(0.05); const y0 = yf - h - 14;
+        rect(x - 3, y0 - 4, 2, yf - y0 + 4, I.TIMBER); rect(x + w + 1, y0 - 4, 2, yf - y0 + 4, I.TIMBER); // the posts
+        rect(x - 4, y0 - 4, w + 8, 2, I.TIMBER_HI); rect(x - 4, y0 + h + 2, w + 8, 2, I.TIMBER_SH); // the beams
+        for (let xx = 0; xx < w; xx += 3) set(x + xx, y0 - 2, I.BEARD_SH); // the warp's threads over the top
+        deco.push({ type: 'ising', x, y: y0, w, h });
+        extra.push({ t: { kind: 'loom', label: "The weaver's loom", get html() { return loomCard(); } }, b: box(x - 4, y0 - 4, w + 8, yf - y0 + 4) });
       }
-      rect(S(0.86), floorY(0.1) - 6, 13, 1, I.TIMBER_HI); rect(S(0.87), floorY(0.1) - 5, 1, 6, I.TIMBER_SH); rect(S(0.86) + 11, floorY(0.1) - 5, 1, 6, I.TIMBER_SH);
-      cat('thin', S(0.04), floorY(0.5));
+      cat('thin', S(0.4), floorY(0.4));
     } else if (kind === 'projects') { // the workshop: a working model of each project on the bench
       const hx = S(0.03); const hw = Math.max(18, Sw(0.24)); const hy = yf - 24; // (a width: Sw, not S, which is a place and grew with the side walls)
       rect(hx - 3, hy - 5, hw + 6, 29, I.BRICK_SH); rect(hx - 3, hy - 5, hw + 6, 2, I.BRICK_HI);
@@ -3510,8 +3503,10 @@ bbbbbb.
       const txt = PERSON.replace(/H/g, h).replace(/B/g, b).replace(/A/g, a).replace(/L/g, l).replace(/X/g, x).replace(/e/g, beard ? 'e' : 'f');
       const sp = shadeSprite(txt); let fy = floorY(0.18);
       const xs = [0.3, 0.7, 0.2, 0.8, 0.4, 0.6, 0.12, 0.88, 0.5, 0.25, 0.75, 0.35, 0.65, 0.05, 0.95].map(S);
-      const hides = (x) => slots.some((b) => b && x < b.x + b.w && x + sp.w > b.x && fy - sp.h < b.y + b.h && fy > b.y); // (never in front of a thing to click)
-      const spot = () => xs.find((x) => clearAt([x], fy, sp.w, 8) !== null && !hides(x)) ?? null; // (his feet on free floor; the wall behind him may hold things)
+      const boxes = [...slots.filter(Boolean), ...deco.filter((d) => d.x !== undefined && d.y !== undefined).map((d) => ({ x: d.x - 8, y: d.y - 8, w: (d.w || 0) + 16, h: (d.h || 0) + 16 }))];
+      const hides = (x) => boxes.some((b) => x < b.x + b.w && x + sp.w > b.x && fy - sp.h < b.y + b.h && fy > b.y); // (never in front of a thing to click, nor of one that moves)
+      const feetFree = (x) => { let n2 = 0; for (let y = fy - 8; y <= fy + 1; y += 1) for (let xx = x - 1; xx <= x + sp.w; xx += 1) if (furn[y * W + xx]) n2 += 1; return n2 < 4; }; // (a fallen leaf is no obstacle)
+      const spot = () => xs.find((x) => feetFree(x) && !hides(x)) ?? null; // (his feet on free floor; the wall behind him may hold things)
       let x0 = spot(); if (x0 === null) { fy = floorY(0.42); x0 = spot(); } // (no room by the wall: a step into the room)
       if (x0 !== null) {
         stamp(sp, x0, fy - sp.h + 1);
@@ -6179,6 +6174,8 @@ bbbbbb.
         for (let y = 4 - top; y < 4; y += 1) put(d.x, d.y + y, P('GOLD'));
         for (let y = 0; y < bot; y += 1) { put(d.x, d.y + 7 - y, P('GOLD')); if (y < bot - 1) { put(d.x - 1, d.y + 7 - y, P('GOLD_SH')); put(d.x + 1, d.y + 7 - y, P('GOLD_SH')); } }
         if (k > 0 && k < 1 && Math.floor(t * 6) % 2) put(d.x, d.y + 5, P('GOLD_HI'));
+      } else if (d.type === 'eyepiece') { // at night a star caught in the eyepiece, twinkling
+        if (look.night > 0.4) { const a = reduce ? 0.8 : 0.55 + 0.45 * Math.sin(t * 5.3); blend(d.x + 1, d.y, [255, 250, 220], a); blend(d.x, d.y, [200, 220, 255], a * 0.5); blend(d.x + 2, d.y, [200, 220, 255], a * 0.5); }
       } else if (d.type === 'orrery') { // brass rings, the sun, three planets at their own speeds
         put(d.x, d.y + 7, P('TIMBER_SH')); put(d.x, d.y + 6, P('GOLD_SH')); put(d.x - 2, d.y + 8, P('TIMBER_SH')); put(d.x + 2, d.y + 8, P('TIMBER_SH'));
         put(d.x, d.y, pack([255, 210, 90]));
@@ -6273,6 +6270,7 @@ bbbbbb.
         const near = ch && ms && ch.some((h) => Math.abs(h.x - (ms.x + SPRITES.master.w / 2)) < 18); // (not under his nose)
         if (ch && ms && ms.facing > 0 && !near) { const [a, b] = ch; const who = Math.floor(t / 0.9) % 2 ? b : a; bubble(who.x - 3, who.y - 9, '...'); }
       } else if (d.type === 'engine') { // the glass: amber lines typed on the dark, a cursor; the orb over it breathing
+        if (d.halo) { const R = 22; const br = reduce ? 1 : 0.85 + 0.15 * Math.sin(t * 1.7); for (let y = -R; y <= R; y += 1) for (let x = -R; x <= R; x += 1) { const q = Math.hypot(x, y * 1.2) / R; if (q < 1) blend(d.ox + x, d.oy + 12 + y, [120, 190, 255], (1 - q) ** 2 * 0.22 * br); } } // a bluish halo: it is not of this room's time
         const BG = pack([24, 20, 14]); const AMB = [232, 168, 56];
         for (let y = 0; y < d.h; y += 1) for (let x = 0; x < d.w; x += 1) {
           const corner = (x === 0 || x === d.w - 1) && (y === 0 || y === d.h - 1); if (corner) continue;
