@@ -2539,7 +2539,6 @@ bbbbbb.
       // a window in the side with fewer doors, where the room has one there (the schoolroom)
       const sides = { l: [], r: [] };
       (doorsOf(id) || []).forEach((d) => sides[d.dir === 'w' || d.dir === 'n' ? 'l' : 'r'].push(d));
-      const spans = [[0.1, 0.5], [0.6, 0.88]]; // near, far (fractions of the side wall's width)
       const toX = (side, f0, f1) => { const a = Math.round(BL * f0); const b = Math.round(BL * f1); return side === 'l' ? [a, b] : [W - 1 - b, W - 1 - a]; };
       if (SHAPE.sideWindow) {
         const side = sides.l.length <= sides.r.length ? 'l' : 'r'; const [xa, xb] = toX(side, 0.45, 0.85);
@@ -3075,20 +3074,43 @@ bbbbbb.
         extra.push({ t: { kind: 'loom', label: "The weaver's loom", get html() { return loomCard(); } }, b: box(x - 4, y0 - 4, w + 8, yf - y0 + 4) });
       }
       cat('thin', S(0.4), floorY(0.4));
-    } else if (kind === 'projects') { // the workshop: a working model of each project on the bench
-      const hx = S(0.03); const hw = Math.max(18, Sw(0.24)); const hy = yf - 24; // (a width: Sw, not S, which is a place and grew with the side walls)
-      rect(hx - 3, hy - 5, hw + 6, 29, I.BRICK_SH); rect(hx - 3, hy - 5, hw + 6, 2, I.BRICK_HI);
-      rect(hx, hy, hw, 24, I.OUTLINE);
-      for (let y = 0; y < hy - 5; y += 1) rect(hx + hw / 2 - 4, y, 8, 1, y % 3 ? I.BRICK : I.BRICK_SH);
-      flames.push({ x: hx + hw / 2, y: yf - 1, hearth: true, w: hw - 4 }); lights.push({ x: hx + hw / 2, y: yf - 6, r: 0.6 * H, hearth: true });
-      // over the bench, two rows centred on it: the tool board, then the map, Young's slits and the gears,
-      // all of one height and evenly spaced (they were scattered at odd heights)
-      const tw0 = Math.min(Sw(0.42), 2 * (S(0.58) - hx - hw - 16)); // (the bench clear of the hearth, the anvil between them)
-      const tb = table3d(S(0.58), yf - 16, Math.max(26, tw0)); const cx = Math.round((tb.l + tb.r) / 2);
-      const ry = Math.round(H * 0.17); const ou = realGet('outils'); // Roubo's tools (_tools/fetch_outils.py): hung from the rail, the planes on the board's shelf
+    } else if (kind === 'projects') { // the workshop, left to right: the forge (a raised hearth under its
+      // hood, the bellows, the anvil on its stump, a winch with its gears over it), the bench with the
+      // working models, the tool board over it, the map of the realm on the wall, Young's slits on a stand
+      const hx = S(0.02); const hw = 32; const hb = yf - 10; // the forge's hearth: a stone base, the fire on it
+      rect(hx - 2, hb, hw + 4, yf - hb, I.ROCK); rect(hx - 2, hb, hw + 4, 1, I.ROCK_HI); for (let x = hx; x < hx + hw; x += 6) rect(x, hb + 1, 1, yf - hb - 1, I.ROCK_DK);
+      rect(hx, hb - 3, hw, 3, I.OUTLINE); // the fire bed (the flames: drawInterior)
+      for (let y = 0; y < 24; y += 1) { const ins = Math.round((y / 24) * 11); rect(hx - 2 + ins, hb - 4 - y, hw + 4 - 2 * ins, 1, y === 0 ? I.BRICK_HI : (y % 3 ? I.BRICK : I.BRICK_SH)); } // the hood, narrowing
+      const fx0 = hx + Math.round(hw / 2) - 5; for (let y = 0; y < hb - 28; y += 1) rect(fx0, y, 10, 1, y % 3 ? I.BRICK : I.BRICK_SH); // the flue, up through the ceiling
+      for (let y = hb - 22; y < hb - 4; y += 1) for (let x = hx + 6; x < hx + hw - 6; x += 1) if (bayer(x, y) < 0.5) set(x, y, I.ROCK_DK); // soot on the hood
+      flames.push({ x: hx + hw / 2, y: hb - 1, hearth: true, w: hw - 8 }); lights.push({ x: hx + hw / 2, y: hb - 6, r: 0.6 * H, hearth: true });
+      { const bx = hx + hw + 3; const by = hb - 2; // the bellows: two boards, leather between, the nozzle to the fire
+        for (let k = 0; k < 10; k += 1) { set(bx + k, by - 4 + Math.floor(k / 4), I.TIMBER_HI); set(bx + k, by + 3 - Math.floor(k / 4), I.TIMBER_SH); for (let y = by - 3 + Math.floor(k / 4); y < by + 3 - Math.floor(k / 4); y += 1) set(bx + k, y, I.LEATHER); }
+        rect(bx - 3, by - 1, 3, 1, I.ARM_SH); rect(bx + 10, by - 1, 4, 1, I.TIMBER); // nozzle, handle
+        deco.push({ type: 'bellows', x: bx, y: by }); }
+      for (let k = 0; k < 7; k += 1) { set(hx + hw - 2 + Math.round(k * 0.3), hb - 18 + k, I.ARM_SH); set(hx + hw + 1 - Math.round(k * 0.3), hb - 18 + k, I.ARM_SH); } // tongs hung on the hood
+      const ax = hx + hw + 4; const ay = floorY(0.35); // the anvil on its stump, before the forge
+      rect(ax + 3, ay - 9, 11, 9, I.TIMBER_SH); rect(ax + 3, ay - 9, 11, 1, I.TIMBER_HI); for (let y = ay - 8; y < ay; y += 3) rect(ax + 3, y, 11, 1, I.TIMBER); // the stump
+      rect(ax, ay - 15, 17, 4, I.ARM_HI); rect(ax, ay - 15, 17, 1, I.BLADE); rect(ax - 4, ay - 14, 4, 2, I.ARM_HI); set(ax - 5, ay - 14, I.ARM_SH); rect(ax + 4, ay - 11, 9, 2, I.ARM_SH); // the anvil, its horn, its waist
+      deco.push({ type: 'anvil', x: ax, y: ay - 15, w: 17, h: 15 });
+      { const wx = ax + 6; const wy = Math.round(H * 0.22); // the winch over the anvil: a beam, two meshed wheels, the rope, the hook
+        rect(wx - 12, wy - 8, 24, 2, I.TIMBER); rect(wx - 12, wy - 8, 24, 1, I.TIMBER_HI);
+        deco.push({ type: 'gear', x: wx - 4, y: wy - 1, r: 4, sp: 0.5 }, { type: 'gear', x: wx + 4, y: wy + 3, r: 3, sp: -0.5 * 4 / 3 });
+        for (let y = wy + 6; y < ay - 22; y += 1) set(wx + 4, y, I.LEATHER_SH); set(wx + 3, ay - 22, I.ARM_SH); set(wx + 5, ay - 22, I.ARM_SH); set(wx + 4, ay - 21, I.ARM_SH); }
+      const tb = table3d(S(0.56), yf - 16, 80); const cx = Math.round((tb.l + tb.r) / 2); // the bench, long enough for the models side by side
+      { // the models, twice the size: each drawn small to the side, read back, then set down large
+        const big = (fn, xc, yb) => { const keep = []; const bx = 1; const by = 1; for (let y = 0; y < 22; y += 1) for (let x = 0; x < 18; x += 1) keep.push([idx[(by + y) * W + bx + x], out[(by + y) * W + bx + x]]);
+          fn(bx + 7, by + 19); const px = []; for (let y = 0; y < 22; y += 1) for (let x = 0; x < 18; x += 1) { const i = (by + y) * W + bx + x; px.push(idx[i]); }
+          keep.forEach(([v, o], k) => { const i = (by + Math.floor(k / 18)) * W + bx + (k % 18); idx[i] = v; out[i] = o; });
+          const changed = px.map((v, k) => v !== keep[k][0]);
+          for (let y = 0; y < 22; y += 1) for (let x = 0; x < 18; x += 1) if (changed[y * 18 + x]) rect(xc - 14 + 2 * x, yb - 40 + 2 * y, 2, 2, px[y * 18 + x]);
+          return box(xc - 14, yb - 36, 32, 36); };
+        things.forEach((t, k) => { const xc = Math.round(tb.l + ((k + 0.5) * (tb.r - tb.l)) / n); slots[k] = big((x, y) => model(x, y, t.model), xc, tb.front + 2); });
+      }
+      const ry = Math.round(H * 0.12); const ou = realGet('outils'); // Roubo's tools (_tools/fetch_outils.py): over the bench, hung from the rail, the planes on the board's shelf
       { const hung = ou ? ou.sprites.filter((sp) => !sp.on) : []; const stand = ou ? ou.sprites.filter((sp) => sp.on) : [];
-        const hw0 = ou ? hung.reduce((a, sp) => a + sp.w + 2, 0) : 7 * 5; const sw0 = stand.reduce((a, sp) => a + sp.w + 2, 0);
-        const bw = hw0 + sw0 + 4; const bh = Math.max(16, ...hung.map((sp) => sp.h + 3)); const x0 = Math.max(cx - Math.round(bw / 2), hx + Math.round(hw / 2) + 7); // (clear of the flue)
+        const hw0 = ou ? hung.reduce((a2, sp) => a2 + sp.w + 2, 0) : 7 * 5; const sw0 = stand.reduce((a2, sp) => a2 + sp.w + 2, 0);
+        const bw = hw0 + sw0 + 4; const bh = Math.max(16, ...hung.map((sp) => sp.h + 3)); const x0 = cx - Math.round(bw / 2);
         rect(x0 - 1, ry - 1, bw + 2, bh + 2, I.TIMBER_SH); rect(x0, ry, bw, bh, I.PLASTER_HI); // the whitewashed board, so dark iron and wood read on it
         for (let x = x0 + 4; x < x0 + bw - 1; x += 6) rect(x, ry, 1, bh, I.PLASTER); // (its planks)
         rect(x0, ry, hw0 + 1, 1, I.TIMBER_SH); // the rail
@@ -3098,15 +3120,10 @@ bbbbbb.
         const shY = ry + bh - 3; tx += 2; rect(tx - 1, shY, sw0 + 1, 1, I.TIMBER_SH); rect(tx - 1, shY + 1, sw0 + 1, 1, I.TIMBER); // the shelf for the planes
         stand.forEach((sp) => { for (let y = 0; y < sp.h; y += 1) for (let x = 0; x < sp.w; x += 1) { const v = sp.px[y * sp.w + x]; if (v >= 0) set(tx + x, shY - sp.h + y, v); } tx += sp.w + 2; });
         if (ou) extra.push({ t: { kind: 'outils', label: 'The tool rack', get html() { return `<h3>The tool rack</h3><p>${ou.captions.map(escHtml).join('; ')}.</p>${provenance('outils')}`; } }, b: box(x0 - 1, ry - 1, bw + 2, bh + 2) });
-        // the row's foot clear of the models on the bench (when it can) and of the mantel
-        const mh = 17; const y2 = Math.max(ry + bh + 2, Math.min(ry + bh + 4, tb.back - 19 - mh)); let mw = Math.max(24, Sw(0.14)); const sw = 28; let gw = 21; let gap = 5;
-        const clearX = y2 + mh > hy - 6 ? hx + hw + 5 : hx + hw / 2 + 6; // (not over the flue, nor the hearth when as low)
-        const room = BR - 3 - clearX; const rowW = mw + sw + gw + 2 * gap;
-        if (rowW > room) { gap = 2; mw = Math.max(18, room - sw - gw - 2 * gap); } // (a short wall: the map narrows, then the gears go)
-        if (mw + sw + gw + 2 * gap > room) gw = -gap;
-        const row0 = Math.min(BR - 3 - (mw + sw + gw + 2 * gap), Math.max(clearX, cx - Math.round((mw + sw + gw + 2 * gap) / 2)));
+        lantern(x0 + bw + 6, ry + 2);
+      }
         { // the map of the realm: a region for each project
-          const mx0 = row0; const my0 = y2;
+          const mx0 = BR - 30; const my0 = Math.round(H * 0.18); const mw = 26; const mh = 19; // on the right of the wall
         const models = things.filter((tt) => tt.kind === 'model');
         for (let y = 0; y < mh; y += 1) for (let x = 0; x < mw; x += 1) {
           const edge = x === 0 || y === 0 || x === mw - 1 || y === mh - 1;
@@ -3127,7 +3144,8 @@ bbbbbb.
           extra.push({ t: { kind: 'realm', label: 'The map of the realm', html: cards.realm(regions) }, b: box(mx0, my0, mw, mh) });
         }
         { // Young's slits in a dark box: a faint lamp, a plate with two slits, the screen where hits gather
-          const bx = row0 + mw + gap; const ih = mh - 2; const iy = y2 + 1;
+          const sw = 28; const mh = 15; const bx = BR - 30; const y2 = yf - 30; const ih = mh - 2; const iy = y2 + 1; // on its own stand
+          rect(bx + 4, y2 + mh, 2, yf - y2 - mh, I.TIMBER_SH); rect(bx + sw - 6, y2 + mh, 2, yf - y2 - mh, I.TIMBER_SH); rect(bx, y2 + mh, sw, 2, I.TIMBER); // the stand
           rect(bx, y2, sw, mh, I.TIMBER_SH); rect(bx + 1, iy, sw - 2, ih, I.SLATEB);
           rect(bx + 2, iy + Math.round(ih / 2) - 1, 3, 3, I.ARM_SH); set(bx + 3, iy + Math.round(ih / 2), I.WIN_LIT); // the lamp
           for (let y = 0; y < ih; y += 1) if (Math.abs(y - ih / 2) > 2 || Math.abs(y - ih / 2) < 1) set(bx + 12, iy + y, I.ARM_SH); // the plate, two slits in it
@@ -3135,14 +3153,7 @@ bbbbbb.
           deco.push({ type: 'slits', x: bx + sw - 8, y: iy, w: 6, h: ih });
           extra.push({ t: { kind: 'slits', label: "Young's slits", get html() { return cards.slits(); } }, b: box(bx, y2, sw, mh) });
         }
-        if (gw > 0) { const bx = row0 + mw + sw + 2 * gap; // two meshed wheels on an oak board
-          rect(bx, y2, gw, mh, I.TIMBER_SH); rect(bx + 1, y2 + 1, gw - 2, mh - 2, I.TIMBER); [[2, 2], [gw - 3, 2], [2, mh - 3], [gw - 3, mh - 3]].forEach(([dx, dy]) => set(bx + dx, y2 + dy, I.ARM_SH));
-          const gx = bx + 7; const gy = y2 + Math.round(mh / 2) - 2;
-          deco.push({ type: 'gear', x: gx, y: gy, r: 4, sp: 0.8 }, { type: 'gear', x: gx + 8, y: gy + 4, r: 3, sp: -0.8 * 4 / 3 }); }
-        lantern(x0 + bw + 6, ry + 2);
-      }
-      spread(n, tb.l, tb.r, 17).forEach(({ k, row, xc }) => { slots[k] = model(xc, row ? tb.back : tb.front, things[k].model); });
-      const ax = Math.max(hx + 2, Math.min(S(0.3), S(0.58) - Math.round(Math.max(26, tw0) / 2) - 14)); rect(ax, floorY(0.4) - 9, 12, 3, I.ARM_HI); rect(ax, floorY(0.4) - 9, 12, 1, I.BLADE); rect(ax + 3, floorY(0.4) - 6, 6, 3, I.ARM_SH); rect(ax + 2, floorY(0.4) - 3, 8, 3, I.ARM_SH);
+      for (let k = 0; k < 18; k += 1) { const cx2 = tb.l + Math.floor(rng() * (tb.r - tb.l)); const cy2 = floorY(0.05 + rng() * 0.25); set(cx2, cy2, k % 3 ? I.TIMBER_HI : I.BEARD); } // shavings under the bench
     } else if (kind === 'publications') { // the library: each work face out on the display shelf
       // the two bookcases: each shelf a subject (site.toml [library]), each catalogued volume a gilt spine on it
       const ez0 = S(0.5) - 13; const ez1 = S(0.5) + 13; // (the easel of the game of life, in the middle: the bookcases stop short of it)
@@ -3158,21 +3169,29 @@ bbbbbb.
         rect(x, sr.y + 1, 3, 7, I.CLOTH_SH); rect(x, sr.y + 2, 3, 1, I.GOLD_HI); rect(x, sr.y + 6, 3, 1, I.GOLD); set(x + 1, sr.y + 4, I.GOLD);
         slots[i] = box(x - 1, sr.y, 5, 9);
       });
+      // the shelf of honour: an arched niche in the panelling between the bookcases, the works face out
+      // in it, a small lamp over it; under it the window, high (where the ladder's rail leaves it room)
       const pubs = of('book'); const np = pubs.length;
-      const l = S(0.32); const r = S(0.68); const fit = Math.max(1, Math.floor((r - l) / 13)); const rows = Math.ceil(np / fit) || 1;
-      const dy = Math.min(Math.round(H * 0.5), yf - 33); // the display shelf, above the easel's board
-      for (let row = 0; row < rows; row += 1) { const y = dy - row * 17; rect(l - 2, y, r - l + 4, 2, I.TIMBER_HI); rect(l - 2, y + 2, r - l + 4, 1, I.TIMBER_SH); }
-      spread(np, l, r, 13).forEach(({ k, row, xc }) => { slots[pubs[k][1]] = bookFace(xc, dy - row * 17, k); });
-      if (rows < 2 && dy - 14 > 9 + 32 + 3) windowArch(S(0.5) - 7, 9, 14, 32); // (its frame under the ladder's rail, at 6; high, over the shelves)
-      rug(S(0.3), floorY(0.55), Sw(0.4));
-      { // the game of life on a board on an easel, where the lectern stood
-        const lw = 22; const lh = 14; const lx = S(0.5) - lw / 2; const ly = yf - 24;
-        rect(lx - 2, ly - 2, lw + 4, lh + 4, I.TIMBER); rect(lx - 2, ly - 2, lw + 4, 1, I.TIMBER_HI);
-        rect(lx + 2, ly + lh + 2, 1, 9, I.TIMBER_SH); rect(lx + lw - 3, ly + lh + 2, 1, 9, I.TIMBER_SH); rect(lx + lw / 2, ly + lh + 2, 1, 7, I.TIMBER_SH);
-        deco.push({ type: 'life', x: lx, y: ly, w: lw, h: lh });
-        extra.push({ t: { kind: 'life', label: 'The game of life', get html() { return cards.life(); } }, b: box(lx - 2, ly - 2, lw + 4, lh + 4) });
+      const nw2 = Math.max(18, np * 13 + 6); const nl = S(0.5) - Math.round(nw2 / 2); const nb = yf - 30; const nt = nb - 22;
+      for (let y = nt; y < nb; y += 1) for (let x = nl; x < nl + nw2; x += 1) { const u = (x - nl) / (nw2 - 1) * 2 - 1; const arch = y - nt < 6 && (y - nt) < 6 * (1 - Math.sqrt(Math.max(0, 1 - u * u))); if (!arch) set(x, y, x === nl || x === nl + nw2 - 1 ? I.TIMBER_HI : I.OUTLINE); }
+      rect(nl - 2, nb, nw2 + 4, 2, I.TIMBER_HI); rect(nl - 2, nb + 2, nw2 + 4, 1, I.TIMBER_SH); // its sill
+      spread(np, nl + 3, nl + nw2 - 3, 13).forEach(({ k, xc }) => { slots[pubs[k][1]] = bookFace(xc, nb, k); });
+      lantern(S(0.5), nt - 5);
+      windowArch(S(0.5) - 7, 9, 14, Math.max(14, nt - 9 - 10)); // (high, under the ladder's rail at 6, over the lamp)
+      { // the game of life: a board of squares on a games table on the rug, two stools; its cells live in drawInterior
+        const lw = 22; const lh = 8; const gy = floorY(0.32); const lx = S(0.5) - lw / 2; const ly = gy - 12;
+        rug(lx - 16, gy - 1, lw + 32); // the rug under it
+        rect(lx - 2, ly - 1, lw + 4, lh + 2, I.TIMBER); rect(lx - 2, ly - 1, lw + 4, 1, I.TIMBER_HI); rect(lx - 2, ly + lh + 1, lw + 4, 2, I.TIMBER_SH); // the table's top, its edge
+        [lx, lx + lw - 2].forEach((x) => rect(x, ly + lh + 3, 2, gy - ly - lh - 3, I.TIMBER_SH)); // its legs
+        [lx - 9, lx + lw + 3].forEach((x) => { rect(x, gy - 6, 6, 2, I.TIMBER_HI); rect(x + 1, gy - 4, 1, 4, I.TIMBER_SH); rect(x + 4, gy - 4, 1, 4, I.TIMBER_SH); }); // the stools
+        deco.push({ type: 'life', x: lx, y: ly, w: lw, h: lh, board: true });
+        extra.push({ t: { kind: 'life', label: 'The game of life', get html() { return cards.life(); } }, b: box(lx - 2, ly - 1, lw + 4, lh + 4) });
+        const small = shadeSprite(`
+.q.q.....
+qkqkqqqT.
+qqqqqTqqq
+.qq..qq.T`); stamp(small, lx + lw + 11, gy - small.h + 2); // a cat at a room's scale (the camp's are drawn for the landscape), asleep by the stool
       }
-      cat('whiteTabby', S(0.36), floorY(0.55) + 4); // asleep on the rug
       { // the library's ladder on its brass rail, slid along the shelves (by the visitor: see ladderTo)
         const a = S(0) + 2; const b = BR - 10; rect(a, 6, b - a + 8, 1, I.GOLD_SH);
         const lx = Math.round(a + (b - a) * ladderF);
@@ -6174,6 +6193,13 @@ bbbbbb.
         for (let y = 4 - top; y < 4; y += 1) put(d.x, d.y + y, P('GOLD'));
         for (let y = 0; y < bot; y += 1) { put(d.x, d.y + 7 - y, P('GOLD')); if (y < bot - 1) { put(d.x - 1, d.y + 7 - y, P('GOLD_SH')); put(d.x + 1, d.y + 7 - y, P('GOLD_SH')); } }
         if (k > 0 && k < 1 && Math.floor(t * 6) % 2) put(d.x, d.y + 5, P('GOLD_HI'));
+      } else if (d.type === 'bellows') { // pumped every few seconds: the upper board comes down, the fire answers
+        const k = reduce ? 0 : Math.max(0, Math.sin(t * 1.4)) ** 3; const dy = Math.round(k * 2);
+        for (let x = 0; x < 10; x += 1) { put(d.x + x, d.y - 4 + Math.floor(x / 4) + dy, P('TIMBER_HI')); if (dy) put(d.x + x, d.y - 4 + Math.floor(x / 4), P('LEATHER_SH')); }
+        if (k > 0.6) fireFed = Math.max(fireFed, now() - 20); // (a breath of air keeps the hearth up)
+      } else if (d.type === 'anvil') { // struck: sparks fly up and fall, for half a second
+        const e = t - (interior.struck || -9);
+        if (e < 0.7) for (let k = 0; k < 9; k += 1) { const a = -Math.PI / 2 + (k - 4) * 0.28; const v = 14 + (k * 7) % 9; const x = d.x + 6 + Math.cos(a) * v * e; const y = d.y + Math.sin(a) * v * e + 22 * e * e; put(x, y, pack(k % 3 ? [255, 210, 90] : [255, 250, 220])); }
       } else if (d.type === 'eyepiece') { // at night a star caught in the eyepiece, twinkling
         if (look.night > 0.4) { const a = reduce ? 0.8 : 0.55 + 0.45 * Math.sin(t * 5.3); blend(d.x + 1, d.y, [255, 250, 220], a); blend(d.x, d.y, [200, 220, 255], a * 0.5); blend(d.x + 2, d.y, [200, 220, 255], a * 0.5); }
       } else if (d.type === 'orrery') { // brass rings, the sun, three planets at their own speeds
@@ -6202,7 +6228,7 @@ bbbbbb.
         if (g.ball) put(d.x + 8 - g.ball.r + 2 * g.ball.k, d.y + 2 + g.ball.r * 2, P('ARM_HI'));
       } else if (d.type === 'life') {
         const L = lifeOf(d.w, d.h);
-        for (let y = 0; y < d.h; y += 1) for (let x = 0; x < d.w; x += 1) put(d.x + x, d.y + y, L.g[y * d.w + x] ? P((x * 3 + y) % 5 ? 'PLASTER' : 'PLASTER_HI') : P('SLATEB')); // (chalk on slate, like the schoolroom's board)
+        for (let y = 0; y < d.h; y += 1) for (let x = 0; x < d.w; x += 1) put(d.x + x, d.y + y, L.g[y * d.w + x] ? P(d.board ? 'BEARD_HI' : (x * 3 + y) % 5 ? 'PLASTER' : 'PLASTER_HI') : P(d.board ? ((x + y) % 2 ? 'TIMBER_SH' : 'OUTLINE') : 'SLATEB')); // (on the games table: pale pieces on a checkered board) // (chalk on slate, like the schoolroom's board)
       } else if (d.type === 'ising') { // red up, blue down, in dyed wool: the warp every third thread, the weft every other row
         const lm = loomOf(d.w, d.h); const wool = [70, 52, 40];
         const up = mix(unpack(P('FLAG')), wool, 0.3); const dn = mix(unpack(P('FLAG2')), wool, 0.3);
@@ -6753,6 +6779,8 @@ bbbbbb.
     const f = interior.flames.find((q) => q.hearth && Math.abs(ix - q.x) <= q.w / 2 + 2 && iy > q.y - 18 && iy <= q.y + 2);
     if (f) { fireFed = now(); interior.toldEmbers = false; say(heatOf() > 0.9 ? 'You put a log on the fire; it catches and roars.' : 'The fire burns well.'); sfx('crackle'); return; }
     const pick = (a) => a[Math.floor(Math.random() * a.length)];
+    const an = interior.deco.find((q) => q.type === 'anvil' && ix >= q.x - 2 && ix < q.x + q.w + 2 && iy >= q.y - 2 && iy < q.y + q.h);
+    if (an) { interior.struck = now(); sfx('anvil'); return; }
     const dw = interior.deco.find((q) => q.type === 'dweller' && ix >= q.x && ix < q.x + q.w && iy >= q.y && iy < q.y + q.h);
     if (dw) { dw.said = ((dw.said ?? -1) + 1) % dw.lines.length; say(dw.lines[dw.said]); return; }
     const m = interior.deco.find((q) => q.type === 'master');
