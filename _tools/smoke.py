@@ -63,6 +63,10 @@ CASES = {
                        "await wait(2500); document.documentElement.classList.add('banner'); document.documentElement.setAttribute('data-theme', 'dark'); await wait(800);",
                        "/^Pixel-art landscape/.test(document.querySelector('.plate-img').getAttribute('aria-label')) && " + CANVAS),
     "terminal": ("?theme=dark", (1600, 900), "", "document.documentElement.getAttribute('data-theme') === 'dark'"),
+    # a bare visit: the front gate asks how; the castle's choice lifts it; a section's link skips it
+    "gate": ("", (1920, 1080), "await wait(1500);", "document.documentElement.classList.contains('gated') && !!document.querySelector('#gate canvas')"),
+    "gate-castle": ("", (1920, 1080), "await wait(800); document.querySelector('[data-gate=castle]').click(); await wait(1500);", "!document.documentElement.classList.contains('gated') && !document.getElementById('gate')"),
+    "gate-deeplink": ("#research", (1920, 1080), "await wait(800);", "!document.documentElement.classList.contains('gated')"),
     "phone-banner": ("?theme=dark&sky=noon&weather=clear", (390, 844), "", "document.documentElement.classList.contains('banner') && " + CANVAS),
     "narrow-window": ("?sky=noon&weather=clear", (1100, 800), "",  # (a computer: the terminal, the landscape over the engraving)
                       "document.documentElement.getAttribute('data-theme') === 'dark' && document.documentElement.classList.contains('banner') && " + CANVAS),

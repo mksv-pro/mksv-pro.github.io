@@ -169,12 +169,6 @@ const T = {
   photoOnly: 'Photo mode is for the castle: switch theme first.',
   curiosFound: (k, n) => `You found ${k} of the land's ${n} curiosities:`,
   allCurios: 'You know every curiosity of this land. The wizard nods, impressed.',
-  pickTitle: 'Two ways in',
-  pick: `<p>The same site, two ways to walk it. The terminal lives in an old engine in the castle's scriptorium; [the engine], bottom right, opens it from anywhere.</p>
-<div class="pick">
-  <button type="button" data-pick="castle"><b>[explore the castle]</b><span>a pixel-art landscape under the real sky of Paris; each section is a room to explore</span></button>
-  <button type="button" data-pick="engine"><b>[straight to the terminal]</b><span>through the scriptorium, to the scrying engine: a text console, every section one key away</span></button>
-</div>`,
   minutes: (m) => (m < 1 ? 'under a minute' : m === 1 ? 'one minute' : `${m} minutes`),
 };
 
@@ -1306,8 +1300,6 @@ dialog.className = 'scroll';
 dialog.setAttribute('aria-labelledby', 'dlg-h');
 document.body.append(dialog);
 dialog.addEventListener('click', (e) => {
-  const pick = e.target.closest('[data-pick]');
-  if (pick) { dialog.close(); store('entry', pick.dataset.pick); if (pick.dataset.pick === 'engine') enterEngine(); return; }
   const use = e.target.closest('[data-use]');
   if (use) { dialog.close(); useItem(use.dataset.use); return; }
   const go = e.target.closest('[data-go]'); // the map's places in the landscape
@@ -1332,12 +1324,6 @@ function showDialog(titleHtml, bodyHtml) {
   dialog.showModal();
 }
 
-/* First visit on a wide screen, no choice stored: offer the two themes (the castle is drawn behind).
-   Narrow screens open on the tower; its engine is the way to the terminal. */
-if (WIDE.matches && !qTheme && !FRAMED && !store('entry')) {
-  showDialog(T.pickTitle, T.pick);
-  dialog.addEventListener('close', () => { if (!store('entry')) store('entry', 'castle'); }, { once: true });
-} else if (WIDE.matches && !qTheme && !FRAMED && store('entry') === 'engine' && !location.hash && isIndex) enterEngine(); // (who chose it comes back to it)
 
 /* The tavern's billiard table: a stadium, two half-discs joined by straight cushions (Bunimovich,
    1979). Two balls set off from the same spot, their directions a millionth of a radian apart: after

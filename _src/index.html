@@ -14,6 +14,22 @@ description: Mike Silva, graduate student in physics in Paris: complex systems, 
   </script>
 </head>
 <body>
+  <div class="gate" id="gate" role="dialog" aria-modal="true" aria-labelledby="gate-h">
+    <canvas aria-hidden="true"></canvas>
+    <div class="gate-box">
+      <p class="gate-name">Mike Silva</p>
+      <p class="gate-sub">Graduate student in physics &middot; Paris</p>
+      <p id="gate-h" class="gate-q">How would you like to visit?</p>
+      <div class="gate-choices">
+        <button type="button" data-gate="castle"><b>Explore the castle</b>
+          <span>An illustrated, game-like version: walk through a landscape in which each room of a castle is a section of the site. Best with a mouse and a few minutes.</span></button>
+        <button type="button" data-gate="terminal"><b>Open the terminal</b>
+          <span>The plain, fast version: the whole site as text (CV, research, publications), every section one key away.</span></button>
+      </div>
+      <p class="gate-foot">You can switch at any time with the button at the bottom right.</p>
+    </div>
+  </div>
+  <script src="{{root}}assets/js/gate.js?v={{v:assets/js/gate.js}}"></script>
 {{> top}}
 
       <main id="main" tabindex="-1">

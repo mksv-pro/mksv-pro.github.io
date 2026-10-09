@@ -1377,3 +1377,29 @@ details.how p { margin: .3rem 0 0; }
 [data-theme="hours"] .name { font-family: "UnifrakturMaguntia", serif; letter-spacing: .01em; }
 [data-theme="hours"] .card .card-title, [data-theme="hours"] dialog.scroll h2 { font-family: "UnifrakturMaguntia", serif; font-size: 1.5em; letter-spacing: .02em; }
 .status .lbl { font-style: normal; }
+
+/* the front gate (gate.js): black, a network of points, the two ways in; shown on a bare visit only */
+.gate { display: none; }
+.gated .gate {
+  display: grid; place-items: center; position: fixed; inset: 0; z-index: 10000; background: #000; color: #e6e8ec;
+  font-family: "IBM Plex Mono", ui-monospace, monospace; transition: opacity .7s ease;
+}
+.gated body { overflow: hidden; }
+.gate.out { opacity: 0; pointer-events: none; }
+.gate canvas { position: absolute; inset: 0; display: block; }
+.gate-box { position: relative; width: min(46rem, calc(100vw - 2rem)); padding: 2rem 2.2rem; text-align: center;
+  background: rgba(0, 0, 0, .72); box-shadow: 0 0 3rem 2rem rgba(0, 0, 0, .72); }
+.gate-name { margin: 0; font-size: 1.6rem; font-weight: 600; letter-spacing: .04em; color: #fff; }
+.gate-sub { margin: .3rem 0 2rem; font-size: .85rem; color: #9ba0aa; }
+.gate-q { margin: 0 0 1.2rem; font-size: 1rem; font-weight: 400; color: #c9ccd3; }
+.gate-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.gate-choices button {
+  display: flex; flex-direction: column; gap: .5rem; padding: 1.1rem 1.2rem; text-align: left; cursor: pointer;
+  font: inherit; color: inherit; background: transparent; border: 1px solid #3a3e46; border-radius: 2px;
+  transition: border-color .2s, background-color .2s;
+}
+.gate-choices button b { font-size: 1.02rem; color: #fff; }
+.gate-choices button span { font-size: .8rem; line-height: 1.5; color: #a4a9b3; }
+.gate-choices button:is(:hover, :focus-visible) { border-color: #e6e8ec; background: rgba(255, 255, 255, .05); outline: none; }
+.gate-foot { margin: 1.4rem 0 0; font-size: .75rem; color: #6e737d; }
+@media (prefers-reduced-motion: reduce) { .gated .gate { transition: none; } }
