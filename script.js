@@ -22,9 +22,9 @@ const WORLD = DATA.world;
 const LINKS = DATA.links;
 const ROOM_IDS = Object.keys(WORLD);
 
-/** URL of a room: a section of the index, or a project page. */
+/** URL of a room: a section of the index. */
 function roomHref(id) {
-  return new URL(WORLD[id].page || `#${id}`, SITE).href;
+  return new URL(`#${id}`, SITE).href;
 }
 
 /* ---- strings ----------------------------------------------------------- */
@@ -409,11 +409,11 @@ async function copyFrom(href) {
 const soundBtn = $('sound-toggle');
 let soundOn = store('sound') === 'on'; let soundLoading = null;
 function soundState() {
-  const r = root.dataset.room || null; const room = r && WORLD[r] && WORLD[r].page ? 'workshop' : r; // project pages: the workshop
+  const room = root.dataset.room || null;
   return {
     on: soundOn && root.getAttribute('data-theme') === 'hours' && !document.hidden,
     wx: currentWx(), night: root.getAttribute('data-sky') === 'night', room,
-    echo: ['talks', 'experience', 'contact', 'work', 'workshop'].includes(room), // the stone rooms
+    echo: ['talks', 'experience', 'contact', 'work'].includes(room), // the stone rooms
     summer: [5, 6, 7].includes(new Date().getMonth()),
     ...(() => { // where, close up; the hour in Paris (the angelus, the birds); what goes on in the village
       const d = skyNow(); const p = new Date(d.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
@@ -649,6 +649,7 @@ function stairDown(then) {
   const A = 30; const SLOPE = 1.25; // (depth scale; how fast the stair widens towards us)
   const frame = (now) => {
     const p = Math.min(1, (now - t0) / 1500);
+    if (root.dataset.room !== 'cellar') { cv.remove(); return; } // (left on the way down: no room under it)
     if (!started && p > 0.6) { started = true; then(); }
     const travel = p * 1.6; const vx = W / 2; const vy = 30 + Math.sin(travel * 3 * Math.PI * 2) * 1.2; // (five steps down, a bob at each)
     const dim = 1 - 0.7 * p;
@@ -695,7 +696,7 @@ function openWindow(hash, { userAction, animate = userAction }) {
     tabLinks.forEach((a) => a.removeAttribute('aria-current'));
     root.dataset.room = 'cellar';
     if (userAction) { say(cellar.dataset.look); cue('door'); }
-    const enter = () => { if (window.Hours) window.Hours.room('cellar', { animate }); };
+    const enter = () => { if (window.Hours && root.dataset.room === 'cellar') window.Hours.room('cellar', { animate }); };
     if (animate && !reduceMotion) stairDown(enter); else enter();
     return;
   }
@@ -861,7 +862,7 @@ window.addEventListener('popstate', () => { // back to the landscape (an entry m
   if (!location.hash && isIndex) openWindow('', { userAction: false, animate: true });
 });
 
-/* ---- leaving a room (hours theme): Esc, the parchment's button; on a project page, home ---- */
+/* ---- leaving a room (hours theme): Esc, the parchment's button; off the index, home ---- */
 
 function leaveRoom() {
   if (!isIndex) { location.href = SITE.href; return; }
@@ -869,10 +870,6 @@ function leaveRoom() {
   openWindow('', { userAction: false, animate: true });
   const cur = [...document.querySelectorAll('.tabs a')].find((a) => a.getAttribute('aria-current'));
   if (cur) cur.focus();
-}
-if (!isIndex) { // a project page is a room already: the workshop
-  const page = ROOM_IDS.find((id) => WORLD[id].page && location.pathname.endsWith(WORLD[id].page));
-  if (page) { root.dataset.room = page; if (!window.Hours) root.classList.add('room-ready'); }
 }
 {
   const leave = document.createElement('button');
@@ -1122,7 +1119,7 @@ function setSpots(rects, items) {
    The same page in an iframe (framed, it takes the terminal: see the head script), in a window over
    the castle. Opening: the room's picture zooms on the engine, then the window grows out of its glass;
    closing runs it back. Esc, [back to the castle] (from inside: postMessage) or a click outside closes. */
-let engine = null;
+let engine = null; let engineClosing = []; // (the closing's timers: opened again before they ran, they would undo the new zoom)
 function enterEngine() { // from anywhere: into the scriptorium, then the engine
   if (FRAMED || engine) return;
   if (!window.Hours) { setTimeout(enterEngine, 200); return; }
@@ -1137,7 +1134,10 @@ function enterEngine() { // from anywhere: into the scriptorium, then the engine
 }
 function openEngine(spot) {
   if (FRAMED || engine) return;
-  const cv = document.querySelector('.plate-img'); const sr = spot.getBoundingClientRect(); const cr = cv.getBoundingClientRect(); // (the picture: the landscape's canvas and the room's)
+  engineClosing.forEach(clearTimeout); engineClosing = [];
+  const cv = document.querySelector('.plate-img');
+  cv.style.transition = 'none'; cv.style.transform = ''; cv.getBoundingClientRect(); // (still zoomed from a closing: measure it unzoomed)
+  const sr = spot.getBoundingClientRect(); const cr = cv.getBoundingClientRect(); // (the picture: the landscape's canvas and the room's)
   const fx = sr.left + sr.width / 2; const fy = sr.top + sr.height * 0.4; // (the glass, in the hood's upper part)
   const Z = 2.6; const ms = reduceMotion ? 0 : 900;
   cv.style.transformOrigin = `${fx - cr.left}px ${fy - cr.top}px`;
@@ -1167,8 +1167,10 @@ function closeEngine() {
   const { wrap, cv, fx, fy, ms, from } = engine; engine = null;
   const win = wrap.querySelector('.engine-win'); const wr = win.getBoundingClientRect();
   win.style.transform = `translate(${fx - (wr.left + wr.width / 2)}px, ${fy - (wr.top + wr.height / 2)}px) scale(0.05)`; win.style.opacity = '0';
-  setTimeout(() => { wrap.remove(); cv.style.transform = ''; }, reduceMotion ? 0 : 400);
-  setTimeout(() => { root.classList.remove('engine-on'); cv.style.transition = ''; cv.style.transformOrigin = ''; if (from.isConnected) from.focus(); }, (reduceMotion ? 0 : 400) + ms);
+  wrap.style.pointerEvents = 'none';
+  setTimeout(() => wrap.remove(), reduceMotion ? 0 : 400);
+  engineClosing = [setTimeout(() => { cv.style.transform = ''; }, reduceMotion ? 0 : 400)];
+  engineClosing.push(setTimeout(() => { root.classList.remove('engine-on'); cv.style.transition = ''; cv.style.transformOrigin = ''; if (from.isConnected) from.focus(); }, (reduceMotion ? 0 : 400) + ms));
 }
 function engineToggle() {
   if (FRAMED) { parent.postMessage({ engine: 'close' }, location.origin); return; }
@@ -1197,8 +1199,8 @@ function roomDoors(id) {
   const sec = document.getElementById(id);
   return sec ? [...sec.querySelectorAll('.exits li')].map((li) => {
     const a = li.querySelector('a'); const dir = li.querySelector('.dir').textContent.trim();
-    const href = a.getAttribute('href'); // '#experience', or a project page's path
-    const go = ROOM_IDS.find((r) => href === `#${r}` || (WORLD[r].page && href.endsWith(WORLD[r].page))) || null;
+    const href = a.getAttribute('href'); // '#experience'
+    const go = ROOM_IDS.find((r) => href.endsWith(`#${r}`)) || null;
     return { kind: 'door', dir: dir[0], label: `${dir}: ${a.textContent.trim()}`, go, html: '' };
   }).filter((d) => d.go) : [];
 }
@@ -1415,7 +1417,7 @@ document.addEventListener('keydown', (e) => {
 /** Go to room `id`, by hash on the index, by page load elsewhere. */
 function goTo(id) {
   const url = new URL(roomHref(id));
-  if (isIndex && !WORLD[id].page) location.hash = url.hash;
+  if (isIndex) location.hash = url.hash;
   else location.href = url.href;
 }
 

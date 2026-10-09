@@ -806,9 +806,9 @@ dialog.dungeon canvas {
 /* the project illuminations, screened like the Vermis plates (_tools/trame.py) */
 [data-theme="hours"] .illum { background: center / cover no-repeat; image-rendering: pixelated; box-shadow: 0 0 0 1px var(--rule); }
 [data-theme="hours"] .illum img { opacity: 0; }
-[data-theme="hours"] .illum[href*="nuclear"] { background-image: url("assets/img/trame-nuclear.png"); }
-[data-theme="hours"] .illum[href*="urban"] { background-image: url("assets/img/trame-dla.png"); }
-[data-theme="hours"] .illum[href*="n-body"] { background-image: url("assets/img/trame-nbody.png"); }
+[data-theme="hours"] .illum[data-img="nuclear"] { background-image: url("assets/img/trame-nuclear.png"); }
+[data-theme="hours"] .illum[data-img="dla"] { background-image: url("assets/img/trame-dla.png"); }
+[data-theme="hours"] .illum[data-img="nbody"] { background-image: url("assets/img/trame-nbody.png"); }
 
 /* ---- the castle's rooms (hours.js, script.js): the landscape is home; a section is a room.
    Its pieces are things drawn in the room, a button over each opens a card beside it; main
@@ -1446,7 +1446,7 @@ details.how p { margin: .3rem 0 0; }
 .glance div { display: contents; }
 .glance dt { color: var(--dim); }
 .glance dd { margin: 0; }
-[data-theme="hours"] .glance { display: none; }
+.glance:not(.shown), .exits, #coursework { display: none; } /* (kept in the page for the castle: its doors, the book of courses, the cellar; whoami shows the glance) */
 
 /* studies and posts on one axis of years (About): bars packed in rows, a lane each, the years below */
 .timeline { --rh: 1.35rem; margin: 1.2rem 0 1rem; font-size: .72rem; }

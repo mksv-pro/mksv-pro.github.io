@@ -68,7 +68,7 @@ function findRoom(name) {
 }
 
 function walkTo(id) {
-  if (!isIndex || WORLD[id].page) session('cmd-walk', '1');
+  if (!isIndex) session('cmd-walk', '1');
   goTo(id);
 }
 

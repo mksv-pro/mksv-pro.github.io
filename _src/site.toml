@@ -18,9 +18,9 @@ teaching = []
 # what is under way, said in two lines and dated: at the head of News (the raven's newest letter)
 [now]
 date = "2026-10"
-text = """Starting two MSc at once, Physics of Complex Systems (Paris-Saclay) and Quantum Information
-(Sorbonne), alongside the Economics &amp; Finance MSc at Dauphine; extending the urban
-morphogenesis model with reinforcement learning."""
+text = """Preparing exams; looking for an internship in quantum information or the physics of
+complex systems, with a strong computational side, ideally machine and deep learning; and my
+own projects on the side."""
 
 [site]
 url = "https://mksv-pro.github.io/"
@@ -138,9 +138,7 @@ tapestry = [
 links = [
   ["experience", "publications"], ["experience", "about"], ["publications", "work"],
   ["about", "work"], ["about", "contact"], ["work", "news"], ["contact", "news"],
-  ["work", "nuclear-emulators"], ["nuclear-emulators", "urban-morphogenesis"],
-  ["nuclear-emulators", "n-body"], ["contact", "talks"], ["news", "teaching"],
-  ["talks", "teaching"],
+  ["contact", "talks"], ["news", "teaching"], ["talks", "teaching"],
 ]
 
 [world.rooms.experience]
@@ -155,14 +153,6 @@ r = 0
 name = "Publications"
 label = "publications"
 
-[world.rooms.urban-morphogenesis]
-c = 2
-r = 0
-name = "Urban morphogenesis"
-label = "city"
-exit = "urban morphogenesis"
-page = "projects/urban-morphogenesis.html"
-img = "illum-dla.png"
 
 [world.rooms.about]
 c = 0
@@ -177,14 +167,6 @@ r = 1
 name = "Work"
 label = "work"
 
-[world.rooms.nuclear-emulators]
-c = 2
-r = 1
-name = "Nuclear emulation"
-label = "nuclear"
-exit = "nuclear emulation"
-page = "projects/nuclear-emulators.html"
-img = "illum-nuclear.png"
 
 [world.rooms.contact]
 c = 0
@@ -198,14 +180,6 @@ r = 2
 name = "News"
 label = "news"
 
-[world.rooms.n-body]
-c = 2
-r = 2
-name = "N-body systems"
-label = "orrery"
-exit = "N-body systems"
-page = "projects/n-body.html"
-img = "illum-nbody.png"
 
 [world.rooms.talks]
 c = 0
@@ -278,28 +252,29 @@ role = "Research assistant · with Julia Cagé"
 text = """Media ownership and content bias: built a large dataset of French television
 broadcasts for the study."""
 
-# ---- work (cards on the index; each has its own page under _src/projects/): each piece of work once,
+# ---- work (cards in Work: an illumination `img`, a short text, links out): each piece of work once,
 # its outputs as actions; `at`: the experience it was done in (its arms id), if any ---------
 
 [[work]]
 id = "nuclear-emulators"
+img = "illum-nuclear.png"
 at = "ijclab"
 figure = { src = "assets/img/projects/nuclear-validation.png", w = 1400, h = 630, caption = "The solver against an independent R-matrix code, on four benchmarks: the cross sections, and their relative difference (median and p5–p95 over 40 draws).", alt = "Four panels, one per benchmark system: cross sections from the DBMM solver and the R-matrix code overlap; below, their relative difference stays between about 1e-6 and 1e-3." }
 title = "Computational emulation of nuclear dynamics"
 date = "2026"
 role = "M1 internship"
-alt = "Project page: illumination of a plane wave scattering off a nucleus"
+alt = "Illumination of a plane wave scattering off a nucleus"
 text = """A coupled-channel scattering solver and two emulators (RBM, LROM) that reproduce it
 within 0.5&nbsp;% at the median, at a fraction of its cost, to make uncertainty quantification on
 optical potentials affordable."""
 actions = [
-  { label = "page", href = "projects/nuclear-emulators.html" },
   { label = 'report <span class="meta">PDF</span>', href = "{{url:report}}" },
   { label = "code", href = "{{url:report_code}}" },
 ]
 
 [[work]]
 id = "urban-morphogenesis"
+img = "illum-dla.png"
 cv_title = "Urban morphogenesis: diffusion-limited aggregation and Schelling's model"
 city = "Paris, France"
 cv_role = "Université Paris Cité, supervised by Raphael Raynaud"
@@ -307,13 +282,13 @@ cv_text = "Agent-based model coupling Schelling segregation with diffusion-limit
 title = "Urban morphogenesis"
 date = "2026-01"
 role = "With Raphael Raynaud · Université Paris Cité"
-alt = "Project page: illumination of a diffusion-limited aggregation cluster in gold on green"
+alt = "Illumination of a diffusion-limited aggregation cluster in gold on green"
 text = """An agent-based city grown from Schelling segregation and diffusion-limited
 aggregation, and the fractal dimension of what it builds."""
-actions = [{ label = "page &amp; live DLA", href = "projects/urban-morphogenesis.html" }]
 
 [[work]]
 id = "n-body"
+img = "illum-nbody.png"
 cv_title = "Self-gravitating N-body systems"
 city = "Paris, France"
 cv_role = "Sorbonne Université, supervised by Lionel Foret"
@@ -321,16 +296,15 @@ cv_text = "Direct-integration simulation of gravitational N-body dynamics and lo
 title = "Self-gravitating N-body systems"
 date = "2024-02"
 role = "With Lionel Foret · Sorbonne Université"
-alt = "Project page: illumination of three bodies on the figure-eight orbit among stars"
+alt = "Illumination of three bodies on the figure-eight orbit among stars"
 text = """Direct-integration simulation of gravitating bodies and of the collective behaviour
 that long-range forces produce."""
-actions = [{ label = "page &amp; live orbits", href = "projects/n-body.html" }]
 
 # ---- publications & reports (`bib`: a file under assets/bib/, copied by the [bib] link) -
 
 [[publications]]
 title = "Computational Emulation of Nuclear Dynamics"
-href = "projects/nuclear-emulators.html"
+href = "{{url:report}}"
 authors = "<b>M. Silva</b> (supervised by C. Hebborn and P. McGlynn)"
 venue = "M1 research internship report, IJCLab &amp; Université Paris Cité (2026)"
 work = "nuclear-emulators"

@@ -129,23 +129,21 @@ def work():
     out = []
     at = {e["arms"]: e["org"] for e in DATA["experience"] if e.get("arms")}
     for p in DATA["work"]:
-        room = ROOMS[p["id"]]
         where = f' &middot; <a class="at" href="#at-{p["at"]}">{at[p["at"]]}</a>' if p.get("at") in at else ""
         out.append(f"""          <article id="{p["id"]}" class="project">
-            <a class="illum" href="{room["page"]}">
-              <img src="{{{{root}}}}assets/img/{room["img"]}" width="80" height="80"
+            <span class="illum" data-img="{p["img"].removeprefix("illum-").removesuffix(".png")}">
+              <img src="{{{{root}}}}assets/img/{p["img"]}" width="80" height="80"
                    alt="{escape(p["alt"])}">
-            </a>
+            </span>
             <div class="project-body">
               <div class="entry-head">
-                <h3><a href="{room["page"]}">{p["title"]}</a></h3>
+                <h3>{p["title"]}</h3>
                 <span class="date">{when(p["date"])}</span>
               </div>
               <p class="role-line">{p["role"]}{where}</p>
               <p>
 {indent(p["text"], 16)}
-              </p>{figure(p.get("figure"))}
-{actions(p["actions"], 14)}
+              </p>{figure(p.get("figure"))}{chr(10) + actions(p["actions"], 14) if p.get("actions") else ""}
             </div>
           </article>""")
     return "\n\n".join(out)
@@ -375,9 +373,7 @@ def render(src):
     home = root or "./"
     # Section links on the index must stay bare "#id" (windowed panes).
     is_index = rel == "index.html"
-    # demo.js draws the demos the page's own scripts set up
     page_js = meta.get("scripts", "").split()
-    page_js = (["assets/js/demo.js"] if page_js else []) + page_js
     scripts = "".join(f'\n  <script src="{root}{s}?v={short_hash(s)}" defer></script>'
                       for s in page_js)
     s = DATA["site"]

@@ -59,6 +59,14 @@ CASES = {
                " window.inCellar = document.documentElement.dataset.room === 'cellar' && document.documentElement.classList.contains('room-ready');"
                " document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '>', bubbles: true })); await wait(1500);",
                "window.inCellar && !!document.querySelector('dialog.dungeon[open]')"),
+    "cellar-leave-early": ("?theme=hours&sky=noon&weather=clear", (1600, 900),  # (left on the way down: the landscape, not the cellar without its room)
+                           "await wait(1000); document.querySelectorAll('dialog[open]').forEach((d) => d.close()); location.hash = '#cellar'; await wait(500);"
+                           " document.querySelector('.leave').click(); await wait(2500);",
+                           "!document.documentElement.dataset.room && !document.documentElement.classList.contains('room-ready') && " + CANVAS),
+    "engine-reopen": ("?theme=hours&sky=noon&weather=clear", (1600, 900),  # (closed and opened again at once: one window, the zoom on the glass)
+                      "if (window !== top) await new Promise(() => {}); enterEngine(); await wait(5000); closeEngine(); await wait(250);"
+                      " openEngine(document.querySelector('.spot[data-kind=engine]')); await wait(2500);",
+                      "document.querySelectorAll('.engine').length === 1 && !!document.querySelector('.engine-win iframe') && /scale/.test(document.querySelector('.plate-img').style.transform)"),
     "room-to-banner": ("?theme=hours&sky=noon&weather=clear#teaching", (1600, 900),  # (a room, then the window turns upright: the banner shows the landscape)
                        "await wait(2500); document.documentElement.classList.add('banner'); document.documentElement.setAttribute('data-theme', 'dark'); await wait(800);",
                        "/^Pixel-art landscape/.test(document.querySelector('.plate-img').getAttribute('aria-label')) && " + CANVAS),

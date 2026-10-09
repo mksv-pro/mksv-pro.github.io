@@ -148,8 +148,7 @@ def shots(out, port=8766):
     try:
         import time
         time.sleep(0.8)
-        targets = ["", "projects/nuclear-emulators.html", "projects/urban-morphogenesis.html",
-                   "projects/n-body.html", "404.html"]
+        targets = ["", "404.html"]
         for theme, pref in (("dark", 'user_pref("ui.systemUsesDarkTheme", 1);\n'),
                             ("hours", 'user_pref("layout.css.prefers-color-scheme.content-override", 1);\n')):
             for width in (360, 1280):

@@ -41,7 +41,8 @@
       if (framed) r.classList.add('framed');
       try { if (localStorage.getItem('paper')) r.setAttribute('data-paper', ''); } catch (x) {} // the terminal on paper (cmdline: paper)
       var g = null; try { g = localStorage.getItem('gate'); } catch (x) {}
-      if ((wide || touch) && !framed && (!q || q === '?touch=1') && !location.hash && !g) r.classList.add('gated'); // a bare visit: the front gate asks how (gate.js), unless told to remember
+      var re = false; try { re = performance.getEntriesByType('navigation')[0].type === 'reload'; } catch (x) {}
+      if ((wide || touch) && !framed && (!q || q === '?touch=1') && (!location.hash || re) && !g) r.classList.add('gated'); // a bare visit or a reload: the front gate asks how (gate.js), unless told to remember; a link to a section skips it
       if (t === 'hours' && !wide) r.classList.add('climb');
       var k = Math.PI / 180, d = Date.now() / 864e5 - 10957.5;
       var g = (357.529 + 0.98560028 * d) * k;
