@@ -1884,3 +1884,6 @@ setInterval(fetchKp, 3600e3);
 
 tick();
 setTimeout(() => { tick(); setInterval(tick, 60000); }, (60 - new Date().getSeconds()) * 1000);
+
+// offline (sw.js): on the real site only, not on a local port (the preview and the checks stay uncached)
+if ('serviceWorker' in navigator && !location.port && !FRAMED) navigator.serviceWorker.register(new URL('sw.js', SITE)).catch(() => {});

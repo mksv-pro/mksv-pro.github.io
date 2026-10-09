@@ -84,6 +84,9 @@ CASES = {
                        " i.value = 'whoami'; i.form.requestSubmit(); await wait(250); window.who = !!document.querySelector('#cmd-out .glance');"
                        " i.value = 'paper'; i.form.requestSubmit(); await wait(250); window.pa = document.documentElement.hasAttribute('data-paper'); localStorage.removeItem('paper'); localStorage.removeItem('cmd-history');",
                        "window.gh === 'ami' && window.who && window.pa && !!document.querySelector('.plate canvas.twinkle')"),
+    "offline": ("?theme=dark", (1600, 900), "await wait(800); const reg = await navigator.serviceWorker.register('sw.js'); await navigator.serviceWorker.ready; await wait(1500);"
+                " const c = await caches.open('mksv-v1'); window.kept = (await c.keys()).map((r) => new URL(r.url).pathname); await reg.unregister(); await caches.delete('mksv-v1');",
+                "window.kept.includes('/assets/Mike_Silva_CV.pdf') && window.kept.includes('/index.html')"),
     "gate-deeplink": ("#research", (1920, 1080), "await wait(800);", "!document.documentElement.classList.contains('gated')"),
     "phone-banner": ("?theme=dark&sky=noon&weather=clear", (390, 844), "", "document.documentElement.classList.contains('banner') && " + CANVAS),
     "narrow-window": ("?sky=noon&weather=clear", (1100, 800), "",  # (a computer: the terminal, the landscape over the engraving)
