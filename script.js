@@ -329,7 +329,7 @@ if ($('rip-path')) {
 
 /** The newest piece of news: its text and its age in days (from its <time>, a month: its first). */
 function latestNews() {
-  const li = document.querySelector('#news .news li');
+  const li = document.querySelector('#news .news li:not(.now)'); // (what is under way is no news)
   if (!li) return null;
   const t = li.querySelector('time'); const when = new Date(`${t ? t.getAttribute('datetime') : ''}`.padEnd(10, '-01').slice(0, 10));
   const span = li.querySelector('span');

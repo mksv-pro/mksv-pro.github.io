@@ -5507,6 +5507,16 @@ qqqqqTqqq
       put(x + 1, y - 5, spear); put(x + 1, y - 4, spear); put(x + 1, y - 3, spear);
       if (look.night > 0.3) { put(x - 1, y - 3, pack([255, 214, 120])); halo(x - 1, y - 3, 3, [255, 190, 90], 0.35 * look.night); }
     });
+    if (scene.raven === undefined) { const nw = newsOf(); scene.raven = nw && nw.age < 7 && !session0('raven') ? { t0: t + 2 } : null; if (scene.raven) session0('raven', '1'); }
+    if (scene.raven && t > scene.raven.t0) { // a raven with fresh news, from the west to the rookery's tower, once a visit
+      const rv = scene.raven; const rk = scene.rooms[roomOf('news')]; const e = (t - rv.t0) / 7;
+      if (e >= 1 || !rk) scene.raven = null;
+      else {
+        const tx = mx(rk.x) + rk.w / 2; const ty = rk.y + 2; const x = -6 + (tx + 6) * e; const y = H * 0.18 + (ty - H * 0.18) * e - Math.sin(e * Math.PI) * H * 0.08 + Math.sin(t * 9) * 0.6;
+        const up = Math.floor(t * 8) % 2; const ink = pal32[I.OUTLINE];
+        [[0, 0], [1, 0], [-1, up ? -1 : 1], [-2, up ? -1 : 1], [2, up ? -1 : 1], [3, up ? -1 : 1], [1, -1]].forEach(([dx, dy]) => put(Math.round(x) + dx, Math.round(y) + dy, ink, false));
+      }
+    }
     const hl = hoverId && view.state === 'scene' && scene.rooms[roomOf(hoverId)];
     if (hl) { // the part of the castle the menu points at: its stones warm, its windows lit, a mark
       const x0 = mx(hl.x); const pulse = 0.2 + 0.12 * Math.sin(t * 5);
@@ -6682,6 +6692,15 @@ qqqqqTqqq
       }
     });
     drawCat(t, put); drawGuide(t, put, blend);
+    if (flight && interior.sills.length) { // the raven leaving by the window: across its sky, smaller as it goes
+      const e = (t - flight.t0) / 1.6; const sl = interior.sills[0];
+      if (e >= 1) flight = null;
+      else {
+        const x = sl.x0 + sl.w * (0.15 + 0.75 * e); const y = sl.y - 3 - (sl.y - sl.top) * 0.75 * e; const up = Math.floor(t * 10) % 2; const big = e < 0.5;
+        const ink = ipal32[I.OUTLINE]; const pts = big ? [[0, 0], [1, 0], [-1, up ? -1 : 1], [-2, up ? -1 : 1], [2, up ? -1 : 1], [3, up ? -1 : 1]] : [[0, 0], [-1, up ? -1 : 0], [1, up ? -1 : 0]];
+        pts.forEach(([dx, dy]) => { const X = Math.round(x) + dx; const Y = Math.round(y) + dy; if (X >= 0 && X < W && Y >= 0 && Y < H && out[Y * W + X]) put(X, Y, ink); }); // (only in the opening)
+      }
+    }
     interior.camps.forEach((c) => { // the campfire through the window, and the two by it
       const hot = reduce || Math.random() < 0.6;
       if (look.night > 0.3) [[-1, 0], [1, 0], [0, -1], [0, 1]].forEach(([dx, dy]) => blend(c.x + dx, c.y + dy, [255, 150, 60], 0.45 * look.night));
@@ -7221,7 +7240,7 @@ qqqqqTqqq
      it walks along the floor to the last thing looked at (a thing at table height: up onto it; one on
      the wall: on the floor under it) and sits there; clicked, it purrs and goes elsewhere. */
   const globe = { lon: 2.35 * deg, vel: 0, drag: null }; // the library's globe: Paris facing us until turned
-  let lastOpened = -1; let rcat = null; // (kept apart from the interior, which is remade as its pictures come)
+  let lastOpened = -1; let rcat = null; let flight = null; // (kept apart from the interior, which is remade as its pictures come)
   function catPerch() {
     const it = interior; const ks = [lastOpened, ...it.slots.map((_, k) => k).sort(() => Math.random() - 0.5)];
     const k = ks.find((q) => q >= 0 && it.slots[q] && it.pix[q] && it.slots[q].y + it.slots[q].h > it.yf - 26 && it.slots[q].y + it.slots[q].h < it.yf + 20 && (!rcat || !rcat.to || q !== rcat.to.k));
@@ -7255,6 +7274,7 @@ qqqqqTqqq
   }
   /* The wizard as a guide: twenty seconds without a move in a room, he stands in a doorway, points his
      staff and a trail of sparks goes from its orb to a thing not yet looked at, which glints; once a visit of the room. */
+  const session0 = (k, v) => { try { if (v === undefined) return sessionStorage.getItem(k); sessionStorage.setItem(k, v); } catch { /* (no storage: every load) */ } return null; };
   let scrubTo = () => {}; let scrubbed = false; // (the hour dragged by the sun: script.js)
   let lastAct = 0; let freshOf = () => []; let guide = null; let guided = false; let roomT0 = 0;
   function drawGuide(t, put, blend) {
@@ -7978,6 +7998,7 @@ qqqqqTqqq
     /** The card of thing i is open (-1: closed): the thing leaves its place. */
     opened(i) {
       if (!interior || openIx === i) return; openIx = i; reshape();
+      if (i >= 0 && (interior.things[i] || {}).kind === 'letter' && interior.sills.length) { flight = { t0: now() }; sfx('caw'); } // (a raven out through the window with the answer)
       if (i >= 0) { lastOpened = i; const c = rcat; if (c && c.state === 'sit') { c.y = interior.catY; c.to = catPerch(); c.state = 'walk'; } }
     },
   };
