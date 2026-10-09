@@ -2233,6 +2233,15 @@ nNnnnn..
   // a section's room kind: the drawing keeps the rooms' old names (the observatory is 'research', the
   // workshop 'projects'); a project page is the workshop too
   const KIND = { experience: 'research', work: 'projects' };
+  // each room its light, to know it at a glance: the cast of its walls (r, g, b factors) and what its
+  // candles turn things to (lights in drawInterior): the scriptorium amber, the observatory blue, the
+  // workshop the forge's red; the others the plain warm of a candle
+  const ROOM_TONE = { about: [1.06, 1, 0.9], research: [0.9, 0.97, 1.12], projects: [1.1, 0.94, 0.86] };
+  const ROOM_LIGHT = {
+    research: (c) => [Math.min(200, c[0] * 1.3 + 18), Math.min(205, c[1] * 1.35 + 22), Math.min(235, c[2] * 1.45 + 34)],
+    projects: (c) => [Math.min(245, c[0] * 1.9 + 44), Math.min(160, c[1] * 1.15 + 8), Math.min(120, c[2] * 0.95)],
+  };
+  const candleLit = (c) => [Math.min(235, c[0] * 1.7 + 34), Math.min(190, c[1] * 1.3 + 14), Math.min(150, c[2] * 1.02)];
   const roomOf = (id) => KIND[id] || (ROOM_NAMES[id] ? id : 'projects');
 
   /* ---- heraldry: coats from assets/js/arms.js (window.ARMS), flat tinctures, dark outline ---- */
@@ -3764,10 +3773,19 @@ qqqqqTqqq
       const feetFree = (x) => { let n2 = 0; for (let y = fy - 8; y <= fy + 1; y += 1) for (let xx = x - 1; xx <= x + sp.w; xx += 1) if (furn[y * W + xx]) n2 += 1; return n2 < 4; }; // (a fallen leaf is no obstacle)
       const spot = () => xs.find((x) => feetFree(x) && !hides(x)) ?? null; // (his feet on free floor; the wall behind him may hold things)
       let x0 = spot(); if (x0 === null) { fy = floorY(0.42); x0 = spot(); } // (no room by the wall: a step into the room)
-      if (x0 !== null) {
-        stamp(sp, x0, fy - sp.h + 1);
-        if (kind === 'news') stamp(shadeSprite(RAVEN), x0 + sp.w - 4, fy - sp.h + 9); // the raven on his fist
-        deco.push({ type: 'dweller', x: x0, y: fy - sp.h + 1, w: sp.w, h: sp.h, lines });
+      if (x0 !== null) { // (drawn by drawInterior: he walks a few steps along his free floor, waits, walks back)
+        let fig = sp;
+        if (kind === 'news') { // the raven on his fist, one figure with him
+          const rv = shadeSprite(RAVEN); const w2 = Math.max(sp.w, sp.w - 4 + rv.w); const px = new Int16Array(w2 * sp.h).fill(-1);
+          for (let y = 0; y < sp.h; y += 1) for (let x = 0; x < sp.w; x += 1) px[y * w2 + x] = sp.px[y * sp.w + x];
+          for (let y = 0; y < rv.h; y += 1) for (let x = 0; x < rv.w; x += 1) { const c = rv.px[y * rv.w + x]; if (c >= 0 && y + 8 < sp.h) px[(y + 8) * w2 + x + sp.w - 4] = c; }
+          fig = { w: w2, h: sp.h, px };
+        }
+        let xa = x0; let xb = x0; // (how far he may go either way: free feet, nothing to click or that moves behind him)
+        while (xa > x0 - 16 && feetFree(xa - 1) && !hides(xa - 1)) xa -= 1;
+        while (xb < x0 + 16 && feetFree(xb + 1) && !hides(xb + 1)) xb += 1;
+        const stops = [x0, xa, x0, xb].filter((v, k, a) => k === 0 || v !== a[k - 1]);
+        deco.push({ type: 'dweller', x: x0, y: fy - fig.h + 1, w: fig.w, h: fig.h, lines, fig, stops, ph: rng() * 30 });
       }
     }
     { // contact shadows: under the foot of each thing that stands on the floor, the floor darkened two
@@ -4281,8 +4299,8 @@ qqqqqTqqq
       return c;
     });
     bakeGround();
-    const ik = 0.62 * (1 - 0.32 * look.night); // (the rooms darker and a little bluer by night: the candles carry them)
-    ipal32 = NAMES.map((_n, i) => (i < N_SKY ? pal32[i] : pack(hex(DAYLIGHT[i]).map((c, j) => c * ik * (j === 2 ? 1 + 0.12 * look.night : 1)))));
+    const ik = 0.62 * (1 - 0.45 * look.night); // (the rooms dark and bluer by night: the candles carry them)
+    ipal32 = NAMES.map((_n, i) => (i < N_SKY ? pal32[i] : pack(hex(DAYLIGHT[i]).map((c, j) => c * ik * (j === 2 ? 1 + 0.2 * look.night : 1)))));
     if (interior) lightInterior();
     const sun = project(sky.sun); const moon = project(sky.moon);
     const elong = Math.acos(clamp(sky.sun[0] * sky.moon[0] + sky.sun[1] * sky.moon[1] + sky.sun[2] * sky.moon[2], -1, 1));
@@ -6326,6 +6344,7 @@ qqqqqTqqq
       shaft = blur(blur(s0, 2), 2); patch = blur(blur(p0, 2), 2); bounce = blur(blur(p0, 9), 9);
     }
     const sunC = look.sun; const sunW = [sunC[0], sunC[1] * 0.88, sunC[2] * 0.66]; // (warmer indoors: white read as a glare on the plaster)
+    const tone = ROOM_TONE[roomOf(interior.id)] || [1, 1, 1]; // (each room its own cast)
     for (let y = 0; y < H; y += 1) {
       const vy = 0.72 + 0.28 * clamp(y / (H * 0.3));
       for (let x = 0; x < W; x += 1) {
@@ -6338,7 +6357,7 @@ qqqqqTqqq
           const dx = Math.abs(x - p.x) / (p.w * 0.5 + (y - interior.yf) * 0.6);
           if (dx < 1) v *= 1 + (1 - dx) * (0.35 - 0.25 * look.night) * (1 - (y - interior.yf) / (H - interior.yf + 1) * 0.5);
         });
-        let c = unpack(ipal32[idx[i]]).map((q) => q * v);
+        let c = unpack(ipal32[idx[i]]).map((q, j) => q * v * tone[j]);
         if (shaft) c = mix(c, sunW, Math.min(0.2, 0.05 * shaft[i] + 0.15 * patch[i] + 0.25 * bounce[i])); // the shaft, its patch on the floor, the room lit round them
         ibase[i] = pack(c);
       }
@@ -6526,6 +6545,14 @@ qqqqqTqqq
       } else if (d.type === 'portraits') { // the portrait by the line the master points at catches the light
         const md = interior.deco.find((q) => q.type === 'master'); const st = md && masterAt(md, t);
         if (st && st.pointing && Math.floor(t * 2) % 2) { const x = d.xs[st.stop]; const y = d.ys[st.stop]; put(x - 1, y - 1, P('GOLD_HI')); put(x + d.w, y + d.h, P('GOLD_HI')); }
+      } else if (d.type === 'dweller' && d.fig) { // from stop to stop at a walk (7 px/s), five or so seconds at each
+        const legs = d.stops.map((x, k) => [x, d.stops[(k + 1) % d.stops.length]]);
+        const dur = legs.map(([a, b]) => 5 + ((a * 7) % 3) + Math.abs(b - a) / 7); const T = dur.reduce((u, v) => u + v, 0);
+        let u = (reduce ? 0 : t + d.ph) % T; let k = 0; while (u > dur[k]) { u -= dur[k]; k += 1; }
+        const [a, b] = legs[k]; const walk = u - (dur[k] - Math.abs(b - a) / 7); // (the pause first, then the walk)
+        const x = walk > 0 ? a + Math.sign(b - a) * Math.min(Math.abs(b - a), walk * 7) : a; d.x = Math.round(x);
+        const y0 = d.y - (walk > 0 && Math.floor(t * 4) % 2 ? 1 : 0); const f = d.fig;
+        for (let y = 0; y < f.h; y += 1) for (let xx = 0; xx < f.w; xx += 1) { const c = f.px[y * f.w + xx]; const X = d.x + xx; const Y = y0 + y; if (c >= 0 && X >= 0 && X < W && Y >= 0 && Y < H) put(X, Y, ipal32[c]); }
       } else if (d.type === 'master') { // four stops along the board: he points at a line, turns to the class, walks on
         const ms = masterAt(d, t); d.x = ms.x; d.facing = ms.facing;
         const sp = ms.facing > 0 ? SPRITES.master : SPRITES.masterL; const y0 = d.yb - sp.h - (ms.walking && Math.floor(t * 4) % 2 ? 1 : 0);
@@ -6580,8 +6607,9 @@ qqqqqTqqq
       put(c.x + 2, c.y, pal32[I.ARM]); put(c.x + 2, c.y - 1, pal32[I.ARM_HI]); // the knight, seated
       put(c.x + 4, c.y, pal32[I.ROBE]); put(c.x + 4, c.y - 1, pal32[I.ROBE]); put(c.x + 4, c.y - 2, pal32[I.HAT]); // the wizard
     });
-    lights.forEach((l, k) => { // warm, stepped, flickering
-      const R = l.r * (l.hearth ? 0.35 + 0.65 * heatOf() : 1) * (1 + (reduce ? 0 : 0.05 * Math.sin(t * 11 + k * 2) + 0.03 * Math.sin(t * 23 + k)));
+    const lit = ROOM_LIGHT[roomOf(interior.id)] || candleLit;
+    lights.forEach((l, k) => { // warm, stepped, flickering; further by night (nothing else lights the room then)
+      const R = l.r * (1 + 0.25 * look.night) * (l.hearth ? 0.35 + 0.65 * heatOf() : 1) * (1 + (reduce ? 0 : 0.05 * Math.sin(t * 11 + k * 2) + 0.03 * Math.sin(t * 23 + k)));
       for (let y = Math.max(0, Math.floor(l.y - R)); y < Math.min(H, l.y + R); y += 1) {
         for (let x = Math.max(0, Math.floor(l.x - R)); x < Math.min(W, l.x + R); x += 1) {
           const i = y * W + x;
@@ -6593,7 +6621,7 @@ qqqqqTqqq
           const kk = Math.floor(((1 - dd) ** 1.7 * 0.7) * 5 + 0.25 + bayer(x, y) * 0.5) / 5;
           if (kk <= 0) continue;
           const c = unpack(ibuf[i]);
-          ibuf[i] = pack(mix(c, [Math.min(235, c[0] * 1.7 + 34), Math.min(190, c[1] * 1.3 + 14), Math.min(150, c[2] * 1.02)], kk));
+          ibuf[i] = pack(mix(c, lit(c), kk));
         }
       }
     });
