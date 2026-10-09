@@ -3569,32 +3569,7 @@ qqqqqTqqq
       const cr = Math.max(4, Math.min(7, Math.floor((S(0.98) - S(0.66)) / 4.4))); const cx0 = S(0.66) + cr;
       const lid = cask(cx0, yf - 1, cr); cask(cx0 + 2 * cr + 2, yf + 1, cr); // two, one a little nearer
       candle(cx0, lid - 1, false);
-      of('stair').forEach(([, i]) => { // the stair down, seen from the front: a well in the floor along the wall, the
-        // steps going down it from left to right into the dark (one silhouette: lit treads, the stone mass
-        // under them in courses, the well's far wall over them); a torch down in it, a rail before it, a
-        // board with an arrow at its head
-        const x0 = S(0.27); const w = Sw(0.44); const y0 = floorY(0.06); const y1 = floorY(0.96); const N = 5;
-        const run = Math.floor((w - 10) / N); const drop = Math.floor((y1 - y0 - 2) / (N + 1)); // (each step: so far along, so far down)
-        const stepAt = (x) => Math.floor((x - x0 - 1) / run); // (which step a column is over; N and more: the dark beyond)
-        const surf = (x) => { const k = stepAt(x); return k < N ? y0 + 2 + k * drop : y1 + 9; }; // the tread's row over that column
-        for (let x = x0; x < x0 + w; x += 1) {
-          const k = stepAt(x); const ys = surf(x); const deep = clamp((x - x0) / w); const edge = k < N && (x - x0 - 1) % run === 0;
-          for (let y = y0; y < y1; y += 1) {
-            let c;
-            if (y < ys) c = deep > 0.75 || y < y0 + 1 ? I.OUTLINE : ((y - y0) % 4 === 3 || (x + (Math.floor((y - y0) / 4) % 2) * 3) % 7 === 0) ? I.OUTLINE : deep < 0.4 ? I.ROCK_DK : (bayer(x, y) < (deep - 0.4) * 2.8 ? I.OUTLINE : I.ROCK_DK); // the well's far wall, its courses, going into the dark
-            else if (y === ys) c = k >= N ? I.OUTLINE : k < 2 ? I.ROCK_HI : k < 4 ? I.ROCK : I.ROCK_SH; // the tread, lit
-            else if (edge && y < ys + drop) c = k < 3 ? I.ROCK : I.ROCK_SH; // the riser's edge, catching the light from the left
-            else c = k >= N ? I.OUTLINE : (y - ys) % 4 === 3 ? I.ROCK_DK : k < 2 ? I.ROCK_SH : k < 4 ? I.ROCK_DK : I.OUTLINE; // the stair's mass, in courses, darker down the way
-            set(x, y, c);
-          }
-        }
-        rect(x0 - 2, y0 - 1, w + 4, 1, I.ROCK_HI); rect(x0 - 2, y0, 2, y1 - y0, I.ROCK); rect(x0 + w, y0, 2, y1 - y0, I.ROCK_SH); // the stone lip
-        { const tx = x0 + 1 + 3 * run + Math.floor(run / 2); const ty = y0 + 2 + 3 * drop - 9; rect(tx - 1, ty + 2, 3, 1, I.ARM_SH); set(tx, ty + 3, I.ARM_SH); candle(tx, ty + 1, false); } // a torch down in the well, on its wall
-        [x0, x0 + Math.round(w / 2), x0 + w - 1].forEach((px) => rect(px, y1 - 8, 1, 9, I.TIMBER_SH)); rect(x0, y1 - 8, w, 1, I.TIMBER); // the rail before it
-        { const bx = x0 - 10; const by = y1; rect(bx + 3, by - 9, 1, 10, I.TIMBER_SH); rect(bx, by - 15, 8, 7, I.TIMBER); rect(bx, by - 15, 8, 1, I.TIMBER_HI); // a board on its post, by the well's head: an arrow, down
-          rect(bx + 3, by - 14, 2, 3, I.GOLD); rect(bx + 2, by - 11, 4, 1, I.GOLD); rect(bx + 3, by - 10, 2, 1, I.GOLD); }
-        slots[i] = box(x0 - 11, y0 - 2, w + 13, y1 - y0 + 3);
-      });
+      // (the way down is not drawn: the descent is the status line's Rank, > or `descend`)
       { // a cobweb in the vault's left corner; a drop forming on the vault, falling now and then (drawInterior)
         const cx = BR - 2; const cy = Math.round(H * 0.3); // (the right corner: the racks fill the left)
         [0.05, 0.45, 0.85, 1.25].forEach((q) => { for (let r = 0; r <= 10; r += 1) set(cx - Math.cos(q) * r, cy + Math.sin(q) * r - 8, I.PLASTER); });

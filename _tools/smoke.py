@@ -57,7 +57,7 @@ CASES = {
     "cellar": ("?theme=hours&sky=noon&weather=clear", (1600, 900),  # (the door in the rock, the cellar, its steps down)
                "await wait(1000); document.querySelectorAll('dialog[open]').forEach((d) => d.close()); location.hash = '#cellar'; await wait(2800);"
                " window.inCellar = document.documentElement.dataset.room === 'cellar' && document.documentElement.classList.contains('room-ready');"
-               " const b = [...document.querySelectorAll('.spot')].find((x) => /steps/i.test(x.dataset.label)); b && b.click(); await wait(1500);",
+               " document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '>', bubbles: true })); await wait(1500);",
                "window.inCellar && !!document.querySelector('dialog.dungeon[open]')"),
     "room-to-banner": ("?theme=hours&sky=noon&weather=clear#teaching", (1600, 900),  # (a room, then the window turns upright: the banner shows the landscape)
                        "await wait(2500); document.documentElement.classList.add('banner'); document.documentElement.setAttribute('data-theme', 'dark'); await wait(800);",
@@ -100,7 +100,7 @@ CASES = {
                    "document.documentElement.classList.contains('side') && document.documentElement.dataset.room === 'experience' && " + CANVAS),
     "phone-cellar": ("?touch=1&sky=noon&weather=clear", (390, 844),
                      "document.querySelector('#cellar').scrollIntoView({ behavior: 'instant' }); await wait(2500);"
-                     " const b = [...document.querySelectorAll('.spot')].find((x) => /steps/i.test(x.dataset.label)); b && b.click(); await wait(1500);",
+                     " document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '>', bubbles: true })); await wait(1500);",
                      "document.documentElement.dataset.room === 'cellar' && !!document.querySelector('dialog.dungeon[open]')"),
     "phone-engine": ("?touch=1&sky=noon&weather=clear", (390, 844),
                      "if (window !== top) await new Promise(() => {}); await wait(1500); document.getElementById('theme-toggle').click(); await wait(6000);",
