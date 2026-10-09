@@ -7991,6 +7991,8 @@ qqqqqTqqq
       ladderF = clamp(ladderF + k * 0.08); return ladderSpot(d);
     },
     highlight(i) { hl = i; if (interior && lifted !== i) { lifted = i; reshape(); } if (!running && interior && isOn()) render(now()); },
+    /** The castle's name for room `id` ('the workshop'). */
+    roomName(id) { return ROOM_NAMES[id] || null; },
     /** Where the sun is, in viewport px (null below the horizon or in a room). */
     sunAt() { if (!bodies || view.state !== 'scene' || bodies.sun[2] < -0.03) return null; const r = plate.getBoundingClientRect(); return [r.left + bodies.sun[0] * px, r.top + bodies.sun[1] * px]; },
     /** Is the window of the room open (sound.js lets the outside in)? */

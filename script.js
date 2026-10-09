@@ -62,6 +62,9 @@ const T = {
   realmTitle: 'The realm',
   realmLabel: 'A pixel map of Paris: the Seine, and a pennant where each of the schools stands.',
   leave: '[leave the room \u00b7 Esc]',
+  backTo: (room) => `Back to ${room}, where you left off?`,
+  backYes: '[yes, take me]',
+  backGone: 'The castle, as it stands today.',
   planTitle: 'The plan of the castle',
   planNote: (k, n) => `${k} of ${n} rooms walked this visit (inked); click one to go there.`,
   skyAt: (hm) => `The sky over Paris at ${hm}: let go, and it goes back to now.`,
@@ -769,7 +772,7 @@ function openWindow(hash, { userAction, animate = userAction }) {
   });
   enterRoom(win.id, !userAction);
   // the hours theme: a section shown is a room of the castle; no hash at all, the landscape
-  if (target) root.dataset.room = win.id; else delete root.dataset.room;
+  if (target) { root.dataset.room = win.id; store('lastRoom', win.id); } else delete root.dataset.room;
   if (target && userAction && root.getAttribute('data-theme') === 'hours') {
     const empty = win.querySelector('.empty:not([hidden])');
     const hint = !session('hinted') && wideRooms() ? T.lookHint : ''; // once a visit: how the rooms work
@@ -1243,6 +1246,23 @@ function gateWay(way) {
   else if (root.getAttribute('data-theme') !== 'hours' && touchy()) { store('entry', 'castle'); applyTheme('hours', true); openWindow(location.hash, { userAction: false }); }
 }
 addEventListener('gate', (e) => gateWay(e.detail));
+/** Back where the last visit left off: the herald offers the room (and the card) for five seconds. */
+function offerReturn() {
+  const id = store('lastRoom'); const label = store('lastCard');
+  if (!id || !WORLD[id] || location.hash || root.getAttribute('data-theme') !== 'hours' || climbing() || FRAMED) return;
+  if (!window.Hours || !window.Hours.roomName) { if ((offerReturn.n = (offerReturn.n || 0) + 1) < 20) setTimeout(offerReturn, 300); return; } // (the castle's names come with it)
+  const lbl = moreLink.querySelector('.lbl'); const was = lbl.innerHTML; const line = T.backTo(window.Hours.roomName(id) || WORLD[id].name);
+  say(line, () => {
+    lbl.innerHTML = was; goTo(id);
+    if (!label) return; const t0 = Date.now();
+    const find = () => { const b = [...spots.querySelectorAll('.spot')].find((x) => x.dataset.label === label); if (b) b.click(); else if (Date.now() - t0 < 6000) setTimeout(find, 250); };
+    setTimeout(find, 800);
+  }, { now: true });
+  lbl.innerHTML = T.backYes;
+  setTimeout(() => { if (msgText.textContent === line) { say(T.backGone, null, { now: true }); } lbl.innerHTML = was; }, 5000);
+}
+addEventListener('gate', (e) => { if (e.detail === 'castle') setTimeout(offerReturn, 600); });
+if (!root.classList.contains('gated') && isIndex && !location.search) setTimeout(offerReturn, 1500);
 if (!root.classList.contains('gated') && !FRAMED && isIndex && !location.hash && !location.search && store('gate') === 'terminal' && WIDE.matches) enterEngine(); // (told to remember it)
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
@@ -1443,6 +1463,7 @@ function openCard(i, from) {
   card.dataset.side = side;
   card.style.setProperty('--tail-y', `${Math.max(14, Math.min(ch - 14, r.top + r.height / 2 - top))}px`);
   cardFrom = from;
+  store('lastCard', it.label);
   try { const seen = lookedAt(); const id = root.dataset.room; seen[id] = [...new Set([...(seen[id] || []), it.label])]; localStorage.setItem('looked-at', JSON.stringify(seen)); } catch { /* (no storage: he points at anything) */ }
   if (window.Hours && window.Hours.opened) window.Hours.opened(i); // (the room answers: the thing out of its place, eyes on it)
   unfold(from, true);
