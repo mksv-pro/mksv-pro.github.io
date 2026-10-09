@@ -793,7 +793,18 @@ if (!isIndex) { // a project page is a room already: the workshop
 /** The castle's rooms show their content as things only on wide screens (the plate fills the page). */
 const wideRooms = () => WIDE.matches;
 
+// ?fill=N (a check): each room that grows with the years given N of its things, copies of its own (or
+// made up where it has none yet), to see it hold them: the room shows what fits and archives the rest
+const FILL = Math.min(200, Number(new URLSearchParams(location.search).get('fill')) || 0);
+const GROWS = { experience: 'scroll', work: 'model', publications: 'book', talks: 'banner', teaching: 'course', news: 'letter' };
 function roomItems(id) {
+  const items = roomItemsOf(id); const kind = GROWS[id];
+  if (!FILL || !kind) return items;
+  const mine = items.filter((t) => (t.kind || 'book') === kind); const rest = items.filter((t) => (t.kind || 'book') !== kind);
+  const seed = mine.length ? mine : [{ kind, label: `A ${kind}`, html: `<h3>A ${kind}</h3><p>Made up by ?fill.</p>` }];
+  return [...Array.from({ length: FILL }, (_, k) => ({ ...seed[k % seed.length], label: `${seed[k % seed.length].label} (${k + 1})` })), ...rest];
+}
+function roomItemsOf(id) {
   const sec = isIndex && document.getElementById(id);
   if (!sec) return [];
   const text = (el) => (el ? el.textContent.replace(/\s+/g, ' ').trim() : '');

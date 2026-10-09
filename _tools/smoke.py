@@ -67,6 +67,10 @@ CASES = {
     "gate": ("", (1920, 1080), "await wait(1500);", "document.documentElement.classList.contains('gated') && !!document.querySelector('#gate canvas')"),
     "gate-castle": ("", (1920, 1080), "await wait(800); document.querySelector('[data-gate=castle]').click(); await wait(1500);", "!document.documentElement.classList.contains('gated') && !document.getElementById('gate')"),
     "gate-terminal": ("", (1920, 1080), "if (window !== top) await new Promise(() => {}); await wait(800); document.querySelector('[data-gate=terminal]').click(); await wait(9000);", "document.documentElement.classList.contains('engine-on') && !!document.querySelector('.engine-win iframe')"),
+    # the rooms that grow with the years, given 40 things each (?fill): what does not fit is in an archive
+    **{f"fill-{r}": (f"?theme=hours&sky=noon&weather=clear&fill=40#{r}", (1920, 1080), "await wait(3500);",
+                     "[...document.querySelectorAll('.spot')].some((b) => /more\\)/.test(b.getAttribute('aria-label') || b.textContent || b.title || ''))")
+       for r in ("experience", "work", "publications", "talks", "teaching", "news")},
     "gate-deeplink": ("#research", (1920, 1080), "await wait(800);", "!document.documentElement.classList.contains('gated')"),
     "phone-banner": ("?theme=dark&sky=noon&weather=clear", (390, 844), "", "document.documentElement.classList.contains('banner') && " + CANVAS),
     "narrow-window": ("?sky=noon&weather=clear", (1100, 800), "",  # (a computer: the terminal, the landscape over the engraving)

@@ -2941,6 +2941,29 @@ bbbbbbbb
       set(b - 4, Math.round((t + yf) / 2) + 4, I.GOLD); set(b - 4, Math.round((t + yf) / 2) + 5, I.GOLD_SH);
     }
     const n = things.length;
+    /* a room that grows with the years shows what fits, newest first, and keeps the rest in its archive:
+       one thing whose card holds the others in full (late: placed once the room is furnished, on free floor) */
+    const late = [];
+    const shown = (cap) => (n > cap ? Math.max(0, cap - 1) : n); // (a place kept for the archive itself)
+    function archive(style, hidden, title, at, fallback) { // (fallback: the piece that holds them when the floor has no room)
+      if (!hidden.length) return;
+      const card = { kind: 'archive', label: `${title} (${hidden.length} more)`, html: `<h3>${escHtml(title)}</h3><p class="dim">${hidden.length} more, older first-seen last:</p>`
+        + hidden.map((i) => `<section class="archived">${things[i].html}</section>`).join('<hr>') };
+      if (at) { extra.push({ t: card, b: at }); return; } // (an existing piece holds them: the rookery's chest)
+      const fy = floorY(0.3); const w = style === 'crate' ? 14 : 12; const h = style === 'crate' ? 10 : 9;
+      const x = clearAt([S(0.62), S(0.7), S(0.78), S(0.38), S(0.3), S(0.22), S(0.86), S(0.14), S(0.5)], fy, w + 2, h + 4); if (x === null) { if (fallback) extra.push({ t: card, b: fallback }); return; }
+      if (style === 'crate') { // a crate, its slats, straw at the top
+        rect(x, fy - h, w, h, I.TIMBER); for (let y = fy - h + 3; y < fy; y += 3) rect(x, y, w, 1, I.TIMBER_SH); rect(x, fy - h, 1, h, I.TIMBER_HI); rect(x + w - 1, fy - h, 1, h, I.TIMBER_SH);
+        for (let k = 0; k < w; k += 2) set(x + k, fy - h - 1, I.CORK);
+      } else if (style === 'pile') { // bound volumes stacked, tied with string
+        [[0, I.CLOTH], [1, I.ROBE], [0, I.LEATHER], [2, I.FERN_SH]].forEach(([dx, c], k) => { rect(x + dx, fy - 2 - k * 2, w - 3, 2, c); set(x + dx, fy - 2 - k * 2, I.GOLD); });
+        rect(x + 4, fy - 9, 1, 9, I.BEARD_SH);
+      } else { // a wicker basket of rolled scrolls
+        rect(x, fy - 6, w, 6, I.CORK); for (let k = 1; k < w; k += 2) rect(x + k, fy - 5, 1, 5, I.CORK_SH); rect(x, fy - 6, w, 1, I.CORK_SH);
+        [1, 4, 7, 9].forEach((dx, k) => { rect(x + dx, fy - 9 - (k % 2), 2, 4, I.BEARD_HI); set(x + dx, fy - 9 - (k % 2), I.BEARD); });
+      }
+      extra.push({ t: card, b: box(x - 1, fy - h - 3, w + 2, h + 4) });
+    }
     /* the path so far, as wall hangings: each school or lab its own small tapestry on a rod,
        the schools in the council chamber, the labs in the observatory; each one can be looked at */
     const LABS = new Set(['ijclab', 'ceremade', 'sciencespo']);
@@ -3086,7 +3109,9 @@ bbbbbbbb
       const orX = BR - 12; // the orrery, at the table's end
       const tb = table3d(S(0.72), Math.max(30, Math.min(46, 2 * (orX - 12 - S(0.72)))));
       { const cx0 = tb.l + 2; const cw = tb.r - tb.l - 4; for (let y = 0; y < 4; y += 1) for (let x = 0; x < cw; x += 1) set(cx0 + x, tb.back - 2 + y, y === 0 || y === 3 ? I.BEARD_SH : (x * 7 + y * 3) % 11 === 0 ? I.GOLD_HI : I.T_NAVY); } // the map of the sky, unrolled
-      spread(n, tb.l, tb.r, 14).forEach(({ k, xc }) => { slots[k] = scrollThing(xc, tb.front + 2, things[k].arms); });
+      const nS = shown(Math.max(1, Math.floor((tb.r - tb.l) / 14))); // (one row on the table)
+      spread(nS, tb.l, tb.r, 14).forEach(({ k, xc }) => { slots[k] = scrollThing(xc, tb.front + 2, things[k].arms); });
+      late.push(() => archive('basket', things.map((_, i) => i).slice(nS), 'The basket of older reports', null, box(tb.l, tb.back - 4, tb.r - tb.l, tb.front - tb.back + 8)));
       candle(tb.r - 2, tb.back - 3, true); // (to read the charts by at night)
       deco.push({ type: 'orrery', x: orX, y: floorY(0.1) - 14 });
       { // the loom: two posts from the floor, a beam at the top and one at the foot, the weave between
@@ -3121,8 +3146,10 @@ bbbbbbbb
         rect(wx - 12, wy - 8, 24, 2, I.TIMBER); rect(wx - 12, wy - 8, 24, 1, I.TIMBER_HI);
         deco.push({ type: 'gear', x: wx - 4, y: wy - 1, r: 4, sp: 0.5 }, { type: 'gear', x: wx + 4, y: wy + 3, r: 3, sp: -0.5 * 4 / 3 });
         for (let y = wy + 6; y < ay - 22; y += 1) set(wx + 4, y, I.LEATHER_SH); set(wx + 3, ay - 22, I.ARM_SH); set(wx + 5, ay - 22, I.ARM_SH); set(wx + 4, ay - 21, I.ARM_SH); }
-      const tb = table3d(S(0.56), Math.max(32, n * 16 + 10)); const cx = Math.round((tb.l + tb.r) / 2); // the bench, as long as its models side by side
-      things.forEach((t, k) => { const xc = Math.round(tb.l + ((k + 0.5) * (tb.r - tb.l)) / n); slots[k] = model(xc, tb.front + 2, t.model); }); // (each model at its own size: half a man)
+      const benchMax = 2 * Math.min(S(0.56) - (ax + 20), BR - 32 - S(0.56)); const nM = shown(Math.max(1, Math.floor((benchMax - 10) / 16))); // (between the anvil and Young's stand)
+      const tb = table3d(S(0.56), Math.max(32, Math.max(1, nM) * 16 + 10)); const cx = Math.round((tb.l + tb.r) / 2); // the bench, as long as its models side by side
+      late.push(() => archive('crate', things.map((_, i) => i).slice(nM), 'The crate of earlier models', null, box(tb.l, tb.back - 4, tb.r - tb.l, tb.front - tb.back + 8)));
+      things.slice(0, nM).forEach((t, k) => { const xc = Math.round(tb.l + ((k + 0.5) * (tb.r - tb.l)) / nM); slots[k] = model(xc, tb.front + 2, t.model); }); // (each model at its own size: half a man)
       const ry = Math.round(H * 0.12); const ou = realGet('outils'); // Roubo's tools (_tools/fetch_outils.py): over the bench, hung from the rail, the planes on the board's shelf
       { const hung = ou ? ou.sprites.filter((sp) => !sp.on) : []; const stand = ou ? ou.sprites.filter((sp) => sp.on) : [];
         const hw0 = ou ? hung.reduce((a2, sp) => a2 + sp.w + 2, 0) : 7 * 5; const sw0 = stand.reduce((a2, sp) => a2 + sp.w + 2, 0);
@@ -3172,7 +3199,9 @@ bbbbbbbb
       for (let k = 0; k < 18; k += 1) { const cx2 = tb.l + Math.floor(rng() * (tb.r - tb.l)); const cy2 = floorY(0.05 + rng() * 0.25); set(cx2, cy2, k % 3 ? I.TIMBER_HI : I.BEARD); } // shavings under the bench
     } else if (kind === 'publications') { // the library: each work face out on the display shelf
       // the two bookcases: each shelf a subject (site.toml [library]), each catalogued volume a gilt spine on it
-      const ez0 = S(0.5) - 13; const ez1 = S(0.5) + 13; // (the easel of the game of life, in the middle: the bookcases stop short of it)
+      const pubs = of('book'); const np = pubs.length; const nP = np > 4 ? 3 : np; // (four works face out at most: the niche's width)
+      const half = Math.max(13, Math.ceil((Math.max(1, nP) * 13 + 6) / 2) + 3);
+      const ez0 = S(0.5) - half; const ez1 = S(0.5) + half; // (the niche of honour, in the middle: the bookcases stop short of it)
       const rx = Math.max(S(0.76), ez1 + 2); const lw0 = Math.min(Sw(0.22), ez0 - 2 - (S(0) + 2));
       const shelfRows = [...shelf(S(0) + 2, 7, Math.max(12, lw0), yf - 7), ...shelf(rx, 7, Math.max(12, BR - rx - 2), yf - 7)];
       const rowOf = {};
@@ -3187,11 +3216,11 @@ bbbbbbbb
       });
       // the shelf of honour: an arched niche in the panelling between the bookcases, the works face out
       // in it, a small lamp over it; under it the window, high (where the ladder's rail leaves it room)
-      const pubs = of('book'); const np = pubs.length;
-      const nw2 = Math.max(18, np * 13 + 6); const nl = S(0.5) - Math.round(nw2 / 2); const nb = yf - 30; const nt = nb - 22;
+      const nw2 = Math.max(18, nP * 13 + 6); const nl = S(0.5) - Math.round(nw2 / 2); const nb = yf - 30; const nt = nb - 22;
       for (let y = nt; y < nb; y += 1) for (let x = nl; x < nl + nw2; x += 1) { const u = (x - nl) / (nw2 - 1) * 2 - 1; const arch = y - nt < 6 && (y - nt) < 6 * (1 - Math.sqrt(Math.max(0, 1 - u * u))); if (!arch) set(x, y, x === nl || x === nl + nw2 - 1 ? I.TIMBER_HI : I.OUTLINE); }
       rect(nl - 2, nb, nw2 + 4, 2, I.TIMBER_HI); rect(nl - 2, nb + 2, nw2 + 4, 1, I.TIMBER_SH); // its sill
-      spread(np, nl + 3, nl + nw2 - 3, 13).forEach(({ k, xc }) => { slots[pubs[k][1]] = bookFace(xc, nb, k); });
+      spread(nP, nl + 3, nl + nw2 - 3, 13).forEach(({ k, xc }) => { slots[pubs[k][1]] = bookFace(xc, nb, k); });
+      late.push(() => archive('pile', pubs.slice(nP).map(([, i]) => i), 'Works still to be shelved', null, box(nl - 2, nb, nw2 + 4, 3)));
       lantern(S(0.5), nt - 5);
       windowArch(S(0.5) - 7, 9, 14, Math.max(14, nt - 9 - 10)); // (high, under the ladder's rail at 6, over the lamp)
       { // the game of life: a board of squares on a games table on the rug, two stools; its cells live in drawInterior
@@ -3271,10 +3300,9 @@ qqqqqTqqq
       set(tcx + Math.round(rx * 0.45), tcy + 1, I.OUTLINE); set(tcx + Math.round(rx * 0.45) + 1, tcy, I.PLASTER_HI); // the quill in its pot
       // the talks: a scroll at each place, far side first, then the ends, then the near side; the rest at the centre
       const places = [...far, -0.92 * Math.PI, -0.08 * Math.PI, 0.75 * Math.PI, 0.25 * Math.PI];
-      things.forEach((_t, k) => {
-        const [x, y] = k < places.length ? onEllipse(places[k], 0.72) : [tcx + ((k * 5) % 9) - 4, tcy + 1];
-        slots[k] = scrollThing(x, y + 2, null);
-      });
+      const nT = shown(places.length);
+      things.slice(0, nT).forEach((_t, k) => { const [x, y] = onEllipse(places[k], 0.72); slots[k] = scrollThing(x, y + 2, null); });
+      late.push(() => archive('basket', things.map((_, i) => i).slice(nT), 'The basket of earlier talks', null, box(tcx - rx, tcy - ry, 2 * rx, 2 * ry)));
       [0.72, 0.28].map((f) => f * Math.PI).forEach((ang) => { // the near chairs: their backs, seen from behind, against the near edge
         const [x, y] = onEllipse(ang, 1);
         rect(x - 4, y - 9, 9, 15, I.TIMBER_SH); rect(x - 4, y - 9, 9, 1, I.TIMBER);
@@ -3332,14 +3360,14 @@ qqqqqTqqq
       });
     } else if (kind === 'teaching') { // the schoolroom: each course a line of chalk on the board
       const ptS = realGet('portraits'); const pm = ptS ? ptS.small.w + 9 : 4; // (the portraits hang either side: the board leaves them the wall)
-      const bl = Math.max(S(0.16), BL + pm); const br = Math.min(S(0.84), BR - pm); const bt = Math.round(H * 0.2); const bb = Math.min(Math.round(H * 0.6), bt + Math.max(34, things.length * 7 + 40)); // (as tall as its chalk: ~1.2 m)
+      const bl = Math.max(S(0.16), BL + pm); const br = Math.min(S(0.84), BR - pm); const bt = Math.round(H * 0.2); const nC = shown(Math.floor((Math.round(H * 0.6) - bt - 8) / 7)); const bb = Math.min(Math.round(H * 0.6), bt + Math.max(34, nC * 7 + 40)); // (as tall as its chalk: ~1.2 m; the lines it cannot hold go in the register)
       const ptLow = ptS ? bt + 2 * ptS.small.h + 9 : 0; // (the portraits' foot: the Galton board and the globe under it)
       for (let y = bt - 3; y < bb + 3; y += 1) for (let x = bl - 3; x < br + 3; x += 1) {
         const fr = x < bl || x >= br || y < bt || y >= bb;
         set(x, y, fr ? ((x === bl - 3 || y === bt - 3) ? I.TIMBER_HI : I.TIMBER) : (noise2(x, y) > 0.62 ? I.SLATEB_HI : I.SLATEB));
       }
       rect(bl - 3, bb + 3, br - bl + 6, 2, I.TIMBER_HI); set(bl + 4, bb + 2, I.FL_WHITE); set(bl + 5, bb + 2, I.FL_WHITE); set(br - 8, bb + 2, I.FL_YEL);
-      things.forEach((_t, k) => { // a line of chalk, then a little sketch at its end
+      things.slice(0, nC).forEach((_t, k) => { // a line of chalk, then a little sketch at its end
         const y = bt + 5 + k * 7; let x = bl + 4;
         while (x < br - 10) { const w = 2 + ((x * 7 + k) % 4); for (let c = 0; c < w; c += 1) set(x + c, y + ((c + k) % 3 === 0 ? -1 : 0), I.FL_WHITE); x += w + 2; }
         slots[k] = box(bl + 2, y - 3, br - bl - 4, 6);
@@ -3358,7 +3386,7 @@ qqqqqTqqq
       }
       // under the courses, the board's standing equations, in chalk: Schrödinger, diffusion,
       // the partition function, Hamilton-Jacobi-Bellman (the M1, the projects, the masters)
-      let ey = bt + 4 + things.length * 7;
+      let ey = bt + 4 + nC * 7;
       CHALK.forEach((line) => {
         const w = [...line].reduce((a, ch) => a + (GLYPHS[ch] ? GLYPHS[ch][0].length + 1 : 2), 0);
         if (ey + 5 > bb - 2 || w > br - bl - 4) return; // what does not fit the board is not written
@@ -3384,7 +3412,8 @@ qqqqqTqqq
       }
       const dx = S(0.86); const dw = Math.max(10, BR - dx - 2); desk(dx, yf - 13, dw); candle(dx + dw - 3, yf - 14, true);
       if (SEASON(today().getMonth()) === 'autumn') { set(dx + 3, yf - 15, I.CAP); set(dx + 4, yf - 15, I.CAP_SH); set(dx + 3, yf - 16, I.CAP); set(dx + 3, yf - 17, I.FERN_SH); } // an apple for the master
-      for (let k = 0; k < 5; k += 1) set(dx + 3 + k * 2, yf - 15, k % 2 ? I.CAP : I.GOLD); rect(dx + 2, yf - 16, 11, 1, I.TIMBER_SH);
+      if (n > nC) { openBook(dx + 2, yf - 13, 11); archive('', things.map((_, i) => i).slice(nC), 'The register of courses', box(dx + 1, yf - 19, 13, 7)); } // (the courses the board cannot hold)
+      else { for (let k = 0; k < 5; k += 1) set(dx + 3 + k * 2, yf - 15, k % 2 ? I.CAP : I.GOLD); rect(dx + 2, yf - 16, 11, 1, I.TIMBER_SH); }
       // the class: two rows, each a long desk, the pupils on their chairs before it (we see their
       // backs: they face the board); the master at the board's left, his staff on the equations
       { const ms = SPRITES.master; const xa = bl - ms.w + 4; const xb = Math.round(bl + (br - bl) * 0.55); // the master's dais along the board (before the class: they sit in front of it)
@@ -3434,13 +3463,13 @@ qqqqqTqqq
         if (c === 0) rect(nx0 - 2, y0 + rh2 - 3, cols * cw2, 2, I.TIMBER); // the perch along the row
         if ((r * 2 + c) % 3 !== 1) deco.push({ type: 'raven', x: x0 + 1, y: y0 + rh2 - 3 - rv.h + 1, ph: rng() * 20 }); // a raven home, or out
       }
-      const fit = Math.min(4, Math.max(1, n)); const rows2 = Math.ceil(n / fit) || 1; // the cork, sized to the news
+      const fit = Math.min(4, Math.max(1, n)); const nN = shown(fit * 2); const rows2 = Math.ceil(Math.max(1, nN) / fit); // the cork, sized to the news (two rows: the older letters go in the chest)
       const cl = wx0 + nw + 10; const cr = cl + fit * 15 + 6; const ct = winY(38) - 2; const cb = ct + rows2 * 13 + 6;
       for (let y = ct - 2; y < cb + 2; y += 1) for (let x = cl - 2; x < cr + 2; x += 1) {
         const fr = x < cl || x >= cr || y < ct || y >= cb;
         set(x, y, fr ? I.TIMBER_SH : (x * 7 + y * 3) % 5 === 0 ? I.CORK_SH : I.CORK);
       }
-      things.forEach((_t, k) => { slots[k] = letterThing(cl + 9 + (k % fit) * 15, ct + 4 + Math.floor(k / fit) * 13, k); });
+      things.slice(0, nN).forEach((_t, k) => { slots[k] = letterThing(cl + 9 + (k % fit) * 15, ct + 4 + Math.floor(k / fit) * 13, k); });
       lantern(cl + 9, ct - 6); // (over the newest)
       { // the chest under the board: iron bands, the lid ajar on its hinges, letters at the gap
         const kx = cl + 4; const kw = 26; const ky = yf - 14; // (a chest, not a table: as deep as it is high, on the floor)
@@ -3449,6 +3478,7 @@ qqqqqTqqq
         rect(kx + Math.round(kw / 2) - 2, ky + 4, 4, 4, I.GOLD_SH); set(kx + Math.round(kw / 2) - 1, ky + 5, I.OUTLINE); // the lock
         for (let k = -1; k <= kw; k += 1) { const ly = ky - 5 - Math.round((k / kw) * 3); rect(kx + k, ly, 1, 3, k % 6 === 2 ? I.ARM_SH : I.LEATHER); set(kx + k, ly, I.TIMBER_HI); } // the lid, lifted on its hinges
         rect(kx, ky - 2, kw, 2, I.OUTLINE); // the dark gap
+        archive('', things.map((_, i) => i).slice(nN), 'The chest of older letters', box(kx - 1, ky - 9, kw + 2, 24));
         [[4, 0], [10, 1], [17, 0]].forEach(([dx, dy]) => rect(kx + dx, ky - 3 - dy, 5, 3, I.BEARD_HI)); // the letters showing
       }
       for (let k = 0; k < 7; k += 1) set(S(0.1) + Math.floor(rng() * S(0.8)), floorY(0.2 + rng() * 0.6), I.BEARD_SH); // feathers
@@ -3566,6 +3596,7 @@ qqqqqTqqq
         }
       }
     }
+    late.forEach((f) => f());
     /* the rooms furnished: what a room lived in has on its walls and floor besides the things to click
        (sconces, shelves of jars and books, a trophy of arms, stores hung from the vault, a cage...), each
        piece only where the wall is bare (wallFree: no furniture, no hotspot, nothing that moves), else left out */
