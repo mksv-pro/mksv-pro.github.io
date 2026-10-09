@@ -134,6 +134,7 @@ const T = {
   <div><dt>photo</dt><dd>the landscape, to save</dd></div>
   <div><dt>rumour</dt><dd>listen to the knight</dd></div>
   <div><dt>engine</dt><dd>the terminal, and back</dd></div>
+  <div><dt>gate</dt><dd>the front page asks again</dd></div>
 </dl></section>
 <section><h3>Music</h3>
 <dl class="keys">
@@ -1074,7 +1075,15 @@ function engineToggle() {
   else { if (!WIDE.matches) store('entry', 'castle'); applyTheme(nextTheme(), true); openWindow(location.hash, { userAction: false }); }
 }
 window.addEventListener('message', (e) => { if (e.origin === location.origin && e.data && e.data.engine === 'close') closeEngine(); });
-addEventListener('gate', (e) => { if (e.detail === 'terminal') enterEngine(); }); // (the front gate's second way in: gate.js)
+/** The front gate's ways in (gate.js): the castle (a touch screen showing the terminal goes back up the
+ *  tower), the terminal (in the scriptorium's engine; on a touch screen the page itself), the tour. */
+function gateWay(way) {
+  if (way === 'terminal') { if (WIDE.matches) enterEngine(); else { store('entry', 'engine'); applyTheme('dark', true); } }
+  else if (way === 'tour') tour();
+  else if (root.getAttribute('data-theme') !== 'hours' && touchy()) { store('entry', 'castle'); applyTheme('hours', true); openWindow(location.hash, { userAction: false }); }
+}
+addEventListener('gate', (e) => gateWay(e.detail));
+if (!root.classList.contains('gated') && !FRAMED && isIndex && !location.hash && !location.search && store('gate') === 'terminal' && WIDE.matches) enterEngine(); // (told to remember it)
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
   if (engine && !FRAMED) { e.stopImmediatePropagation(); closeEngine(); return; }
@@ -1454,15 +1463,15 @@ function showMap() {
 
 /* ---- the guided tour (`tour`): a minute round the castle; any key or click stops it ---------- */
 let touring = null;
-// deno-lint-ignore no-unused-vars -- cmdline.js
 function tour() {
   if (!window.Hours || root.getAttribute('data-theme') !== 'hours') { say('The tour is for the castle theme.'); return; }
   const H = window.Hours; const steps = [
-    [0, () => { if (root.dataset.room) leaveRoom(); say('A short tour. The landscape keeps the hour, the sky and the weather over Paris, now.'); }],
-    [4000, () => H.village()], [11000, () => H.back()],
-    [13000, () => H.tower()], [17000, () => H.turn(1)], [20500, () => H.turn(1)], [24000, () => H.turn(1)], [27500, () => H.back()],
-    [30000, () => goTo('experience')], [37000, () => goTo('work')], [44000, () => leaveRoom()],
-    [46500, () => say('That is the tour. Click about the landscape: much of it answers. [ and ] go through what is in sight.')],
+    [0, () => { if (root.dataset.room) leaveRoom(); say('A one-minute tour. This landscape keeps the real hour, sky and weather over Paris; the castle holds the site, a room for each section.'); }],
+    [4000, () => { H.village(); say('The village below the castle: its market, its tavern, its people. Nothing here is needed to read the site.'); }], [11000, () => H.back()],
+    [13000, () => { H.tower(); say('The watchtower: the view all round. Click what you see; much of it answers.'); }], [17000, () => H.turn(1)], [20500, () => H.turn(1)], [24000, () => H.turn(1)], [27500, () => H.back()],
+    [30000, () => { goTo('experience'); say('The observatory is Experience: every position held. Each thing on the table opens one.'); }],
+    [37000, () => { goTo('work'); say('The workshop is Work: a working model for each project, its report and its code.'); }], [44000, () => leaveRoom()],
+    [46500, () => say('That is the tour. The menu leads to every room; the button at the bottom right opens the plain text version.')],
   ];
   const timers = steps.map(([ms, f]) => setTimeout(f, ms));
   const stop = (e) => { if (e && e.isTrusted === false) return; timers.forEach(clearTimeout); touring = null; removeEventListener('keydown', stop, true); removeEventListener('pointerdown', stop, true); };

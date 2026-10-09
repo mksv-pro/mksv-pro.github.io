@@ -71,6 +71,12 @@ CASES = {
     **{f"fill-{r}": (f"?theme=hours&sky=noon&weather=clear&fill=40#{r}", (1920, 1080), "await wait(3500);",
                      "[...document.querySelectorAll('.spot')].some((b) => /more\\)/.test(b.getAttribute('aria-label') || b.textContent || b.title || ''))")
        for r in ("experience", "work", "publications", "talks", "teaching", "news")},
+    "gate-tour": ("", (1920, 1080), "if (window !== top) await new Promise(() => {}); await wait(800); document.querySelector('[data-gate=tour]').click(); await wait(6000);",
+                  "!document.documentElement.classList.contains('gated') && /village/.test(document.querySelector('.msg-text').textContent)"),
+    "gate-keep": ("", (1920, 1080), "if (window !== top) await new Promise(() => {}); await wait(800); document.getElementById('gate-keep').checked = true; document.querySelector('[data-gate=castle]').click(); await wait(1500); window.kept = localStorage.getItem('gate'); localStorage.removeItem('gate');",
+                  "window.kept === 'castle'"),
+    "gate-phone": ("?touch=1", (390, 844), "if (window !== top) await new Promise(() => {}); await wait(1200);",
+                   "document.documentElement.classList.contains('gated') && getComputedStyle(document.querySelector('[data-gate=tour]')).display === 'none'"),
     "gate-deeplink": ("#research", (1920, 1080), "await wait(800);", "!document.documentElement.classList.contains('gated')"),
     "phone-banner": ("?theme=dark&sky=noon&weather=clear", (390, 844), "", "document.documentElement.classList.contains('banner') && " + CANVAS),
     "narrow-window": ("?sky=noon&weather=clear", (1100, 800), "",  # (a computer: the terminal, the landscape over the engraving)

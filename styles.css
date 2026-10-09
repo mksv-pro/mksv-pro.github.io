@@ -1402,9 +1402,31 @@ details.how p { margin: .3rem 0 0; }
 .gate-choices button span { font-size: .8rem; line-height: 1.5; color: #a4a9b3; }
 .gate-choices button:is(:hover, :focus-visible) { border-color: #e6e8ec; background: rgba(255, 255, 255, .05); outline: none; }
 .gate-foot { margin: 1.4rem 0 0; font-size: .75rem; color: #6e737d; }
+.gate-foot label { cursor: pointer; }
+.gate-foot input { accent-color: #c9ccd3; vertical-align: -2px; margin: 0 .35rem 0 0; }
+.gate-more { display: flex; justify-content: center; gap: 1.6rem; margin: 1.1rem 0 0; font-size: .8rem; }
+.gate-more :is(a, button) { font: inherit; color: #c9ccd3; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline 1px; text-underline-offset: .25em; }
+.gate-more :is(a, button):is(:hover, :focus-visible) { color: #fff; }
+.gate-box { transition: opacity .3s ease; }
+.gate.out { transition-delay: .4s; transition-duration: .4s; } /* (the lattice dissolves first, from the middle out) */
+.gate.out .gate-box { opacity: 0; }
+.climb .gate-wide { display: none; } /* (a touch screen: no engine, no tour; the terminal is the page itself) */
+@media (max-width: 40rem) { .gate-choices { grid-template-columns: 1fr; } .gate-box { padding: 1.4rem 1rem; } .gate-sub { margin-bottom: 1.2rem; } }
 @media (prefers-reduced-motion: reduce) { .gated .gate { transition: none; } }
 
 /* an experience's kind (research, industry, teaching...), before its role */
 .role-line .kind { display: inline-block; margin-right: .5em; padding: 0 .4em; font-size: .78em; line-height: 1.5;
   border: 1px solid var(--rule); color: var(--accent); text-transform: lowercase; }
 [data-theme="hours"] .role-line .kind { color: var(--red); border-color: currentColor; }
+
+/* the menu's plain words under each name: in the castle's landscape only (the terminal says it already,
+   and in a room the menu must stay small) */
+.tabs .hint { display: none; }
+[data-theme="hours"]:not([data-room]) .tabs a { display: grid; grid-template-columns: auto auto; column-gap: .45rem; justify-content: start; align-items: center; }
+[data-theme="hours"]:not([data-room]) .tabs a::before { grid-row: span 2; }
+[data-theme="hours"]:not([data-room]) .tabs .hint { display: block; grid-column: 2; margin-top: -.15rem; font-size: .66rem; line-height: 1.2; color: var(--dim); }
+
+/* the landscape's opening words, over clouds as often as over sky: a one-pixel dark outline */
+[data-theme="hours"]:not([data-room]) .host :is(.statement, .role, .links a) {
+  text-shadow: 1px 0 0 #0b0a10, -1px 0 0 #0b0a10, 0 1px 0 #0b0a10, 0 -1px 0 #0b0a10, 1px 1px 0 #0b0a10, -1px 1px 0 #0b0a10, 0 0 8px rgba(11, 10, 16, .55);
+}

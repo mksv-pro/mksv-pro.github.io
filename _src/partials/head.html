@@ -39,7 +39,8 @@
       var touch = matchMedia('(pointer: coarse)').matches || /[?&]touch=1/.test(q);
       t = (/[?&]theme=(\w+)/.exec(q) || [])[1] === 'dark' || framed || (!wide && (!touch || e === 'engine')) ? 'dark' : 'hours';
       if (framed) r.classList.add('framed');
-      if (wide && !framed && !q && !location.hash) r.classList.add('gated'); // a bare visit: the front gate asks how (gate.js)
+      var g = null; try { g = localStorage.getItem('gate'); } catch (x) {}
+      if ((wide || touch) && !framed && (!q || q === '?touch=1') && !location.hash && !g) r.classList.add('gated'); // a bare visit: the front gate asks how (gate.js), unless told to remember
       if (t === 'hours' && !wide) r.classList.add('climb');
       var k = Math.PI / 180, d = Date.now() / 864e5 - 10957.5;
       var g = (357.529 + 0.98560028 * d) * k;

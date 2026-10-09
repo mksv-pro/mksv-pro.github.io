@@ -15,7 +15,7 @@
   const cv = gate.querySelector('canvas'); const ctx = cv.getContext('2d');
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const GAP = 26; const RMAX = 2.1; const BANDS = 10; // (css px: the lattice step, the largest dot; alpha levels batched per stroke)
-  let W = 0; let H = 0; let dpr = 1; let raf = 0; let last = 0; let t = 0; let swells = []; let sites = []; let nx = 0; let ny = 0;
+  let W = 0; let H = 0; let dpr = 1; let raf = 0; let last = 0; let t = 0; let leaving = 0; let swells = []; let sites = []; let nx = 0; let ny = 0;
   const rnd = Math.random;
   const smooth = (a, b, x) => { const u = Math.min(1, Math.max(0, (x - a) / (b - a))); return u * u * (3 - 2 * u); };
 
@@ -45,6 +45,7 @@
       const v = field(p.x0, p.y0); const gx = (field(p.x0 + e, p.y0) - v) / e; const gy = (field(p.x0, p.y0 + e) - v) / e;
       p.x = p.x0 + gx * 260; p.y = p.y0 + gy * 260; // (pushed up the slope: the lattice gathers under a swell)
       p.on = smooth(p.u - 0.07, p.u + 0.07, v); p.v = v;
+      if (leaving) { const R = ((performance.now() - leaving) / 650) * Math.hypot(W, H) * 0.55; p.on *= smooth(R - 140, R, Math.hypot(p.x0 - W / 2, p.y0 - H / 2)); } // (on the way out: a widening hole from the middle)
     });
     const bands = Array.from({ length: BANDS }, () => new Path2D());
     const at = (i, j) => (i >= 0 && i < nx && j >= 0 && j < ny ? sites[j * nx + i] : null);
@@ -86,11 +87,13 @@
   };
   addEventListener('keydown', hush, true);
   function close(way) {
-    gate.classList.add('out');
+    if (leaving) return;
+    if (gate.querySelector('#gate-keep').checked && way !== 'tour') try { localStorage.setItem('gate', way); } catch { /* (no storage: it asks again) */ }
+    leaving = performance.now(); gate.classList.add('out'); if (reduce) start();
     setTimeout(() => {
       cancelAnimationFrame(raf); root.classList.remove('gated'); gate.remove(); removeEventListener('keydown', hush, true);
       dispatchEvent(new CustomEvent('gate', { detail: way }));
-    }, reduce ? 0 : 700);
+    }, reduce ? 0 : 800);
   }
   gate.addEventListener('click', (e) => { const b = e.target.closest('[data-gate]'); if (b) close(b.dataset.gate); });
   gate.querySelector('[data-gate]').focus({ preventScroll: true });

@@ -5,6 +5,8 @@
 
 # Tab order (the number keys follow it). An empty section still shows, with a line saying so.
 tabs = ["about", "experience", "work", "publications", "talks", "teaching", "news", "contact"]
+# what each one holds, said plainly (under its name in the castle's menu, for who has not the lore)
+tab_hints = { about = "who I am, CV", experience = "positions held", work = "projects and code", publications = "papers and reports", talks = "talks given", teaching = "courses taught", news = "latest news", contact = "email and links" }
 
 talks = []
 # { title = "…", date = "YYYY-MM", venue = "Event, City", actions = [{ label = "slides", href = "…" }] }

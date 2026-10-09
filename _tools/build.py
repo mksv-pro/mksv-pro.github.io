@@ -167,13 +167,14 @@ def news():
 def tabs():
     return "\n".join(
         f'          <li><a href="{{{{hash}}}}#{t}"{{{{cur:{t}}}}}><span class="k" aria-hidden="true">'
-        f"{i}:</span>{t}</a></li>" for i, t in enumerate(DATA["tabs"], 1))
+        f'{i}:</span>{t}<span class="hint">{DATA["tab_hints"][t]}</span></a></li>' for i, t in enumerate(DATA["tabs"], 1))
 
 
 def stats():
-    counts = (("Quests", "Quests", "experience"), ("Pubs", "Tomes", "publications"), ("Talks", "Orations", "talks"))  # (terminal, castle)
-    return "\n".join(f'      <span><i class="lbl" data-castle="{castle}">{label}</i>:<b>{len(DATA[k])}</b></span>'
-                      for label, castle, k in counts if DATA[k])
+    counts = (("Quests", "Quests", "experience", "Positions held"), ("Pubs", "Tomes", "publications", "Publications"),
+              ("Talks", "Orations", "talks", "Talks given"))  # (terminal, castle, section, said plainly)
+    return "\n".join(f'      <span title="{plain}"><i class="lbl" data-castle="{castle}">{label}</i>:<b>{len(DATA[k])}</b></span>'
+                      for label, castle, k, plain in counts if DATA[k])
 
 
 def exits(room, root):
