@@ -160,7 +160,7 @@ def education():
 
 
 def research():
-    items = [e for e in DATA["research"] if e.get("cv_org")]
+    items = [e for e in DATA["experience"] if e.get("cv_org")]
     out = [section("Research Experience")]
     for k, e in enumerate(items):
         out.append(f"\n\\entry{{{tex(e['cv_org'])}}}{{{tex(e['city'])}}}%\n{{{tex(e['cv_role'])}}}{{{span(e)}}}\n"
@@ -173,7 +173,7 @@ def research():
 
 
 def projects():
-    items = [e for e in DATA["projects"] if e.get("cv_title")]
+    items = [e for e in DATA["work"] if e.get("cv_title")]
     if not items:
         return ""
     out = [section("Research Projects")]

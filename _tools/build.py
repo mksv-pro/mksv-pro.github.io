@@ -91,15 +91,19 @@ def actions(items, n):
 
 
 def entries(key):
-    """Research, talks and teaching: the quest-log entry."""
+    """Experience, talks and teaching: the quest-log entry (an experience's `kind` as a tag; its
+    arms id, if any, as its anchor: the work done there links to it)."""
     out = []
     for e in DATA[key]:
         head = e.get("org") or e["title"]
         role = e.get("role") or e.get("venue", "")
+        if e.get("kind"):
+            role = f'<span class="kind">{e["kind"]}</span> {role}'
+        anchor = f' id="at-{e["arms"]}"' if key == "experience" and e.get("arms") else ""
         body = f'\n              <p>\n{indent(e["text"], 16)}\n              </p>' if e.get("text") else ""
         acts = f'\n{actions(e["actions"], 14)}' if e.get("actions") else ""
         arms = f' data-arms="{e["arms"]}"' if e.get("arms") else ""
-        out.append(f"""            <li class="entry"{arms}>
+        out.append(f"""            <li class="entry"{anchor}{arms}>
               <div class="entry-head">
                 <h3>{head}</h3>
                 <span class="date">{span(e.get("from") or e["date"], e.get("to"))}</span>
@@ -109,10 +113,13 @@ def entries(key):
     return "\n\n".join(out)
 
 
-def projects():
+def work():
+    """Each piece of work once: its card, its outputs; where it was done (`at`) links to that experience."""
     out = []
-    for p in DATA["projects"]:
+    at = {e["arms"]: e["org"] for e in DATA["experience"] if e.get("arms")}
+    for p in DATA["work"]:
         room = ROOMS[p["id"]]
+        where = f' &middot; <a class="at" href="#at-{p["at"]}">{at[p["at"]]}</a>' if p.get("at") in at else ""
         out.append(f"""          <article id="{p["id"]}" class="project">
             <a class="illum" href="{room["page"]}">
               <img src="{{{{root}}}}assets/img/{room["img"]}" width="80" height="80"
@@ -123,7 +130,7 @@ def projects():
                 <h3><a href="{room["page"]}">{p["title"]}</a></h3>
                 <span class="date">{when(p["date"])}</span>
               </div>
-              <p class="role-line">{p["role"]}</p>
+              <p class="role-line">{p["role"]}{where}</p>
               <p>
 {indent(p["text"], 16)}
               </p>
@@ -141,6 +148,8 @@ def publications():
             acts = acts.replace("\n              </ul>", (
                 f'\n                <li><a class="copy-bib" href="{{{{root}}}}assets/bib/{p["bib"]}"'
                 ' type="application/x-bibtex">[bib]</a></li>\n              </ul>'))
+        if p.get("work"):  # (the work it reports, on the index: its card)
+            acts = acts.replace("\n              </ul>", f'\n                <li><a href="#{p["work"]}">[the work]</a></li>\n              </ul>')
         out.append(f"""            <li class="pub">
               <p class="pub-title"><a href="{p["href"]}">{p["title"]}</a></p>
               <p class="pub-authors">{p["authors"]}</p>
@@ -162,7 +171,7 @@ def tabs():
 
 
 def stats():
-    counts = (("Quests", "Quests", "research"), ("Pubs", "Tomes", "publications"), ("Talks", "Orations", "talks"))  # (terminal, castle)
+    counts = (("Quests", "Quests", "experience"), ("Pubs", "Tomes", "publications"), ("Talks", "Orations", "talks"))  # (terminal, castle)
     return "\n".join(f'      <span><i class="lbl" data-castle="{castle}">{label}</i>:<b>{len(DATA[k])}</b></span>'
                       for label, castle, k in counts if DATA[k])
 
@@ -273,10 +282,10 @@ def coursework():
 
 
 BLOCKS = {
-    "list:research": lambda: entries("research"),
+    "list:experience": lambda: entries("experience"),
     "list:talks": lambda: entries("talks"),
     "list:teaching": lambda: entries("teaching"),
-    "list:projects": projects,
+    "list:work": work,
     "list:publications": publications,
     "list:news": news,
     "tabs": tabs,

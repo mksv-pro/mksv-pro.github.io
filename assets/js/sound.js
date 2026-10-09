@@ -374,12 +374,12 @@
     if (room === 'about' && r < 0.12) for (let k = 0; k < 3 + Math.floor(Math.random() * 4); k += 1) burst(5200, 0.06, 0.035, { type: 'highpass', at: k * 0.11 }); // a quill scratching
     if (room === 'publications' && r < 0.04) burst(2200, 0.4, 0.05, { sweep: 2.2 }); // a page turned, somewhere
     if (room === 'news' && r < 0.05) for (let k = 0; k < 1 + Math.floor(Math.random() * 3); k += 1) tone(620, 470, 0.22, 0.05, { type: 'sawtooth', filter: 900, at: k * 0.35 }); // a raven
-    if ((room === 'projects' || room === 'workshop') && r < 0.06) { // hammer on the anvil, twice
+    if ((room === 'work' || room === 'workshop') && r < 0.06) { // hammer on the anvil, twice
       [0, 0.45].forEach((at) => { chime([1180, 2640, 3910], 0.06, 0.9, true, at); burst(180, 0.08, 0.15, { type: 'lowpass', at }); });
     }
     if (room === 'teaching' && r < 0.06) for (let k = 0; k < 4; k += 1) burst(3600, 0.05, 0.04, { at: k * 0.2 }); // chalk on the board
     if (room === 'talks' && r < 0.025) chime([2210, 3150, 4320], 0.035, 1.6); // goblets touching
-    if (room === 'research' && r < 0.9) burst(4000, 0.015, 0.02, { type: 'highpass' }); // the orrery's clock, ticking
+    if (room === 'experience' && r < 0.9) burst(4000, 0.015, 0.02, { type: 'highpass' }); // the orrery's clock, ticking
     if (room === 'contact' && r < 0.03) for (let k = 0; k < 4; k += 1) burst(260, 0.09, 0.08, { type: 'lowpass', at: k * 0.5, echo: true }); // footsteps under the arch
     // and the rest of each room's life
     const r2 = Math.random();
@@ -387,7 +387,7 @@
     if (room === 'teaching' && r2 < 0.03) for (let k = 0; k < 5; k += 1) burst(2600 + Math.random() * 1500, 0.05, 0.015, { at: k * 0.07, pan: (Math.random() - 0.5) }); // pupils whispering
     if (room === 'teaching' && r2 > 0.995) { burst(700, 0.12, 0.08, { echo: true }); burst(500, 0.1, 0.06, { at: 0.18, echo: true }); } // a cough at the back
     if (room === 'news' && r2 < 0.03) for (let k = 0; k < 6; k += 1) burst(900 + Math.random() * 500, 0.04, 0.06, { at: k * 0.06, pan: -0.4 }); // wings, a raven settling
-    if ((room === 'projects' || room === 'workshop') && r2 < 0.02) { burst(300, 0.8, 0.08, { type: 'lowpass', sweep: 1.6 }); burst(1800, 0.3, 0.03, { at: 0.5, type: 'highpass' }); } // the bellows, the fire answering
+    if ((room === 'work' || room === 'workshop') && r2 < 0.02) { burst(300, 0.8, 0.08, { type: 'lowpass', sweep: 1.6 }); burst(1800, 0.3, 0.03, { at: 0.5, type: 'highpass' }); } // the bellows, the fire answering
     if (room === 'publications' && r2 < 0.01) burst(4200, 0.05, 0.02, { type: 'highpass' }); // a book slid back on its shelf
     if (room === 'talks' && state().cinema) for (let k = 0; k < 4; k += 1) burst(2600 + Math.random() * 800, 0.012, 0.03, { type: 'highpass', at: k * 0.0625 }); // the lantern's crank and shutter, 16 a second
     if (room === 'talks' && r2 < 0.02) for (let k = 0; k < 3; k += 1) tone(150 + Math.random() * 60, 130, 0.25, 0.012, { type: 'sawtooth', filter: 500, at: k * 0.3, echo: true }); // voices, far down the hall
@@ -443,8 +443,8 @@
     const inside = Boolean(s.room); const room = inside ? 0.6 : 1; const outW = inside ? 0.12 : 1; const pan = (inside || s.place ? {} : s.pan) || {};
     set(master.gain, s.on ? volume * 0.55 : 0, 0.4);
     useVerb(inside ? (RV[s.room] ? s.room : 'out') : 'out'); placeMusic(s);
-    set(beds.fire.g.gain, (s.room === 'projects' || s.room === 'workshop' ? 0.12 : 0.05) * room); set(beds.fire.p.pan, pan.fire || 0, 0.3);
-    set(beds.wind.g.gain, Math.min(0.12, (wx.wind || 0) / 250) * (s.room === 'research' ? 1.4 : outW)); set(beds.wind.f.frequency, 300 + Math.random() * 500, 2);
+    set(beds.fire.g.gain, (s.room === 'work' || s.room === 'workshop' ? 0.12 : 0.05) * room); set(beds.fire.p.pan, pan.fire || 0, 0.3);
+    set(beds.wind.g.gain, Math.min(0.12, (wx.wind || 0) / 250) * (s.room === 'experience' ? 1.4 : outW)); set(beds.wind.f.frequency, 300 + Math.random() * 500, 2);
     // the rain as hard as it really falls (mm an hour; loudness ~ its square root), brighter when heavy
     const rainK = wet0 && wx.precip != null ? Math.max(0.2, Math.min(1.4, Math.sqrt(wx.precip / 3))) : wet0;
     set(beds.rain.g.gain, 0.16 * rainK * outW); set(beds.rain.f.frequency, 1300 + 900 * rainK, 1);
@@ -462,7 +462,7 @@
     chantTick(s);
     if (music) compose();
     // the fire's crackle, a Poisson process: gaps drawn from an exponential law (rate a second), a big pop now and then
-    const rate = s.room === 'projects' || s.room === 'workshop' ? 9 : inside ? 2 : 5;
+    const rate = s.room === 'work' || s.room === 'workshop' ? 9 : inside ? 2 : 5;
     if (crackleAt < t0()) crackleAt = t0();
     while (crackleAt < t0() + 0.3) {
       const big = Math.random() < 0.07;

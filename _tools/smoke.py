@@ -31,7 +31,7 @@ CASES = {
     "hours-night-rain": ("?theme=hours&sky=night&weather=rain&rain7=60", (1600, 900), "", CANVAS),
     "hours-winter-frost": ("?theme=hours&sky=dawn&weather=snow&date=01-10&frost=-6", (1600, 900), "", CANVAS),
     "room-research": ("?theme=hours&sky=noon&weather=clear#research", (1600, 900), "await wait(2500);",
-                      CANVAS + " && document.documentElement.classList.contains('room-ready')"),
+                      CANVAS + " && document.documentElement.classList.contains('room-ready') && location.hash === '#experience'"),
     "room-teaching": ("?theme=hours&sky=noon&weather=clear#teaching", (1600, 900), "await wait(2500);", CANVAS),
     "card-publication": ("?theme=hours&sky=noon&weather=clear#publications", (1600, 900),
                          "await wait(2500); const b = [...document.querySelectorAll('.spot')].find((x) => /Emulation/i.test(x.dataset.label)); b && b.click(); await wait(1200);",
@@ -72,12 +72,12 @@ CASES = {
     "narrow-window": ("?sky=noon&weather=clear", (1100, 800), "",  # (a computer: the terminal, the landscape over the engraving)
                       "document.documentElement.getAttribute('data-theme') === 'dark' && document.documentElement.classList.contains('banner') && " + CANVAS),
     "phone-tower": ("?touch=1&sky=noon&weather=clear", (390, 844),  # (the live picture in the frame in sight; reading on leaves it there)
-                    "document.querySelector('#research').scrollIntoView({ behavior: 'instant' }); await wait(2500); window.scrollBy(0, 300); await wait(600);",
-                    "document.documentElement.classList.contains('climb') && document.documentElement.dataset.room === 'research'"
-                    " && !!document.querySelector('#research > .floor-slot > .plate') && " + CANVAS),
+                    "document.querySelector('#experience').scrollIntoView({ behavior: 'instant' }); await wait(2500); window.scrollBy(0, 300); await wait(600);",
+                    "document.documentElement.classList.contains('climb') && document.documentElement.dataset.room === 'experience'"
+                    " && !!document.querySelector('#experience > .floor-slot > .plate') && " + CANVAS),
     "phone-side": ("?touch=1&sky=noon&weather=clear", (844, 390),
-                   "document.querySelector('#research').scrollIntoView({ behavior: 'instant' }); await wait(2500);",
-                   "document.documentElement.classList.contains('side') && document.documentElement.dataset.room === 'research' && " + CANVAS),
+                   "document.querySelector('#experience').scrollIntoView({ behavior: 'instant' }); await wait(2500);",
+                   "document.documentElement.classList.contains('side') && document.documentElement.dataset.room === 'experience' && " + CANVAS),
     "phone-cellar": ("?touch=1&sky=noon&weather=clear", (390, 844),
                      "document.querySelector('#cellar').scrollIntoView({ behavior: 'instant' }); await wait(2500);"
                      " const b = [...document.querySelectorAll('.spot')].find((x) => /steps/i.test(x.dataset.label)); b && b.click(); await wait(1500);",

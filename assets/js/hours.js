@@ -1577,7 +1577,7 @@ nNnnnn..
     const rooms = {};
     const room = (id, x, y, w, h) => { rooms[id] = { x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) }; };
     const obs = observatory(-19, 7, 47);
-    room('research', obs.x0 - 1, obs.t0 - obs.ww / 2 - 5, obs.ww + 2, crest - obs.t0 + obs.ww / 2 + 5);
+    room('experience', obs.x0 - 1, obs.t0 - obs.ww / 2 - 5, obs.ww + 2, crest - obs.t0 + obs.ww / 2 + 5);
     const castleTop = Math.round(crest - 56 * v - 15 * v - 4); // over the tallest spire
     const tall = tower(9, 8, 56, 15, { flag: I.FLAG2 });
     // the belfry: an opening high in the tall tower, where the bell hangs (rung each planetary hour)
@@ -1595,7 +1595,7 @@ nNnnnn..
     gallery(obs.x0 + obs.ww, kp.x0 - 1, Math.round(crest - 31 * v));
     const chimney = hall(6, 20, 25, 9);
     room('publications', cx + 6 * u, crest - 25 * v - 9 * v, 7 * u, 25 * v + 9 * v - 12 * v);
-    room('projects', cx + 13 * u, crest - 25 * v - 9 * v - 4, 7 * u, 25 * v + 13 * v - 12 * v);
+    room('work', cx + 13 * u, crest - 25 * v - 9 * v - 4, 7 * u, 25 * v + 13 * v - 12 * v);
     const right = tower(21, 9, 39, 13, { flag: I.FLAG });
     room('teaching', right.x0 - 1, right.t0 - 13 * v, right.ww + 2, crest - right.t0 + 13 * v - 12 * v);
     // curtain wall: uneven crenellations, walkway, banners, ivy
@@ -2226,11 +2226,14 @@ nNnnnn..
      parchment leaves free (wide screens: the left half), where the furniture stands. */
 
   const ROOM_NAMES = {
-    about: 'the scriptorium', research: 'the observatory', projects: 'the workshop',
+    about: 'the scriptorium', experience: 'the observatory', work: 'the workshop',
     publications: 'the library', talks: 'the great hall', teaching: 'the schoolroom',
     news: 'the rookery', contact: 'the gatehouse', cellar: 'the cellar', // (the cellar: the tower's foot, phones only)
   };
-  const roomOf = (id) => (ROOM_NAMES[id] ? id : 'projects'); // project pages: the workshop
+  // a section's room kind: the drawing keeps the rooms' old names (the observatory is 'research', the
+  // workshop 'projects'); a project page is the workshop too
+  const KIND = { experience: 'research', work: 'projects' };
+  const roomOf = (id) => KIND[id] || (ROOM_NAMES[id] ? id : 'projects');
 
   /* ---- heraldry: coats from assets/js/arms.js (window.ARMS), flat tinctures, dark outline ---- */
   const TINCT = { O: 'T_OR', A: 'T_ARGENT', G: 'T_GULES', B: 'T_AZURE', V: 'T_VERT', S: 'T_SABLE', P: 'T_PRUNE', R: 'T_BORDEAUX', N: 'T_NAVY', C: 'T_BRIGHT' };

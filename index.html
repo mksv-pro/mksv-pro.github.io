@@ -60,7 +60,7 @@
 
   <link rel="preload" href="assets/fonts/DepartureMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/IBMPlexMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=390c7811">
+  <link rel="stylesheet" href="styles.css?v=2cea23a2">
 
   <script type="application/ld+json">
   {
@@ -201,8 +201,8 @@
         <span class="tabs-session" aria-hidden="true">[mike]</span>
         <ul>
           <li><a href="#about"><span class="k" aria-hidden="true">1:</span>about</a></li>
-          <li><a href="#research"><span class="k" aria-hidden="true">2:</span>research</a></li>
-          <li><a href="#projects"><span class="k" aria-hidden="true">3:</span>projects</a></li>
+          <li><a href="#experience"><span class="k" aria-hidden="true">2:</span>experience</a></li>
+          <li><a href="#work"><span class="k" aria-hidden="true">3:</span>work</a></li>
           <li><a href="#publications"><span class="k" aria-hidden="true">4:</span>publications</a></li>
           <li><a href="#talks"><span class="k" aria-hidden="true">5:</span>talks</a></li>
           <li><a href="#teaching"><span class="k" aria-hidden="true">6:</span>teaching</a></li>
@@ -293,39 +293,38 @@
           <div class="exits">
             <span class="exits-label">Obvious exits:</span>
             <ul>
-              <li data-dir="n"><span class="dir" aria-hidden="true">north</span> <a href="#research">research</a></li>
-              <li data-dir="e"><span class="dir" aria-hidden="true">east</span> <a href="#projects">projects</a></li>
+              <li data-dir="n"><span class="dir" aria-hidden="true">north</span> <a href="#experience">experience</a></li>
+              <li data-dir="e"><span class="dir" aria-hidden="true">east</span> <a href="#work">work</a></li>
               <li data-dir="s"><span class="dir" aria-hidden="true">south</span> <a href="#contact">contact</a></li>
             </ul>
           </div>
         </section>
 
-        <!-- RESEARCH ------------------------------------------------------->
-        <section id="research" class="pane" aria-labelledby="research-h"
-                 data-look="A quest log, its pages dog-eared at three laboratories.">
+        <!-- EXPERIENCE ----------------------------------------------------->
+        <section id="experience" class="pane" aria-labelledby="experience-h"
+                 data-look="A quest log, a page dog-eared at each post held.">
           <span class="pane-tab" aria-hidden="true">quest-log</span>
-          <h2 id="research-h" class="room"><span class="tilde" aria-hidden="true">~ </span>Research<span class="tilde" aria-hidden="true"> ~</span></h2>
+          <h2 id="experience-h" class="room"><span class="tilde" aria-hidden="true">~ </span>Experience<span class="tilde" aria-hidden="true"> ~</span></h2>
 
           <ol class="log">
-            <li class="entry" data-arms="ijclab">
+            <li class="entry" id="at-ijclab" data-arms="ijclab">
               <div class="entry-head">
                 <h3>IJCLab</h3>
                 <span class="date"><time datetime="2026-06">Jun</time>&ndash;<time datetime="2026-07">Jul 2026</time></span>
               </div>
-              <p class="role-line">Research intern · with Chloé Hebborn &amp; Patrick McGlynn</p>
+              <p class="role-line"><span class="kind">research</span> Research intern · with Chloé Hebborn &amp; Patrick McGlynn</p>
               <p>
-                Scattering solvers (R-matrix, DBMM) and reduced-basis and machine-learning emulators
-                for nuclear reactions, benchmarked for large parameter-space exploration.
-                <a href="projects/nuclear-emulators.html">The project →</a>
+                Emulators of nuclear reaction models, for uncertainty quantification on optical potentials.
+                <a href="#nuclear-emulators">The work →</a>
               </p>
             </li>
 
-            <li class="entry" data-arms="ceremade">
+            <li class="entry" id="at-ceremade" data-arms="ceremade">
               <div class="entry-head">
                 <h3>CEREMADE</h3>
                 <span class="date"><time datetime="2024-09">Sep 2024</time>&ndash;<time datetime="2025-01">Jan 2025</time></span>
               </div>
-              <p class="role-line">Visiting research student · with Pierre Cardaliaguet</p>
+              <p class="role-line"><span class="kind">research</span> Visiting research student · with Pierre Cardaliaguet</p>
               <p>
                 Mean-field games applied to economics: how monetary shocks propagate in a
                 general-equilibrium economy with sticky prices, through coupled
@@ -333,12 +332,12 @@
               </p>
             </li>
 
-            <li class="entry" data-arms="sciencespo">
+            <li class="entry" id="at-sciencespo" data-arms="sciencespo">
               <div class="entry-head">
                 <h3>Sciences Po Paris</h3>
                 <span class="date"><time datetime="2023-06">Jun</time>&ndash;<time datetime="2023-08">Aug 2023</time></span>
               </div>
-              <p class="role-line">Research assistant · with Julia Cagé</p>
+              <p class="role-line"><span class="kind">research</span> Research assistant · with Julia Cagé</p>
               <p>
                 Media ownership and content bias: built a large dataset of French television
                 broadcasts for the study.
@@ -355,11 +354,11 @@
           </div>
         </section>
 
-        <!-- PROJECTS ------------------------------------------------------->
-        <section id="projects" class="pane" aria-labelledby="projects-h"
-                 data-look="A workbench. Three working models stand on it, each a door to its project.">
+        <!-- WORK ------------------------------------------------------------>
+        <section id="work" class="pane" aria-labelledby="work-h"
+                 data-look="A workbench. On it, a working model for each piece of work, each a door to it.">
           <span class="pane-tab" aria-hidden="true">workbench</span>
-          <h2 id="projects-h" class="room"><span class="tilde" aria-hidden="true">~ </span>Projects<span class="tilde" aria-hidden="true"> ~</span></h2>
+          <h2 id="work-h" class="room"><span class="tilde" aria-hidden="true">~ </span>Work<span class="tilde" aria-hidden="true"> ~</span></h2>
 
           <article id="nuclear-emulators" class="project">
             <a class="illum" href="projects/nuclear-emulators.html">
@@ -371,7 +370,7 @@
                 <h3><a href="projects/nuclear-emulators.html">Computational emulation of nuclear dynamics</a></h3>
                 <span class="date"><time datetime="2026">2026</time></span>
               </div>
-              <p class="role-line">M1 internship · IJCLab</p>
+              <p class="role-line">M1 internship &middot; <a class="at" href="#at-ijclab">IJCLab</a></p>
               <p>
                 A coupled-channel scattering solver and two emulators (RBM, LROM) that reproduce it
                 within 0.5&nbsp;% at the median, at a fraction of its cost, to make uncertainty quantification on
@@ -452,6 +451,7 @@
                 <li><a href="https://github.com/mksv-pro/Mike-M1-Internship-IJCLab-2026/blob/main/docs/memoire_M1.pdf">[pdf]</a></li>
                 <li><a href="https://github.com/mksv-pro/Mike-M1-Internship-IJCLab-2026">[code]</a></li>
                 <li><a class="copy-bib" href="assets/bib/silva2026emulation.bib" type="application/x-bibtex">[bib]</a></li>
+                <li><a href="#nuclear-emulators">[the work]</a></li>
               </ul>
             </li>
           </ol>
@@ -459,8 +459,8 @@
           <div class="exits">
             <span class="exits-label">Obvious exits:</span>
             <ul>
-              <li data-dir="s"><span class="dir" aria-hidden="true">south</span> <a href="#projects">projects</a></li>
-              <li data-dir="w"><span class="dir" aria-hidden="true">west</span> <a href="#research">research</a></li>
+              <li data-dir="s"><span class="dir" aria-hidden="true">south</span> <a href="#work">work</a></li>
+              <li data-dir="w"><span class="dir" aria-hidden="true">west</span> <a href="#experience">experience</a></li>
             </ul>
           </div>
         </section>
@@ -517,7 +517,7 @@
           <div class="exits">
             <span class="exits-label">Obvious exits:</span>
             <ul>
-              <li data-dir="n"><span class="dir" aria-hidden="true">north</span> <a href="#projects">projects</a></li>
+              <li data-dir="n"><span class="dir" aria-hidden="true">north</span> <a href="#work">work</a></li>
               <li data-dir="s"><span class="dir" aria-hidden="true">south</span> <a href="#teaching">teaching</a></li>
               <li data-dir="w"><span class="dir" aria-hidden="true">west</span> <a href="#contact">contact</a></li>
             </ul>
@@ -596,9 +596,9 @@
             title="Single-key shortcuts (1-8, :, ?)">keys:<b>on</b></button>
   </footer>
 
-  <script type="application/json" id="site-data">{"world":{"research":{"c":0,"r":0,"name":"Research","label":"research"},"publications":{"c":1,"r":0,"name":"Publications","label":"publications"},"urban-morphogenesis":{"c":2,"r":0,"name":"Urban morphogenesis","label":"city","exit":"urban morphogenesis","page":"projects/urban-morphogenesis.html","img":"illum-dla.png"},"about":{"c":0,"r":1,"name":"About","label":"about","img":"flammarion-dark.png"},"projects":{"c":1,"r":1,"name":"Projects","label":"projects"},"nuclear-emulators":{"c":2,"r":1,"name":"Nuclear emulation","label":"nuclear","exit":"nuclear emulation","page":"projects/nuclear-emulators.html","img":"illum-nuclear.png"},"contact":{"c":0,"r":2,"name":"Contact","label":"contact"},"news":{"c":1,"r":2,"name":"News","label":"news"},"n-body":{"c":2,"r":2,"name":"N-body systems","label":"orrery","exit":"N-body systems","page":"projects/n-body.html","img":"illum-nbody.png"},"talks":{"c":0,"r":3,"name":"Talks","label":"talks"},"teaching":{"c":1,"r":3,"name":"Teaching","label":"teaching"}},"links":[["research","publications"],["research","about"],["publications","projects"],["about","projects"],["about","contact"],["projects","news"],["contact","news"],["projects","nuclear-emulators"],["nuclear-emulators","urban-morphogenesis"],["nuclear-emulators","n-body"],["contact","talks"],["news","teaching"],["talks","teaching"]],"email":"pro.mikesilva@gmail.com","github":"https://github.com/mksv-pro","bib":"assets/bib/silva2026emulation.bib","heraldry":{"own":"silva","tapestry":[["sorbonne","Sorbonne Université","BSc Physics & Mathematics; MSc Quantum Information"],["paris1","Université Paris 1 Panthéon-Sorbonne","BA Economics & Political Science"],["sciencespo","Sciences Po","Research assistant"],["ceremade","CEREMADE","Visiting research student"],["pariscite","Université Paris Cité","MSc Fundamental Physics"],["dauphine","Université Paris Dauphine-PSL","MSc Economics & Finance"],["ijclab","IJCLab","Research intern"],["saclay","Université Paris-Saclay","MSc Physics of Complex Systems"]]},"library":{"shelves":[["statphys","Statistical physics"],["stochastic","Stochastic processes"],["complex","Complex systems"],["dynamics","Dynamical systems and chaos"],["rmt","Random matrices"],["quantum","Quantum mechanics"],["qinfo","Quantum information"],["fields","Statistical field theory"],["proba","Probability"],["analysis","Analysis and PDEs"],["geometry","Geometry"],["ml","Machine learning"],["mlphys","Machine learning for physics"],["mfg","Mean-field games"],["econo","Econophysics and finance"],["social","Agent-based and social models"]]}}</script>
+  <script type="application/json" id="site-data">{"world":{"experience":{"c":0,"r":0,"name":"Experience","label":"experience"},"publications":{"c":1,"r":0,"name":"Publications","label":"publications"},"urban-morphogenesis":{"c":2,"r":0,"name":"Urban morphogenesis","label":"city","exit":"urban morphogenesis","page":"projects/urban-morphogenesis.html","img":"illum-dla.png"},"about":{"c":0,"r":1,"name":"About","label":"about","img":"flammarion-dark.png"},"work":{"c":1,"r":1,"name":"Work","label":"work"},"nuclear-emulators":{"c":2,"r":1,"name":"Nuclear emulation","label":"nuclear","exit":"nuclear emulation","page":"projects/nuclear-emulators.html","img":"illum-nuclear.png"},"contact":{"c":0,"r":2,"name":"Contact","label":"contact"},"news":{"c":1,"r":2,"name":"News","label":"news"},"n-body":{"c":2,"r":2,"name":"N-body systems","label":"orrery","exit":"N-body systems","page":"projects/n-body.html","img":"illum-nbody.png"},"talks":{"c":0,"r":3,"name":"Talks","label":"talks"},"teaching":{"c":1,"r":3,"name":"Teaching","label":"teaching"}},"links":[["experience","publications"],["experience","about"],["publications","work"],["about","work"],["about","contact"],["work","news"],["contact","news"],["work","nuclear-emulators"],["nuclear-emulators","urban-morphogenesis"],["nuclear-emulators","n-body"],["contact","talks"],["news","teaching"],["talks","teaching"]],"email":"pro.mikesilva@gmail.com","github":"https://github.com/mksv-pro","bib":"assets/bib/silva2026emulation.bib","heraldry":{"own":"silva","tapestry":[["sorbonne","Sorbonne Université","BSc Physics & Mathematics; MSc Quantum Information"],["paris1","Université Paris 1 Panthéon-Sorbonne","BA Economics & Political Science"],["sciencespo","Sciences Po","Research assistant"],["ceremade","CEREMADE","Visiting research student"],["pariscite","Université Paris Cité","MSc Fundamental Physics"],["dauphine","Université Paris Dauphine-PSL","MSc Economics & Finance"],["ijclab","IJCLab","Research intern"],["saclay","Université Paris-Saclay","MSc Physics of Complex Systems"]]},"library":{"shelves":[["statphys","Statistical physics"],["stochastic","Stochastic processes"],["complex","Complex systems"],["dynamics","Dynamical systems and chaos"],["rmt","Random matrices"],["quantum","Quantum mechanics"],["qinfo","Quantum information"],["fields","Statistical field theory"],["proba","Probability"],["analysis","Analysis and PDEs"],["geometry","Geometry"],["ml","Machine learning"],["mlphys","Machine learning for physics"],["mfg","Mean-field games"],["econo","Econophysics and finance"],["social","Agent-based and social models"]]}}</script>
   <script src="assets/js/sky.js?v=3255cb85"></script>
-  <script src="script.js?v=9c0c6925" data-dungeon="assets/js/dungeon.js?v=4638a1e8" data-hours="assets/js/hours.js?v=14dd4f2b" data-arms="assets/js/arms.js?v=33075736" data-sound="assets/js/sound.js?v=4f4532ed"></script>
+  <script src="script.js?v=ead2ec2b" data-dungeon="assets/js/dungeon.js?v=4638a1e8" data-hours="assets/js/hours.js?v=c6fcd9b2" data-arms="assets/js/arms.js?v=33075736" data-sound="assets/js/sound.js?v=3dc90803"></script>
   <script src="assets/js/cmdline.js?v=9c65c240"></script>
   <script src="assets/js/armillary.js?v=ea93ec80"></script>
 </body>

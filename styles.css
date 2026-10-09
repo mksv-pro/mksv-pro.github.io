@@ -775,8 +775,8 @@ dialog.dungeon canvas {
 [data-theme="hours"] .links a::before { margin-right: .4rem; }
 [data-theme="hours"] .loot li::before { margin-right: .5rem; }
 [data-theme="hours"] .tabs a[href$="#about"] { --icon: url("assets/img/icons/candle.svg"); }
-[data-theme="hours"] .tabs a[href$="#research"] { --icon: url("assets/img/icons/astrolabe.svg"); }
-[data-theme="hours"] .tabs a[href$="#projects"] { --icon: url("assets/img/icons/anvil.svg"); }
+[data-theme="hours"] .tabs a[href$="#experience"] { --icon: url("assets/img/icons/astrolabe.svg"); }
+[data-theme="hours"] .tabs a[href$="#work"] { --icon: url("assets/img/icons/anvil.svg"); }
 [data-theme="hours"] .tabs a[href$="#publications"] { --icon: url("assets/img/icons/book.svg"); }
 [data-theme="hours"] .tabs a[href$="#talks"] { --icon: url("assets/img/icons/horn.svg"); }
 [data-theme="hours"] .tabs a[href$="#teaching"] { --icon: url("assets/img/icons/slate.svg"); }
@@ -788,7 +788,7 @@ dialog.dungeon canvas {
 [data-theme="hours"] .loot li[data-item="about"] { --icon: url("assets/img/icons/scroll.svg"); }
 [data-theme="hours"] .loot li[data-item="publications"] { --icon: url("assets/img/icons/scrollbib.svg"); }
 [data-theme="hours"] .loot li[data-item="contact"] { --icon: url("assets/img/icons/quill.svg"); }
-[data-theme="hours"] .loot li[data-item="projects"] { --icon: url("assets/img/icons/lodestone.svg"); }
+[data-theme="hours"] .loot li[data-item="work"] { --icon: url("assets/img/icons/lodestone.svg"); }
 
 /* the arms of each school and lab beside its entry (assets/img/arms/, _tools/icons.py) */
 [data-arms="saclay"] { --arms: url("assets/img/arms/saclay.svg"); }
@@ -847,7 +847,7 @@ dialog.dungeon canvas {
 }
 
 /* the castle's rooms: the text is in the things */
-[data-theme="hours"]:is([data-room="about"], [data-room="research"], [data-room="projects"], [data-room="publications"],
+[data-theme="hours"]:is([data-room="about"], [data-room="experience"], [data-room="work"], [data-room="publications"],
   [data-room="talks"], [data-room="teaching"], [data-room="news"], [data-room="contact"], [data-room="cellar"]) main {
   position: fixed; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); padding: 0; border: 0;
 }
@@ -1403,3 +1403,8 @@ details.how p { margin: .3rem 0 0; }
 .gate-choices button:is(:hover, :focus-visible) { border-color: #e6e8ec; background: rgba(255, 255, 255, .05); outline: none; }
 .gate-foot { margin: 1.4rem 0 0; font-size: .75rem; color: #6e737d; }
 @media (prefers-reduced-motion: reduce) { .gated .gate { transition: none; } }
+
+/* an experience's kind (research, industry, teaching...), before its role */
+.role-line .kind { display: inline-block; margin-right: .5em; padding: 0 .4em; font-size: .78em; line-height: 1.5;
+  border: 1px solid var(--rule); color: var(--accent); text-transform: lowercase; }
+[data-theme="hours"] .role-line .kind { color: var(--red); border-color: currentColor; }

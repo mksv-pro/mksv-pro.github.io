@@ -7,6 +7,9 @@ const HOURS_SRC = document.currentScript.dataset.hours; // loaded with the hours
 const ARMS_SRC = document.currentScript.dataset.arms; // its coats of arms, before it
 const SOUND_SRC = document.currentScript.dataset.sound; // ambient sound, loaded when switched on
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+// the sections' old names (before experience and work), in links made since: read as the new ones
+const RENAMED = { '#research': '#experience', '#projects': '#work' };
+if (RENAMED[location.hash]) history.replaceState(history.state, '', location.pathname + location.search + RENAMED[location.hash]);
 // ?og: the view _tools/og.py photographs for the link preview (the name over the landscape)
 if (new URLSearchParams(location.search).has('og')) document.documentElement.classList.add('og');
 
@@ -328,7 +331,7 @@ function latestNews() {
 function dreamsOf() {
   const pick = (sel) => [...document.querySelectorAll(sel)].map((el) => ({
     name: el.querySelector('h3').textContent.trim(), words: el.textContent.replace(/\s+/g, ' ').slice(0, 400) }));
-  return [...pick('#research .entry'), ...pick('#projects article.project')];
+  return [...pick('#experience .entry'), ...pick('#work article.project')];
 }
 
 /* ---- objects lying in the rooms, and the pack -------------------------- */
@@ -339,7 +342,7 @@ const ITEMS = {
   about: { name: 'a scroll labelled CURRICULUM VITAE', verb: 'read', use: () => { location.href = cvHref(); } },
   publications: { name: 'a scroll labelled BIBTEX', verb: 'copy', use: () => copyFrom(new URL(DATA.bib, SITE).href) },
   contact: { name: 'a raven quill', verb: 'write', use: () => { location.href = `mailto:${DATA.email}`; } },
-  projects: { name: 'a lodestone that points to github', verb: 'follow', use: () => { location.href = DATA.github; } },
+  work: { name: 'a lodestone that points to github', verb: 'follow', use: () => { location.href = DATA.github; } },
   // the peddler's, for a tale of something curious (the hours theme's landscape)
   astrolabe: { name: "a brass astrolabe, the peddler's", verb: 'sight', use: () => {
     const alt = Math.asin(skyAt(skyNow()).sun[2]) / rad;
@@ -357,7 +360,7 @@ function trade() {
 }
 const LETTERS = 'abcdefgh';
 
-const pack = () => sessionList('pack');
+const pack = () => sessionList('pack').map((id) => (id === 'projects' ? 'work' : id)); // (a pack filled before the rename)
 
 function pickUp(id) {
   const p = pack();
@@ -404,7 +407,7 @@ function soundState() {
   return {
     on: soundOn && root.getAttribute('data-theme') === 'hours' && !document.hidden,
     wx: currentWx(), night: root.getAttribute('data-sky') === 'night', room,
-    echo: ['talks', 'research', 'contact', 'projects', 'workshop'].includes(room), // the stone rooms
+    echo: ['talks', 'experience', 'contact', 'work', 'workshop'].includes(room), // the stone rooms
     summer: [5, 6, 7].includes(new Date().getMonth()),
     ...(() => { // where, close up; the hour in Paris (the angelus, the birds); what goes on in the village
       const d = skyNow(); const p = new Date(d.toLocaleString('en-US', { timeZone: 'Europe/Paris' }));
@@ -808,8 +811,8 @@ function roomItems(id) {
           return [{ kind: 'ledger', label: T.ledger, html: `<h3>${T.ledger}</h3><p class="dim">${esc(text(led.querySelector('summary .meta')))}</p>${body}` }];
         })()];
     }
-    case 'research': return of('.entry', 'scroll', (el) => ({ arms: el.dataset.arms, label: text(el.querySelector('h3')), html: el.innerHTML }));
-    case 'projects': return of('article.project', 'model', (el) => ({ model: el.id, label: text(el.querySelector('h3')), html: el.innerHTML }));
+    case 'experience': return of('.entry', 'scroll', (el) => ({ arms: el.dataset.arms, label: text(el.querySelector('h3')), html: el.innerHTML }));
+    case 'work': return of('article.project', 'model', (el) => ({ model: el.id, label: text(el.querySelector('h3')), html: el.innerHTML }));
     case 'publications': { // the works face out on the ledge; then the shelves, and the volumes on them
       const lib = DATA.library || {};
       const vols = (lib.volumes || []).map((b) => ({ ...b, url: /^https?:\/\//.test(b.url || '') ? b.url : '' })); // web links only
@@ -906,7 +909,7 @@ function nowHtml() {
   const txt = (el) => (el ? el.textContent.replace(/\s+/g, ' ').trim() : '');
   const studying = [...document.querySelectorAll('#about .sheet dd')][0];
   const news = document.querySelector('#news .news li');
-  const projects = [...document.querySelectorAll('#projects article.project h3')].map(txt);
+  const projects = [...document.querySelectorAll('#work article.project h3')].map(txt);
   return `<h3>On the tavern's slate</h3><p class="dim">What is going on, chalked up by the landlord.</p>`
     + (studying ? `<p><b>Studying:</b> ${txt(studying)}</p>` : '') + (news ? `<p><b>Latest news:</b> ${txt(news)}</p>` : '')
     + (projects.length ? `<p><b>At the workbench:</b> ${projects.join('; ')}.</p>` : '') + fareHtml(false);
@@ -1072,7 +1075,7 @@ function roomDoors(id) {
   const sec = document.getElementById(id);
   return sec ? [...sec.querySelectorAll('.exits li')].map((li) => {
     const a = li.querySelector('a'); const dir = li.querySelector('.dir').textContent.trim();
-    const href = a.getAttribute('href'); // '#research', or a project page's path
+    const href = a.getAttribute('href'); // '#experience', or a project page's path
     const go = ROOM_IDS.find((r) => href === `#${r}` || (WORLD[r].page && href.endsWith(WORLD[r].page))) || null;
     return { kind: 'door', dir: dir[0], label: `${dir}: ${a.textContent.trim()}`, go, html: '' };
   }).filter((d) => d.go) : [];
@@ -1447,7 +1450,7 @@ function tour() {
     [0, () => { if (root.dataset.room) leaveRoom(); say('A short tour. The landscape keeps the hour, the sky and the weather over Paris, now.'); }],
     [4000, () => H.village()], [11000, () => H.back()],
     [13000, () => H.tower()], [17000, () => H.turn(1)], [20500, () => H.turn(1)], [24000, () => H.turn(1)], [27500, () => H.back()],
-    [30000, () => goTo('research')], [37000, () => goTo('projects')], [44000, () => leaveRoom()],
+    [30000, () => goTo('experience')], [37000, () => goTo('work')], [44000, () => leaveRoom()],
     [46500, () => say('That is the tour. Click about the landscape: much of it answers. [ and ] go through what is in sight.')],
   ];
   const timers = steps.map(([ms, f]) => setTimeout(f, ms));
