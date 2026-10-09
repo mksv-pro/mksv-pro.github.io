@@ -7856,7 +7856,7 @@ qqqqqTqqq
           e.preventDefault(); selList = curioList(); if (!selList.length) return;
           sel = ((sel < 0 ? (e.key === ']' ? -1 : 0) : sel) + (e.key === ']' ? 1 : -1) + selList.length) % selList.length;
           const nm = CURIO_NAMES[selList[sel].h.kind] || selList[sel].h.kind;
-          say(`${nm[0].toUpperCase()}${nm.slice(1)} (${sel + 1} of ${selList.length}): Enter to look, [ ] for the others, Esc to stop.`);
+          say(`${nm[0].toUpperCase()}${nm.slice(1)} (${sel + 1} of ${selList.length}): Enter to look, [ ] for the others, Esc to stop.`, null, { now: true });
           if (!running) render(now());
         } else if (e.key === 'Enter' && sel >= 0 && selList[sel] && (!(document.activeElement instanceof Element) || document.activeElement === document.body)) {
           e.preventDefault(); talk(selList[sel].h);

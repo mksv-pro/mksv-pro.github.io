@@ -230,15 +230,48 @@ const msgText = document.querySelector('.msg-text');
 const moreLink = document.querySelector('.more');
 let moreAction = null; // when set, --More-- runs this instead of following its link
 
-function say(text, action = null) {
-  msgText.textContent = text;
-  moreAction = action;
+/* What was said is kept (the chronicle: the last twenty, a click on the line shows them). A line that
+   comes while the last has been up less than a second and a half waits its turn: --More-- shows it at
+   once, else it comes after two seconds and a half. `now`: a line that replaces (a dragged sun, a choice
+   being made): it never waits. */
+const chronicle = [[`${new Date().getHours()}:${String(new Date().getMinutes()).padStart(2, '0')}`, msgText.textContent.trim()]]; const pending = []; let saidAt = 0; let pendTimer = 0; let moreLabel = null;
+function say(text, action = null, { now: at0 = false } = {}) {
+  if (!text || text === msgText.textContent) { moreAction = action ?? moreAction; return; }
+  if (!at0 && performance.now() - saidAt < 1500 && msgText.textContent) {
+    if (pending.length < 3) pending.push([text, action]);
+    showMore(); clearTimeout(pendTimer); pendTimer = setTimeout(nextSaid, 2500); return;
+  }
+  show(text, action);
+}
+function show(text, action) {
+  msgText.textContent = text; moreAction = action; saidAt = performance.now();
+  const d = new Date(); chronicle.unshift([`${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`, text]); chronicle.length = Math.min(chronicle.length, 20);
+  showMore();
+}
+function nextSaid() { const n = pending.shift(); if (n) show(...n); if (pending.length) pendTimer = setTimeout(nextSaid, 2500); }
+function showMore() { // --More (2)--: lines waiting; else the link's own words
+  const lbl = moreLink.querySelector('.lbl'); moreLabel ??= lbl.innerHTML;
+  lbl.innerHTML = pending.length ? `--More (${pending.length})--` : moreLabel;
 }
 moreLink.addEventListener('click', (e) => {
+  if (pending.length) { e.preventDefault(); clearTimeout(pendTimer); nextSaid(); return; }
   if (!moreAction) return;
   e.preventDefault();
   moreAction();
 });
+{ // the chronicle: a click on the line (not on its link) unrolls what was said, newest first
+  const box = document.createElement('div'); box.className = 'chronicle'; box.hidden = true; box.setAttribute('role', 'log'); box.setAttribute('aria-label', 'What was said');
+  document.body.append(box);
+  msgText.addEventListener('click', () => {
+    if (root.classList.contains('climb')) return; // (the tower's line opens on a tap: its own)
+    if (!box.hidden) { box.hidden = true; return; }
+    box.innerHTML = chronicle.length ? `<ol>${chronicle.map(([t, x]) => `<li><time>${t}</time> ${esc(x)}</li>`).join('')}</ol>` : '<p>Nothing said yet.</p>';
+    box.style.top = `${document.querySelector('.msgline').getBoundingClientRect().bottom}px`; box.hidden = false;
+  });
+  document.addEventListener('pointerdown', (e) => { if (!box.hidden && !box.contains(e.target) && e.target !== msgText) box.hidden = true; });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !box.hidden) { box.hidden = true; e.stopImmediatePropagation(); } }, true);
+  msgText.title = 'Click: what was said';
+}
 
 /* ---- theme ------------------------------------------------------------- */
 
@@ -1831,7 +1864,7 @@ function skyNow() {
 let scrubRaf = 0;
 function scrub(ms) {
   cancelAnimationFrame(scrubRaf);
-  if (ms !== null) { skyShift = ms; scrubRaf = requestAnimationFrame(() => { updateSky(); const d = skyNow(); say(T.skyAt(`${d.getHours()}:${pad(d.getMinutes())}`)); }); return; }
+  if (ms !== null) { skyShift = ms; scrubRaf = requestAnimationFrame(() => { updateSky(); const d = skyNow(); say(T.skyAt(`${d.getHours()}:${pad(d.getMinutes())}`), null, { now: true }); }); return; }
   const from = skyShift; const t0 = performance.now();
   const back = (now) => { const e = Math.min(1, (now - t0) / 1500); skyShift = from * (1 - e) ** 2; updateSky(); if (e < 1) scrubRaf = requestAnimationFrame(back); else { skyShift = 0; updateSky(); } };
   scrubRaf = requestAnimationFrame(back);

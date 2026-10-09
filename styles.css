@@ -1524,3 +1524,14 @@ canvas.stairdown { position: fixed; z-index: 3; image-rendering: pixelated; poin
 canvas.twinkle { display: none; position: absolute; z-index: 1; pointer-events: none; }
 [data-theme="dark"]:not(.banner) canvas.twinkle { display: block; }
 [data-theme="dark"][data-paper] canvas.twinkle { filter: invert(1) sepia(.35); }
+
+/* the chronicle: what the message line said, newest first (a click on the line) */
+.chronicle { position: fixed; z-index: 7; left: 1rem; width: min(44rem, calc(100vw - 2rem)); max-height: 50vh; overflow: auto;
+  margin: 0; padding: .5rem .9rem; font: .85rem/1.45 var(--ui); color: var(--ink); background: var(--bar); border: 1px solid var(--rule); box-shadow: 0 6px 18px rgb(0 0 0 / .35); }
+.chronicle ol { list-style: none; margin: 0; padding: 0; }
+.chronicle li { padding: .15rem 0; border-bottom: 1px dotted var(--rule); }
+.chronicle li:last-child { border-bottom: 0; }
+.chronicle time { color: var(--dim); margin-right: 1ch; }
+[data-theme="hours"] .chronicle { font: italic 1.05rem/1.4 "EB Garamond", Georgia, serif; color: #2a1c10; background: #f4ecd8; border: 2px solid var(--gold, #b08a3a); }
+[data-theme="hours"] .chronicle time { font-style: normal; color: #8a2c1c; }
+.msg-text { cursor: pointer; }
