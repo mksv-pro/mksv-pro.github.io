@@ -822,7 +822,7 @@ dialog.dungeon canvas {
 /* in a room, the menu is a wooden beam hung from the ceiling on two chains */
 [data-theme="hours"][data-room] .tabs {
   --ink: #f4e8cc; --hi: #ffffff; --accent: #f6d77a;
-  left: auto; right: 1.5rem; top: calc(var(--msg-h) + 1.25rem); bottom: auto;
+  left: auto; right: 1.5rem; top: calc(var(--msg-h) + 1.25rem); bottom: auto; z-index: 5;
   width: min(46rem, 50vw); padding: .3rem .8rem .3rem 1.4rem;
   color: var(--ink);
   border: var(--upx, 2px) solid #16121c; border-image: none;
@@ -832,6 +832,17 @@ dialog.dungeon canvas {
 }
 [data-theme="hours"][data-room] .tabs-session { display: none; }
 [data-theme="hours"][data-room] .tabs ul { grid-template-columns: repeat(4, auto); justify-content: space-between; }
+/* rolled up to a short beam while you look round the room; pointed at or tabbed into, it unrolls */
+html:not(.climb)[data-theme="hours"][data-room] .tabs:not(:hover, :focus-within) { width: auto; }
+html:not(.climb)[data-theme="hours"][data-room] .tabs:not(:hover, :focus-within) ul { height: 0; width: 0; overflow: hidden; } /* (not display: none: Tab must still reach it) */
+html:not(.climb)[data-theme="hours"][data-room] .tabs:not(:hover, :focus-within)::after {
+  content: "\2261  the rooms"; position: static; display: block; inset: auto; width: auto; height: auto; background: none; border: 0; clip-path: none;
+  font: .85rem/1.75rem var(--ui); color: var(--ink); white-space: nowrap; padding: 0 .2rem;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html:not(.climb)[data-theme="hours"][data-room] .tabs:is(:hover, :focus-within) ul { animation: unroll .18s steps(4, end); transform-origin: top; }
+}
+@keyframes unroll { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
 [data-theme="hours"][data-room] .tabs::after { content: none; }
 [data-theme="hours"][data-room] .tabs::before {
   content: ""; position: absolute; bottom: 100%; left: 12%; right: 12%; height: 1.4rem;
@@ -842,7 +853,7 @@ dialog.dungeon canvas {
 .leave { display: none; }
 [data-theme="hours"][data-room] .leave {
   display: block; position: fixed; z-index: 4;
-  top: calc(var(--msg-h) + 1.25rem + var(--tabs-h, 5rem) + .6rem); right: 1.5rem;
+  top: calc(var(--msg-h) + 1.25rem + 2.6rem + .6rem); right: 1.5rem; /* (under the rolled-up menu; unrolled, it goes over this) */
   font: .85rem/1 var(--ui); color: #f4ecd8; background: #3a2818; cursor: pointer;
   border: var(--upx, 2px) solid #16121c; padding: .35rem .6rem;
 }
