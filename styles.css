@@ -449,7 +449,8 @@ kbd { font-family: var(--ui); color: var(--hi); border: 1px solid var(--rule); p
 .cmdline[hidden] { display: none; }
 .cmd-out { margin: 0; color: var(--ink); max-height: 9em; overflow-y: auto; }
 .cmd-out:empty { display: none; }
-.cmd-row { display: flex; align-items: center; gap: .5ch; margin: 0; }
+.cmd-row { position: relative; display: flex; align-items: center; gap: .5ch; margin: 0; }
+.cmd-ghost { position: absolute; top: 50%; translate: 0 -50%; color: var(--dim); opacity: .7; pointer-events: none; white-space: pre; }
 .cmd-row label { color: var(--accent); }
 .cmd-row input {
   flex: 1; min-width: 0;
@@ -1485,3 +1486,17 @@ canvas.spiral { position: fixed; z-index: 3; image-rendering: pixelated; pointer
   color: #f4ecd8; background: #6a4028; border: 2px solid #2a1d14; box-shadow: inset 0 2px 0 #8a5a3a, inset 0 -2px 0 #462a1a; }
 .signpost::before { content: "\2192\00a0"; color: #f6d77a; }
 .signpost::after { content: ""; position: absolute; left: .7rem; top: 100%; width: 4px; height: .9rem; background: #462a1a; border: 2px solid #2a1d14; border-top: 0; }
+
+/* the terminal on light paper (`paper`, kept on this device): the same layout, ink on paper, the engraving printed */
+[data-theme="dark"][data-paper] {
+  --bg: #f4efe3; --panel: #faf6ec; --rule: #b7a988; --ink: #2b2620; --hi: #110f0b; --accent: #8a4a10;
+  --dim: #655a46; --red: #9c2a1c; --green: #3b6629; --bar: #e9e2d1; color-scheme: light;
+}
+[data-theme="dark"][data-paper] .plate-img { filter: invert(1) sepia(.35); }
+.history { margin: 0; padding-left: 2.5ch; }
+.glance.shown { display: grid !important; margin: .4rem 0 0; }
+
+/* fig. 0's twinkling stars (script.js twinkle): the terminal's engraving only, over it in the figure */
+canvas.twinkle { display: none; position: absolute; z-index: 1; pointer-events: none; }
+[data-theme="dark"]:not(.banner) canvas.twinkle { display: block; }
+[data-theme="dark"][data-paper] canvas.twinkle { filter: invert(1) sepia(.35); }

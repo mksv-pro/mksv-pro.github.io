@@ -79,6 +79,11 @@ CASES = {
                    "document.documentElement.classList.contains('gated') && getComputedStyle(document.querySelector('[data-gate=tour]')).display === 'none'"),
     "maproom": ("?theme=hours&sky=noon&weather=clear#maproom", (1920, 1080), "await wait(3500);",
                 "document.documentElement.dataset.room === 'maproom' && document.querySelectorAll('.spot').length >= 6 && getComputedStyle(document.querySelector('main')).clipPath !== 'none'"),
+    "terminal-tools": ("?theme=dark", (1600, 900), "await wait(1200); document.body.dispatchEvent(new KeyboardEvent('keydown', { key: ':', bubbles: true })); await wait(200);"
+                       " const i = document.getElementById('cmd-in'); i.value = 'who'; i.dispatchEvent(new Event('input')); await wait(150); window.gh = document.querySelector('.cmd-ghost').textContent;"
+                       " i.value = 'whoami'; i.form.requestSubmit(); await wait(250); window.who = !!document.querySelector('#cmd-out .glance');"
+                       " i.value = 'paper'; i.form.requestSubmit(); await wait(250); window.pa = document.documentElement.hasAttribute('data-paper'); localStorage.removeItem('paper'); localStorage.removeItem('cmd-history');",
+                       "window.gh === 'ami' && window.who && window.pa && !!document.querySelector('.plate canvas.twinkle')"),
     "gate-deeplink": ("#research", (1920, 1080), "await wait(800);", "!document.documentElement.classList.contains('gated')"),
     "phone-banner": ("?theme=dark&sky=noon&weather=clear", (390, 844), "", "document.documentElement.classList.contains('banner') && " + CANVAS),
     "narrow-window": ("?sky=noon&weather=clear", (1100, 800), "",  # (a computer: the terminal, the landscape over the engraving)

@@ -39,6 +39,7 @@
       var touch = matchMedia('(pointer: coarse)').matches || /[?&]touch=1/.test(q);
       t = (/[?&]theme=(\w+)/.exec(q) || [])[1] === 'dark' || framed || (!wide && (!touch || e === 'engine')) ? 'dark' : 'hours';
       if (framed) r.classList.add('framed');
+      try { if (localStorage.getItem('paper')) r.setAttribute('data-paper', ''); } catch (x) {} // the terminal on paper (cmdline: paper)
       var g = null; try { g = localStorage.getItem('gate'); } catch (x) {}
       if ((wide || touch) && !framed && (!q || q === '?touch=1') && !location.hash && !g) r.classList.add('gated'); // a bare visit: the front gate asks how (gate.js), unless told to remember
       if (t === 'hours' && !wide) r.classList.add('climb');

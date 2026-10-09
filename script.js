@@ -136,6 +136,8 @@ const T = {
   <div><dt>engine</dt><dd>the terminal, and back</dd></div>
   <div><dt>gate</dt><dd>the front page asks again</dd></div>
   <div><dt>search &lt;words&gt; &middot; /</dt><dd>what in the site holds them</dd></div>
+  <div><dt>whoami &middot; history</dt><dd>the site in brief &middot; your commands</dd></div>
+  <div><dt>paper</dt><dd>the terminal on light paper</dd></div>
 </dl></section>
 <section><h3>Music</h3>
 <dl class="keys">
@@ -592,6 +594,49 @@ const isIndex = tabLinks.length > 0;
 function currentWindow() {
   return windows.find((w) => !w.classList.contains('is-off')) || windows[0];
 }
+
+/* fig. 0's stars twinkle (the terminal): the engraving's stars found once, blots of one ink in its upper
+   part (4-connected pixels, 5 to 15 wide, about as wide as high, filling a third to two thirds of their box); fifteen of them brightened in turn, each
+   at its own pace, more by night over Paris. Drawn over the picture as CSS cover places it. */
+function twinkle() {
+  const pic = document.querySelector('.plate-img'); if (!pic || reduceMotion) return;
+  const img = new Image(); img.src = new URL('assets/img/flammarion-dark.png', SITE).href;
+  img.onload = () => {
+    const w = img.width; const h = img.height; const c0 = document.createElement('canvas'); c0.width = w; c0.height = h;
+    const g0 = c0.getContext('2d'); g0.drawImage(img, 0, 0); const d = g0.getImageData(0, 0, w, h).data;
+    const seen = new Uint8Array(w * h); const blots = []; const light = (k) => d[k * 4] >= 128;
+    for (let y0 = 0; y0 < h * 0.6; y0 += 1) for (let x0 = 0; x0 < w; x0 += 1) { // (a star is a small blot of either ink: dark in the light band, light on the night)
+      const i0 = y0 * w + x0; if (seen[i0]) continue;
+      const on = light(i0); const px = []; const stack = [i0]; seen[i0] = 1;
+      while (stack.length) { const i = stack.pop(); if (px.length < 200) px.push(i); const x = i % w; const y = (i - x) / w;
+        [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => { const X = x + dx; const Y = y + dy; const k = Y * w + X; if (X >= 0 && X < w && Y >= 0 && Y < h && !seen[k] && light(k) === on) { seen[k] = 1; stack.push(k); } }); }
+      if (px.length < 8 || px.length >= 200) continue;
+      const xs = px.map((i) => i % w); const ys = px.map((i) => Math.floor(i / w)); const bw = Math.max(...xs) - Math.min(...xs); const bh = Math.max(...ys) - Math.min(...ys);
+      const fill = px.length / ((bw + 1) * (bh + 1)); // (a star fills a third to two thirds of its box; a hatch stroke, less)
+      if (bw >= 5 && bh >= 5 && bw < 16 && bh < 16 && bw / bh > 0.7 && bw / bh < 1.4 && fill > 0.35 && fill < 0.75 && Math.min(...xs) > w * 0.33) blots.push(px); // (the left third is the wheel and the clouds)
+    }
+    const stars = blots.sort(() => Math.random() - 0.5).slice(0, 15).map((px) => ({ px, ph: Math.random() * 6.28, sp: 0.6 + Math.random() * 1.2 }));
+    const cv = document.createElement('canvas'); cv.className = 'twinkle'; cv.setAttribute('aria-hidden', 'true'); pic.after(cv); const g = cv.getContext('2d'); // (beside the picture, not in it: its canvases are the castle's)
+    let last = 0;
+    const draw = (now) => {
+      requestAnimationFrame(draw);
+      if (now - last < 120 || root.getAttribute('data-theme') !== 'dark' || document.hidden) return; last = now;
+      const dpr = devicePixelRatio || 1; const W = pic.clientWidth; const H = pic.clientHeight;
+      if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+      Object.assign(cv.style, { left: `${pic.offsetLeft}px`, top: `${pic.offsetTop}px`, width: `${W}px`, height: `${H}px` }); // (over the picture, in the sticky figure)
+      const s = Math.max(W / w, H / h) * dpr; const ox = (W * dpr - w * s) / 2; const oy = H * dpr - h * s; // (background: center bottom / cover)
+      const amp = root.dataset.sky === 'night' ? 1 : 0.5; const t = now / 1000; const all = /[?&]twinkle=all/.test(location.search); // (?twinkle=all, a check: every star lit)
+      g.clearRect(0, 0, cv.width, cv.height);
+      stars.forEach((st) => {
+        const a = all ? 1 : amp * Math.max(0, Math.sin(t * st.sp + st.ph)) ** 6; if (a < 0.03) return;
+        g.fillStyle = all ? 'rgb(255, 40, 40)' : `rgba(255, 246, 214, ${a.toFixed(2)})`;
+        st.px.forEach((i) => g.fillRect(Math.floor(ox + (i % w) * s), Math.floor(oy + Math.floor(i / w) * s), Math.ceil(s), Math.ceil(s)));
+      });
+    };
+    requestAnimationFrame(draw);
+  };
+}
+twinkle();
 
 /** Down the spiral stair to the cellar: seen from above, its steps turning round the newel as we go
  *  down, darker at each turn; low resolution like the castle, over the picture. `then` (the room)

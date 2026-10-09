@@ -6,8 +6,8 @@ const cmdForm = $('cmdline');
 const cmdIn = $('cmd-in');
 const cmdOut = $('cmd-out');
 const cmdToggle = $('cmd-toggle');
-const cmdHistory = [];
-let histAt = 0;
+const cmdHistory = (() => { try { return JSON.parse(store('cmd-history') || '[]').slice(-50); } catch { return []; } })(); // (kept on this device: the last fifty)
+let histAt = cmdHistory.length;
 
 function cmdOpen() { return !cmdForm.hidden; }
 
@@ -21,7 +21,7 @@ function closeCmd() {
   cmdForm.hidden = true;
   cmdToggle.setAttribute('aria-expanded', 'false');
   root.classList.remove('cmd-on');
-  cmdIn.value = '';
+  cmdIn.value = ''; ghost.textContent = '';
   cmdToggle.focus();
 }
 cmdToggle.addEventListener('click', () => (cmdOpen() ? closeCmd() : openCmd()));
@@ -185,6 +185,18 @@ function run(line) {
     case 'descend': case '>': case 'down':
       closeCmd();
       return descend();
+    case 'whoami': { // the site in twenty seconds (the header's glance)
+      const g = document.querySelector('.glance');
+      return print(`<p><b>${esc(DATA.name || document.querySelector('.name').textContent)}</b>, ${esc(document.querySelector('.role').textContent.replace(/\s+/g, ' ').trim())}</p>${g ? g.outerHTML.replace('class="glance"', 'class="glance shown"') : ''}`);
+    }
+    case 'history':
+      if (arg === 'clear') { cmdHistory.length = 0; histAt = 0; store('cmd-history', null); return print('History cleared.'); }
+      return print(cmdHistory.length ? `<ol class="history">${cmdHistory.slice(-15).map((l) => `<li>${esc(l)}</li>`).join('')}</ol><p class="dim">history clear forgets them</p>` : 'No commands yet.');
+    case 'paper': { // the terminal on light paper, and back (kept on this device)
+      const on = arg === 'off' ? false : arg === 'on' ? true : !root.hasAttribute('data-paper');
+      root.toggleAttribute('data-paper', on); store('paper', on ? '1' : null);
+      return print(on ? 'The terminal on paper (paper off to go back).' : 'The terminal in the dark again.');
+    }
     case 'search': case 'find': case 'grep':
       return search(args);
     case 'gate': // the front gate asks again on the next bare visit (after "remember my choice")
@@ -280,7 +292,7 @@ function run(line) {
 cmdForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const line = cmdIn.value;
-  if (line.trim()) cmdHistory.push(line);
+  if (line.trim() && line !== cmdHistory.at(-1)) { cmdHistory.push(line); store('cmd-history', JSON.stringify(cmdHistory.slice(-50))); }
   histAt = cmdHistory.length;
   cmdIn.value = '';
   run(line);
@@ -288,7 +300,7 @@ cmdForm.addEventListener('submit', (e) => {
 /* Tab completes the word under the cursor: a command or a room first, then what that command
    takes; one match is completed, several are completed to their common start and listed. */
 const COMMANDS = ['help', 'look', 'ls', 'map', 'cd', 'take', 'inventory', 'use', 'rumour', 'descend',
-  'cv', 'mail', 'github', 'theme', 'sky', 'weather', 'event', 'photo', 'tour', 'tower', 'village', 'banner', 'music', 'volume', 'keys', 'quit', 'clear', 'go', 'gate', 'search'];
+  'cv', 'mail', 'github', 'theme', 'sky', 'weather', 'event', 'photo', 'tour', 'tower', 'village', 'banner', 'music', 'volume', 'keys', 'quit', 'clear', 'go', 'gate', 'search', 'whoami', 'history', 'paper'];
 const roomWords = () => ROOM_IDS.map((id) => WORLD[id].label.toLowerCase());
 const ARGS = {
   cd: roomWords, open: roomWords, go: () => ['north', 'south', 'east', 'west'], walk: () => ['north', 'south', 'east', 'west'],
@@ -313,6 +325,21 @@ function complete() {
   print(hits.length > 1 ? hits.map(esc).join('  ') : '');
 }
 
+/* the completion shown in grey as one types (what Tab would add), accepted by Tab or the right arrow at the end */
+const ghost = document.createElement('span'); ghost.className = 'cmd-ghost'; ghost.setAttribute('aria-hidden', 'true'); cmdIn.after(ghost);
+function ghostOf() {
+  const line = cmdIn.value; if (!line || cmdIn.selectionStart !== line.length) return '';
+  const words = line.toLowerCase().split(/\s+/); const word = words.pop(); if (!word) return '';
+  const pool = words.length ? (ARGS[words[0]] || (() => []))() : [...COMMANDS, ...roomWords()];
+  const hits = [...new Set(pool)].filter((w) => w.startsWith(word));
+  return hits.length === 1 ? hits[0].slice(word.length) : '';
+}
+const showGhost = () => { ghost.textContent = ghostOf(); ghost.style.left = `calc(${cmdIn.offsetLeft}px + ${cmdIn.value.length}ch)`; };
+cmdIn.addEventListener('input', showGhost);
+cmdIn.addEventListener('keydown', (e) => {
+  if (e.key === 'ArrowRight' && ghost.textContent && cmdIn.selectionStart === cmdIn.value.length) { e.preventDefault(); cmdIn.value += ghost.textContent; showGhost(); }
+});
+cmdIn.addEventListener('keyup', (e) => { if (e.key === 'Tab' || e.key.startsWith('Arrow')) showGhost(); });
 cmdIn.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { e.preventDefault(); closeCmd(); return; }
   if (e.key === 'Tab' && !e.shiftKey && cmdIn.value.trim()) { e.preventDefault(); complete(); return; }
