@@ -1535,3 +1535,18 @@ canvas.twinkle { display: none; position: absolute; z-index: 1; pointer-events: 
 [data-theme="hours"] .chronicle { font: italic 1.05rem/1.4 "EB Garamond", Georgia, serif; color: #2a1c10; background: #f4ecd8; border: 2px solid var(--gold, #b08a3a); }
 [data-theme="hours"] .chronicle time { font-style: normal; color: #8a2c1c; }
 .msg-text { cursor: pointer; }
+
+/* the status line's counts lead to their rooms; Rooms opens the plan */
+.st-go { color: inherit; text-decoration: none; }
+.st-go:hover, .st-go:focus-visible { text-decoration: underline; }
+#st-explored { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+#st-explored:hover { text-decoration: underline; }
+.plan { display: block; width: 100%; max-width: 34rem; margin: .5rem auto; font: 13px var(--ui); }
+.plan .doors line { stroke: var(--dim); stroke-width: 2; stroke-dasharray: 3 3; }
+.plan rect { fill: var(--panel); stroke: var(--dim); stroke-width: 1.5; } /* (filled: the doors' lines run under the rooms) */
+.plan text { fill: var(--dim); text-anchor: middle; }
+.plan a.seen rect { fill: var(--accent); stroke: var(--accent); }
+.plan a.seen text { fill: var(--panel); }
+.plan a text { text-decoration: none; }
+.plan a.here rect { stroke: var(--hi); stroke-width: 3; }
+.plan a:hover rect, .plan a:focus rect { stroke: var(--hi); stroke-width: 3; }

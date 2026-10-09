@@ -180,7 +180,7 @@ def tabs():
 def stats():
     counts = (("Quests", "Quests", "experience", "Positions held"), ("Pubs", "Tomes", "publications", "Publications"),
               ("Talks", "Orations", "talks", "Talks given"))  # (terminal, castle, section, said plainly)
-    return "\n".join(f'      <span title="{plain}"><i class="lbl" data-castle="{castle}">{label}</i>:<b>{len(DATA[k])}</b></span>'
+    return "\n".join(f'      <a class="st-go" href="{{{{hash}}}}#{k}" title="{plain}: go there"><i class="lbl" data-castle="{castle}">{label}</i>:<b>{len(DATA[k])}</b></a>'
                       for label, castle, k, plain in counts if DATA[k])
 
 

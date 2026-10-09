@@ -62,6 +62,8 @@ const T = {
   realmTitle: 'The realm',
   realmLabel: 'A pixel map of Paris: the Seine, and a pennant where each of the schools stands.',
   leave: '[leave the room \u00b7 Esc]',
+  planTitle: 'The plan of the castle',
+  planNote: (k, n) => `${k} of ${n} rooms walked this visit (inked); click one to go there.`,
   skyAt: (hm) => `The sky over Paris at ${hm}: let go, and it goes back to now.`,
   narrowTheme: 'The castle needs a wider window: hours opens on screens from 1200 px.',
   notebook: 'The notebook on the desk',
@@ -596,6 +598,20 @@ let here = null; // the room the reader stands in
 const seenBefore = (() => { try { return JSON.parse(store('roomSeen') || '{}'); } catch { return {}; } })();
 /** Days since room `id` was last entered before this visit; Infinity if never. */
 const staleness = (id) => (seenBefore[id] ? (Date.now() - seenBefore[id]) / 864e5 : Infinity);
+
+/** The plan of the castle (the status line's Rooms): its rooms on their grid, the doors between them,
+ *  those visited inked, the others in outline; a room clicked, there. */
+function showPlan() {
+  const v = visited(); const ids = ROOM_IDS.filter((id) => WORLD[id].c !== undefined);
+  const C = Math.max(...ids.map((id) => WORLD[id].c)) + 1; const R = Math.max(...ids.map((id) => WORLD[id].r)) + 1;
+  const cw = 120; const ch = 54; const g = 26; const at = (id) => [12 + WORLD[id].c * (cw + g), 12 + WORLD[id].r * (ch + g)];
+  const doors = LINKS.filter(([a, b]) => WORLD[a] && WORLD[b]).map(([a, b]) => { const [x1, y1] = at(a); const [x2, y2] = at(b); return `<line x1="${x1 + cw / 2}" y1="${y1 + ch / 2}" x2="${x2 + cw / 2}" y2="${y2 + ch / 2}"/>`; }).join('');
+  const rooms = ids.map((id) => { const [x, y] = at(id); const seen = v.includes(id);
+    return `<a href="#${id}" class="${seen ? 'seen' : ''}${id === here ? ' here' : ''}"><rect x="${x}" y="${y}" width="${cw}" height="${ch}"/><text x="${x + cw / 2}" y="${y + ch / 2 + 5}">${esc(WORLD[id].name)}</text></a>`; }).join('');
+  showDialog(T.planTitle, `<svg class="plan" viewBox="0 0 ${24 + C * cw + (C - 1) * g} ${24 + R * ch + (R - 1) * g}" role="img" aria-label="${T.planTitle}"><g class="doors">${doors}</g>${rooms}</svg><p class="dim">${T.planNote(v.length, ids.length)}</p>`);
+  dialog.querySelectorAll('.plan a').forEach((a) => a.addEventListener('click', () => dialog.close()));
+}
+explored.addEventListener('click', showPlan);
 
 /** The reader enters room `id`; `quiet` keeps the message line as it is (first paint). */
 function enterRoom(id, quiet = false) {
