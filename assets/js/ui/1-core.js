@@ -78,6 +78,8 @@ const T = {
   unpin: '[take it down]',
   pinnedUp: (l) => `You pin it to the wall: ${l}.`,
   takenDown: (l) => `You take it down: ${l}.`,
+  breakSeal: 'Break the seal and read the letter',
+  breakHint: 'Drag the seal away to break it (or press Enter).',
   planTitle: 'The plan of the castle',
   planNote: (k, n) => `${k} of ${n} rooms walked this visit (inked); click one to go there.`,
   skyAt: (hm) => `The sky over Paris at ${hm}: let go, and it goes back to now.`,

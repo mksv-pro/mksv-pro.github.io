@@ -1502,3 +1502,20 @@ canvas.twinkle { display: none; position: absolute; z-index: 1; pointer-events: 
 .swatches figure { margin: 0; }
 .swatches canvas { display: block; width: 96px; height: 64px; image-rendering: pixelated; border: 1px solid var(--rule); }
 .swatches figcaption { font-size: .75rem; }
+
+/* a letter not yet read, folded under its seal (ui/6-cards.js: sealUp) */
+.sealed { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; align-content: center; gap: .8rem; padding: 2rem;
+  background: repeating-linear-gradient(135deg, transparent 0 48%, rgb(120 90 50 / .18) 48% 52%, transparent 52% 100%), #efe2c2; text-align: center; }
+.sealed-to { margin: 0; font: italic 1.1rem "EB Garamond", Georgia, serif; color: #3a2414; }
+.seal-btn { position: relative; width: 3.4rem; height: 3.4rem; border: 0; border-radius: 50%; cursor: grab; touch-action: none;
+  background: radial-gradient(circle at 38% 35%, #d8543e, #9c2219 60%, #6a140e); box-shadow: 0 2px 0 #4a0e08, inset 0 0 0 4px rgb(0 0 0 / .12); }
+.seal-btn::after { content: "MS"; position: absolute; inset: 0; display: grid; place-items: center; font: 600 1rem "EB Garamond", Georgia, serif; color: rgb(255 220 200 / .55); }
+.sealed.broken .seal-btn { background: none; box-shadow: none; }
+.sealed.broken .seal-btn::after { content: none; }
+.sealed.broken { animation: unseal .6s ease-in forwards; }
+@keyframes unseal { 60% { opacity: 1; } to { opacity: 0; clip-path: inset(0 0 100% 0); } }
+.wax-bit { position: absolute; left: 45%; top: 45%; width: .55rem; height: .45rem; background: #9c2219; border-radius: 30%; animation: wax-fall .6s ease-in forwards; }
+@keyframes wax-fall { to { transform: translate(var(--dx), var(--dy)) rotate(200deg); opacity: 0; } }
+.sealed-hint { margin: 0; font-size: .8rem; }
+@media (prefers-reduced-motion: reduce) { .sealed.broken, .wax-bit { animation: none; } }
+[data-theme="hours"] .card-close { z-index: 3; } /* (over a sealed letter too) */

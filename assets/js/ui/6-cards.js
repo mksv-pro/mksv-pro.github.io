@@ -157,6 +157,7 @@ function openCard(i, from) {
   card.querySelectorAll(':scope > .deco').forEach((d) => d.remove());
   const deco = { letter: ['wax'], charter: ['hang-seal'], hanging: ['hang-seal'], scroll: ['roll at-top', 'roll at-bottom'] }[it.kind] || [];
   deco.forEach((c) => card.insertAdjacentHTML('beforeend', `<span class="deco ${c}" aria-hidden="true"></span>`));
+  if (it.kind === 'letter' && !brokenSeals().includes(it.label) && root.getAttribute('data-theme') === 'hours') sealUp(it.label); // (a letter not yet read: its seal to break)
   cue(it.kind === 'letter' ? 'seal' : it.kind === 'letterbox' ? 'drop' : 'card'); // (the letterbox: a letter falling inside the door)
   const runFigs = () => card.querySelectorAll('.pub-fig canvas').forEach((cv) => { if (!cv.running) { cv.running = true; collisionFig(cv); } }); // (a property: the pages are clones)
   runFigs(); setTimeout(runFigs, 400); setTimeout(runFigs, 1500); // (and again once a book has been paginated)
@@ -166,7 +167,7 @@ function openCard(i, from) {
     tick();
   });
   if (book) { // pages are measured, so the card is shown first; again once its fonts have loaded
-    bind(body); turn(0);
+    bind(body); turn(0); turn(bookmarks()[root.dataset.room]?.[it.label] || 0); // (open where it was left: its bookmark)
     const src = card.bookSrc;
     document.fonts.ready.then(() => {
       if (card.hidden || card.bookSrc !== src) return;
@@ -191,6 +192,31 @@ function openCard(i, from) {
   unfold(from, true);
   card.querySelector('.card-close').focus();
 }
+/* A letter not yet read comes folded under its seal: drag the seal away (or press it: Enter, Space)
+   and it breaks, its pieces fall, the letter opens; it stays open on later visits. */
+function brokenSeals() { try { return JSON.parse(localStorage.getItem('broken-seals')) || []; } catch { return []; } }
+function sealUp(label) {
+  const cover = document.createElement('div'); cover.className = 'sealed';
+  cover.innerHTML = `<p class="sealed-to">${esc(label)}</p><button type="button" class="seal-btn" aria-label="${T.breakSeal}"></button><p class="dim sealed-hint">${T.breakHint}</p>`;
+  card.append(cover);
+  const btn = cover.querySelector('.seal-btn'); let x0 = null; let y0 = 0;
+  const brk = () => {
+    if (cover.classList.contains('broken')) return; cover.classList.add('broken'); cue('seal');
+    try { localStorage.setItem('broken-seals', JSON.stringify([...new Set([...brokenSeals(), label])])); } catch { /* (no storage: sealed again next time) */ }
+    for (let k = 0; k < 6; k += 1) { // the wax in pieces, falling
+      const p = document.createElement('span'); p.className = 'wax-bit'; const a = (k / 6) * 6.28;
+      p.style.setProperty('--dx', `${Math.round(Math.cos(a) * 40)}px`); p.style.setProperty('--dy', `${Math.round(60 + Math.sin(a) * 20)}px`); btn.append(p);
+    }
+    setTimeout(() => { cover.remove(); card.querySelector('.card-close').focus(); }, reduceMotion ? 0 : 650);
+  };
+  btn.addEventListener('pointerdown', (e) => { x0 = e.clientX; y0 = e.clientY; try { btn.setPointerCapture(e.pointerId); } catch { /* (a pointer the browser no longer knows) */ } });
+  btn.addEventListener('pointermove', (e) => { if (x0 === null) return; const d = Math.hypot(e.clientX - x0, e.clientY - y0); btn.style.transform = `translate(${e.clientX - x0}px, ${e.clientY - y0}px)`; if (d > 34) { x0 = null; brk(); } });
+  btn.addEventListener('pointerup', () => { if (x0 !== null) { x0 = null; btn.style.transform = ''; } });
+  btn.addEventListener('click', (e) => { if (e.detail === 0) brk(); }); // (the keyboard: Enter or Space)
+  setTimeout(() => btn.focus(), 50);
+}
+/** The books left open at a page, room by room: { room: { label: spread } }, from localStorage. */
+function bookmarks() { try { return JSON.parse(localStorage.getItem('bookmarks')) || {}; } catch { return {}; } }
 /** What the visitor has looked at, room by room (labels), from localStorage. */
 function lookedAt() { try { return JSON.parse(localStorage.getItem('looked-at')) || {}; } catch { return {}; } }
 /** The card comes out of its thing and goes back into it: from the thing's box to the card's, each
@@ -224,6 +250,11 @@ function closeCard(refocus = true) {
   if (card.hidden || card.closing) return;
   cue('close');
   const from = cardFrom; card.closing = true;
+  if (card.classList.contains('as-book')) { // a book closed on a page past the first keeps a ribbon there
+    const all = bookmarks(); const id = root.dataset.room; const label = card.getAttribute('aria-label'); all[id] ||= {};
+    if (card.bookAt > 0) all[id][label] = card.bookAt; else delete all[id][label];
+    try { localStorage.setItem('bookmarks', JSON.stringify(all)); } catch { /* (no storage: no ribbon) */ }
+  }
   const done = () => { card.closing = false; card.hidden = true; if (window.Hours && window.Hours.opened) window.Hours.opened(-1); };
   if (refocus && from && from.isConnected) unfold(from, false, done); else done();
   if (refocus && from) from.focus();

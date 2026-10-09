@@ -5683,6 +5683,15 @@ qqqqqTqqq
         for (let x = g.x - 1; x <= g.x + g.w; x += 1) { blend(x, g.y - 1, [255, 228, 150], a * 0.18); blend(x, g.y + g.h, [255, 228, 150], a * 0.18); } // (and the thing's edge, a moment)
       }
     }
+    if (revealing) interior.slots.forEach((g, k) => { // Shift held: every thing that can be looked at, outlined at once, a ripple going round
+      if (!g || k === hl) return; const a = 0.55 + (reduce ? 0 : 0.3 * Math.sin(t * 5 - k));
+      for (let x = g.x - 1; x <= g.x + g.w; x += 1) { blend(x, g.y - 1, [255, 236, 170], a); blend(x, g.y + g.h, [255, 236, 170], a); }
+      for (let y = g.y; y < g.y + g.h; y += 1) { blend(g.x - 1, y, [255, 236, 170], a); blend(g.x + g.w, y, [255, 236, 170], a); }
+    });
+    (marksOf(interior.id) || []).forEach((label) => { // a bookmark's ribbon hanging out of a book left open at a page
+      const k = interior.things.findIndex((q) => q.label === label); const g = k >= 0 && interior.slots[k]; if (!g) return;
+      const rx = g.x + g.w - 3; for (let y = 0; y < 4; y += 1) put(rx + (y > 2 ? 1 : 0), g.y + g.h - 1 + y, ipal32[I.CLOTH]);
+    });
     const sl = hl >= 0 && interior.slots[hl];
     if (sl) { // the thing pointed at: a pulsing outline just outside it
       const a = 0.45 + (reduce ? 0 : 0.25 * Math.sin(t * 6));
@@ -6412,7 +6421,7 @@ qqqqqTqqq
   /* The wizard as a guide: twenty seconds without a move in a room, he stands in a doorway, points his
      staff and a trail of sparks goes from its orb to a thing not yet looked at, which glints; once a visit of the room. */
   const session0 = (k, v) => { try { if (v === undefined) return sessionStorage.getItem(k); sessionStorage.setItem(k, v); } catch { /* (no storage: every load) */ } return null; };
-  let pinsOf = () => [];
+  let pinsOf = () => []; let marksOf = () => []; let revealing = false; // (bookmarks left in books: script; Shift held)
   let scrubTo = () => {}; let scrubbed = false; // (the hour dragged by the sun: assets/js/ui)
   let lastAct = 0; let freshOf = () => []; let guide = null; let guided = false; let roomT0 = 0;
   function drawGuide(t, put, blend) {
@@ -6901,7 +6910,7 @@ qqqqqTqqq
       if (canvas) return;
       plate = o.plate; skyFn = o.sky; reduce = o.reduceMotion; clockFn = o.clock || clockFn;
       heraldry = o.heraldry || heraldry; say = o.say || say; rumour = o.rumour || rumour;
-      freshOf = o.fresh || freshOf; scrubTo = o.scrub || scrubTo; pinsOf = o.pins || pinsOf; ['pointermove', 'keydown', 'pointerdown', 'wheel'].forEach((ev) => addEventListener(ev, () => { lastAct = now(); }, { passive: true }));
+      freshOf = o.fresh || freshOf; scrubTo = o.scrub || scrubTo; pinsOf = o.pins || pinsOf; marksOf = o.marks || marksOf; ['pointermove', 'keydown', 'pointerdown', 'wheel'].forEach((ev) => addEventListener(ev, () => { lastAct = now(); }, { passive: true }));
       itemsOf = o.items || itemsOf; found = o.found || found; curiosOf = o.curios || curiosOf; nowOf = o.now || nowOf; visitsOf = o.visits || visitsOf;
       newsOf = o.news || newsOf; dreamsOf = o.dreams || dreamsOf; tradeWith = o.trade || tradeWith; stalenessOf = o.staleness || stalenessOf; billiardShow = o.billiard || billiardShow; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo; cellarTo = o.cellar || cellarTo; mapsTo = o.maps || mapsTo; goTo = o.go || goTo; doorsOf = o.doors || doorsOf;
       pendingRoom = root.dataset.room || null;
@@ -7128,6 +7137,8 @@ qqqqqTqqq
       ladderF = clamp(ladderF + k * 0.08); return ladderSpot(d);
     },
     highlight(i) { hl = i; if (interior && lifted !== i) { lifted = i; reshape(); } if (!running && interior && isOn()) render(now()); },
+    /** Shift held (or let go): every thing of the room outlined. */
+    reveal(on) { if (revealing !== on) { revealing = on; if (!running && interior) render(now()); } },
     /** The room drawn again (a card pinned up or taken down). */
     refresh() { if (interior && view.id && view.state === 'room') { interior = makeInterior(view.id); lightInterior(); lifted = -1; openIx = -1; publishSpots(true); if (!running) render(now()); } },
     /** Texture `name` (textures.js) painted into canvas cv in its daylight colours. */

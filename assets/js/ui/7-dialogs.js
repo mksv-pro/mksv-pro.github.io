@@ -304,3 +304,8 @@ document.addEventListener('keydown', (e) => {
   e.preventDefault();
   (allTabs.find((a) => a.getAttribute('aria-current')) || allTabs[0]).focus();
 });
+
+/* ---- Shift held, in a room of the castle: every thing that can be looked at is outlined ---- */
+addEventListener('keydown', (e) => { if (e.key === 'Shift' && !e.repeat && window.Hours && window.Hours.reveal && root.classList.contains('room-ready')) window.Hours.reveal(true); });
+addEventListener('keyup', (e) => { if (e.key === 'Shift' && window.Hours && window.Hours.reveal) window.Hours.reveal(false); });
+addEventListener('blur', () => { if (window.Hours && window.Hours.reveal) window.Hours.reveal(false); });
