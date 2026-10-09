@@ -67,6 +67,23 @@ CASES = {
                       "if (window !== top) await new Promise(() => {}); enterEngine(); await wait(5000); closeEngine(); await wait(250);"
                       " openEngine(document.querySelector('.spot[data-kind=engine]')); await wait(2500);",
                       "document.querySelectorAll('.engine').length === 1 && !!document.querySelector('.engine-win iframe') && /scale/.test(document.querySelector('.plate-img').style.transform)"),
+    "room-slide": ("?theme=hours&sky=noon&weather=clear#about", (1600, 900),  # (next door: through the wall, not a dissolve)
+                   "await wait(3000); location.hash = '#work'; await wait(150); window.mid = document.documentElement.classList.contains('travelling'); await wait(1500);",
+                   "window.mid && document.documentElement.dataset.room === 'work' && document.documentElement.classList.contains('room-ready')"),
+    "card-pin": ("?theme=hours&sky=noon&weather=clear#experience", (1600, 900),  # (pinned up, found on the wall, taken down)
+                 "await wait(3000); localStorage.removeItem('pins'); document.querySelector('.spot[data-kind=scroll]').click(); await wait(600);"
+                 " document.querySelector('.card-pin').click(); await wait(800); const b = [...document.querySelectorAll('.spot')].find((x) => /^Pinned/.test(x.dataset.label));"
+                 " window.up = !!b; b.click(); await wait(600); document.querySelector('.card-pin').click(); await wait(800);"
+                 " window.down = ![...document.querySelectorAll('.spot')].some((x) => /^Pinned/.test(x.dataset.label)); localStorage.removeItem('pins');",
+                 "window.up && window.down"),
+    "plan-chronicle": ("?theme=hours&sky=noon&weather=clear#work", (1600, 900),  # (the status line's plan; the message line's chronicle)
+                       "await wait(2500); document.getElementById('st-explored').click(); await wait(300); window.plan = !!document.querySelector('dialog[open] .plan a.here');"
+                       " document.querySelector('dialog[open]').close(); say('One.'); await wait(100); document.querySelector('.msg-text').click(); await wait(200);",
+                       "window.plan && /One\\./.test(document.querySelector('.chronicle').textContent)"),
+    "engine-walk": ("?theme=hours&sky=noon&weather=clear", (1600, 900),  # (cd in the terminal walks the castle behind; look lists the things)
+                    "if (window !== top) await new Promise(() => {}); enterEngine(); await wait(5000); const f = document.querySelector('.engine-win iframe').contentWindow;"
+                    " f.openCmd(); f.run('cd work'); await wait(800); f.run('look'); await wait(300); window.saw = /working model/.test(f.document.getElementById('cmd-out').textContent);",
+                    "window.saw && document.documentElement.dataset.room === 'work' && document.querySelectorAll('.engine-gear').length === 3"),
     "room-to-banner": ("?theme=hours&sky=noon&weather=clear#teaching", (1600, 900),  # (a room, then the window turns upright: the banner shows the landscape)
                        "await wait(2500); document.documentElement.classList.add('banner'); document.documentElement.setAttribute('data-theme', 'dark'); await wait(800);",
                        "/^Pixel-art landscape/.test(document.querySelector('.plate-img').getAttribute('aria-label')) && " + CANVAS),
