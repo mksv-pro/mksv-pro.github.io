@@ -464,36 +464,45 @@ qqqqqTTqqTqq..
 ..qq.qq..qq.qT.
 ............TqT`,
   };
-  // who lives in each room: one standing figure (~26 px, the scale of the schoolmaster without his hat),
-  // its clothes by letter: H the head's covering, B the body, A the arms (sleeves), L the legs, X an
-  // emblem; f skin, e beard (MATS); a raven on the falconer's fist
+  // who lives in each room: one standing figure, an adult at the rooms' scale (28 px, five heads;
+  // a table's top at his hip), its clothes by letter: H the head's covering, B the body, A the arms
+  // (sleeves), L the legs, X an emblem; f skin, e beard (MATS), k the belt; a raven on the falconer's fist
   const PERSON = `
-...HHH....
-..HHHHH...
-..HffffH..
-..ffkfk...
-...ffff...
-...eeee...
-..BBBBBB..
-.BBBBBBBB.
-AABBBBBBAA
-AABBXBBBAA
-ff.BBBB.ff
-...BBBB...
-...BBBB...
-..BBBBBB..
-..BBBBBB..
-..BBBBBB..
-..BBBBBB..
-..LL..LL..
-..LL..LL..
-..LL..LL..
-..hh..hh..`;
+....HHHH....
+...HHHHHH...
+..HHHHHHHH..
+...ffffff...
+...fkffkf...
+...ffffff...
+...eeffee...
+....eeee....
+...BBBBBB...
+..BBBBBBBB..
+.ABBBBBBBBA.
+.ABBBBBBBBA.
+.ABBBXXBBBA.
+.ABBBXXBBBA.
+.ABBBBBBBBA.
+.ABBBBBBBBA.
+.ffkkkkkkff.
+...BBBBBB...
+...BBBBBB...
+..BBBBBBBB..
+..BBBBBBBB..
+..BBBBBBBB..
+...LL..LL...
+...LL..LL...
+...LL..LL...
+...LL..LL...
+...LL..LL...
+..hhh..hhh..`;
   const DWELLERS = { // [H, B, A, L, X, beard?, what they say]
     research: ['u', 'u', 'u', 'd', 'g', true, ['The astronomer, without looking up: "Saturn rises at ten. Come back then."', 'The astronomer: "The labs send their reports rolled and sealed. I read them by the candle, after the stars."']],
     projects: ['h', 'h', 'f', 'd', 'a', false, ['The smith wipes his hands: "Each of those models works. Ask it, it will show you."', 'The smith: "The bucket is for quenching. Not for drinking."']],
     publications: ['p', 'p', 'p', 'h', 'g', true, ['The librarian, in a whisper: "Face out on the shelf of honour: the one book of this house so far."', 'The librarian: "The ladder slides. Mind the cat."']],
     contact: ['a', 'a', 'a', 'd', 'r', false, ['The guard: "Letters go in the slot. The register is on the table, if you would sign."', 'The guard: "No one passes after the bell. Except the cat."']],
+    talks: ['r', 'u', 'r', 'd', 'g', false, ['The herald, his staff under his arm: "Each scroll on the table is a talk given. The chairs remember who sat in them."', 'The herald: "The clock is right twice a day. The other times it is astronomical."']],
+    cellar: ['h', 'd', 'd', 'h', 'r', true, ['The cellarer, a candle in his hand: "One rack for each year. The young ones are still settling."', 'The cellarer: "Mind the steps. The drip has been there since the vault was built."']],
     news: ['d', 'v', 'v', 'h', 'g', false, ['The falconer, a raven on his fist: "They bring the news as it comes. Dated, always."', 'The falconer: "That one is Hugin. The other two never tell me their names."']],
   };
   // a piece in the foreground of each room, cut by the bottom edge: it gives the floor its depth
@@ -1004,7 +1013,9 @@ nNnnnn..
     SPRITES.wizard = shadeSprite(WIZARD);
     // the schoolmaster: not the wizard of the camp, a doctor in a red gown and a black cap, his
     // staff a plain pointer with a gilt knob
-    SPRITES.master = shadeSprite(WIZARD.replace(/[uv]/g, 'r').replace(/p/g, 'b').replace(/y/g, 'g').replace(/\*/g, 'g'));
+    // (his gown let down by six rows, rows repeated: an adult of the rooms' scale under the cap)
+    const gown = WIZARD.trim().split('\n').flatMap((r, y) => ([19, 21, 23, 24, 26, 28].includes(y) ? [r, r] : [r])).join('\n');
+    SPRITES.master = shadeSprite(gown.replace(/[uv]/g, 'r').replace(/p/g, 'b').replace(/y/g, 'g').replace(/\*/g, 'g'));
     SPRITES.masterL = flip(SPRITES.master); // (turned round, to the class)
     // the body from row 6 of the frame: the raised wing behind it, the lowered one over its belly
     const body = `${'.\n'.repeat(6)}${DRAGON_BODY.trim()}`;
@@ -2312,20 +2323,22 @@ f11111f2.
 2222222..`];
   // the copyist, a Benedictine in his black habit, seated in profile facing right, his hood down (his writing hand: deco 'copyist')
   const MONK = `
-.nnn...
-nffff..
-nfffk..
-.fff...
-.bbb...
-bbbbb..
-bbbbbb.
-bbbbbb.
-bbbbb..
-bbbbbb.
-.bbbbbb
-.bbbbbb
-.bbbbbb
-.bb.bb.`;
+..nnn...
+.nnfff..
+.nffkf..
+.nfffff.
+..fff...
+..bbb...
+.bbbbb..
+bbbbbbb.
+bbbbbbbb
+bbbbbb..
+bbbbbb..
+bbbbbbb.
+bbbbbbbb
+bbbbbbbb
+bbbbbbbb
+.bb..bb.`;
   const HAIR = ['h', 'b', 't', 'g', 'h', 'b'];
   const TUNIC = ['r', 'u', 'd', 'p', 'u', 'r'];
   const pupilCache = {};
@@ -2411,7 +2424,13 @@ bbbbbb.
       for (let x = 0; x < W; x += 1) set(x, top, I.TIMBER_HI);
     }
     const STONE = [I.ROCK_HI, I.ROCK, I.ROCK_SH, I.ROCK_DK];
-    if (kind === 'about') { plaster(0, [I.PLASTER_HI, I.PLASTER, I.PLASTER_SH]); panels(yf - 26, yf, 18, 40); } // (one row of tall plain panels: a wainscot, not a chest of drawers)
+    if (kind === 'about') {
+      plaster(0, [I.PLASTER_HI, I.PLASTER, I.PLASTER_SH]); panels(yf - 26, yf, 18, 40);
+      for (let x = 0; x < W; x += 1) { // a frieze painted under the beams: ochre bands, a red running scroll
+        set(x, 7, I.GOLD_SH); set(x, 15, I.GOLD_SH); const u = x % 12;
+        for (let y = 8; y < 15; y += 1) { const wave = Math.round(11 + 2.5 * Math.sin((x / 12) * Math.PI * 2)); if (Math.abs(y - wave) < 0.6 || (u === 3 && Math.abs(y - 10) < 1) || (u === 9 && Math.abs(y - 13) < 1)) set(x, y, I.CLOTH_SH); }
+      }
+    } // (one row of tall plain panels: a wainscot, not a chest of drawers)
     else if (kind === 'publications') panels(0, yf, 12);
     else if (kind === 'research') stones(6, 3, STONE);
     else if (kind === 'projects') { // brick, blackened by the forge towards the top
@@ -2825,14 +2844,14 @@ bbbbbb.
     const Sw = (f) => Math.round(f * (BR - BL)); // a width on it
     const box = (x, y, w, h) => ({ x: Math.round(x), y: Math.round(y), w: Math.round(w), h: Math.round(h) });
     const shadow = (xc, y, w) => { for (let x = -Math.floor(w / 2); x <= Math.floor(w / 2); x += 1) if (bayer(xc + x, y) < 0.7) set(xc + x, y, I.TIMBER_SH); };
-    function table3d(xc, yTop, w, depth = 7) { // the top a trapezoid (we look down on it), then its edge and legs
-      const half = w / 2;
+    function table3d(xc, w, depth = 7) { // the top a trapezoid (we look down on it), then its edge and legs
+      const half = w / 2; const fy = floorY(0.5); const yTop = fy - 14 - depth; // (its near edge 14 px over the floor: an adult's hip)
       for (let r = 0; r < depth; r += 1) {
         const ins = depth - 1 - r;
         for (let x = Math.round(xc - half + ins); x <= Math.round(xc + half - ins); x += 1) set(x, yTop + r, r === 0 ? I.TIMBER_HI : (x * 3 + r * 7) % 13 === 0 ? I.TIMBER_SH : I.TIMBER);
       }
       rect(xc - half, yTop + depth, w + 1, 3, I.TIMBER_SH); rect(xc - half, yTop + depth, w + 1, 1, I.TIMBER);
-      const legY = yTop + depth + 3; const fy = floorY(0.5);
+      const legY = yTop + depth + 3;
       [xc - half + depth - 1, xc + half - depth - 1].forEach((lx) => rect(lx, legY, 2, fy - legY - 4, I.OUTLINE)); // the far legs
       [xc - half + 1, xc + half - 3].forEach((lx) => { rect(lx, legY, 3, fy - legY, I.TIMBER_SH); set(lx, legY, I.TIMBER); });
       return { l: Math.round(xc - half + depth + 1), r: Math.round(xc + half - depth - 1), back: yTop + 3, front: yTop + depth };
@@ -2962,7 +2981,7 @@ bbbbbb.
       // great book of courses on its lectern, the copyist at his desk, the table under the window, the book
       // of hours on its lectern, the scrying engine alone in the corner on a stone dais; the charters above
       const ww = 20; windowArch(S(0.5) - Math.round(ww / 2), winY(38), ww, 38); // the great window, over the table
-      const shTop = Math.round(H * 0.3); shelf(S(0.01), shTop, Sw(0.11), yf - shTop); // the bookcase, against the left
+      const shTop = yf - 45; shelf(S(0.01), shTop, Sw(0.11), yf - shTop); // (five shelves: a head and a half over a man) // the bookcase, against the left
       const ch = of('charter'); const half = Math.ceil(ch.length / 2); // the charters either side of the window, over all the rest
       spread(half, S(0.1), S(0.43), 22).forEach(({ k, row, xc }) => { const [t, i] = ch[k]; slots[i] = charter(xc, Math.round(H * 0.12) + row * 28, t.arms); });
       spread(ch.length - half, S(0.58), S(0.8), 22).forEach(({ k, row, xc }) => { const [t, i] = ch[half + k]; slots[i] = charter(xc, Math.round(H * 0.12) + row * 28, t.arms); });
@@ -2976,9 +2995,9 @@ bbbbbb.
       }
       { // the copyist on his stool at a sloping desk his own size, an inkhorn in it (realGet: cards.copyist)
         const fy = floorY(0.12); const mx = S(0.28); const sp = shadeSprite(MONK);
-        rect(mx, fy - 5, 7, 1, I.TIMBER_HI); rect(mx + 1, fy - 4, 1, 5, I.TIMBER_SH); rect(mx + 5, fy - 4, 1, 5, I.TIMBER_SH); // the stool
-        stamp(sp, mx, fy - 5 - sp.h + 2);
-        const dx = mx + 9; const top = fy - 17; // the desk: a slanted board on two legs, the page on it
+        rect(mx, fy - 7, 8, 1, I.TIMBER_HI); rect(mx + 1, fy - 6, 1, 7, I.TIMBER_SH); rect(mx + 6, fy - 6, 1, 7, I.TIMBER_SH); // the stool
+        stamp(sp, mx, fy - 7 - sp.h + 2);
+        const dx = mx + 10; const top = fy - 20; // the desk: a slanted board on two legs, the page on it
         rect(dx + 1, top + 6, 1, fy - top - 6, I.TIMBER_SH); rect(dx + 10, top + 3, 1, fy - top - 3, I.TIMBER_SH); rect(dx, fy, 12, 1, I.OUTLINE);
         for (let k = 0; k < 12; k += 1) { set(dx + k, top + 5 - Math.floor(k / 3), I.TIMBER_HI); set(dx + k, top + 6 - Math.floor(k / 3), I.TIMBER); }
         for (let k = 1; k < 10; k += 1) { set(dx + k, top + 4 - Math.floor(k / 3), I.BEARD_HI); set(dx + k, top + 3 - Math.floor(k / 3), k % 2 ? I.BEARD_SH : I.BEARD_HI); }
@@ -2987,7 +3006,7 @@ bbbbbb.
         realGet('rose');
         extra.push({ t: { kind: 'copyist', label: 'The copyist', get html() { return cards.copyist(); } }, b: box(mx - 1, top - 3, 24, fy - top + 4) });
       }
-      const tb = table3d(S(0.53), yf - 16, 28); // the table under the window: the notebook, two candles, the hourglass
+      const tb = table3d(S(0.53), 28); // the table under the window: the notebook, two candles, the hourglass
       of('desk-book').forEach(([, i]) => { openBook(S(0.53) - 8, tb.front, 16); slots[i] = box(S(0.53) - 9, tb.front - 6, 18, 7); });
       candle(tb.l - 1, tb.back, true); candle(tb.r + 1, tb.back, false);
       deco.push({ type: 'hourglass', x: tb.r - 4, y: tb.front - 10 });
@@ -3062,7 +3081,7 @@ bbbbbb.
         }
       });
       const orX = BR - 12; // the orrery, at the table's end
-      const tb = table3d(S(0.72), yf - 16, Math.max(30, Math.min(46, 2 * (orX - 12 - S(0.72)))));
+      const tb = table3d(S(0.72), Math.max(30, Math.min(46, 2 * (orX - 12 - S(0.72)))));
       { const cx0 = tb.l + 2; const cw = tb.r - tb.l - 4; for (let y = 0; y < 4; y += 1) for (let x = 0; x < cw; x += 1) set(cx0 + x, tb.back - 2 + y, y === 0 || y === 3 ? I.BEARD_SH : (x * 7 + y * 3) % 11 === 0 ? I.GOLD_HI : I.T_NAVY); } // the map of the sky, unrolled
       spread(n, tb.l, tb.r, 14).forEach(({ k, xc }) => { slots[k] = scrollThing(xc, tb.front + 2, things[k].arms); });
       candle(tb.r - 2, tb.back - 3, true); // (to read the charts by at night)
@@ -3099,16 +3118,8 @@ bbbbbb.
         rect(wx - 12, wy - 8, 24, 2, I.TIMBER); rect(wx - 12, wy - 8, 24, 1, I.TIMBER_HI);
         deco.push({ type: 'gear', x: wx - 4, y: wy - 1, r: 4, sp: 0.5 }, { type: 'gear', x: wx + 4, y: wy + 3, r: 3, sp: -0.5 * 4 / 3 });
         for (let y = wy + 6; y < ay - 22; y += 1) set(wx + 4, y, I.LEATHER_SH); set(wx + 3, ay - 22, I.ARM_SH); set(wx + 5, ay - 22, I.ARM_SH); set(wx + 4, ay - 21, I.ARM_SH); }
-      const tb = table3d(S(0.56), yf - 16, 80); const cx = Math.round((tb.l + tb.r) / 2); // the bench, long enough for the models side by side
-      { // the models, twice the size: each drawn small to the side, read back, then set down large
-        const big = (fn, xc, yb) => { const keep = []; const bx = 1; const by = 1; for (let y = 0; y < 22; y += 1) for (let x = 0; x < 18; x += 1) keep.push([idx[(by + y) * W + bx + x], out[(by + y) * W + bx + x]]);
-          fn(bx + 7, by + 19); const px = []; for (let y = 0; y < 22; y += 1) for (let x = 0; x < 18; x += 1) { const i = (by + y) * W + bx + x; px.push(idx[i]); }
-          keep.forEach(([v, o], k) => { const i = (by + Math.floor(k / 18)) * W + bx + (k % 18); idx[i] = v; out[i] = o; });
-          const changed = px.map((v, k) => v !== keep[k][0]);
-          for (let y = 0; y < 22; y += 1) for (let x = 0; x < 18; x += 1) if (changed[y * 18 + x]) rect(xc - 14 + 2 * x, yb - 40 + 2 * y, 2, 2, px[y * 18 + x]);
-          return box(xc - 14, yb - 36, 32, 36); };
-        things.forEach((t, k) => { const xc = Math.round(tb.l + ((k + 0.5) * (tb.r - tb.l)) / n); slots[k] = big((x, y) => model(x, y, t.model), xc, tb.front + 2); });
-      }
+      const tb = table3d(S(0.56), Math.max(32, n * 16 + 10)); const cx = Math.round((tb.l + tb.r) / 2); // the bench, as long as its models side by side
+      things.forEach((t, k) => { const xc = Math.round(tb.l + ((k + 0.5) * (tb.r - tb.l)) / n); slots[k] = model(xc, tb.front + 2, t.model); }); // (each model at its own size: half a man)
       const ry = Math.round(H * 0.12); const ou = realGet('outils'); // Roubo's tools (_tools/fetch_outils.py): over the bench, hung from the rail, the planes on the board's shelf
       { const hung = ou ? ou.sprites.filter((sp) => !sp.on) : []; const stand = ou ? ou.sprites.filter((sp) => sp.on) : [];
         const hw0 = ou ? hung.reduce((a2, sp) => a2 + sp.w + 2, 0) : 7 * 5; const sw0 = stand.reduce((a2, sp) => a2 + sp.w + 2, 0);
@@ -3224,7 +3235,7 @@ qqqqqTqqq
       // chairs, a corner kept for the season's basket (each in its own span: nothing on another)
       const benchW = 34; const lx = BL + 2 + benchW + 3; const right = BR - 21;
       const free0 = Math.max(narrow ? S(0.1) : tx + tw + 10, lx + 9 + 8);
-      const rx = Math.max(16, Math.min(56, Math.floor((right - free0 - 7) / 2)));
+      const rx = Math.max(16, Math.min(32, Math.floor((right - free0 - 7) / 2))); // (two men and a half across)
       const tcx = Math.round(free0 + 7 + rx); const ry = Math.max(6, Math.round(rx * 0.28));
       const tcy = Math.min(yf + 2, H - ry - 14);
       const onEllipse = (ang, k = 1) => [Math.round(tcx + Math.cos(ang) * rx * k), Math.round(tcy + Math.sin(ang) * ry * k)];
@@ -3357,8 +3368,8 @@ qqqqqTqqq
         // (under the right-hand portraits and over the desk: the bins shorten when the wall is low)
         const gw = 17; const dx0 = S(0.86); const gx0 = Math.round(dx0 + (Math.max(10, BR - dx0 - 2) - gw) / 2);
         // (on the wall under the portraits; else standing on the master's desk, where the globe was)
-        let gy0 = Math.max(yf - 54, ptLow + 2); let bh = Math.min(15, yf - 19 - (gy0 + 21)); galtonOnDesk = bh < 8;
-        if (galtonOnDesk) { bh = 8; gy0 = yf - 10 - 21 - bh; }
+        let gy0 = Math.max(yf - 54, ptLow + 2); let bh = Math.min(15, yf - 22 - (gy0 + 21)); galtonOnDesk = bh < 8;
+        if (galtonOnDesk) { bh = 8; gy0 = yf - 13 - 21 - bh; }
         if (gx0 > br + 4 && gx0 + gw < BR - 1) {
           rect(gx0 - 1, gy0 - 1, gw + 2, bh + 21, I.TIMBER); rect(gx0, gy0, gw, bh + 19, I.PLASTER_HI);
           for (let r = 0; r < 7; r += 1) for (let k = 0; k <= r; k += 1) set(gx0 + 8 - r + 2 * k, gy0 + 3 + r * 2, I.ARM_SH); // the pegs
@@ -3368,9 +3379,9 @@ qqqqqTqqq
           extra.push({ t: { kind: 'galton', label: 'The Galton board', get html() { return cards.galton(); } }, b: box(gx0 - 1, gy0 - 1, gw + 2, bh + 21) });
         }
       }
-      const dx = S(0.86); const dw = Math.max(10, BR - dx - 2); desk(dx, yf - 10, dw); candle(dx + dw - 3, yf - 11, true);
-      if (SEASON(today().getMonth()) === 'autumn') { set(dx + 3, yf - 12, I.CAP); set(dx + 4, yf - 12, I.CAP_SH); set(dx + 3, yf - 13, I.CAP); set(dx + 3, yf - 14, I.FERN_SH); } // an apple for the master
-      for (let k = 0; k < 5; k += 1) set(dx + 3 + k * 2, yf - 12, k % 2 ? I.CAP : I.GOLD); rect(dx + 2, yf - 13, 11, 1, I.TIMBER_SH);
+      const dx = S(0.86); const dw = Math.max(10, BR - dx - 2); desk(dx, yf - 13, dw); candle(dx + dw - 3, yf - 14, true);
+      if (SEASON(today().getMonth()) === 'autumn') { set(dx + 3, yf - 15, I.CAP); set(dx + 4, yf - 15, I.CAP_SH); set(dx + 3, yf - 16, I.CAP); set(dx + 3, yf - 17, I.FERN_SH); } // an apple for the master
+      for (let k = 0; k < 5; k += 1) set(dx + 3 + k * 2, yf - 15, k % 2 ? I.CAP : I.GOLD); rect(dx + 2, yf - 16, 11, 1, I.TIMBER_SH);
       // the class: two rows, each a long desk, the pupils on their chairs before it (we see their
       // backs: they face the board); the master at the board's left, his staff on the equations
       { const ms = SPRITES.master; const xa = bl - ms.w + 4; const xb = Math.round(bl + (br - bl) * 0.55); // the master's dais along the board (before the class: they sit in front of it)
@@ -3403,7 +3414,7 @@ qqqqqTqqq
         deco.push({ type: 'master', xa, xb, yb: yf - 3, top: bt, rows: Math.max(1, Math.floor((ey - bt - 4) / 7)) });
         deco.push({ type: 'chatter', heads });
       }
-      if (!galtonOnDesk && ptLow < yf - 21) { const gx0 = dx + Math.round(dw / 2); const gy = yf - 16; // a globe on the master's desk
+      if (!galtonOnDesk && ptLow < yf - 24) { const gx0 = dx + Math.round(dw / 2); const gy = yf - 19; // a globe on the master's desk
         for (let y = -3; y <= 3; y += 1) for (let x = -3; x <= 3; x += 1) if (x * x + y * y <= 10) set(gx0 + x, gy + y, (x + y * 2) % 4 === 0 ? I.FERN : I.WATER);
         rect(gx0, gy + 4, 1, 2, I.GOLD_SH); rect(gx0 - 2, gy + 5, 5, 1, I.GOLD); set(gx0 - 4, gy, I.GOLD_SH); set(gx0 + 4, gy, I.GOLD_SH); }
       [[2, I.CLOTH], [1, I.ROBE], [3, I.FERN_SH]].forEach(([w, c], k) => rect(dx + 2, yf + 2 - k * 2, 4 + w, 2, c)); // books stacked under the master's desk
@@ -3452,7 +3463,7 @@ qqqqqTqqq
       const bottle = (x, y, k) => { rect(x, y, 2, 2, (k * 7) % 5 ? I.PINE_SH : I.FG_PINE_SH); set(x, y, I.PINE_HI); };
       const racks = of('vintage'); const rl = S(0.02); const rr = S(0.62);
       const tiers = (rr - rl) / Math.max(1, racks.length) < 11 ? 2 : 1; const cols = Math.ceil(racks.length / tiers); // (a narrow cellar: racks on racks)
-      const per = Math.floor((rr - rl) / Math.max(1, cols)); const top = Math.round(H * 0.24); const th = Math.floor((yf - 2 - top) / tiers);
+      const per = Math.floor((rr - rl) / Math.max(1, cols)); const top = tiers === 1 ? yf - 46 : Math.round(H * 0.24); const th = Math.floor((yf - 2 - top) / tiers); // (one tier: a head over a man)
       racks.forEach(([, i], k) => { // a rack: an oak frame, its bottles' ends in rows, a slate tag on top
         const x0 = rl + (k % cols) * per; const w = per - 2; const y0 = top + Math.floor(k / cols) * th + 5; const y1 = top + (Math.floor(k / cols) + 1) * th;
         // a diamond lattice in an oak frame, a bottle's end in each diamond (some racks fuller than others)
@@ -3477,7 +3488,7 @@ qqqqqTqqq
         shadow(xc, yb + 1, 2 * r);
         return yb - h;
       }
-      const cr = Math.max(4, Math.min(Math.round(H * 0.075), Math.floor((S(0.98) - S(0.66)) / 4.4))); const cx0 = S(0.66) + cr;
+      const cr = Math.max(4, Math.min(7, Math.floor((S(0.98) - S(0.66)) / 4.4))); const cx0 = S(0.66) + cr;
       const lid = cask(cx0, yf - 1, cr); cask(cx0 + 2 * cr + 2, yf + 1, cr); // two, one a little nearer
       candle(cx0, lid - 1, false);
       of('stair').forEach(([, i]) => { // the stairwell cut in the floor before us: a stone lip all round, the steps
@@ -3503,7 +3514,7 @@ qqqqqTqqq
       const a = S(0.42); const b = S(0.62); const dt = yf - 52; door(a, b, dt); // (a great door: ~1.7 adults)
       lantern(b + 6, dt + 14);
       for (let k = 0; k < 3; k += 1) { set(a - 6 + k * 2, dt + 18, I.GOLD); set(a - 6 + k * 2, dt + 19, I.GOLD_SH); }
-      const tb = table3d(S(0.2), yf - 14, Sw(0.26));
+      const tb = table3d(S(0.2), Sw(0.26));
       things.forEach((t, i) => {
         if (t.kind === 'letterbox') { // a bronze plate, its slot, the knocker's ring over it
           const lx = Math.round((a + b) / 2) - 5; const ly = dt + 26;
@@ -3552,6 +3563,127 @@ qqqqqTqqq
         }
       }
     }
+    /* the rooms furnished: what a room lived in has on its walls and floor besides the things to click
+       (sconces, shelves of jars and books, a trophy of arms, stores hung from the vault, a cage...), each
+       piece only where the wall is bare (wallFree: no furniture, no hotspot, nothing that moves), else left out */
+    const wallFree = (x, y, w, h) => {
+      x = Math.round(x); y = Math.round(y);
+      if (x < BL + 1 || x + w > BR - 1 || y < 4 || y + h > yf + 4) return false;
+      if (x + w > W * 0.6 && y < 22) return false; // (the menu and its 'leave' cover the top right)
+      for (let yy = y - 1; yy <= y + h; yy += 1) for (let xx = x - 1; xx <= x + w; xx += 1) if (furn[yy * W + xx]) return false;
+      const hit = (b) => b && x <= b.x + b.w && x + w >= b.x && y <= b.y + b.h && y + h >= b.y;
+      return !slots.some(hit) && !extra.some((e) => hit(e.b)) && !doorList.some((e) => hit(e.b))
+        && !deco.some((d) => d.x !== undefined && d.y !== undefined && hit({ x: d.x - 4, y: d.y - 4, w: (d.w || 8) + 8, h: (d.h || 8) + 8 }));
+    };
+    /** The first free place for a w x h piece: each x of `xs` at y, then a little lower or higher. */
+    const placeOn = (xs, y, w, h) => { for (const d of [0, 4, -4, 8, -8, 12]) for (const x of xs) if (wallFree(x, y + d, w, h)) return [Math.round(x), Math.round(y + d)]; return null; };
+    function sconce(x, y) { // an iron bracket out from the wall, a candle in its cup (y: the cup)
+      rect(x - 1, y, 3, 1, I.ARM); set(x, y + 1, I.ARM_SH); set(x + 1, y + 2, I.ARM_SH); rect(x + 1, y + 3, 2, 3, I.ARM_SH); set(x + 1, y + 3, I.ARM);
+      candle(x, y - 1, false);
+    }
+    const JAR = { // small things standing on a shelf, by name: [w, draw(x, yb)]
+      jar: [3, (x, yb) => { rect(x, yb - 4, 3, 4, I.PLASTER); set(x, yb - 4, I.PLASTER_HI); rect(x, yb - 1, 3, 1, I.PLASTER_SH); set(x + 1, yb - 5, I.CLOTH_SH); }],
+      pot: [5, (x, yb) => { rect(x + 1, yb - 4, 3, 1, I.RUST); rect(x, yb - 3, 5, 2, I.RUST); set(x, yb - 3, I.RUST_HI); rect(x + 1, yb - 1, 3, 1, I.RUST_SH); set(x + 2, yb - 5, I.RUST_SH); }],
+      green: [3, (x, yb) => { rect(x, yb - 3, 3, 3, I.FERN); set(x, yb - 3, I.LEAF2); set(x + 1, yb - 4, I.FERN_SH); set(x + 1, yb - 5, I.FERN_SH); }],
+      bottle: [2, (x, yb) => { rect(x, yb - 4, 2, 4, I.PINE_SH); set(x, yb - 5, I.PINE_SH); set(x, yb - 6, I.CLOTH_SH); set(x, yb - 4, I.PINE_HI); }],
+      books: [7, (x, yb) => { books(x, yb, 3, false); }],
+      roll: [6, (x, yb) => { rect(x, yb - 2, 6, 2, I.BEARD_HI); set(x, yb - 2, I.BEARD); rect(x + 2, yb - 2, 1, 2, I.CLOTH); }],
+      globe: [5, (x, yb) => { for (let yy = -2; yy <= 2; yy += 1) for (let xx = -2; xx <= 2; xx += 1) if (xx * xx + yy * yy <= 5) set(x + 2 + xx, yb - 5 + yy, (xx + 2 * yy) % 3 ? I.WATER : I.FERN); rect(x + 2, yb - 2, 1, 1, I.GOLD_SH); rect(x + 1, yb - 1, 3, 1, I.GOLD); }],
+      glass: [3, (x, yb) => { rect(x, yb - 5, 3, 1, I.GOLD); rect(x, yb - 1, 3, 1, I.GOLD); set(x + 1, yb - 4, I.FL_YEL); set(x + 1, yb - 3, I.GOLD_SH); set(x + 1, yb - 2, I.FL_YEL); }], // an hourglass
+      skull: [4, (x, yb) => { rect(x, yb - 4, 4, 3, I.BEARD_HI); set(x + 1, yb - 3, I.OUTLINE); set(x + 3, yb - 3, I.OUTLINE); rect(x + 1, yb - 1, 2, 1, I.BEARD); }],
+      crucible: [4, (x, yb) => { rect(x, yb - 3, 4, 3, I.STONE); set(x, yb - 3, I.STONE_HI); rect(x + 1, yb - 3, 2, 1, I.OUTLINE); }],
+      coil: [5, (x, yb) => { for (let q = 0; q < 6.28; q += 0.4) set(x + 2 + Math.round(Math.cos(q) * 2), yb - 3 + Math.round(Math.sin(q) * 2), q > 3 ? I.LEATHER : I.LEATHER_HI); }],
+    };
+    /** A plank on two brackets, `w` long, its top at y, the things of `what` along it (cycled). */
+    function wallShelf(x, y, w, what) {
+      rect(x, y, w, 1, I.TIMBER_HI); rect(x, y + 1, w, 1, I.TIMBER_SH);
+      [x + 2, x + w - 3].forEach((bx) => { set(bx, y + 2, I.TIMBER_SH); set(bx, y + 3, I.TIMBER_SH); set(bx + 1, y + 2, I.TIMBER); });
+      let xx = x + 1; let k = 0;
+      while (true) { const [jw, draw] = JAR[what[k % what.length]]; if (xx + jw > x + w - 1) break; draw(xx, y); xx += jw + 1 + (rng() < 0.4 ? 1 : 0); k += 1; }
+    }
+    function trophy(xc, y) { // a shield on two crossed swords
+      for (let k = 0; k < 16; k += 1) { set(xc - 8 + k, y + 1 + k, I.ARM_HI); set(xc + 7 - k, y + 1 + k, I.ARM); } // the blades
+      [[-8, 1], [7, 1]].forEach(([dx, dy]) => { rect(xc + dx - 1, y + dy - 1, 3, 1, I.GOLD); set(xc + dx, y + dy - 2, I.GOLD_SH); }); // their hilts, high
+      for (let yy = 0; yy < 12; yy += 1) { const half = yy < 7 ? 5 : Math.max(0, 5 - (yy - 6)); for (let xx = -half; xx <= half; xx += 1) set(xc + xx, y + 3 + yy, Math.abs(xx) === half || yy === 0 ? I.GOLD_SH : yy > 2 && yy < 6 ? I.FL_WHITE : I.CLOTH); } // the shield, a white fess on red
+    }
+    function chainLamp(x, y) { for (let yy = 4; yy < y; yy += 1) set(x, yy, yy % 2 ? I.ARM_SH : I.ARM); lantern(x, y + 1); }
+    function niche(x, y) { // an arched niche in the wall, a stone jug in it
+      for (let yy = 0; yy < 14; yy += 1) for (let xx = 0; xx < 10; xx += 1) { const u = (xx - 4.5) / 5; if (yy < 4 && yy < 4 * (1 - Math.sqrt(Math.max(0, 1 - u * u)))) continue; set(x + xx, y + yy, xx === 0 || yy === 13 ? I.ROCK_HI : I.OUTLINE); }
+      rect(x + 3, y + 8, 4, 5, I.STONE); set(x + 3, y + 8, I.STONE_HI); set(x + 7, y + 9, I.STONE_SH); set(x + 7, y + 10, I.STONE_SH); rect(x + 4, y + 7, 2, 1, I.STONE_SH);
+    }
+    const floorFree = (xs, k, w, h) => clearAt(xs, floorY(k), w, h);
+    if (kind === 'about') {
+      chainLamp(S(0.5) + 16, 30);
+      [S(0.5) - 17, S(0.5) + 16].forEach((x) => { if (wallFree(x - 2, 54, 5, 12)) sconce(x, 60); });
+      let p = placeOn([S(0.12), S(0.15), S(0.2)], 56, 28, 9); if (p) wallShelf(p[0], p[1] + 7, 28, ['jar', 'books', 'pot', 'roll', 'bottle', 'jar']);
+      p = placeOn([S(0.6), S(0.64), S(0.68)], 52, 24, 9); if (p) wallShelf(p[0], p[1] + 7, 24, ['skull', 'glass', 'books', 'green']);
+    } else if (kind === 'research') {
+      let p = placeOn([BL + 4, BL + 8, S(0.08)], 40, 30, 9); if (p) wallShelf(p[0], p[1] + 7, 30, ['globe', 'books', 'glass', 'roll', 'bottle']);
+      p = placeOn([BR - 26, BR - 30, S(0.82)], 40, 24, 24);
+      if (p) { // a mural quadrant: a brass arc of a quarter circle, graduated, its plumb line from the centre
+        const [qx, qy] = [p[0] + 22, p[1]]; const R = 21;
+        for (let q = 0; q <= Math.PI / 2; q += 0.02) { const X = qx - Math.cos(q) * R; const Y = qy + Math.sin(q) * R; set(X, Y, I.GOLD); set(X + 1, Y, I.GOLD_SH); }
+        for (let q = 0; q <= Math.PI / 2 + 0.01; q += Math.PI / 18) { set(qx - Math.cos(q) * (R - 2), qy + Math.sin(q) * (R - 2), I.GOLD_HI); }
+        for (let k = 0; k <= R; k += 1) { set(qx - k, qy, I.GOLD_SH); set(qx, qy + k, I.GOLD_SH); }
+        for (let k = 0; k < R - 3; k += 1) set(qx - Math.round(k * 0.55), qy + Math.round(k * 0.83), I.ARM); set(qx, qy, I.GOLD_HI);
+      }
+    } else if (kind === 'projects') {
+      let p = placeOn([S(0.38), S(0.42), S(0.46), S(0.34)], 48, 40, 8); if (p) wallShelf(p[0], p[1] + 6, 40, ['crucible', 'pot', 'coil', 'bottle', 'crucible', 'jar', 'coil']);
+      p = placeOn([S(0.86), S(0.8), S(0.9)], 62, 16, 5); // three horseshoes nailed up, points high, for luck
+      if (p) for (let k = 0; k < 3; k += 1) { const hx = p[0] + k * 6; rect(hx, p[1] + 3, 4, 1, I.ARM_SH); rect(hx, p[1], 1, 3, I.ARM); rect(hx + 3, p[1], 1, 3, I.ARM); set(hx + 1, p[1] + 3, I.ARM); }
+    } else if (kind === 'publications') {
+      const gx = floorFree([S(0.72), S(0.68), S(0.28), S(0.24)], 0.35, 9, 17);
+      if (gx !== null) { // a terrestrial globe on its stand, by the rug
+        const fy = floorY(0.35); const cx = gx + 4; const cy = fy - 12;
+        for (let yy = -4; yy <= 4; yy += 1) for (let xx = -4; xx <= 4; xx += 1) if (xx * xx + yy * yy <= 17) set(cx + xx, cy + yy, (xx * 2 + yy * 3 + 40) % 7 < 3 ? I.FERN : xx + yy < -2 ? I.WATER_HI : I.WATER);
+        for (let q = -0.6; q <= 3.8; q += 0.08) set(cx + Math.round(Math.cos(q) * 5), cy + Math.round(Math.sin(q) * 5), I.GOLD_SH); // its meridian
+        rect(cx, cy + 5, 1, 5, I.TIMBER_SH); rect(cx - 3, fy - 1, 7, 1, I.TIMBER); set(cx - 3, fy, I.TIMBER_SH); set(cx + 3, fy, I.TIMBER_SH);
+      }
+    } else if (kind === 'talks') {
+      const cl = deco.find((d) => d.type === 'astroclock');
+      if (cl) [cl.x - cl.r - 9, cl.x + cl.r + 9].forEach((x) => { if (wallFree(x - 2, cl.y - 4, 5, 12)) sconce(x, cl.y + 2); });
+      const p = placeOn([S(0.72), S(0.66), S(0.78), S(0.3), S(0.36)], 44, 17, 18); if (p) trophy(p[0] + 8, p[1]);
+    } else if (kind === 'news') {
+      let p = placeOn([S(0.56), S(0.6), S(0.3)], 12, 9, 18);
+      if (p) { // a cage hung from the rafters, a finch in it
+        const [x, y] = p; for (let yy = 4; yy < y + 4; yy += 1) set(x + 4, yy, I.ARM_SH);
+        for (let yy = 0; yy < 12; yy += 1) for (let xx = 0; xx < 9; xx += 1) { const u = (xx - 4) / 4.5; if (yy < 3 && yy < 3 * (1 - Math.sqrt(Math.max(0, 1 - u * u)))) continue; if (xx % 2 === 0 || yy === 11 || yy === 6) set(x + xx, y + 4 + yy, yy === 11 ? I.TIMBER : I.ARM_SH); }
+        rect(x + 3, y + 12, 3, 2, I.FL_YEL); set(x + 5, y + 11, I.FL_YEL); set(x + 6, y + 11, I.GOLD_SH);
+      }
+      p = placeOn([S(0.02), S(0.05)], 74, 30, 10);
+      if (p) { // the falconer's pegs: a hood, a glove, a leash
+        rect(p[0], p[1], 30, 1, I.TIMBER_SH); [3, 13, 23].forEach((dx) => set(p[0] + dx, p[1] + 1, I.TIMBER));
+        rect(p[0] + 2, p[1] + 2, 4, 3, I.LEATHER); set(p[0] + 3, p[1] + 1, I.FL_RED); // the hood, its plume
+        rect(p[0] + 12, p[1] + 2, 3, 6, I.LEATHER_HI); rect(p[0] + 11, p[1] + 6, 2, 2, I.LEATHER_HI); // the glove
+        for (let k = 0; k < 7; k += 1) set(p[0] + 23 + (k % 2), p[1] + 2 + k, I.LEATHER_SH); // the leash
+      }
+      const sx = floorFree([S(0.82), S(0.88), S(0.3), S(0.22)], 0.28, 12, 9);
+      if (sx !== null) { const fy = floorY(0.28); rect(sx, fy - 7, 7, 7, I.CORK); rect(sx + 1, fy - 8, 5, 1, I.CORK_SH); set(sx + 3, fy - 9, I.CORK_SH); rect(sx + 8, fy - 4, 4, 4, I.TIMBER); rect(sx + 8, fy - 4, 4, 1, I.ARM_SH); } // a sack of grain, a bucket
+      for (let k = 0; k < 40; k += 1) { const x = S(0.05) + Math.floor(rng() * Sw(0.9)); const y = floorY(0.1 + rng() * 0.8); if (!furn[y * W + x]) { set(x, y, k % 2 ? I.CORK : I.GOLD_SH); set(x + 1, y - (k % 3 ? 0 : 1), I.CORK); } } // straw
+    } else if (kind === 'contact') {
+      let p = placeOn([S(0.2), S(0.24), S(0.16), S(0.28)], 30, 17, 18); if (p) trophy(p[0] + 8, p[1]);
+      p = placeOn([S(0.64), S(0.66)], 74, 12, 9);
+      if (p) { rect(p[0], p[1], 12, 6, I.TIMBER); rect(p[0], p[1], 12, 1, I.TIMBER_HI); for (let k = 0; k < 3; k += 1) { set(p[0] + 2 + k * 4, p[1] + 2, I.ARM_SH); rect(p[0] + 2 + k * 4, p[1] + 3, 1, 4 + (k % 2), I.GOLD); set(p[0] + 3 + k * 4, p[1] + 6 + (k % 2), I.GOLD_SH); } } // the keys on their board
+      p = placeOn([BR - 22, BR - 26, S(0.86)], 26, 17, 17);
+      if (p) { // the winch of the portcullis: a spoked wheel, its chain going up
+        const cx = p[0] + 8; const cy = p[1] + 8;
+        for (let q = 0; q < 6.28; q += 0.05) { set(cx + Math.round(Math.cos(q) * 7), cy + Math.round(Math.sin(q) * 7), I.TIMBER); set(cx + Math.round(Math.cos(q) * 6), cy + Math.round(Math.sin(q) * 6), I.TIMBER_SH); }
+        for (let q = 0; q < 6.28; q += 6.28 / 6) for (let r = 0; r < 6; r += 1) set(cx + Math.round(Math.cos(q) * r), cy + Math.round(Math.sin(q) * r), I.TIMBER_HI);
+        rect(cx - 1, cy - 1, 3, 3, I.ARM_SH); for (let yy = 4; yy < cy - 7; yy += 1) set(cx + 7, yy, yy % 2 ? I.ARM_SH : I.ARM);
+      }
+    } else if (kind === 'cellar') {
+      let p = placeOn([S(0.7), S(0.74), S(0.66)], 36, 40, 16);
+      if (p) { // a pole across, a ham and strings of garlic and onions hung from it
+        const [x, y] = p; rect(x, y, 40, 1, I.TIMBER); rect(x, y + 1, 40, 1, I.TIMBER_SH);
+        [[4, 'ham'], [13, 'garlic'], [19, 'onion'], [26, 'ham'], [35, 'garlic']].forEach(([dx, what]) => {
+          const hx = x + dx; set(hx, y + 2, I.CLOTH_SH);
+          if (what === 'ham') { for (let yy = 0; yy < 10; yy += 1) { const half = Math.round(1 + Math.sin(((yy + 1) / 11) * Math.PI) * 2); for (let xx = -half; xx <= half; xx += 1) set(hx + xx, y + 3 + yy, xx === -half ? I.RUST_HI : xx === half ? I.RUST_SH : I.RUST); } set(hx, y + 13, I.BEARD_HI); }
+          else for (let k = 0; k < 4; k += 1) { const c = what === 'garlic' ? I.BEARD_HI : I.GOLD_SH; rect(hx - 1 + (k % 2), y + 3 + k * 3, 2, 2, c); set(hx + (k % 2), y + 3 + k * 3, what === 'garlic' ? I.BEARD : I.GOLD); }
+        });
+      }
+      p = placeOn([S(0.7), S(0.74), S(0.66)], 58, 32, 9); if (p) wallShelf(p[0], p[1] + 7, 32, ['jar', 'pot', 'bottle', 'bottle', 'jar', 'pot']);
+      p = placeOn([S(0.3), S(0.22), S(0.4), S(0.12)], 26, 10, 14); if (p) niche(p[0], p[1]);
+    }
     doorList.forEach((e) => extra.push(e));
     seasonal();
     { // the foreground piece: low in the view, at a free place, its bottom cut by the edge
@@ -3568,14 +3700,15 @@ qqqqqTqqq
       const txt = PERSON.replace(/H/g, h).replace(/B/g, b).replace(/A/g, a).replace(/L/g, l).replace(/X/g, x).replace(/e/g, beard ? 'e' : 'f');
       const sp = shadeSprite(txt); let fy = floorY(0.18);
       const xs = [0.3, 0.7, 0.2, 0.8, 0.4, 0.6, 0.12, 0.88, 0.5, 0.25, 0.75, 0.35, 0.65, 0.05, 0.95].map(S);
-      const boxes = [...slots.filter(Boolean), ...deco.filter((d) => d.x !== undefined && d.y !== undefined).map((d) => ({ x: d.x - 8, y: d.y - 8, w: (d.w || 0) + 16, h: (d.h || 0) + 16 }))];
+      const boxes = [...slots.filter(Boolean), ...deco.filter((d) => d.x !== undefined && d.y !== undefined).map((d) => ({ x: d.x - 8, y: d.y - 8, w: (d.w || 0) + 16, h: (d.h || 0) + 16 })),
+        ...flames.filter((f) => f.hearth).map((f) => ({ x: f.x - f.w / 2 - 2, y: f.y - 10, w: f.w + 4, h: 14 }))]; // (nor before the fire)
       const hides = (x) => boxes.some((b) => x < b.x + b.w && x + sp.w > b.x && fy - sp.h < b.y + b.h && fy > b.y); // (never in front of a thing to click, nor of one that moves)
       const feetFree = (x) => { let n2 = 0; for (let y = fy - 8; y <= fy + 1; y += 1) for (let xx = x - 1; xx <= x + sp.w; xx += 1) if (furn[y * W + xx]) n2 += 1; return n2 < 4; }; // (a fallen leaf is no obstacle)
       const spot = () => xs.find((x) => feetFree(x) && !hides(x)) ?? null; // (his feet on free floor; the wall behind him may hold things)
       let x0 = spot(); if (x0 === null) { fy = floorY(0.42); x0 = spot(); } // (no room by the wall: a step into the room)
       if (x0 !== null) {
         stamp(sp, x0, fy - sp.h + 1);
-        if (kind === 'news') stamp(shadeSprite(RAVEN), x0 + sp.w - 4, fy - sp.h + 4); // the raven on his fist
+        if (kind === 'news') stamp(shadeSprite(RAVEN), x0 + sp.w - 4, fy - sp.h + 9); // the raven on his fist
         deco.push({ type: 'dweller', x: x0, y: fy - sp.h + 1, w: sp.w, h: sp.h, lines });
       }
     }
@@ -5836,10 +5969,12 @@ qqqqqTqqq
       });
     }
     const fo = shift(RATE[L.FG]) - M;
+    const fgSrc = scene.planes[L.FG]; const [fg0, fg1] = scene.rows[L.FG];
+    const behindFG = (x, y) => y >= fg0 && y < fg1 && fgSrc[y * scene.WE + M - planeOff(L.FG, y) + x] !== CLEAR; // (a near pine stands before the meadow's grass)
     if (nearOn) scene.blades.forEach((b) => { // (rooted in the meadow: they slide with it at their row)
       const c = pal32[b.c]; const bo = groundOff(Math.min(scene.H - 1, b.y)) - M;
       const lean = reduce ? 0 : (Math.sin(t * 1.6 + b.x * 0.21) * 0.6 * clamp(weather.wind / 15, 0.3, 1.6) + Math.sin(t * 0.7 + b.x * 0.05) * 0.6 + windX() * 0.8) * b.h * 0.22;
-      for (let r = 0; r < b.h; r += 1) put(b.x + bo + Math.round((lean + b.spread) * (r / b.h) ** 2), b.y - r, c, false);
+      for (let r = 0; r < b.h; r += 1) { const X = b.x + bo + Math.round((lean + b.spread) * (r / b.h) ** 2); const Y = b.y - r; if (X >= 0 && X < scene.W && !behindFG(X, Y)) put(X, Y, c, false); }
     });
     if (look.night > 0.5 || (forced.owl || 0) > t) { // the owl on its branch, blinking now and then
       const ow = scene.owl; const ox = ow.x + fo;
