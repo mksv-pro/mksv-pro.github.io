@@ -854,13 +854,14 @@ dialog.dungeon canvas {
 .spots, .card[hidden] { display: none; }
 [data-theme="hours"] .spots { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; }
 [data-theme="hours"] .spot { position: absolute; pointer-events: auto; cursor: pointer; background: none; border: 0; padding: 0; }
-[data-theme="hours"] .spot:focus-visible { outline: var(--upx, 2px) dashed #f6d77a; outline-offset: 2px; }
+[data-theme="hours"] .spot:focus-visible { outline: var(--upx, 2px) solid #d8a838; outline-offset: 2px; box-shadow: 0 0 0 calc(2 * var(--upx, 2px)) #2a1d14; } /* (Tab goes from thing to thing: a gilt frame) */
 [data-theme="hours"] .spot::after { /* its name, on a little tag, when pointed at */
   content: attr(data-label);
   position: absolute; left: 50%; bottom: calc(100% + .4rem); translate: -50% 0;
   white-space: nowrap; max-width: 28rem; overflow: hidden; text-overflow: ellipsis;
   padding: .2rem .5rem; font: .85rem/1.3 var(--ui);
-  color: #f4ecd8; background: #2a1d14; border: var(--upx, 2px) solid #d8a838;
+  color: #2a1d14; background: #efe3c4; border: var(--upx, 2px) solid #9a6a1e; /* a cartouche of parchment, its ends rolled */
+  box-shadow: calc(-2 * var(--upx, 2px)) 0 0 #d8c08e, calc(2 * var(--upx, 2px)) 0 0 #d8c08e, 0 var(--upx, 2px) 0 #2a1d14;
   opacity: 0; transition: opacity .12s steps(2, end); pointer-events: none;
 }
 [data-theme="hours"] .spot:is(:hover, :focus-visible)::after { opacity: 1; }
