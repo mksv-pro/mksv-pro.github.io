@@ -875,7 +875,7 @@ dialog.dungeon canvas {
   font: 1.3rem/1 var(--ui); color: var(--red); background: none; border: 0; cursor: pointer;
 }
 
-/* ---- the tower (narrow screens, .climb: head script, ui/3-rooms.js towerLayout): every section is
+/* ---- the tower (narrow screens, .climb: head script, ui/03-rooms.js towerLayout): every section is
    on the page, a leaf of vellum in the stone, floor after floor, the roof's view (the landscape)
    first. Upright, nothing stays on the screen: each floor opens with its room in a frame
    (.floor-slot); the one live picture sits in the frame most in sight, the others keep a snapshot
@@ -1061,7 +1061,7 @@ html.climb[data-theme] .engine-win { width: 100vw; height: 100dvh; max-width: no
 .domain button { font: inherit; color: var(--accent); background: none; border: 0; cursor: pointer; padding: 0 .2rem; min-height: 24px; }
 .domain button:hover, .domain button:focus-visible { color: var(--hi); }
 
-/* a figure alive in a card (ui/4-things.js collisionFig) */
+/* a figure alive in a card (ui/04-things.js collisionFig) */
 .pub-fig { margin: .8rem 0; } .pub-fig canvas { display: block; width: 100%; max-width: 26rem; height: auto; color: var(--ink); image-rendering: auto; }
 .pub-fig figcaption { font-size: .8rem; opacity: .8; }
 
@@ -1100,7 +1100,7 @@ html.photo :is(.msgline, .host, .tabs, .status, .spots, .card, .leave, main, .cm
 .ledger .flow li, .card .ledger-year .flow li { white-space: normal; } /* long titles wrap on narrow screens */
 [data-theme="hours"] .card[data-kind="ledger"]:not([hidden]) { width: min(46rem, 58vw); }
 
-/* ---- the castle's texts as manuscript (ui/6-cards.js: illuminate, bind) -------------------------
+/* ---- the castle's texts as manuscript (ui/06-cards.js: illuminate, bind) -------------------------
    Ruled margins, a rubricated title between fleurons over a vine scroll, a blue initial with a
    red tendril down the margin, lozenge bullets, a tailpiece; ornaments from _tools/ornaments.py,
    drawn at the UI pixel. The books open as a two-page spread with a gutter and folios. */
@@ -1227,7 +1227,7 @@ html.photo :is(.msgline, .host, .tabs, .status, .spots, .card, .leave, main, .cm
 html.og :is(.msgline, .tabs, .status, .spots, .card, .leave, main, .cmdline, .links, .statement, .almanac, .photo-bar, dialog) { visibility: hidden; }
 html.og :is(.msgline, .status) { display: none; }
 html.og { --msg-h: 0px; --status-h: 0px; } /* the scene takes the whole frame */
-/* what each thing is made of (ui/6-cards.js, openCard): a letter's wax seal, a charter's seal hanging
+/* what each thing is made of (ui/06-cards.js, openCard): a letter's wax seal, a charter's seal hanging
    on its cord, a scroll's rolled ends; ornaments from _tools/ornaments.py */
 [data-theme="hours"] .card .deco { position: absolute; pointer-events: none; image-rendering: pixelated; }
 [data-theme="hours"] .card .wax { right: 1.6rem; bottom: 1.1rem; width: calc(16 * var(--op)); height: calc(16 * var(--op)); background: url("assets/img/orn/seal.svg") center / contain no-repeat; }
@@ -1273,7 +1273,7 @@ details.how p { margin: .3rem 0 0; }
 .astro-fig canvas { width: min(100%, 20rem); height: auto; image-rendering: pixelated; border-radius: 50%; }
 .astro-fig figcaption { font-size: .9em; margin-top: .3rem; text-align: left; }
 
-/* ---- the scrying engine: the terminal framed in the castle (ui/5-engine.js: openEngine) ---------- */
+/* ---- the scrying engine: the terminal framed in the castle (ui/05-engine.js: openEngine) ---------- */
 .engine-on .plate-img { overflow: hidden; }
 .engine-on .spots { visibility: hidden; }
 .engine { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: rgba(12, 9, 6, .45); }
@@ -1444,7 +1444,7 @@ canvas.stairdown { position: fixed; z-index: 3; image-rendering: pixelated; poin
 .history { margin: 0; padding-left: 2.5ch; }
 .glance.shown { display: grid !important; margin: .4rem 0 0; }
 
-/* fig. 0's twinkling stars (ui/3-rooms.js twinkle): the terminal's engraving only, over it in the figure */
+/* fig. 0's twinkling stars (ui/03-rooms.js twinkle): the terminal's engraving only, over it in the figure */
 canvas.twinkle { display: none; position: absolute; z-index: 1; pointer-events: none; }
 [data-theme="dark"]:not(.banner) canvas.twinkle { display: block; }
 [data-theme="dark"][data-paper] canvas.twinkle { filter: invert(1) sepia(.35); }
@@ -1503,7 +1503,7 @@ canvas.twinkle { display: none; position: absolute; z-index: 1; pointer-events: 
 .swatches canvas { display: block; width: 96px; height: 64px; image-rendering: pixelated; border: 1px solid var(--rule); }
 .swatches figcaption { font-size: .75rem; }
 
-/* a letter not yet read, folded under its seal (ui/6-cards.js: sealUp) */
+/* a letter not yet read, folded under its seal (ui/06-cards.js: sealUp) */
 .sealed { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; align-content: center; gap: .8rem; padding: 2rem;
   background: repeating-linear-gradient(135deg, transparent 0 48%, rgb(120 90 50 / .18) 48% 52%, transparent 52% 100%), #efe2c2; text-align: center; }
 .sealed-to { margin: 0; font: italic 1.1rem "EB Garamond", Georgia, serif; color: #3a2414; }
@@ -1520,8 +1520,17 @@ canvas.twinkle { display: none; position: absolute; z-index: 1; pointer-events: 
 @media (prefers-reduced-motion: reduce) { .sealed.broken, .wax-bit { animation: none; } }
 [data-theme="hours"] .card-close { z-index: 3; } /* (over a sealed letter too) */
 
-/* the weathervane's compass rose (ui/7-dialogs.js showRose) */
+/* the weathervane's compass rose (ui/07-dialogs.js showRose) */
 .rose { display: block; width: min(16rem, 70vw); margin: .5rem auto; }
 .rose .r-a { fill: var(--accent); } .rose .r-b { fill: var(--dim); opacity: .6; }
 .rose text { font: 9px var(--ui); fill: var(--ink); text-anchor: middle; }
 .rose .r-wind { stroke: var(--red); stroke-width: 3; } .rose .r-wind-from { fill: var(--red); }
+
+/* things to do in cards (ui/10-play.js): the merels board, the copyist's page */
+.merels { display: block; width: min(15rem, 60vw); margin: .3rem auto; }
+.merels rect, .merels line { fill: none; stroke: currentColor; stroke-width: .8; opacity: .7; }
+.merels circle { cursor: pointer; } .merels .m-pt { fill: currentColor; opacity: .55; }
+.merels .m-you { fill: #f4ecd8; stroke: #3a2414; stroke-width: .8; } .merels .m-house { fill: #9c2219; stroke: #3a0e08; stroke-width: .8; }
+.merels .m-sel { stroke: #e8b840; stroke-width: 2; } .merels circle:focus-visible { outline: none; stroke: #2a4caa; stroke-width: 2; }
+.merels-say { min-height: 1.4em; margin: .2rem 0; font-style: italic; }
+.quill-page { display: block; width: min(24rem, 100%); aspect-ratio: 3 / 2; image-rendering: pixelated; cursor: crosshair; touch-action: none; border: 1px solid #a8884a; margin: .3rem 0; }

@@ -59,6 +59,7 @@ function applyTheme(theme, persist) {
       clock: skyNow, // the instant shown: dawn mist, the night's meteor shower
       scrub, // the sun or the moon dragged: another hour
       rose: (dir, kmh) => showRose(dir, kmh), // the weathervane clicked: the compass rose
+      ink: () => quillDots().length, // how much is drawn on the copyist's page (its miniature on his desk)
       marks: (id) => Object.keys(bookmarks()[id] || {}), // the books left open at a page: a ribbon out of them
       pins: (id) => (pins()[id] || []).map((p) => ({ kind: 'pinned', label: `Pinned: ${p.label}`, html: p.html })), // the cards pinned up on its walls
       found: findCurio, // a curiosity of the landscape, clicked

@@ -3,7 +3,7 @@
 /* The hours theme's plate: a pixel-art landscape under the sky over Paris at the true hour. A
    castle on a rock above a lake, mountains, a forest edge; in front, a knight resting at a bonfire
    and a wizard who holds the menu (the .tabs box is placed over his hat through --wiz-x/--wiz-y).
-   Loaded by ui/1-core.js with the theme: window.Hours.start({ plate, sky, reduceMotion }), then
+   Loaded by ui/01-core.js with the theme: window.Hours.start({ plate, sky, reduceMotion }), then
    update() once a minute.
 
    The scene is generated once per size (seeded: every visit sees the same place) as seven planes
@@ -2301,7 +2301,8 @@
         set(dx + 11, top + 1, I.OUTLINE); set(dx + 11, top, I.LEATHER_SH); set(dx + 12, top - 1, I.BEARD_HI); // the inkhorn, a quill in it
         deco.push({ type: 'copyist', x: dx + 1, y: top + 3 });
         realGet('rose');
-        extra.push({ t: { kind: 'copyist', label: 'The copyist', get html() { return cards.copyist(); } }, b: box(mx - 1, top - 3, 24, fy - top + 4) });
+        extra.push({ t: { kind: 'quill', label: 'The copyist', get html() { return `${cards.copyist()}<h3>His page</h3><div class="play"></div>`; } }, b: box(mx - 1, top - 3, 24, fy - top + 4) }); // (his card, and his page to draw on: ui/10-play.js)
+        deco.push({ type: 'inked', x: dx + 2, y: top + 1 }); // (what the visitor drew, small, on his page)
       }
       const tb = table3d(S(0.53), 28); // the table under the window: the notebook, two candles, the hourglass
       of('desk-book').forEach(([, i]) => { slots[i] = mark(() => { openBook(S(0.53) - 8, tb.front, 16); return box(S(0.53) - 9, tb.front - 6, 18, 7); }); });
@@ -2320,7 +2321,7 @@
         extra.push({ t: { kind: 'hours', label: 'The book of hours', get html() { return cards.hours(); } }, b: box(lx - 2, top - 15, 31, 20) });
       }
       { // the scrying engine, alone in the right corner on a stone dais: an old cabinet of oak and brass,
-        // keys like an organ's, a round glass that glows; the terminal opens in it (ui/5-engine.js: openEngine).
+        // keys like an organ's, a round glass that glows; the terminal opens in it (ui/05-engine.js: openEngine).
         // Its screen, orb and halo live in drawInterior
         const ex = BR - 26; const eb = yf + 4; const cb = eb - 3; // (cb: the cabinet's foot, on four legs)
         rect(ex - 3, eb - 1, 26, 3, I.ROCK); rect(ex - 3, eb - 1, 26, 1, I.ROCK_HI); rect(ex - 3, eb + 2, 26, 1, I.ROCK_DK); // the dais
@@ -2588,7 +2589,12 @@ qqqqqTqqq
       [-3, 0, 3].forEach((dx) => candle(tcx + dx, tcy - 4, false));
       lights.splice(-2, 2); // (the three flames light as one: three lights stacked burnt an orange patch on the wall)
       [[-0.6, -0.3], [0.55, -0.2], [0.15, 0.45]].forEach(([fx, fy]) => { const gx = tcx + Math.round(fx * rx); const gy = tcy + Math.round(fy * ry); rect(gx, gy - 3, 2, 2, I.GOLD); set(gx, gy - 1, I.GOLD_SH); set(gx + 1, gy - 1, I.GOLD_SH); }); // goblets
-      { const mx0 = tcx - Math.round(rx * 0.45); const my = tcy + Math.round(ry * 0.2); rect(mx0, my, 11, 5, I.PLASTER_HI); for (let k = 0; k < 11; k += 1) set(mx0 + k, my + 2 + (k % 3 === 0 ? 1 : 0), I.WATER); set(mx0 + 3, my + 1, I.CAP); } // a map unrolled
+      { // a board of merels on the table, three squares one in another (its game: ui/10-play.js)
+        const bx = tcx - Math.round(rx * 0.45); const by = tcy + Math.round(ry * 0.15); rect(bx - 1, by - 1, 13, 7, I.TIMBER_SH); rect(bx, by, 11, 5, I.PLASTER_HI);
+        [[0, 0, 11, 5], [2, 1, 7, 3], [4, 2, 3, 1]].forEach(([x0, y0, w, h]) => { for (let k = 0; k < w; k += 1) { set(bx + x0 + k, by + y0, I.TIMBER_SH); set(bx + x0 + k, by + y0 + h - 1, I.TIMBER_SH); } for (let k = 0; k < h; k += 1) { set(bx + x0, by + y0 + k, I.TIMBER_SH); set(bx + x0 + w - 1, by + y0 + k, I.TIMBER_SH); } });
+        set(bx + 1, by, I.T_GULES); set(bx + 9, by + 4, I.FL_WHITE); set(bx + 5, by + 1, I.T_GULES); // (a few men on it)
+        extra.push({ t: { kind: 'merels', label: 'A game of merels', html: '<h3>A game of merels</h3><p>Nine men each. Place them, then move them along the lines; three in a row is a mill and takes a man of the other side. Down to three men, you may fly; down to two, you have lost.</p><div class="play"></div>' }, b: box(bx - 2, by - 2, 15, 9) });
+      }
       set(tcx + Math.round(rx * 0.45), tcy + 1, I.OUTLINE); set(tcx + Math.round(rx * 0.45) + 1, tcy, I.PLASTER_HI); // the quill in its pot
       // the talks: a scroll at each place, far side first, then the ends, then the near side; the rest at the centre
       const places = [...far, -0.92 * Math.PI, -0.08 * Math.PI, 0.75 * Math.PI, 0.25 * Math.PI];
@@ -2918,7 +2924,7 @@ qqqqqTqqq
     };
     /** The first free place for a w x h piece: each x of `xs` at y, then a little lower or higher. */
     const placeOn = (xs, y, w, h) => { for (const d of [0, 4, -4, 8, -8, 12]) for (const x of xs) if (wallFree(x, y + d, w, h)) return [Math.round(x), Math.round(y + d)]; return null; };
-    // the cards the visitor pinned up (ui/4-things.js: pins): each a small sheet nailed to the wall, its card again on a click
+    // the cards the visitor pinned up (ui/04-things.js: pins): each a small sheet nailed to the wall, its card again on a click
     {
       const along = [0.06, 0.94, 0.14, 0.86, 0.22, 0.78, 0.3, 0.7, 0.38, 0.62].map(S);
       (pinsOf(id) || []).forEach((t) => {
@@ -3195,10 +3201,10 @@ qqqqqTqqq
   let hoverId = null; let pendingRoom = null; let pendingHoist = false;
   let heraldry = { own: 'silva', tapestry: [] }; let say = () => {}; let rumour = () => '';
   let curiosOf = () => ({ found: [], all: {} }); let nowOf = () => '';
-  let visitsOf = () => ({ n: 1, first: null }); // the visitor's visits (ui/1-core.js): their oak's rings
-  let newsOf = () => null; let dreamsOf = () => []; let tradeWith = () => ''; // (ui/2-theme.js: the latest news, the knight's dreams, the peddler's bargain)
+  let visitsOf = () => ({ n: 1, first: null }); // the visitor's visits (ui/01-core.js): their oak's rings
+  let newsOf = () => null; let dreamsOf = () => []; let tradeWith = () => ''; // (ui/02-theme.js: the latest news, the knight's dreams, the peddler's bargain)
   let pointer = null; // where the mouse is over the landscape, scene px (the black cat watches it)
-  let billiardShow = () => {}; // the tavern's billiard table (ui/7-dialogs.js: a dialog)
+  let billiardShow = () => {}; // the tavern's billiard table (ui/07-dialogs.js: a dialog)
   let stalenessOf = () => 0; // days since the visitor was last in a room (assets/js/ui): its cobwebs
   let ladderF = 0.15; // where the library's ladder stands on its rail, 0..1 (kept between visits)
   /* what the visitor has used most this visit, for the great hall's tapestry (La Dame à la licorne):
@@ -3332,7 +3338,7 @@ qqqqqTqqq
   const MASTER_TALK = ['"The partition function, children: the whole of a system in one sum."', '"Who is whispering at the back? I have eyes in my cap."',
     '"Schrodinger first: write it out three times, neatly."', '"Diffusion is patience: every particle wanders, and the crowd spreads."', '"Hands up, not voices."'];
 
-  /** A figure of a real asset in a card: ui/4-things.js paints its canvas (Hours.paint) and turns its frames. */
+  /** A figure of a real asset in a card: ui/04-things.js paints its canvas (Hours.paint) and turns its frames. */
   const figHtml = (name, i, n) => `<figure class="real-fig" data-real="${name}" data-i="${i}" data-n="${n}"><canvas></canvas><figcaption></figcaption>`
     + (n > 1 ? '<p class="real-steps"><button type="button" data-real-step="-1">[&#9664;]</button> <button type="button" data-real-step="1">[&#9654;]</button></p>' : '') + '</figure>';
   const SIGNS = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'];
@@ -5969,6 +5975,8 @@ qqqqqTqqq
           const day = p3[0] * sun[0] + p3[1] * sun[1] + p3[2] * sun[2] > -0.05 * bayer(d.x + x, d.y + y);
           put(d.x + x, d.y + y, P(day ? (land ? (lat / deg < -66 ? 'SNOW' : 'FERN') : q < 0.3 && u + v < 0 ? 'WATER_HI' : 'WATER') : land ? 'FG_PINE' : 'T_NAVY'));
         }
+      } else if (d.type === 'inked') { // the visitor's drawing on the copyist's page, a few dark strokes as small as the page
+        const n = Math.min(14, Math.ceil(inkOf() / 12)); for (let k = 0; k < n; k += 1) put(d.x + ((k * 5) % 8), d.y + ((k * 3) % 3) - Math.floor(((k * 5) % 8) / 3), P('OUTLINE'));
       } else if (d.type === 'gear') { // a brass wheel: a solid disc, its rim, spokes and teeth that turn, the axle
         const a0 = reduce ? 0 : t * d.sp;
         for (let y = -d.r; y <= d.r; y += 1) for (let x = -d.r; x <= d.r; x += 1) {
@@ -6176,7 +6184,7 @@ qqqqqTqqq
     if (roomShown) rctx.putImageData(rimg, 0, 0);
   }
 
-  /** Go into room `id` (null: back out to the landscape); `dir` (the tower, ui/3-rooms.js climbFloor):
+  /** Go into room `id` (null: back out to the landscape); `dir` (the tower, ui/03-rooms.js climbFloor):
    *  the floor below (1) or above (-1), reached through the floor slab instead of a dissolve. */
   function goRoom(id, animate, dir = 0) {
     if (!scene) { pendingRoom = id; return; }
@@ -6520,7 +6528,7 @@ qqqqqTqqq
   /* The wizard as a guide: twenty seconds without a move in a room, he stands in a doorway, points his
      staff and a trail of sparks goes from its orb to a thing not yet looked at, which glints; once a visit of the room. */
   const session0 = (k, v) => { try { if (v === undefined) return sessionStorage.getItem(k); sessionStorage.setItem(k, v); } catch { /* (no storage: every load) */ } return null; };
-  let pinsOf = () => []; let marksOf = () => []; let revealing = false; // (bookmarks left in books: script; Shift held)
+  let inkOf = () => 0; let pinsOf = () => []; let marksOf = () => []; let revealing = false; // (bookmarks left in books: script; Shift held)
   let scrubTo = () => {}; let scrubbed = false; // (the hour dragged by the sun: assets/js/ui)
   let lastAct = 0; let freshOf = () => []; let guide = null; let guided = false; let roomT0 = 0;
   function drawGuide(t, put, blend) {
@@ -7009,7 +7017,7 @@ qqqqqTqqq
       if (canvas) return;
       plate = o.plate; skyFn = o.sky; reduce = o.reduceMotion; clockFn = o.clock || clockFn;
       heraldry = o.heraldry || heraldry; say = o.say || say; rumour = o.rumour || rumour;
-      freshOf = o.fresh || freshOf; scrubTo = o.scrub || scrubTo; pinsOf = o.pins || pinsOf; marksOf = o.marks || marksOf; roseTo = o.rose || roseTo; ['pointermove', 'keydown', 'pointerdown', 'wheel'].forEach((ev) => addEventListener(ev, () => { lastAct = now(); }, { passive: true }));
+      freshOf = o.fresh || freshOf; scrubTo = o.scrub || scrubTo; pinsOf = o.pins || pinsOf; marksOf = o.marks || marksOf; roseTo = o.rose || roseTo; if (o.ink) { let n = 0; let at = 0; inkOf = () => { if (Date.now() - at > 2000) { at = Date.now(); n = o.ink(); } return n; }; } // (read every two seconds) ['pointermove', 'keydown', 'pointerdown', 'wheel'].forEach((ev) => addEventListener(ev, () => { lastAct = now(); }, { passive: true }));
       itemsOf = o.items || itemsOf; found = o.found || found; curiosOf = o.curios || curiosOf; nowOf = o.now || nowOf; visitsOf = o.visits || visitsOf;
       newsOf = o.news || newsOf; dreamsOf = o.dreams || dreamsOf; tradeWith = o.trade || tradeWith; stalenessOf = o.staleness || stalenessOf; billiardShow = o.billiard || billiardShow; spotsTo = o.spots || spotsTo; descendTo = o.descend || descendTo; cellarTo = o.cellar || cellarTo; mapsTo = o.maps || mapsTo; goTo = o.go || goTo; doorsOf = o.doors || doorsOf;
       pendingRoom = root.dataset.room || null;

@@ -1,5 +1,5 @@
 /* The front gate: on a bare visit to the site (wide screen, no section, no preview), a black page asks
-   how to visit, the castle or the terminal (the scrying engine in the castle's scriptorium: ui/5-engine.js
+   how to visit, the castle or the terminal (the scrying engine in the castle's scriptorium: ui/05-engine.js
    opens it on the 'gate' event).
 
    Behind it, site percolation on a triangular lattice: each site has its own threshold, drawn once

@@ -148,7 +148,7 @@ function openCard(i, from) {
   card.classList.toggle('as-book', book); card.classList.remove('one-leaf');
   card.dataset.kind = it.kind;
   card.setAttribute('aria-label', it.label);
-  { const pb = card.querySelector('.card-pin'); const id = root.dataset.room; const can = id && WORLD[id] && it.html && !['door', 'archive'].includes(it.kind);
+  { const pb = card.querySelector('.card-pin'); const id = root.dataset.room; const can = id && WORLD[id] && it.html && !['door', 'archive', 'merels', 'quill'].includes(it.kind);
     pb.hidden = !can; if (can) { const on = it.kind === 'pinned' || pinned(id, it.label); pb.textContent = on ? T.unpin : T.pin; pb.onclick = () => { pinToggle(id, it); closeCard(false); }; } }
   card.hidden = false;
   if (!book && card.droll) body.insertAdjacentHTML('beforeend', card.droll);
@@ -162,6 +162,7 @@ function openCard(i, from) {
   const runFigs = () => card.querySelectorAll('.pub-fig canvas').forEach((cv) => { if (!cv.running) { cv.running = true; collisionFig(cv); } }); // (a property: the pages are clones)
   runFigs(); setTimeout(runFigs, 400); setTimeout(runFigs, 1500); // (and again once a book has been paginated)
   card.querySelectorAll('.real-fig').forEach(paintFig); // the real things' pictures (paintings, films...)
+  const play = body.querySelector('.play'); if (play) ({ merels: mountMerels, quill: mountQuill }[it.kind] || (() => {}))(play); // (a game, a page to draw on: ui/10-play.js)
   card.querySelectorAll('canvas.astrolabe').forEach((cv) => { // the astrolabe, kept set while its card is open
     const tick = () => { if (card.hidden || !card.contains(cv) || !window.Hours || !window.Hours.astrolabe) return; cv.nextElementSibling.innerHTML = window.Hours.astrolabe(cv); setTimeout(tick, 1000); };
     tick();

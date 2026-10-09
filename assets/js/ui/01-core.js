@@ -3,7 +3,7 @@
 'use strict';
 
 const root = document.documentElement;
-const SITE = new URL('../../../', document.currentScript.src); // the site root (this file is assets/js/ui/1-core.js)
+const SITE = new URL('../../../', document.currentScript.src); // the site root (this file is assets/js/ui/01-core.js)
 const DUNGEON_SRC = document.currentScript.dataset.dungeon; // loaded on the first descent
 const HOURS_SRC = document.currentScript.dataset.hours; // loaded with the hours theme
 const ARMS_SRC = document.currentScript.dataset.arms; // its coats of arms, before it
