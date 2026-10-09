@@ -795,8 +795,8 @@ function openWindow(hash, { userAction, animate = userAction }) {
     say([win.dataset.look, empty && empty.textContent.trim(), hint].filter(Boolean).join(' '));
   }
   if (target && userAction && root.getAttribute('data-theme') === 'hours') cue('door'); // into a room
-  const door = target && was && was !== win.id && roomDoors(was).find((d) => d.go === win.id);
-  if (window.Hours) window.Hours.room(target ? win.id : null, { animate, dir: door ? (door.dir === 'w' || door.dir === 'n' ? 'l' : 'r') : 0 });
+  const way = target && was && was !== win.id && WORLD[was] ? doorWay(was, win.id) : null; // (from door to door: next door, or across the rooms between)
+  if (window.Hours) window.Hours.room(target ? win.id : null, { animate, dir: way ? (way.length === 1 ? way[0].dir : way) : 0 });
   else root.classList.toggle('room-ready', Boolean(target)); // no castle (yet): show the text at once
   if (!userAction) return;
   win.classList.add('opening');
@@ -1325,6 +1325,18 @@ document.addEventListener('keydown', (e) => {
   if (FRAMED && !document.querySelector('dialog[open]') && $('cmdline').hidden) parent.postMessage({ engine: 'close' }, location.origin);
 }, true);
 
+/** The shortest way from room a to room b through the doors: [{ id, dir }], each room entered and the
+ *  side wall its door is in as seen from the room left ('l' or 'r'); null if there is none. */
+function doorWay(a, b) {
+  const prev = { [a]: null }; const q = [a];
+  while (q.length) {
+    const r = q.shift(); if (r === b) break;
+    roomDoors(r).forEach((d) => { if (!(d.go in prev)) { prev[d.go] = [r, d.dir === 'w' || d.dir === 'n' ? 'l' : 'r']; q.push(d.go); } });
+  }
+  if (!(b in prev)) return null;
+  const way = []; for (let r = b; prev[r]; r = prev[r][0]) way.unshift({ id: r, dir: prev[r][1] });
+  return way;
+}
 /** The doors out of room `id`, from the section's exits: { dir: n|e|s|w, label, go }. */
 function roomDoors(id) {
   const sec = document.getElementById(id);

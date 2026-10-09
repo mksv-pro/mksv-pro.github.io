@@ -465,22 +465,6 @@ qqqqqTTqqTqq..
 ............TqT`,
   };
   const WORLD_MAP = '0000000000000000fc0000003cfe7c38ffff3ffe327fffff03ff01bfffff01ff81ffff6001fe03dfffa000fc03fffff4006003fbdfc0003803fd99c0000f03fc09800007c1fc07c00007f07c07e00007e07c00600003c07a01f00003803801f80003003001f0000200000014000200000000000000000000000100000000ff1fffffffffffffffffffffffffffffffff'; // 48 x 24 land/sea, 7.5 deg cells from 180 W and 90 N, a row in 12 hex digits (for the library's globe)
-  // the black cat walking (two frames, facing right), from room to room after the visitor
-  const CAT_WALK = [`
-.............b.b.
-b...........bbbbb
-.b..........bbEbb
-..bbbbbbbbbbbbbb.
-..bbbbbbbbbbbb...
-..b.b......b.b...
-..b..b....b...b..`, `
-.............b.b.
-b...........bbbbb
-.b..........bbEbb
-..bbbbbbbbbbbbbb.
-..bbbbbbbbbbbb...
-...b.b.....bb....
-...b.b......b.b..`];
   // who lives in each room: one standing figure, an adult at the rooms' scale (28 px, five heads;
   // a table's top at his hip), its clothes by letter: H the head's covering, B the body, A the arms
   // (sleeves), L the legs, X an emblem; f skin, e beard (MATS), k the belt; a raven on the falconer's fist
@@ -1039,7 +1023,6 @@ nNnnnn..
     const body = `${'.\n'.repeat(6)}${DRAGON_BODY.trim()}`;
     SPRITES.dragon = [shadeSprite(overlay(body, WING_UP, 0, true)), shadeSprite(overlay(body, WING_DOWN, 13, false))];
     SPRITES.dragonL = SPRITES.dragon.map(flip);
-    SPRITES.catWalk = CAT_WALK.map(shadeSprite); SPRITES.catWalkL = SPRITES.catWalk.map(flip);
     SPRITES.cats = Object.fromEntries(Object.entries(CATS).map(([k, txt]) => [k, { ...shadeSprite(txt), eyes: eyesOf(txt) }]));
     const lf = SPRITES.cats.blackLoaf; // she faces the fire: mirrored
     SPRITES.cats.blackLoaf = { ...flip(lf), eyes: lf.eyes.map(([x, y]) => [lf.w - 1 - x, y]) };
@@ -3870,7 +3853,7 @@ qqqqqTqqq
     }
     if (clash) (window.overlaps ||= {})[id] = { W, H, pairs: [...clash].sort((a, b) => b[1] - a[1]) };
     return { id, W, H, idx, out, front, lights, flames, stars, motes, blinks, camps, deco, pools, sills, yf, slots: things ? slots : [], things: things || [], cells: new Float32Array(9 * 14),
-      pix: things ? slots.map((b) => owned.get(b) || null) : [], doors: doorList.map((e) => e.b), catY: floorY(0.3),
+      pix: things ? slots.map((b) => owned.get(b) || null) : [], doors: doorList.map((e) => e.b),
       ladderK: things ? things.findIndex((tt) => tt.kind === 'ladder') : -1 };
   }
 
@@ -6708,7 +6691,7 @@ qqqqqTqqq
         const nt = 2 * d.r + 2; for (let k = 0; k < nt; k += 1) { const a = a0 + (k * 2 * Math.PI) / nt; put(d.x + Math.round(Math.cos(a) * (d.r + 1)), d.y + Math.round(Math.sin(a) * (d.r + 1)), P('GOLD_HI')); }
       }
     });
-    drawCat(t, put); drawGuide(t, put, blend);
+    drawGuide(t, put, blend);
     if (flight && interior.sills.length) { // the raven leaving by the window: across its sky, smaller as it goes
       const e = (t - flight.t0) / 1.6; const sl = interior.sills[0];
       if (e >= 1) flight = null;
@@ -6886,7 +6869,7 @@ qqqqqTqqq
       drawInterior(t); obuf.set(fbuf); frameLife(t);
       // through a side door: a strip, left to right, of the room on the left, the wall's thickness, the
       // room on the right; the view pans along it towards the door taken (dir 'l': the room comes in from the left)
-      const e = clamp((t - view.t0) / SLIDE); const s = e < 0.5 ? 2 * e * e : 1 - 2 * (1 - e) ** 2;
+      const e = clamp((t - view.t0) / (view.dur || SLIDE)); const s = e < 0.5 ? 2 * e * e : 1 - 2 * (1 - e) ** 2;
       const S = 14; const o = Math.round(s * (RW + S));
       const x0 = view.dir === 'r' ? o : RW + S - o;
       const left = (i) => (view.dir === 'r' ? iprev[i] : ibuf[i]); const right = (i) => (view.dir === 'r' ? ibuf[i] : iprev[i]);
@@ -6900,7 +6883,11 @@ qqqqqTqqq
           else { const c = xx - RW; robuf[i] = c === 0 || c === S - 1 ? stone[2] : y % 5 === 4 || (c + ((y / 5) | 0) * 4) % 8 === 0 ? stone[1] : stone[0]; } // (the wall in courses, its faces dark)
         }
       }
-      if (e >= 1) { view.state = 'room'; travelling(false); }
+      if (e >= 1 && view.queue && view.queue.length) { // on through the next door
+        const nx = view.queue.shift(); drawInterior(t); iprev.set(ibuf);
+        interior = makeInterior(nx.id); lightInterior();
+        Object.assign(view, { t0: t, dir: nx.dir, id: nx.id }); if (!view.queue.length) view.dur = SLIDE * 0.75;
+      } else if (e >= 1) { view.state = 'room'; travelling(false); if (view.queue) { view.queue = null; setReady(true); } }
     } else {
       const e = t - view.t0; const n = ZOOMS.length;
       const into = st === 'in';
@@ -6937,11 +6924,18 @@ qqqqqTqqq
     if (id) {
       fireFed = now(); // (someone keeps the fire while you are away)
       if (!view.id || roomOf(id) !== roomOf(view.id)) sfx('steps', { floor: ['talks', 'contact', 'research', 'cellar'].includes(roomOf(id)) ? 'stone' : 'wood', n: 4 }); // in: on its floor
-      lastOpened = -1;
-      const follow = () => { roomT0 = t; guide = null; guided = false; rcat = { t0: t + 2.5 + Math.random() * 2, side: dir === 'r' ? 'r' : dir === 'l' ? 'l' : Math.random() < 0.5 ? 'l' : 'r' }; };
+      const follow = () => { roomT0 = t; guide = null; guided = false; };
       if (view.id && ['room', 'swap', 'in', 'climb', 'slide'].includes(view.state)) {
         if (roomOf(id) === roomOf(view.id)) { view.id = id; return; }
         iprev.set(robuf);
+        if (Array.isArray(dir) && anim) { // across the rooms between, door after door, quicker at each
+          const [first, ...rest] = dir;
+          interior = makeInterior(first.id); lightInterior(); follow();
+          view = { state: 'slide', id: first.id, anchor: id, t0: t, dir: first.dir, queue: rest, dur: SLIDE * 0.6 }; // (id: the room on screen, which a late picture remakes)
+          setReady(false); travelling(true);
+          plate.setAttribute('aria-label', label(id)); if (!running) render(t);
+          return;
+        }
         interior = makeInterior(id); lightInterior(); follow();
         view = { state: !anim ? 'room' : typeof dir === 'string' ? 'slide' : dir ? 'climb' : 'swap', id, anchor: id, t0: t, dir };
         setReady(true); travelling(anim);
@@ -7253,42 +7247,9 @@ qqqqqTqqq
   };
   const OUTDOOR = new Set(Object.keys(EVENTS).filter((k) => !['embers', 'banner', 'cinema'].includes(k)));
 
-  /* The black cat follows the visitor in: a few seconds after, through the side the visitor came by,
-     it walks along the floor to the last thing looked at (a thing at table height: up onto it; one on
-     the wall: on the floor under it) and sits there; clicked, it purrs and goes elsewhere. */
   const globe = { lon: 2.35 * deg, vel: 0, drag: null }; // the library's globe: Paris facing us until turned
-  let lastOpened = -1; let rcat = null; let flight = null; // (kept apart from the interior, which is remade as its pictures come)
-  function catPerch() {
-    const it = interior; const ks = [lastOpened, ...it.slots.map((_, k) => k).sort(() => Math.random() - 0.5)];
-    const k = ks.find((q) => q >= 0 && it.slots[q] && it.pix[q] && it.slots[q].y + it.slots[q].h > it.yf - 26 && it.slots[q].y + it.slots[q].h < it.yf + 20 && (!rcat || !rcat.to || q !== rcat.to.k));
-    const sl = k !== undefined && it.slots[k];
-    return sl ? { k, x: Math.round(sl.x + sl.w / 2 - 3), y: sl.y + 1 } : { k: -1, x: Math.round(it.W * (0.25 + Math.random() * 0.5)), y: it.catY };
-  }
-  function drawCat(t, put) {
-    const c = rcat; if (!c || t < c.t0 || reduce) return;
-    const W = interior.W; const H = interior.H;
-    if (c.x === undefined) { c.x = c.side === 'l' ? -17 : W; c.y = interior.catY; c.to = catPerch(); c.state = 'walk'; c.last = t; }
-    const dt = Math.min(0.1, t - c.last); c.last = t;
-    if (c.state === 'walk') {
-      const d = c.to.x - c.x; c.face = d >= 0 ? 1 : -1; c.x += Math.sign(d) * Math.min(Math.abs(d), dt * 16);
-      if (c.y !== interior.catY) { c.y = interior.catY; }
-      if (Math.abs(c.to.x - c.x) < 0.5) { c.x = c.to.x; c.state = c.to.y < interior.catY ? 'hop' : 'sit'; c.th = t; }
-    } else if (c.state === 'hop') {
-      const e = Math.min(1, (t - c.th) / 0.35); c.y = Math.round(interior.catY + (c.to.y - interior.catY) * e - Math.sin(e * Math.PI) * 6);
-      if (e >= 1) { c.y = c.to.y; c.state = 'sit'; }
-    }
-    const sp = c.state === 'sit' ? SPRITES.cats.thin : (c.face > 0 ? SPRITES.catWalk : SPRITES.catWalkL)[Math.floor(t * 6) % 2];
-    const x0 = Math.round(c.state === 'sit' ? c.x + 3 : c.x - (c.face > 0 ? 10 : 6)); const y0 = Math.round(c.y - sp.h + (c.state === 'sit' && Math.floor(t / 2.3) % 2 ? 0 : 0));
-    c.box = { x: x0, y: y0, w: sp.w, h: sp.h };
-    for (let y = 0; y < sp.h; y += 1) for (let x = 0; x < sp.w; x += 1) { const q = sp.px[y * sp.w + x]; const X = x0 + x; const Y = y0 + y; if (q >= 0 && X >= 0 && X < W && Y >= 0 && Y < H) put(X, Y, ipal32[q]); }
-  }
-  /** The cat clicked: a purr, and off to another place. */
-  function catClick(ix, iy) {
-    const c = rcat; const b = c && c.box;
-    if (!b || ix < b.x - 1 || ix > b.x + b.w || iy < b.y - 1 || iy > b.y + b.h) return false;
-    sfx('purr'); if (c.state === 'sit') { c.y = interior.catY; c.to = catPerch(); c.state = 'walk'; }
-    return true;
-  }
+  let flight = null; // (a raven leaving by the rookery's window)
+
   /* The wizard as a guide: twenty seconds without a move in a room, he stands in a doorway, points his
      staff and a trail of sparks goes from its orb to a thing not yet looked at, which glints; once a visit of the room. */
   const session0 = (k, v) => { try { if (v === undefined) return sessionStorage.getItem(k); sessionStorage.setItem(k, v); } catch { /* (no storage: every load) */ } return null; };
@@ -7336,7 +7297,6 @@ qqqqqTqqq
 
   /** A click in a room: on the workshop's hearth, a log on the fire. */
   function roomClick(ix, iy) { // (room pixels)
-    if (catClick(ix, iy)) return;
     if (candleClick(ix, iy)) return;
     const sl = interior.sills.find((q) => ix >= q.x0 - 1 && ix <= q.x0 + q.w && iy >= q.top && iy < q.y);
     if (sl) { const on = !opens.get(interior.id); opens.set(interior.id, on); reshape(); sfx(on ? 'glint' : 'drop'); say(on ? 'You open the window: the air of Paris comes in.' : 'You shut the window.'); return; }
@@ -8021,7 +7981,6 @@ qqqqqTqqq
     opened(i) {
       if (!interior || openIx === i) return; openIx = i; reshape();
       if (i >= 0 && (interior.things[i] || {}).kind === 'letter' && interior.sills.length) { flight = { t0: now() }; sfx('caw'); } // (a raven out through the window with the answer)
-      if (i >= 0) { lastOpened = i; const c = rcat; if (c && c.state === 'sit') { c.y = interior.catY; c.to = catPerch(); c.state = 'walk'; } }
     },
   };
 }());
