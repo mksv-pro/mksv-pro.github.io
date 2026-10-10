@@ -2866,6 +2866,7 @@ qqqqqTqqq
         [0.05, 0.45, 0.85, 1.25].forEach((q) => { for (let r = 0; r <= 10; r += 1) set(cx - Math.cos(q) * r, cy + Math.sin(q) * r - 8, I.PLASTER); });
         for (let ring = 3; ring <= 9; ring += 3) for (let q = 0.05; q <= 1.25; q += 0.08) set(cx - Math.cos(q) * ring, cy + Math.sin(q) * ring - 8 + Math.sin(q * 3) * 0.6, I.PLASTER_SH);
         deco.push({ type: 'drip', x: Math.round(W * 0.58), y: Math.round(H * 0.1), floor: floorY(0.2) });
+        deco.push({ type: 'puddle', x: Math.round(W * 0.58), y: floorY(0.2) + 1 }); // (it grows while it really rains over Paris)
       }
       lantern(S(0.66), Math.round(H * 0.3));
     } else { // contact: the letterbox in the door, a lodestone and the register on the table, a map of Paris
@@ -3086,7 +3087,14 @@ qqqqqTqqq
     }
     if (DWELLERS[kind]) { // the room's dweller, standing on the floor at a free place, near the back
       const [h, b, a, l, x, beard, lines] = DWELLERS[kind];
-      const txt = PERSON.replace(/H/g, h).replace(/B/g, b).replace(/A/g, a).replace(/L/g, l).replace(/X/g, x).replace(/e/g, beard ? 'e' : 'f');
+      const sea = (() => { const q = new URLSearchParams(location.search).get('season'); return ['spring', 'summer', 'autumn', 'winter'].includes(q) ? q : SEASON(today().getMonth()); })();
+      const dress = (art) => { // the season's clothes: bare arms in summer, a red scarf and a darker hood in winter
+        const rows = art.split('\n');
+        if (sea === 'summer') return rows.map((r, y) => (y > 11 ? r.replace(/A/g, 'f') : r)).join('\n');
+        if (sea === 'winter') return rows.map((r, y) => (y === 8 ? r.replace(/B/g, 'r') : y < 3 ? r.replace(/H/g, 'a') : r)).join('\n');
+        return art;
+      };
+      const txt = dress(PERSON).replace(/H/g, h).replace(/B/g, b).replace(/A/g, a).replace(/L/g, l).replace(/X/g, x).replace(/e/g, beard ? 'e' : 'f');
       const sp = shadeSprite(txt); let fy = floorY(0.18);
       const xs = [0.3, 0.7, 0.2, 0.8, 0.4, 0.6, 0.12, 0.88, 0.5, 0.25, 0.75, 0.35, 0.65, 0.05, 0.95].map(S);
       const boxes = [...slots.filter(Boolean), ...reserved, ...deco.filter((d) => d.x !== undefined && d.y !== undefined).map((d) => ({ x: d.x - 8, y: d.y - 8, w: (d.w || 0) + 16, h: (d.h || 0) + 16 })),
@@ -5855,6 +5863,12 @@ qqqqqTqqq
         for (let x = 0; x < 10; x += 1) { put(d.x + x, d.y - 4 + Math.floor(x / 4) + dy, P('TIMBER_HI')); if (dy) put(d.x + x, d.y - 4 + Math.floor(x / 4), P('LEATHER_SH')); }
         if (k > 0.6) fireFed = Math.max(fireFed, now() - 20); // (a breath of air keeps the hearth up)
       } else if (d.type === 'anvil') { // struck: sparks fly up and fall, for half a second
+        { // the bar of iron, on the anvil or in the fire, glowing as hot as it is
+          const T = barTemp(t); const gl = glowOf(T); const hf = interior.flames.find((q) => q.hearth);
+          const [bx, by] = bar.where === 'fire' && hf ? [hf.x - 5, hf.y - 2] : [d.x + 3, d.y - 1];
+          for (let k = 0; k < 10; k += 1) put(bx + k, by, gl ? pack(gl) : P('ARM_SH'));
+          if (gl) for (let k = -1; k <= 10; k += 2) blend(bx + k, by - 1, gl, 0.35);
+        }
         const e = t - (interior.struck || -9);
         if (e < 0.7) for (let k = 0; k < 9; k += 1) { const a = -Math.PI / 2 + (k - 4) * 0.28; const v = 14 + (k * 7) % 9; const x = d.x + 6 + Math.cos(a) * v * e; const y = d.y + Math.sin(a) * v * e + 22 * e * e; put(x, y, pack(k % 3 ? [255, 210, 90] : [255, 250, 220])); }
       } else if (d.type === 'eyepiece') { // at night a star caught in the eyepiece, twinkling
@@ -6000,12 +6014,6 @@ qqqqqTqqq
           const day = p3[0] * sun[0] + p3[1] * sun[1] + p3[2] * sun[2] > -0.05 * bayer(d.x + x, d.y + y);
           put(d.x + x, d.y + y, P(day ? (land ? (lat / deg < -66 ? 'SNOW' : 'FERN') : q < 0.3 && u + v < 0 ? 'WATER_HI' : 'WATER') : land ? 'FG_PINE' : 'T_NAVY'));
         }
-      } else if (d.type === 'anvil') { // the bar of iron, on the anvil or in the fire, glowing as hot as it is
-        const T = barTemp(t); const gl = glowOf(T); const hf = interior.flames.find((q) => q.hearth);
-        const [bx, by] = bar.where === 'fire' && hf ? [hf.x - 5, hf.y - 2] : [d.x + 3, d.y - 1];
-        for (let k = 0; k < 10; k += 1) put(bx + k, by, gl ? pack(gl) : P('ARM_SH'));
-        if (gl) for (let k = -1; k <= 10; k += 2) blend(bx + k, by - 1, gl, 0.35);
-        if (interior.struck && t - interior.struck < 0.4 && bar.where === 'anvil' && T > 950) for (let k = 0; k < 8; k += 1) { const a = k * 0.8; const r = (t - interior.struck) * 30; put(bx + 5 + Math.round(Math.cos(a) * r), by - Math.abs(Math.round(Math.sin(a) * r)), P(k % 2 ? 'FL_YEL' : 'GOLD_HI')); }
       } else if (d.type === 'portcullis') { // the door behind opens on the day as it rises; its bars stripe the light on the floor
         const dt = Math.min(0.05, t - (gate.at || t)); gate.at = t; if (gate.lift !== gate.to) { gate.lift += Math.sign(gate.to - gate.lift) * Math.min(Math.abs(gate.to - gate.lift), dt / 3); if (!reduce && Math.random() < 0.15) sfx('tick'); }
         const H0 = interior.yf; const up = Math.round(gate.lift * (H0 - d.t));
@@ -6021,6 +6029,10 @@ qqqqqTqqq
           for (let x = Math.floor(x0); x < x0 + w0; x += 1) { const barred = gate.lift < 0.97 && Math.floor((x - x0) / (w0 / ((d.b - d.a) / 4))) % 2 === 0 && k < 1 - gate.lift; blend(x, y, [255, 240, 200], (barred ? 0.05 : 0.28) * day * gate.lift * (1 - k * 0.6)); } }
       } else if (d.type === 'feeder') { // the grain: pecked at while the ravens are down
         if (pour && t - pour.t0 < 1.5) for (let k = 0; k < 4; k += 1) blend(pour.x, pour.y + 1 + ((t * 12 + k) % 5), [120, 20, 40], 0.8);
+      } else if (d.type === 'puddle') { // under the drip, a puddle as wide as the rain is hard and long (it spreads while you stay)
+        const wet = WET[weather.kind] || 0; if (wet < 0.7) return;
+        const r = Math.min(9, 2 + wet * 3 + (t - roomT0) / 20);
+        for (let y = -2; y <= 2; y += 1) for (let x = -Math.ceil(r); x <= Math.ceil(r); x += 1) { const q = (x / r) ** 2 + (y / (r * 0.3)) ** 2; if (q < 1) blend(d.x + x, d.y + y, q < 0.3 && (x + Math.floor(t * 2)) % 7 === 0 ? [200, 220, 235] : [90, 110, 130], 0.5 * (1 - q * 0.6)); }
       } else if (d.type === 'inked') { // the visitor's drawing on the copyist's page, a few dark strokes as small as the page
         const n = Math.min(14, Math.ceil(inkOf() / 12)); for (let k = 0; k < n; k += 1) put(d.x + ((k * 5) % 8), d.y + ((k * 3) % 3) - Math.floor(((k * 5) % 8) / 3), P('OUTLINE'));
       } else if (d.type === 'gear') { // a brass wheel: a solid disc, its rim, spokes and teeth that turn, the axle
@@ -6034,6 +6046,10 @@ qqqqqTqqq
       }
     });
     drawGuide(t, put, blend);
+    if (opens.get(interior.id) && weather.kind === 'snow') interior.sills.forEach((sl) => { // snow coming in by the open window, lying on its sill
+      const n = Math.min(sl.w + 4, Math.floor((t - roomT0) / 1.5)); for (let k = 0; k < n; k += 1) put(sl.x0 - 2 + ((k * 7) % (sl.w + 4)), sl.y - (k >= sl.w + 4 ? 1 : 0), pack([240, 244, 250]));
+      if (!reduce) for (let k = 0; k < 4; k += 1) { const f = ((t * 0.6 + k * 0.27) % 1); blend(sl.x0 + ((k * 5 + Math.floor(t)) % sl.w), sl.top + f * (sl.y - sl.top + 10), [245, 248, 255], 0.8); }
+    });
     if (pour && t - pour.t0 < 1.5) for (let k = 0; k < 4; k += 1) blend(pour.x, pour.y + 1 + Math.floor((t * 12 + k) % 6), [110, 16, 36], 0.85); // (wine from the spigot)
     if (flight && interior.sills.length) { // the raven leaving by the window: across its sky, smaller as it goes
       const e = (t - flight.t0) / 1.6; const sl = interior.sills[0];
@@ -6056,6 +6072,7 @@ qqqqqTqqq
     flames.forEach((f, k) => { f.off = Boolean(out1 && out1.has(k)); });
     lights.forEach((l) => { l.off = !l.hearth && flames.some((f) => f.off && Math.abs(f.x - l.x) <= 1 && Math.abs(f.y - l.y) <= 2); });
     const dark = flames.some((f) => !f.hearth) && flames.every((f) => f.hearth || f.off);
+    if (dark && look.night > 0.3 && roomPointer) lights.push({ x: roomPointer[0], y: roomPointer[1], r: 0.22 * H, hand: true }); // (in the dark, the pointer carries a candle: its light, its flame below)
     if (dark) for (let i = 0; i < W * H; i += 1) if (!out[i]) { const c = unpack(ibuf[i]); ibuf[i] = pack(look.night > 0.3 ? [c[0] * 0.42, c[1] * 0.48, c[2] * 0.68] : c.map((v) => v * 0.82)); } // (no candle: the moon's blue, or the day's grey)
     lights.forEach((l, k) => { // warm, stepped, flickering; further by night (nothing else lights the room then)
       if (l.off) return;
@@ -6076,6 +6093,8 @@ qqqqqTqqq
       }
     });
     const fc = FIRE.map((h) => (h ? pack(hex(h)) : 0));
+    if (dark && look.night > 0.3 && roomPointer) { const [px0, py0] = roomPointer; put(px0, py0 + 1, P0('STEM')); put(px0, py0, fc[7]); put(px0, py0 - 1, fc[Math.random() < 0.7 ? 6 : 5]); }
+    const hand = lights.findIndex((l) => l.hand); if (hand >= 0) lights.splice(hand, 1); // (the pointer's candle: this frame only)
     flames.forEach((f) => {
       if (f.hearth) {
         for (let y = 0; y < 14; y += 1) {
@@ -6087,6 +6106,7 @@ qqqqqTqqq
         }
         return;
       }
+      if (f.hand) return;
       if (f.off) { // a wisp of smoke for two seconds, then nothing
         const e = f.smoke ? t - f.smoke : 9; if (e < 2) for (let j = 0; j < 4; j += 1) blend(f.x + Math.round(Math.sin(e * 5 + j) * (j * 0.5)), f.y - 1 - j - Math.round(e * 3), [170, 165, 160], 0.6 * (1 - e / 2) * (1 - j / 5));
         return;
@@ -6571,6 +6591,7 @@ qqqqqTqqq
 
   const globe = { lon: 2.35 * deg, vel: 0, drag: null }; // the library's globe: Paris facing us until turned
   let flight = null; // (a raven leaving by the rookery's window)
+  let roomPointer = null; const P0 = (n) => ipal32[I[n]]; // (the pointer in room px, for the candle it carries in the dark)
 
   /* The wizard as a guide: twenty seconds without a move in a room, he stands in a doorway, points his
      staff and a trail of sparks goes from its orb to a thing not yet looked at, which glints; once a visit of the room. */
@@ -7138,7 +7159,8 @@ qqqqqTqqq
         let lastChalk = null;
         const chalkLine = (p) => { const n = lastChalk ? Math.max(Math.abs(p[0] - lastChalk[0]), Math.abs(p[1] - lastChalk[1]), 1) : 1; for (let k = 1; k <= n; k += 1) chalkAt(lastChalk ? Math.round(lastChalk[0] + ((p[0] - lastChalk[0]) * k) / n) : p[0], lastChalk ? Math.round(lastChalk[1] + ((p[1] - lastChalk[1]) * k) / n) : p[1]); lastChalk = p; };
         roomCv.addEventListener('pointerdown', (e) => { if (!chalk.on) return; chalkDown = true; lastChalk = null; chalkLine(roomAt(e)); try { roomCv.setPointerCapture(e.pointerId); } catch { /* (a pointer the browser no longer knows) */ } });
-        roomCv.addEventListener('pointermove', (e) => { if (chalk.on && chalkDown) chalkLine(roomAt(e)); });
+        roomCv.addEventListener('pointermove', (e) => { roomPointer = roomAt(e); if (chalk.on && chalkDown) chalkLine(roomPointer); });
+        roomCv.addEventListener('pointerleave', () => { roomPointer = null; });
         roomCv.addEventListener('pointerup', () => { chalkDown = false; lastChalk = null; });
         roomCv.addEventListener('dblclick', (e) => { if (chalk.on) chalkAt(...roomAt(e), true); });
         document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && chalk.on) { e.preventDefault(); e.stopImmediatePropagation(); chalkMode(false); } }, true);

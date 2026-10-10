@@ -369,29 +369,33 @@
   let lastAngelus = '';
 
   /* ---- the rooms: what each sounds like (s.room: the section shown, or a project page) */
+  /* Where each room's sounds come from across it (-1 left .. 1 right), heard from where the pointer is
+     (s.ear): move left and the forge on the left comes to the middle. */
+  const SRC = { quill: -0.45, page: 0.3, raven: -0.7, anvil: -0.35, bellows: -0.6, chalk: 0, whisper: 0.25, goblet: 0.1, voices: 0.6, orrery: 0.8, steps: 0, drip: 0.6, candle: 0, shelf: -0.5, lantern: -0.2 };
   function roomSounds(room) {
+    const ear = state().ear || 0; const at0 = (k) => Math.max(-0.9, Math.min(0.9, (SRC[k] - ear) * 0.9));
     const r = Math.random();
-    if (room === 'about' && r < 0.12) for (let k = 0; k < 3 + Math.floor(Math.random() * 4); k += 1) burst(5200, 0.06, 0.035, { type: 'highpass', at: k * 0.11 }); // a quill scratching
-    if (room === 'publications' && r < 0.04) burst(2200, 0.4, 0.05, { sweep: 2.2 }); // a page turned, somewhere
-    if (room === 'news' && r < 0.05) for (let k = 0; k < 1 + Math.floor(Math.random() * 3); k += 1) tone(620, 470, 0.22, 0.05, { type: 'sawtooth', filter: 900, at: k * 0.35 }); // a raven
+    if (room === 'about' && r < 0.12) for (let k = 0; k < 3 + Math.floor(Math.random() * 4); k += 1) burst(5200, 0.06, 0.035, { type: 'highpass', at: k * 0.11, pan: at0('quill') }); // a quill scratching
+    if (room === 'publications' && r < 0.04) burst(2200, 0.4, 0.05, { sweep: 2.2, pan: at0('page') }); // a page turned, somewhere
+    if (room === 'news' && r < 0.05) for (let k = 0; k < 1 + Math.floor(Math.random() * 3); k += 1) tone(620, 470, 0.22, 0.05, { type: 'sawtooth', filter: 900, at: k * 0.35, pan: at0('raven') }); // a raven
     if ((room === 'work' || room === 'workshop') && r < 0.06) { // hammer on the anvil, twice
-      [0, 0.45].forEach((at) => { chime([1180, 2640, 3910], 0.06, 0.9, true, at); burst(180, 0.08, 0.15, { type: 'lowpass', at }); });
+      [0, 0.45].forEach((at) => { chime([1180, 2640, 3910], 0.06, 0.9, true, at, at0('anvil')); burst(180, 0.08, 0.15, { type: 'lowpass', at, pan: at0('anvil') }); });
     }
-    if (room === 'teaching' && r < 0.06) for (let k = 0; k < 4; k += 1) burst(3600, 0.05, 0.04, { at: k * 0.2 }); // chalk on the board
-    if (room === 'talks' && r < 0.025) chime([2210, 3150, 4320], 0.035, 1.6); // goblets touching
-    if (room === 'experience' && r < 0.9) burst(4000, 0.015, 0.02, { type: 'highpass' }); // the orrery's clock, ticking
-    if (room === 'contact' && r < 0.03) for (let k = 0; k < 4; k += 1) burst(260, 0.09, 0.08, { type: 'lowpass', at: k * 0.5, echo: true }); // footsteps under the arch
+    if (room === 'teaching' && r < 0.06) for (let k = 0; k < 4; k += 1) burst(3600, 0.05, 0.04, { at: k * 0.2, pan: at0('chalk') }); // chalk on the board
+    if (room === 'talks' && r < 0.025) chime([2210, 3150, 4320], 0.035, 1.6, true, 0, at0('goblet')); // goblets touching
+    if (room === 'experience' && r < 0.9) burst(4000, 0.015, 0.02, { type: 'highpass', pan: at0('orrery') }); // the orrery's clock, ticking
+    if (room === 'contact' && r < 0.03) for (let k = 0; k < 4; k += 1) burst(260, 0.09, 0.08, { type: 'lowpass', at: k * 0.5, echo: true, pan: at0('steps') }); // footsteps under the arch
     // and the rest of each room's life
     const r2 = Math.random();
-    if (room === 'contact' && r2 < 0.05) tone(1500 + Math.random() * 300, 700, 0.06, 0.03, { echo: true }); // a drip in the stone passage
-    if (room === 'teaching' && r2 < 0.03) for (let k = 0; k < 5; k += 1) burst(2600 + Math.random() * 1500, 0.05, 0.015, { at: k * 0.07, pan: (Math.random() - 0.5) }); // pupils whispering
+    if (room === 'contact' && r2 < 0.05) tone(1500 + Math.random() * 300, 700, 0.06, 0.03, { echo: true, pan: at0('drip') }); // a drip in the stone passage
+    if (room === 'teaching' && r2 < 0.03) for (let k = 0; k < 5; k += 1) burst(2600 + Math.random() * 1500, 0.05, 0.015, { at: k * 0.07, pan: at0('whisper') + (Math.random() - 0.5) * 0.3 }); // pupils whispering
     if (room === 'teaching' && r2 > 0.995) { burst(700, 0.12, 0.08, { echo: true }); burst(500, 0.1, 0.06, { at: 0.18, echo: true }); } // a cough at the back
-    if (room === 'news' && r2 < 0.03) for (let k = 0; k < 6; k += 1) burst(900 + Math.random() * 500, 0.04, 0.06, { at: k * 0.06, pan: -0.4 }); // wings, a raven settling
-    if ((room === 'work' || room === 'workshop') && r2 < 0.02) { burst(300, 0.8, 0.08, { type: 'lowpass', sweep: 1.6 }); burst(1800, 0.3, 0.03, { at: 0.5, type: 'highpass' }); } // the bellows, the fire answering
-    if (room === 'publications' && r2 < 0.01) burst(4200, 0.05, 0.02, { type: 'highpass' }); // a book slid back on its shelf
-    if (room === 'talks' && state().cinema) for (let k = 0; k < 4; k += 1) burst(2600 + Math.random() * 800, 0.012, 0.03, { type: 'highpass', at: k * 0.0625 }); // the lantern's crank and shutter, 16 a second
-    if (room === 'talks' && r2 < 0.02) for (let k = 0; k < 3; k += 1) tone(150 + Math.random() * 60, 130, 0.25, 0.012, { type: 'sawtooth', filter: 500, at: k * 0.3, echo: true }); // voices, far down the hall
-    if (room === 'about' && r2 < 0.04) burst(600, 0.25, 0.02, { type: 'lowpass' }); // a candle gutters
+    if (room === 'news' && r2 < 0.03) for (let k = 0; k < 6; k += 1) burst(900 + Math.random() * 500, 0.04, 0.06, { at: k * 0.06, pan: at0('raven') }); // wings, a raven settling
+    if ((room === 'work' || room === 'workshop') && r2 < 0.02) { burst(300, 0.8, 0.08, { type: 'lowpass', sweep: 1.6, pan: at0('bellows') }); burst(1800, 0.3, 0.03, { at: 0.5, type: 'highpass', pan: at0('bellows') }); } // the bellows, the fire answering
+    if (room === 'publications' && r2 < 0.01) burst(4200, 0.05, 0.02, { type: 'highpass', pan: at0('shelf') }); // a book slid back on its shelf
+    if (room === 'talks' && state().cinema) for (let k = 0; k < 4; k += 1) burst(2600 + Math.random() * 800, 0.012, 0.03, { type: 'highpass', at: k * 0.0625, pan: at0('lantern') }); // the lantern's crank and shutter, 16 a second
+    if (room === 'talks' && r2 < 0.02) for (let k = 0; k < 3; k += 1) tone(150 + Math.random() * 60, 130, 0.25, 0.012, { type: 'sawtooth', filter: 500, at: k * 0.3, echo: true, pan: at0('voices') }); // voices, far down the hall
+    if (room === 'about' && r2 < 0.04) burst(600, 0.25, 0.02, { type: 'lowpass', pan: at0('candle') }); // a candle gutters
   }
   /* ---- thunder, computed sample by sample. A bolt's channel is kilometres of zigzag: each segment
      sends its own clap, and they arrive one after another, the nearest first, so a peal is a train
