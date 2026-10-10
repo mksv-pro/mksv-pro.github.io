@@ -64,7 +64,7 @@
 
   <link rel="preload" href="assets/fonts/DepartureMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/IBMPlexMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="styles.css?v=a3bac66d">
+  <link rel="stylesheet" href="styles.css?v=222922e5">
 
   <script type="application/ld+json">
   {
@@ -132,24 +132,22 @@
   <div class="gate" id="gate" role="dialog" aria-modal="true" aria-labelledby="gate-h">
     <canvas aria-hidden="true"></canvas>
     <div class="gate-box">
-      <p class="gate-name">Mike Silva</p>
-      <p class="gate-sub">Graduate student in physics &middot; Paris</p>
-      <p id="gate-h" class="gate-q">How would you like to visit?</p>
-      <div class="gate-choices">
-        <button type="button" data-gate="castle"><b>Explore the castle</b>
-          <span>An illustrated, game-like version: each section of the site is a room of a castle, in a landscape under the real sky of Paris. Takes a few minutes.</span></button>
-        <button type="button" data-gate="terminal"><b>Open the terminal</b>
-          <span>The plain, fast version: the whole site as text (CV, research, publications), every section one key away.<span class="gate-wide"> It opens in a machine in the castle.</span></span></button>
-      </div>
-      <p class="gate-more">
-        <button type="button" data-gate="tour" class="gate-wide">or take a one-minute tour</button>
-        <a href="assets/Mike_Silva_CV.pdf">just the CV (PDF)</a>
-      </p>
-      <p class="gate-foot"><label><input type="checkbox" id="gate-keep"> remember my choice on this device</label></p>
-      <p class="gate-hint gate-wide">you can switch at any time with the button at the bottom right</p>
+      <p class="gate-ln"><span class="gate-ps" aria-hidden="true">$ </span>whoami</p>
+      <p class="gate-ln gate-out"><b class="gate-name">Mike Silva</b> <span class="gate-sep">&middot;</span> graduate student in physics <span class="gate-sep">&middot;</span> Paris</p>
+      <p class="gate-ln" id="gate-h"><span class="gate-ps" aria-hidden="true">$ </span>visit <span class="gate-typed" aria-live="polite"></span><span class="gate-ghost" aria-hidden="true"></span><span class="gate-cur" aria-hidden="true"></span></p>
+      <ul class="gate-ways">
+        <li class="gate-ln"><button type="button" data-gate="castle" data-key="c"><span class="gw-n">castle</span><span class="gw-d">an illustrated castle, a room per section, under the real sky of Paris</span><kbd>c</kbd></button></li>
+        <li class="gate-ln"><button type="button" data-gate="terminal" data-key="t"><span class="gw-n">terminal</span><span class="gw-d">the whole site as text, a key per section<span class="gate-wide">, in a machine of the castle</span></span><kbd>t</kbd></button></li>
+        <li class="gate-ln"><a href="assets/Mike_Silva_CV.pdf" data-key="v"><span class="gw-n">cv</span><span class="gw-d">one page, PDF</span><kbd>v</kbd></a></li>
+        <li class="gate-ln gate-wide"><button type="button" class="gate-wide" data-gate="tour" data-key="?"><span class="gw-n">tour</span><span class="gw-d">one minute round the castle</span><kbd>?</kbd></button></li>
+      </ul>
+      <p class="gate-ln gate-err" aria-live="assertive"></p>
+      <p class="gate-ln gate-foot"><label><input type="checkbox" id="gate-keep"><span class="gate-box-x" aria-hidden="true"></span> remember this choice on this device</label></p>
+      <p class="gate-ln gate-hint"><span aria-hidden="true"># </span>type a way, or click it; <span class="gate-wide">switch any time with the button at the bottom right</span></p>
     </div>
+    <p class="gate-bar" aria-hidden="true"><span class="gb-l">[mksv]</span> <span class="gb-on">0:visit*</span><span class="gb-r"><span class="gb-moon"></span><span class="gb-time"></span></span></p>
   </div>
-  <script src="assets/js/gate.js?v=3c4610e2"></script>
+  <script src="assets/js/gate.js?v=a3f94eb2"></script>
   <a class="skip-link" href="#main">Skip to content</a>
 
   <p class="msgline">
@@ -631,12 +629,12 @@
   <script type="application/json" id="site-data">{"world":{"experience":{"c":0,"r":0,"name":"Experience","label":"experience"},"publications":{"c":1,"r":0,"name":"Publications","label":"publications"},"about":{"c":0,"r":1,"name":"About","label":"about","img":"flammarion-dark.png"},"work":{"c":1,"r":1,"name":"Work","label":"work"},"contact":{"c":0,"r":2,"name":"Contact","label":"contact"},"news":{"c":1,"r":2,"name":"News","label":"news"},"talks":{"c":0,"r":3,"name":"Talks","label":"talks"},"teaching":{"c":1,"r":3,"name":"Teaching","label":"teaching"}},"links":[["experience","publications"],["experience","about"],["publications","work"],["about","work"],["about","contact"],["work","news"],["contact","news"],["contact","talks"],["news","teaching"],["talks","teaching"]],"email":"pro.mikesilva@gmail.com","github":"https://github.com/mksv-pro","bib":"assets/bib/silva2026emulation.bib","heraldry":{"own":"silva","tapestry":[["sorbonne","Sorbonne Université","BSc Physics & Mathematics; MSc Quantum Information"],["paris1","Université Paris 1 Panthéon-Sorbonne","BA Economics & Political Science"],["sciencespo","Sciences Po","Research assistant"],["ceremade","CEREMADE","Visiting research student"],["pariscite","Université Paris Cité","MSc Fundamental Physics"],["dauphine","Université Paris Dauphine-PSL","BSc Economics & Finance (L3); MSc Economics & Finance"],["ijclab","IJCLab","Research intern"],["saclay","Université Paris-Saclay","MSc Physics of Complex Systems"]]},"library":{"shelves":[["statphys","Statistical physics"],["stochastic","Stochastic processes"],["complex","Complex systems"],["dynamics","Dynamical systems and chaos"],["rmt","Random matrices"],["quantum","Quantum mechanics"],["qinfo","Quantum information"],["fields","Statistical field theory"],["proba","Probability"],["analysis","Analysis and PDEs"],["geometry","Geometry"],["ml","Machine learning"],["mlphys","Machine learning for physics"],["mfg","Mean-field games"],["econo","Econophysics and finance"],["social","Agent-based and social models"]]}}</script>
   <script src="assets/js/sky.js?v=dc9a7c33"></script>
   <!-- the page's scripts, in this order: one global scope (README, "assets/js/ui") -->
-  <script src="assets/js/ui/01-core.js?v=df239cac" data-dungeon="assets/js/dungeon.js?v=4914bb4a" data-hours="assets/js/hours/hours.js?v=d5ea3db6" data-arms="assets/js/arms.js?v=33075736" data-textures="assets/js/hours/textures.js?v=857bd7bb" data-art="assets/js/hours/art.js?v=fe3f9b98" data-physics="assets/js/hours/physics.js?v=300d0e8f" data-sound="assets/js/sound.js?v=e9a15bd0"></script>
+  <script src="assets/js/ui/01-core.js?v=df239cac" data-dungeon="assets/js/dungeon.js?v=4914bb4a" data-hours="assets/js/hours/hours.js?v=ab501ddd" data-arms="assets/js/arms.js?v=33075736" data-textures="assets/js/hours/textures.js?v=857bd7bb" data-art="assets/js/hours/art.js?v=fe3f9b98" data-physics="assets/js/hours/physics.js?v=300d0e8f" data-sound="assets/js/sound.js?v=e9a15bd0"></script>
   <script src="assets/js/ui/02-theme.js?v=902e92c9"></script>
   <script src="assets/js/ui/03-rooms.js?v=7ba41e70"></script>
   <script src="assets/js/ui/04-things.js?v=44781bae"></script>
   <script src="assets/js/ui/05-engine.js?v=50f9cf8b"></script>
-  <script src="assets/js/ui/06-cards.js?v=b5674848"></script>
+  <script src="assets/js/ui/06-cards.js?v=055e64ea"></script>
   <script src="assets/js/ui/07-dialogs.js?v=f6b88ba4"></script>
   <script src="assets/js/ui/08-almanac.js?v=c5d8bd3b"></script>
   <script src="assets/js/ui/09-cmdline.js?v=6d654990"></script>

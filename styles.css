@@ -1324,49 +1324,76 @@ details.how p { margin: .3rem 0 0; }
 [data-theme="hours"] .card .card-title, [data-theme="hours"] dialog.scroll h2 { font-family: "UnifrakturMaguntia", serif; font-size: 1.5em; letter-spacing: .02em; }
 .status .lbl { font-style: normal; }
 
-/* the front gate (gate.js): black, a network of points, the two ways in; shown on a bare visit only */
-.gate { display: none; }
+/* the front gate (gate.js): a console that boots, the ways in as commands, percolation in glyphs behind;
+   shown on a bare visit only */
+.gate { display: none; --g-bg: #0b0a08; --g-ink: #cfc8b8; --g-dim: #7d776a; --g-faint: #4a463e; --g-acc: #e0a23a; }
 .gated .gate {
-  display: grid; place-items: center; position: fixed; inset: 0; z-index: 10000; background: #000; color: #e6e8ec;
-  font-family: "IBM Plex Mono", ui-monospace, monospace; transition: opacity .7s ease;
+  position: fixed; inset: 0; z-index: 100; display: flex; align-items: center;
+  background: var(--g-bg); color: var(--g-ink); font: 400 .95rem/1.75 var(--text); transition: opacity .4s ease;
 }
 .gated body { overflow: hidden; }
-.gate.out { opacity: 0; pointer-events: none; }
+.gate.out { opacity: 0; pointer-events: none; transition-delay: .45s; }
 .gate canvas { position: absolute; inset: 0; display: block; }
-.gate-box { position: relative; width: min(46rem, calc(100vw - 2rem)); padding: 2rem 2.2rem; text-align: center;
-  background: rgba(0, 0, 0, .86); box-shadow: 0 0 3rem 2rem rgba(0, 0, 0, .86); }
-.gate-name { margin: 0; font-size: 1.6rem; font-weight: 600; letter-spacing: .04em; color: #fff; }
-.gate-sub { margin: .3rem 0 2rem; font-size: .85rem; color: #9ba0aa; }
-.gate-q { margin: 0 0 1.2rem; font-size: 1rem; font-weight: 400; color: #c9ccd3; }
-.gate-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-.gate-choices button {
-  display: flex; flex-direction: column; gap: .5rem; padding: 1.1rem 1.2rem; text-align: left; cursor: pointer;
-  font: inherit; color: inherit; background: transparent; border: 1px solid #3a3e46; border-radius: 2px;
-  transition: border-color .2s, background-color .2s;
+.gate-box { position: relative; width: min(54rem, calc(100vw - 2rem)); margin-left: max(1rem, 9vw); padding: 1.4rem 1.6rem;
+  background: rgb(11 10 8 / .82); box-shadow: 0 0 0 1px var(--g-faint), 0 0 4rem 2rem rgb(11 10 8 / .7); transition: opacity .3s ease; }
+.gate-box p, .gate-ways { margin: 0; }
+.gate-ways { list-style: none; padding: 0; margin: .15rem 0 .2rem; }
+.gate-ps { color: var(--g-acc); }
+.gate-out { color: var(--g-dim); margin-bottom: .9rem !important; }
+.gate-name { color: #fff; font-weight: 600; }
+.gate-sep { color: var(--g-faint); }
+.gate-typed { color: #fff; }
+.gate-ghost { color: var(--g-faint); }
+.gate-cur { display: inline-block; width: .6em; height: 1.15em; vertical-align: -.2em; background: var(--g-acc); animation: gate-blink 1.05s steps(1) infinite; }
+@keyframes gate-blink { 50% { opacity: 0; } }
+.gate-ways :is(button, a) {
+  display: grid; grid-template-columns: 9ch minmax(0, 1fr) auto; gap: 0 1.5ch; align-items: baseline; width: 100%;
+  padding: .05rem .6ch .05rem 2ch; font: inherit; color: var(--g-ink); text-align: left; text-decoration: none;
+  background: none; border: 0; cursor: pointer; position: relative;
 }
-.gate-choices button b { font-size: 1.02rem; color: #fff; }
-.gate-choices button span { font-size: .8rem; line-height: 1.5; color: #a4a9b3; }
-.gate-choices button:is(:hover, :focus-visible) { border-color: #e6e8ec; background: rgba(255, 255, 255, .05); outline: none; }
-.gate-foot { margin: 1.4rem 0 0; font-size: .75rem; color: #6e737d; }
-.gate-foot label { display: inline-flex; align-items: center; gap: .55rem; cursor: pointer; color: #8a8f99; }
-.gate-foot label:hover { color: #c9ccd3; }
-.gate-foot input { /* a square in the cards' thin line; checked, a smaller square inside it */
-  appearance: none; flex: none; width: .8rem; height: .8rem; margin: 0; border: 1px solid #4a4f59; background: transparent; cursor: pointer;
-  transition: border-color .2s, box-shadow .2s;
-}
-.gate-foot label:hover input { border-color: #c9ccd3; }
-.gate-foot input:checked { border-color: #e6e8ec; box-shadow: inset 0 0 0 2px #000, inset 0 0 0 6px #e6e8ec; }
-.gate-foot input:focus-visible { outline: 1px solid #e6e8ec; outline-offset: 2px; }
-.gate-hint { margin: .35rem 0 0; font-size: .7rem; color: #5a5f69; }
-.gate-more { display: flex; justify-content: center; gap: 1.6rem; margin: 1.1rem 0 0; font-size: .8rem; }
-.gate-more :is(a, button) { font: inherit; color: #c9ccd3; background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline 1px; text-underline-offset: .25em; }
-.gate-more :is(a, button):is(:hover, :focus-visible) { color: #fff; }
-.gate-box { transition: opacity .3s ease; }
-.gate.out { transition-delay: .4s; transition-duration: .4s; } /* (the lattice dissolves first, from the middle out) */
+.gate-ways :is(button, a)::before { content: ""; position: absolute; left: .4ch; top: 0; bottom: 0; width: 2px; background: transparent; }
+.gate-ways .gw-n { color: #fff; }
+.gate-ways .gw-d { color: var(--g-dim); font-size: .85rem; }
+.gate-ways kbd { font: .8rem var(--ui); color: var(--g-faint); border: 1px solid var(--g-faint); padding: 0 .45ch; border-radius: 2px; }
+.gate-ways :is(button, a):is(:hover, :focus-visible, .on) { background: rgb(224 162 58 / .1); outline: none; }
+.gate-ways :is(button, a):is(:hover, :focus-visible, .on)::before { background: var(--g-acc); }
+.gate-ways :is(button, a):is(:hover, :focus-visible, .on) .gw-n { color: var(--g-acc); }
+.gate-ways :is(button, a):is(:hover, :focus-visible, .on) kbd { color: var(--g-ink); border-color: var(--g-dim); }
+.gate-err { min-height: 0; color: #d9705a; font-size: .85rem; }
+.gate-err:empty { display: none; }
+.gate-foot { margin-top: .7rem !important; font-size: .82rem; }
+.gate-foot label { cursor: pointer; color: var(--g-dim); }
+.gate-foot label:hover { color: var(--g-ink); }
+.gate-foot input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.gate-box-x::before { content: "[ ]"; color: var(--g-ink); white-space: pre; }
+.gate-foot input:checked + .gate-box-x::before { content: "[x]"; color: var(--g-acc); }
+.gate-foot input:focus-visible + .gate-box-x { outline: 1px solid var(--g-acc); outline-offset: 2px; }
+.gate-hint { font-size: .78rem; color: var(--g-faint); }
+.gate-bar { position: absolute; left: 0; right: 0; bottom: 0; display: flex; gap: 1ch; margin: 0; padding: 0 1ch;
+  font: .8rem/1.6rem var(--ui); background: #1a1712; color: var(--g-dim); border-top: 1px solid #2a261e; }
+.gate-bar .gb-l { color: var(--g-acc); }
+.gate-bar .gb-on { color: var(--g-ink); }
+.gate-bar .gb-r { margin-left: auto; display: flex; gap: 2ch; }
+/* the boot: each line printed at once, one after the other (gate.js sets --i; .booted shows them all) */
+.gate:not(.booted) .gate-ln { visibility: hidden; }
+.gate:not(.booted) .gate-ln.shown { visibility: visible; }
+/* out to the terminal: the screen goes down to a line of light, then a point (an old tube switched off) */
+.gate.out-term { opacity: 1; transition: none; pointer-events: none; }
+.gate.out-term > :is(canvas, .gate-box, .gate-bar) { animation: gate-crt .55s cubic-bezier(.6, 0, .9, .4) forwards; }
+.gate.out-term::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; background: #fff7e0;
+  box-shadow: 0 0 18px 4px rgb(255 220 150 / .6); animation: gate-line .8s ease-in forwards; }
+@keyframes gate-crt { 70% { transform: scaleY(.006); filter: brightness(3); } to { transform: scaleY(.003); opacity: 0; } }
+@keyframes gate-line { 0%, 55% { transform: scaleX(1); opacity: 0; } 62% { opacity: 1; } 92% { transform: scaleX(.004); opacity: 1; } to { transform: scaleX(0); opacity: 0; } }
+.gate.out-term { animation: gate-bg .3s .75s forwards; }
+@keyframes gate-bg { to { opacity: 0; } }
 .gate.out .gate-box { opacity: 0; }
 .climb .gate-wide { display: none; } /* (a touch screen: no engine, no tour; the terminal is the page itself) */
-@media (max-width: 40rem) { .gate-choices { grid-template-columns: 1fr; } .gate-box { padding: 1.4rem 1rem; } .gate-sub { margin-bottom: 1.2rem; } }
-@media (prefers-reduced-motion: reduce) { .gated .gate { transition: none; } }
+@media (max-width: 52rem) { .gate-box { margin: 0 auto; } }
+@media (max-width: 40rem) {
+  .gate-box { padding: 1rem .9rem; font-size: .88rem; }
+  .gate-ways :is(button, a) { grid-template-columns: 8ch minmax(0, 1fr); } .gate-ways kbd { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .gated .gate { transition: none; } .gate-cur { animation: none; } .gate.out-term > *, .gate.out-term::after { animation-duration: .01s; } }
 
 /* an experience's kind (research, industry, teaching...), before its role */
 .role-line .kind { display: inline-block; margin-right: .5em; padding: 0 .4em; font-size: .78em; line-height: 1.5;
@@ -1534,3 +1561,7 @@ canvas.twinkle { display: none; position: absolute; z-index: 1; pointer-events: 
 .merels .m-sel { stroke: #e8b840; stroke-width: 2; } .merels circle:focus-visible { outline: none; stroke: #2a4caa; stroke-width: 2; }
 .merels-say { min-height: 1.4em; margin: .2rem 0; font-style: italic; }
 .quill-page { display: block; width: min(24rem, 100%); aspect-ratio: 3 / 2; image-rendering: pixelated; cursor: crosshair; touch-action: none; border: 1px solid #a8884a; margin: .3rem 0; }
+
+/* the chalk taken (hours.js chalkMode): the board takes the pointer, the things wait */
+.chalking .spot:not([data-kind="chalk"]) { pointer-events: none; }
+.chalking .plate-img canvas.room { cursor: crosshair; }

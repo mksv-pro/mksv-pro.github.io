@@ -17,22 +17,20 @@ description: Mike Silva, graduate student in physics in Paris: complex systems, 
   <div class="gate" id="gate" role="dialog" aria-modal="true" aria-labelledby="gate-h">
     <canvas aria-hidden="true"></canvas>
     <div class="gate-box">
-      <p class="gate-name">Mike Silva</p>
-      <p class="gate-sub">Graduate student in physics &middot; Paris</p>
-      <p id="gate-h" class="gate-q">How would you like to visit?</p>
-      <div class="gate-choices">
-        <button type="button" data-gate="castle"><b>Explore the castle</b>
-          <span>An illustrated, game-like version: each section of the site is a room of a castle, in a landscape under the real sky of Paris. Takes a few minutes.</span></button>
-        <button type="button" data-gate="terminal"><b>Open the terminal</b>
-          <span>The plain, fast version: the whole site as text (CV, research, publications), every section one key away.<span class="gate-wide"> It opens in a machine in the castle.</span></span></button>
-      </div>
-      <p class="gate-more">
-        <button type="button" data-gate="tour" class="gate-wide">or take a one-minute tour</button>
-        <a href="{{root}}assets/Mike_Silva_CV.pdf">just the CV (PDF)</a>
-      </p>
-      <p class="gate-foot"><label><input type="checkbox" id="gate-keep"> remember my choice on this device</label></p>
-      <p class="gate-hint gate-wide">you can switch at any time with the button at the bottom right</p>
+      <p class="gate-ln"><span class="gate-ps" aria-hidden="true">$ </span>whoami</p>
+      <p class="gate-ln gate-out"><b class="gate-name">Mike Silva</b> <span class="gate-sep">&middot;</span> graduate student in physics <span class="gate-sep">&middot;</span> Paris</p>
+      <p class="gate-ln" id="gate-h"><span class="gate-ps" aria-hidden="true">$ </span>visit <span class="gate-typed" aria-live="polite"></span><span class="gate-ghost" aria-hidden="true"></span><span class="gate-cur" aria-hidden="true"></span></p>
+      <ul class="gate-ways">
+        <li class="gate-ln"><button type="button" data-gate="castle" data-key="c"><span class="gw-n">castle</span><span class="gw-d">an illustrated castle, a room per section, under the real sky of Paris</span><kbd>c</kbd></button></li>
+        <li class="gate-ln"><button type="button" data-gate="terminal" data-key="t"><span class="gw-n">terminal</span><span class="gw-d">the whole site as text, a key per section<span class="gate-wide">, in a machine of the castle</span></span><kbd>t</kbd></button></li>
+        <li class="gate-ln"><a href="{{root}}assets/Mike_Silva_CV.pdf" data-key="v"><span class="gw-n">cv</span><span class="gw-d">one page, PDF</span><kbd>v</kbd></a></li>
+        <li class="gate-ln gate-wide"><button type="button" class="gate-wide" data-gate="tour" data-key="?"><span class="gw-n">tour</span><span class="gw-d">one minute round the castle</span><kbd>?</kbd></button></li>
+      </ul>
+      <p class="gate-ln gate-err" aria-live="assertive"></p>
+      <p class="gate-ln gate-foot"><label><input type="checkbox" id="gate-keep"><span class="gate-box-x" aria-hidden="true"></span> remember this choice on this device</label></p>
+      <p class="gate-ln gate-hint"><span aria-hidden="true"># </span>type a way, or click it; <span class="gate-wide">switch any time with the button at the bottom right</span></p>
     </div>
+    <p class="gate-bar" aria-hidden="true"><span class="gb-l">[mksv]</span> <span class="gb-on">0:visit*</span><span class="gb-r"><span class="gb-moon"></span><span class="gb-time"></span></span></p>
   </div>
   <script src="{{root}}assets/js/gate.js?v={{v:assets/js/gate.js}}"></script>
 {{> top}}

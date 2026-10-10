@@ -2665,6 +2665,8 @@ qqqqqTqqq
         set(x, y, fr ? ((x === bl - 3 || y === bt - 3) ? I.TIMBER_HI : I.TIMBER) : (noise2(x, y) > 0.62 ? I.SLATEB_HI : I.SLATEB));
       }
       rect(bl - 3, bb + 3, br - bl + 6, 2, I.TIMBER_HI); set(bl + 4, bb + 2, I.FL_WHITE); set(bl + 5, bb + 2, I.FL_WHITE); set(br - 8, bb + 2, I.FL_YEL);
+      board = { l: bl, r: br, t: bt, b: bb }; // (where chalk takes: the chalk mode)
+      extra.push({ t: { kind: 'chalk', label: 'The chalk', act: () => chalkMode(!chalk.on) }, b: box(bl + 2, bb + 1, 6, 3) });
       things.slice(0, nC).forEach((_t, k) => { // a line of chalk, then a little sketch at its end
         const y = bt + 5 + k * 7; let x = bl + 4;
         while (x < br - 10) { const w = 2 + ((x * 7 + k) % 4); for (let c = 0; c < w; c += 1) set(x + c, y + ((c + k) % 3 === 0 ? -1 : 0), I.FL_WHITE); x += w + 2; }
@@ -5487,7 +5489,7 @@ qqqqqTqqq
 
   /** A room, at the standard size (RW x RH). */
   function makeInterior(id) {
-    layoutRoom();
+    layoutRoom(); board = null; if (chalk.on) chalkMode(false);
     const r = generateInterior(id, RW, RH);
     for (let k = 0; k < 30; k += 1) stepCells(r.cells, 9, 14); // a hearth already burning
     return r;
@@ -5777,6 +5779,7 @@ qqqqqTqqq
         for (let x = g.x - 1; x <= g.x + g.w; x += 1) { blend(x, g.y - 1, [255, 228, 150], a * 0.18); blend(x, g.y + g.h, [255, 228, 150], a * 0.18); } // (and the thing's edge, a moment)
       }
     }
+    if (board && interior.id === 'teaching') chalk.px.forEach((i) => { const x = i % RW; const y = Math.floor(i / RW); if (x >= board.l && x < board.r && y >= board.t && y < board.b) ibuf[i] = pack([226, 228, 218]); });
     if (revealing) interior.slots.forEach((g, k) => { // Shift held: every thing that can be looked at, outlined at once, a ripple going round
       if (!g || k === hl) return; const a = 0.55 + (reduce ? 0 : 0.3 * Math.sin(t * 5 - k));
       for (let x = g.x - 1; x <= g.x + g.w; x += 1) { blend(x, g.y - 1, [255, 236, 170], a); blend(x, g.y + g.h, [255, 236, 170], a); }
@@ -6528,7 +6531,20 @@ qqqqqTqqq
   /* The wizard as a guide: twenty seconds without a move in a room, he stands in a doorway, points his
      staff and a trail of sparks goes from its orb to a thing not yet looked at, which glints; once a visit of the room. */
   const session0 = (k, v) => { try { if (v === undefined) return sessionStorage.getItem(k); sessionStorage.setItem(k, v); } catch { /* (no storage: every load) */ } return null; };
-  let inkOf = () => 0; let pinsOf = () => []; let marksOf = () => []; let revealing = false; // (bookmarks left in books: script; Shift held)
+  let inkOf = () => 0; let pinsOf = () => [];
+  /* The schoolroom's chalk: taken (a click on it), it draws on the board where the pointer drags,
+     a double-click wipes round it with the rag; put down with a click or Esc. Kept on this device. */
+  let board = null; const chalk = { on: false, px: new Set((() => { try { return JSON.parse(localStorage.getItem('chalk')) || []; } catch { return []; } })()) };
+  function chalkMode(on) {
+    chalk.on = on; root.classList.toggle('chalking', on);
+    say(on ? 'You take the chalk: draw on the board. A double-click wipes it with the rag; click the chalk again (or Esc) to put it down.' : 'You put the chalk down.');
+    if (!on) try { localStorage.setItem('chalk', JSON.stringify([...chalk.px].slice(-6000))); } catch { /* (no storage: the board is wiped at the next visit) */ }
+  }
+  function chalkAt(ix, iy, erase) {
+    if (!board || ix < board.l || ix >= board.r || iy < board.t || iy >= board.b) return;
+    if (erase) { for (let y = -4; y <= 4; y += 1) for (let x = -6; x <= 6; x += 1) chalk.px.delete((iy + y) * RW + ix + x); } else chalk.px.add(iy * RW + ix);
+    if (!running) render(now());
+  } let marksOf = () => []; let revealing = false; // (bookmarks left in books: script; Shift held)
   let scrubTo = () => {}; let scrubbed = false; // (the hour dragged by the sun: assets/js/ui)
   let lastAct = 0; let freshOf = () => []; let guide = null; let guided = false; let roomT0 = 0;
   function drawGuide(t, put, blend) {
@@ -7035,6 +7051,14 @@ qqqqqTqqq
       { // the globe turns under a drag (and spins on when let go)
         const at = (e) => { const b = roomCv.getBoundingClientRect(); return [((e.clientX - b.left) / b.width) * RW, ((e.clientY - b.top) / b.height) * RH, b.width / RW]; };
         const gl = () => interior && view.state === 'room' && interior.deco.find((q) => q.type === 'globe');
+        let chalkDown = false; const roomAt = (e) => { const b = roomCv.getBoundingClientRect(); return [Math.floor(((e.clientX - b.left) / b.width) * RW), Math.floor(((e.clientY - b.top) / b.height) * RH)]; };
+        let lastChalk = null;
+        const chalkLine = (p) => { const n = lastChalk ? Math.max(Math.abs(p[0] - lastChalk[0]), Math.abs(p[1] - lastChalk[1]), 1) : 1; for (let k = 1; k <= n; k += 1) chalkAt(lastChalk ? Math.round(lastChalk[0] + ((p[0] - lastChalk[0]) * k) / n) : p[0], lastChalk ? Math.round(lastChalk[1] + ((p[1] - lastChalk[1]) * k) / n) : p[1]); lastChalk = p; };
+        roomCv.addEventListener('pointerdown', (e) => { if (!chalk.on) return; chalkDown = true; lastChalk = null; chalkLine(roomAt(e)); try { roomCv.setPointerCapture(e.pointerId); } catch { /* (a pointer the browser no longer knows) */ } });
+        roomCv.addEventListener('pointermove', (e) => { if (chalk.on && chalkDown) chalkLine(roomAt(e)); });
+        roomCv.addEventListener('pointerup', () => { chalkDown = false; lastChalk = null; });
+        roomCv.addEventListener('dblclick', (e) => { if (chalk.on) chalkAt(...roomAt(e), true); });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && chalk.on) { e.preventDefault(); e.stopImmediatePropagation(); chalkMode(false); } }, true);
         roomCv.addEventListener('pointerdown', (e) => {
           const g = gl(); if (!g) return; const [x, y, k] = at(e); if (Math.hypot(x - g.x, y - g.y) > g.r + 2) return;
           globe.drag = { x: e.clientX, lon: globe.lon, k, last: e.clientX, tl: performance.now() }; globe.vel = 0; try { roomCv.setPointerCapture(e.pointerId); } catch { /* (a pointer the browser no longer knows) */ } roomCv.style.cursor = 'grabbing';
