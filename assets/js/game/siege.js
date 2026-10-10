@@ -143,6 +143,7 @@
   const KILL_REWARD = { knife: 1500, wheellock: 300, pepperbox: 300, blunderbuss: 900, repeater: 600, arquebus: 300, caliver: 300, greatbow: 100, he: 300, fire: 300 };
   function newRound(first) {
     if (g.self) { g.player.isBot = true; g.player.controlled = false; g.player = g.self; g.self = null; } // (back to yourself)
+    g.actors.forEach((a) => { a.dmgBy = {}; a.roundKills = 0; }); g.death = null; g.roundStart = g.now;
     g.round += 1; g.lastBought = g.bought && g.bought.length ? g.bought : g.lastBought; g.bought = [];
     if (!first && g.round === 8) { // the sides change at the half; money starts again
       g.actors.forEach((a) => { a.team = a.team === 'def' ? 'att' : 'def'; a.money = START_MONEY; a.weapons = { 1: null, 2: 'wheellock', 3: 'knife' }; a.armour = 0; a.helm = false; a.gear = {}; a.tools = false; });
@@ -171,10 +172,11 @@
     const loser = winner === 'def' ? 'att' : 'def';
     g.lossStreak[winner] = 0; g.lossStreak[loser] = Math.min(4, g.lossStreak[loser] + 1);
     g.actors.forEach((a) => { a.money = Math.min(MAX_MONEY, a.money + (a.team === winner ? (why === 'keg' || why === 'defused' ? 3500 : 3250) : 1400 + 500 * (g.lossStreak[loser] - 1) + (loser === 'att' && g.keg.planted ? 800 : 0))); });
-    const mine = winner === g.player.team;
-    g.banner = { t: g.now, team: winner, mine, text: winner === 'def' ? 'The defenders win' : 'The attackers win', sub: { elim: 'every one of the other side down', time: 'time ran out', keg: 'the keg went up', defused: 'the keg defused' }[why] };
+    const mine = winner === g.player.team; g.history ||= []; g.history.push({ winner, why });
+    const team = g.actors.filter((a) => a.team === winner); const mvp = team.reduce((b, a) => ((a.roundKills || 0) + (a === g.keg.planter || a === g.keg.defuser ? 1.5 : 0) > (b.roundKills || 0) + (b === g.keg.planter || b === g.keg.defuser ? 1.5 : 0) ? a : b), team[0]); mvp.mvps = (mvp.mvps || 0) + 1;
+    g.banner = { mvp: mvp.name, t: g.now, team: winner, mine, text: winner === 'def' ? 'The defenders win' : 'The attackers win', sub: { elim: 'every one of the other side down', time: 'time ran out', keg: 'the keg went up', defused: 'the keg defused' }[why] };
     sfx(mine ? 'win' : 'lose');
-    if (g.score[winner] >= 8) { g.matchOver = winner; say(mine ? 'The match is yours, 8 rounds won. Esc: again or leave.' : 'The match is lost. Esc: again or leave.', 99); }
+    if (g.score[winner] >= 8) { g.matchOver = winner; setTimeout(() => { if (g && g.matchOver) matchEnd(); }, 3500); }
   }
   function say(t, s = 3) { g.msg = t; g.msgUntil = g.now + s; }
 
@@ -250,11 +252,14 @@
     if (!t.alive) return;
     const armoured = t.armour > 0 && (!head || t.helm);
     let d = dmg; if (armoured) { const taken = d * pierce; t.armour = Math.max(0, t.armour - (d - taken) * 0.5); d = taken; }
+    if (by && by !== t) { const real = Math.min(d, t.hp); t.dmgBy ||= {}; const e = (t.dmgBy[by.name] ||= { dmg: 0, hits: 0, by }); e.dmg += real; e.hits += 1; by.dmgTotal = (by.dmgTotal || 0) + (by.team !== t.team ? real : 0); if (head && by.team !== t.team) by.hsHits = (by.hsHits || 0) + 1; }
     t.hp -= d; t.hitAt = g.now; if (t === g.player) { g.hurtAt = g.now; g.hurtFrom = by ? Math.atan2(by.y - t.y, by.x - t.x) : null; }
     if (head) sfx(t.helm ? 'tink' : 'thud', t);
     if (t.hp <= 0) { t.diedAt = g.now; t.fallDir = by && Math.cos(t.a) * (by.x - t.x) + Math.sin(t.a) * (by.y - t.y) < 0 ? -1 : 1;
       t.alive = false; t.hp = 0; t.deaths += 1;
-      if (by === g.player && by.team !== t.team) sfx('kill'); if (by && by.team !== t.team) { by.kills += 1; by.money = Math.min(MAX_MONEY, by.money + (KILL_REWARD[wid] || 300)); }
+      if (by === g.player && by.team !== t.team) sfx('kill'); if (by && by.team !== t.team) { by.kills += 1; by.roundKills = (by.roundKills || 0) + 1; if (head) by.hsKills = (by.hsKills || 0) + 1; by.money = Math.min(MAX_MONEY, by.money + (KILL_REWARD[wid] || 300)); }
+      Object.values(t.dmgBy || {}).forEach((e) => { if (e.by !== by && e.by.team !== t.team && e.dmg >= 41) e.by.assists = (e.by.assists || 0) + 1; }); // (41 or more of his health taken: an assist)
+      if (t === g.player) g.death = { by: by ? by.name : '', byTeam: by ? by.team : '', wid, head, hpLeft: by && by.alive ? Math.ceil(by.hp) : 0, t: g.now, report: damageReport(t) };
       g.feed.unshift({ by: by ? by.name : '', byTeam: by ? by.team : '', w: wid, head, who: t.name, team: t.team, t: g.now }); g.feed.length = Math.min(6, g.feed.length);
       if (g.keg.carrier === t && !g.keg.planted) dropKeg(t, false);
       if (t.weapons[1]) dropWeapon(t, 1, false); else if (t.weapons[2] && t.weapons[2] !== 'wheellock') dropWeapon(t, 2, false); // (what he carried falls with him)
@@ -262,6 +267,8 @@
       checkElim();
     }
   }
+  /** What you gave each enemy this round and what each gave you (hits, health). */
+  function damageReport(me) { return g.actors.filter((o) => o.team !== me.team).map((o) => { const gave = (o.dmgBy || {})[me.name]; const took = (me.dmgBy || {})[o.name]; return { name: o.name, gave: gave ? [Math.round(gave.dmg), gave.hits] : null, took: took ? [Math.round(took.dmg), took.hits] : null }; }).filter((r) => r.gave || r.took); }
   function checkElim() {
     if (g.phase === 'over') return;
     const alive = (team) => g.actors.some((a) => a.alive && a.team === team);
@@ -297,9 +304,12 @@
   }
   /** A mark where a shot struck (a hole: just off the surface it hit) or blood fell (on the floor below); the oldest go. */
   function decal(x, y, z, kind) { const d = { x, y, z, kind }; if (kind === 'blood') d.z = hAt(Math.floor(x), Math.floor(y)) + 0.01; g.decals.push(d); if (g.decals.length > 220) g.decals.shift(); }
+  /** The spread (degrees) of a's next shot: the weapon's own, more when moving faster than a third of full pace (stopped,
+      or counter-strafed, the first shot goes true), much more in the air, a little just after landing; less crouched. */
   function spreadOf(a, w) {
-    const sp = Math.hypot(a.vx, a.vy); let s = w.spread + (w.mspread || 0) * clamp(sp / 3.6, 0, 1) + (a.z > 0.02 ? 6 : 0);
-    if (a.crouch) s *= 0.7; if (w.scoped && a.scoped) s = w.scoped + (w.mspread || 0) * clamp(sp / 3.6, 0, 1) * 0.6;
+    const sp = Math.hypot(a.vx, a.vy); const mv = clamp((sp / (MAXV * (w.speed || 1)) - 0.34) / 0.66, 0, 1); const air = a.z > (a.ground ?? a.z) + 0.03;
+    let s = (w.spread || 0) + (w.mspread || 0) * mv + (air ? 8 : 0) + (g.now - (a.landAt || -9) < 0.3 ? 1.5 : 0);
+    if (a.crouch && !air) s *= 0.7; if (w.scoped && a.scoped) s = w.scoped + (w.mspread || 0) * mv * 0.6 + (air ? 8 : 0);
     return s;
   }
   /** Fire the current weapon of actor a (the visitor: the aim; a bot: at target with an aim error, degrees). */
@@ -376,7 +386,7 @@
   function plant(a, dt) {
     const k = g.keg; if (k.planted || k.carrier !== a || onSite(a) === null || g.phase !== 'live') return;
     k.plantP += dt / 3.2; a.vx = 0; a.vy = 0; a.planting = true; if (Math.random() < dt * 3) sfx('click', a);
-    if (k.plantP >= 1) { Object.assign(k, { planted: true, carrier: null, x: a.x + Math.cos(a.a) * 0.3, y: a.y + Math.sin(a.a) * 0.3, z: a.z, a: a.a, until: g.now + KEG_S, site: onSite(a), beepAt: g.now }); g.phase = 'planted'; a.money += 300; say(`The keg is planted on ${g.sites[k.site].name}.`, 4); sfx('planted'); }
+    if (k.plantP >= 1) { Object.assign(k, { planted: true, carrier: null, planter: a, x: a.x + Math.cos(a.a) * 0.3, y: a.y + Math.sin(a.a) * 0.3, z: a.z, a: a.a, until: g.now + KEG_S, site: onSite(a), beepAt: g.now }); g.phase = 'planted'; a.money += 300; say(`The keg is planted on ${g.sites[k.site].name}.`, 4); sfx('planted'); }
   }
   function defuse(a, dt) {
     const k = g.keg; if (!k.planted || Math.hypot(k.x - a.x, k.y - a.y) > 1 || g.phase !== 'planted') return;
@@ -688,8 +698,12 @@
     // the scope: a ring of brass, dark outside, its crosshair
     if (self && p.scoped) for (let y = 0; y < H; y += 1) for (let x = 0; x < W; x += 1) { const r = Math.hypot(x - W / 2, y - H / 2); const o = y * W + x; if (r > H * 0.47) buf[o] = pack([6, 6, 8]); else if (r > H * 0.455) buf[o] = pack([176, 136, 56]); else if (Math.abs(x - W / 2) < 1 || Math.abs(y - H / 2) < 1) buf[o] = pack([16, 16, 16]); }
     // blinded, hurt, dead
+    // blinded: white, then the picture of that moment burnt in and fading over the world
+    if (g.flashSnap) { g.flashSnap = false; g.flashImg = buf.slice(); }
     const fl = self && now < g.flashUntil ? clamp((g.flashUntil - now) / 1.2, 0, 1) : 0;
-    if (fl > 0) for (let o = 0; o < W * H; o += 1) { const c = unpack(buf[o]); buf[o] = pack(c.map((v) => v + (255 - v) * fl)); }
+    if (fl > 0) { const ai2 = g.flashImg && g.flashImg.length === buf.length ? g.flashImg : null; const ka = Math.min(1, fl * 1.4) * 0.55;
+      for (let o = 0; o < W * H; o += 1) { const v = buf[o]; let r = v & 255; let gg = (v >> 8) & 255; let b = (v >> 16) & 255; if (ai2) { const q = ai2[o]; r += ((q & 255) - r) * ka; gg += (((q >> 8) & 255) - gg) * ka; b += (((q >> 16) & 255) - b) * ka; }
+        r += (255 - r) * fl; gg += (255 - gg) * fl; b += (255 - b) * fl; buf[o] = 0xff000000 | ((b | 0) << 16) | ((gg | 0) << 8) | (r | 0); } }
     if (self && now - g.hurtAt < 0.4) { const k = 1 - (now - g.hurtAt) / 0.4; for (let y = 0; y < H; y += 2) for (let x = 0; x < W; x += 1) { const e = Math.max(Math.abs(x / W - 0.5), Math.abs(y / H - 0.5)) * 2; if (e > 0.7) { for (let yy = y; yy < Math.min(H, y + 2); yy += 1) { const o = yy * W + x; const c = unpack(buf[o]); const m = k * (e - 0.7) / 0.3; buf[o] = pack([c[0] + (210 - c[0]) * m * 0.7, c[1] * (1 - m * 0.6), c[2] * (1 - m * 0.6)]); } } } }
     if (!me.alive && self) for (let o = 0; o < W * H; o += 1) { const c = unpack(buf[o]); const m = (c[0] + c[1] + c[2]) / 3; buf[o] = pack([m * 0.8, m * 0.75, m * 0.7]); }
     ctx.putImageData(img, 0, 0);
@@ -697,6 +711,12 @@
     if (self && p.alive && !p.scoped && !['knife', 'keg'].includes(cur(p))) crosshair(ctx, W / 2, H / 2, cur(p) === 'nade' ? 0 : spreadOf(p, ARMS.W[cur(p)]));
     if (now - g.hitMarkAt < 0.18) { ctx.strokeStyle = g.hitHead ? '#ff4a3a' : '#ffffff'; ctx.lineWidth = 2; ctx.beginPath(); [[1, 1], [-1, 1], [1, -1], [-1, -1]].forEach(([a2, b2]) => { ctx.moveTo(W / 2 + a2 * 6, H / 2 + b2 * 6); ctx.lineTo(W / 2 + a2 * 13, H / 2 + b2 * 13); }); ctx.stroke(); }
     if (self && g.hurtFrom !== null && g.hurtFrom !== undefined && now - g.hurtAt < 1) { const a2 = wrap(g.hurtFrom - p.a) - Math.PI / 2; ctx.fillStyle = `rgba(230,40,30,${1 - (now - g.hurtAt)})`; ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(a2 + Math.PI / 2); ctx.beginPath(); ctx.moveTo(-14, -70); ctx.lineTo(14, -70); ctx.lineTo(0, -88); ctx.fill(); ctx.restore(); } // (where the hit came from)
+    // names: your side's men over their heads; an enemy's under the crosshair when it is on him
+    ctx.font = `${Math.max(10, Math.round(H / 48))}px ui-monospace, monospace`; ctx.textAlign = 'center';
+    g.actors.forEach((a) => { if (a === p || !a.alive || a.team !== me.team) return; const d = Math.hypot(a.x - p.x, a.y - p.y); if (d > 30) return; const sp = toScreen(a.x, a.y, a.z + STAND + 0.12); if (!sp || sp[0] < 0 || sp[0] > W) return;
+      const o = Math.round(sp[1]) * W + Math.round(sp[0]); const hidden = !(sp[1] >= 0 && sp[1] < H && zb[o] >= sp[2] - 0.3); ctx.fillStyle = hidden ? 'rgba(120,170,255,.45)' : '#9cc0ff'; ctx.fillText(a.name, sp[0], sp[1]); });
+    if (self && p.alive) { const t2 = g.actors.find((o) => o.alive && o.team !== p.team && Math.abs(wrap(Math.atan2(o.y - p.y, o.x - p.x) - p.a)) < 0.3 / Math.max(1, Math.hypot(o.x - p.x, o.y - p.y)) + 0.02 && sees(p, o));
+      if (t2) { ctx.fillStyle = '#ff8a7a'; ctx.fillText(`${t2.name}`, W / 2, H / 2 + H / 14); } }
     drawRadar();
   }
   /* The radar: the map painted once (walls with a lit edge, floors by kind, the sites), turned each frame
@@ -745,12 +765,12 @@
 <div class="sg-feed"></div><div class="sg-msg"></div><div class="sg-banner" hidden></div><div class="sg-prog" hidden><span></span><i></i></div><div class="sg-spec" hidden></div><div class="sg-chat"></div><div class="sg-fps"></div>
 <div class="sg-vit"><div class="sg-hp"><i class="sg-i-hp"></i><b></b><span class="sg-bar"><i></i></span></div><div class="sg-ar"><i class="sg-i-ar"></i><b></b><span class="sg-bar"><i></i></span></div><div class="sg-kegc" hidden>✹ the keg</div></div>
 <div class="sg-slots"></div><div class="sg-ammo"><div class="sg-wname"></div><div class="sg-rounds"><b class="sg-mag"></b><span class="sg-res"></span></div><div class="sg-ticks"></div></div>
-<div class="sg-menu" hidden></div><div class="sg-help">Click: play (fullscreen, the mouse taken) · Esc: pause, settings, keys · B buy · Tab scores</div></div>`;
+<div class="sg-menu" hidden></div><div class="sg-board" hidden></div><div class="sg-death" hidden></div><div class="sg-zone"></div><div class="sg-help">Click: play (fullscreen, the mouse taken) · Esc: pause, settings, keys · B buy · Tab scores</div></div>`;
     document.body.append(root);
     cv = root.querySelector('canvas'); ctx = cv.getContext('2d'); img = ctx.createImageData(W, H); buf = new Uint32Array(img.data.buffer); zbuf = new Float32Array(W * H); worldT = { buf, W, H, ZB: zbuf };
     const q = (sel) => root.querySelector(sel);
     ui = { radar: q('.sg-radar'), time: q('.sg-time'), round: q('.sg-round'), sides: [...root.querySelectorAll('.sg-side')], cash: q('.sg-cash'), delta: q('.sg-delta'), feed: q('.sg-feed'), msg: q('.sg-msg'), banner: q('.sg-banner'), prog: q('.sg-prog'), spec: q('.sg-spec'),
-      hp: q('.sg-hp'), ar: q('.sg-ar'), kegc: q('.sg-kegc'), slots: q('.sg-slots'), ammo: q('.sg-ammo'), wname: q('.sg-wname'), mag: q('.sg-mag'), res: q('.sg-res'), ticks: q('.sg-ticks'), menu: q('.sg-menu'), help: q('.sg-help'), chat: q('.sg-chat'), fps: q('.sg-fps') };
+      hp: q('.sg-hp'), ar: q('.sg-ar'), kegc: q('.sg-kegc'), slots: q('.sg-slots'), ammo: q('.sg-ammo'), wname: q('.sg-wname'), mag: q('.sg-mag'), res: q('.sg-res'), ticks: q('.sg-ticks'), menu: q('.sg-menu'), help: q('.sg-help'), chat: q('.sg-chat'), fps: q('.sg-fps'), board: q('.sg-board'), death: q('.sg-death'), zone: q('.sg-zone') };
     hudKey = {};
   }
   const MODEL_OF = { he: 'firepot', smoke: 'incense', flash: 'vial', fire: 'flask', fall: 'helm' };
@@ -785,10 +805,16 @@
     setIf('feed', feed.map((f) => f.t).join(), () => { ui.feed.innerHTML = feed.map((f) => `<p class="${f.by === p.name || f.who === p.name ? 'me' : ''}"><span class="sg-${f.byTeam}">${f.by || ''}</span><img src="${iconURL(f.w)}" alt="${f.w}">${f.head ? '<i class="sg-hs" title="to the head"></i>' : ''}<span class="sg-${f.team}">${f.who}</span></p>`).join(''); });
     setIf('msg', now < g.msgUntil ? g.msg : '', (v) => { ui.msg.textContent = v; ui.msg.hidden = !v; });
     const bn = g.banner && now - g.banner.t < 4.5 ? g.banner : null;
-    setIf('banner', bn ? bn.t : '', () => { ui.banner.hidden = !bn; if (bn) { ui.banner.className = `sg-banner sg-${bn.team}${bn.mine ? ' won' : ''}`; ui.banner.innerHTML = `<b>${bn.text}</b><span>${bn.sub}</span>`; } });
+    setIf('banner', bn ? bn.t : '', () => { ui.banner.hidden = !bn; if (bn) { ui.banner.className = `sg-banner sg-${bn.team}${bn.mine ? ' won' : ''}`; ui.banner.innerHTML = `<b>${bn.text}</b><span>${bn.sub}${bn.mvp ? ` · the round's best: ${bn.mvp} ★` : ''}</span>`; } });
     const k = g.keg; const pr = k.plantP > 0 && !k.planted && k.carrier === p ? ['Planting the keg', k.plantP] : k.defuseP > 0 && k.defuser === p ? [p.tools ? 'Defusing (with tools)' : 'Defusing', k.defuseP] : null;
     setIf('prog', pr ? `${pr[0]}|${Math.round(pr[1] * 100)}` : '', () => { ui.prog.hidden = !pr; if (pr) { ui.prog.querySelector('span').textContent = pr[0]; ui.prog.querySelector('i').style.width = `${Math.round(pr[1] * 100)}%`; } });
     const v = camActor(); setIf('spec', v !== p ? v.name : '', (n) => { ui.spec.hidden = !n; ui.spec.innerHTML = n ? `Watching <b>${n}</b> · ${keyName(settings.binds.attack[0] || 'Mouse0')}: another${v.isBot ? ` · ${keyName(settings.binds.use[0] || 'KeyE')}: take over` : ''}` : ''; });
+    if (!ui.board.hidden && now - (g.boardAt || 0) > 0.5) { g.boardAt = now; scores(true); }
+    setIf('zone', g.zoneAt(v.x, v.y), (z) => { ui.zone.textContent = z; });
+    const dn = g.death && !p.alive && now - g.death.t < 6 ? g.death : null;
+    setIf('death', dn ? dn.t : '', () => { ui.death.hidden = !dn; if (!dn) return;
+      ui.death.innerHTML = `<p>${dn.by ? `Felled by <b class="sg-${dn.byTeam}">${dn.by}</b> <img src="${iconURL(dn.wid)}" alt="">${dn.head ? ' to the head' : ''}${dn.hpLeft ? ` · he has ${dn.hpLeft} health left` : ''}` : 'You fell.'}</p>`
+        + (dn.report.length ? `<table><tr><th></th><th>given</th><th>taken</th></tr>${dn.report.map((r) => `<tr><td>${r.name}</td><td>${r.gave ? `${r.gave[0]} in ${r.gave[1]}` : '—'}</td><td>${r.took ? `${r.took[0]} in ${r.took[1]}` : '—'}</td></tr>`).join('')}</table>` : ''); });
     const chat = g.chat.filter((c) => c.team === mine && now - c.t < 8); setIf('chat', chat.map((c) => c.t).join(), () => { ui.chat.innerHTML = chat.map((c) => `<p><b>${c.who}</b> ${c.text}</p>`).join(''); });
     g.fpsN = (g.fpsN || 0) + 1; if (performance.now() - (g.fpsT || 0) > 500) { ui.fps.textContent = settings.showFps ? `${Math.round(g.fpsN * 1000 / (performance.now() - (g.fpsT || performance.now() - 500)))} fps` : ''; g.fpsN = 0; g.fpsT = performance.now(); }
   }
@@ -805,15 +831,22 @@
     if (o.armour) return p.armour >= 100 && (p.helm || !o.helm); if (o.tools) return p.tools; return (p.gear[o.kind] || 0) >= o.max;
   }
   function purchase(kind, id) {
-    const p = g.player; const o = kind === 'w' ? ARMS.W[id] : ARMS.GEAR[id]; if (p.money < o.price || owns(p, kind, id)) return false;
+    const p = g.player; const o = kind === 'w' ? ARMS.W[id] : ARMS.GEAR[id]; if (p.money < o.price || owns(p, kind, id) || cantBuy(p)) return false;
     if (kind === 'w') give(p, id);
     else if (o.armour) { p.armour = 100; if (o.helm) p.helm = true; }
     else if (o.tools) { if (p.team !== 'def') return false; p.tools = true; }
     else p.gear[o.kind] = (p.gear[o.kind] || 0) + 1;
     p.money -= o.price; sfx('buy'); (g.bought ||= []).push([kind, id]); return true;
   }
+  /** Buying: only in the buying time (the freeze and twenty seconds after) and near your side's spawn. */
+  function cantBuy(p) {
+    if (!p.alive) return 'The fallen buy nothing.';
+    if (!(g.phase === 'buy' || (g.phase === 'live' && g.now < g.phaseUntil - ROUND_S + 20))) return 'The buying time is over.';
+    if (!g.spawns[p.team].some(([x, y]) => Math.hypot(x - p.x, y - p.y) < 3.2)) return 'Buy at your side\'s spawn.';
+    return '';
+  }
   function buyMenu(tab = g.buyTab || 0) {
-    if (g.phase !== 'buy' && !(g.phase === 'live' && g.now < g.phaseUntil - ROUND_S + 15)) { say('The buying time is over.', 2); return; }
+    const why = cantBuy(g.player); if (why) { say(why, 2); return; }
     const p = g.player; const tabs = TABS(); g.buyTab = tab = clamp(tab, 0, tabs.length - 1);
     const bar = (v) => `<i style="--v:${Math.round(clamp(v, 0, 1) * 100)}%"></i>`;
     const cards = tabs[tab][1].map(([kind, id], k) => { const o = kind === 'w' ? ARMS.W[id] : ARMS.GEAR[id]; const have = owns(p, kind, id); const poor = p.money < o.price; const no = kind === 'g' && o.tools && p.team !== 'def';
@@ -835,10 +868,24 @@
     if (e.shiftKey) { buyMenu(n); return true; }
     const it = TABS()[g.buyTab || 0][1][n]; if (it && purchase(...it)) buyMenu(); return true;
   }
+  /* The scores (held Tab, over the game, the mouse kept): each side's men, money (your side's), kills, assists, deaths,
+     damage a round, the share to the head, the rounds' best (stars); the rounds so far, each by how it was won. */
   function scores(on) {
-    if (!on) { if (ui.menu.classList.contains('sg-scores')) closeMenu(); return; }
-    const rows = (team) => g.actors.filter((a) => a.team === team).sort((a, b) => b.kills - a.kills).map((a) => `<tr class="${a.alive ? '' : 'dim'}"><td>${a.name}</td><td>${a.kills}</td><td>${a.deaths}</td><td>${a.money}</td></tr>`).join('');
-    openMenu(`<h3>Round ${g.round} · defenders ${g.score.def}, attackers ${g.score.att}</h3><table><tr><th>Defenders</th><th>kills</th><th>deaths</th><th>crowns</th></tr>${rows('def')}<tr><th>Attackers</th><th></th><th></th><th></th></tr>${rows('att')}</table>`, 'sg-scores');
+    ui.board.hidden = !on; if (!on) return; const p = g.player; const played = Math.max(1, g.round - (g.phase === 'over' ? 0 : 1));
+    const rows = (team) => g.actors.filter((a) => a.team === team).sort((a, b) => b.kills - a.kills || (b.dmgTotal || 0) - (a.dmgTotal || 0)).map((a) => `<tr class="${a.alive ? '' : 'dead'}${a === p ? ' me' : ''}"><td>${a.alive ? '' : '✝'} ${a.name}${a.isBot || a.name === 'You' ? '' : ' (you)'}</td><td>${team === p.team ? a.money : ''}</td><td>${a.kills}</td><td>${a.assists || 0}</td><td>${a.deaths}</td><td>${Math.round((a.dmgTotal || 0) / played)}</td><td>${a.kills ? Math.round(((a.hsKills || 0) / a.kills) * 100) : 0}%</td><td>${'★'.repeat(Math.min(5, a.mvps || 0))}${(a.mvps || 0) > 5 ? a.mvps : ''}</td></tr>`).join('');
+    const icon2 = { elim: '✕', time: '◷', keg: '✹', defused: '✂' }; const hist = (g.history || []).map((h) => `<i class="sg-${h.winner}" title="${h.why}">${icon2[h.why]}</i>`).join('');
+    const head = '<tr><th></th><th>crowns</th><th>K</th><th>A</th><th>D</th><th>ADR</th><th>HS</th><th>MVP</th></tr>';
+    ui.board.innerHTML = `<h3><span class="sg-def">Defenders ${g.score.def}</span> · round ${g.round} · <span class="sg-att">${g.score.att} Attackers</span></h3><div class="sg-hist">${hist}</div>
+<table class="sg-def">${head}${rows('def')}</table><table class="sg-att">${head}${rows('att')}</table>`;
+  }
+  /** The match won or lost: the final score, the best man (most stars, then kills), the table; again or leave. */
+  function matchEnd() {
+    const mine = g.matchOver === g.player.team; const best = g.actors.slice().sort((a, b) => (b.mvps || 0) - (a.mvps || 0) || b.kills - a.kills)[0]; g.paused = true;
+    scores(true); const table = ui.board.innerHTML; ui.board.hidden = true;
+    openMenu(`<h3>${mine ? 'The match is yours' : 'The match is lost'} · ${g.score[g.player.team]} to ${g.score[g.player.team === 'def' ? 'att' : 'def']}</h3><p>The match's best: <b>${best.name}</b>, ${best.kills} felled, ${best.mvps || 0} ★.</p><div class="sg-endtable">${table}</div>
+<button data-act="again">A new match</button><button data-act="leave">Leave (back to the castle)</button>`, 'sg-pause sg-end');
+    ui.menu.querySelector('[data-act="again"]').addEventListener('click', () => { const o = g.opts; stop(); start(o); });
+    ui.menu.querySelector('[data-act="leave"]').addEventListener('click', () => { const o = g.opts; stop(); if (o.onLeave) o.onLeave(); });
   }
   function pauseMenu() {
     g.paused = true;

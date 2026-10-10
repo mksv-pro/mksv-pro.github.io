@@ -102,7 +102,9 @@
     g.actors.forEach((o) => { if (!o.alive || o.team === b.team) return; const d = Math.hypot(o.x - b.x, o.y - b.y); if (d > 40 || d >= best) return; const off = Math.abs(wrap(Math.atan2(o.y - b.y, o.x - b.x) - b.a));
       if ((off < 1.05 || d < 2) && g.sees(b, o)) { best = d; seen = o; } });
     if (seen) {
-      if (ai.target !== seen) { ai.target = seen; ai.reactAt = now + D.react * (0.8 + Math.random() * 0.5) * (ai.alert && now - ai.alert < 3 ? 0.7 : 1); const e = (D.err * Math.PI / 180) * (1 + best / 12); ai.aimOff = [(Math.random() - 0.5) * 2 * e, (Math.random() - 0.5) * e]; }
+      if (ai.target !== seen) { // (he came where it was looking: an angle held, the sights already there; quicker and truer)
+        const pre = Math.abs(wrap(Math.atan2(seen.y - b.y, seen.x - b.x) - b.a)) < 0.22; ai.target = seen;
+        ai.reactAt = now + D.react * (0.8 + Math.random() * 0.5) * (ai.alert && now - ai.alert < 3 ? 0.75 : 1) * (pre ? 0.6 : 1); const e = (D.err * Math.PI / 180) * (1 + best / 12) * (pre ? 0.45 : 1); ai.aimOff = [(Math.random() - 0.5) * 2 * e, (Math.random() - 0.5) * e]; }
       ai.lastSeen = { x: seen.x, y: seen.y, t: now }; team.intel.push({ x: seen.x, y: seen.y, t: now }); if (team.intel.length > 30) team.intel.shift();
       if (!ai.called || now - ai.called > 6) { ai.called = now; const z = g.zoneAt(seen.x, seen.y); const n = g.actors.filter((o) => o.alive && o.team !== b.team && g.zoneAt(o.x, o.y) === z).length; if (z) say(g, b, `${n > 1 ? `${n} enemies` : 'Enemy'} at ${z}`); }
     } else ai.target = null;
@@ -144,7 +146,8 @@
     } else {
       // rotate on news of several at the other site
       const intel = team.intel.filter((i) => now - i.t < 5); const at = (s) => intel.filter((i) => g.zoneAt(i.x, i.y).startsWith(s)).length;
-      ['A', 'B'].forEach((s) => { if (ai.rotator && ai.where !== s && at(s) >= 3 && ai.task !== 'rotate') { ai.task = 'rotate'; ai.to = s; say(g, b, `Rotating ${s}`); } });
+      const fallen = (s) => g.actors.some((a) => !a.alive && a.team === b.team && now - (a.diedAt || -99) < 6 && g.zoneAt(a.x, a.y).startsWith(s)); // (a man of ours just fell there)
+      ['A', 'B'].forEach((s) => { if (ai.rotator && ai.where !== s && (at(s) >= 2 || fallen(s)) && ai.task !== 'rotate') { ai.task = 'rotate'; ai.to = s; say(g, b, `Rotating ${s}`); } });
       if (ai.task === 'rotate') { const P = M.POSTS[ai.to][b.idx % M.POSTS[ai.to].length]; goal = P[0]; look = P[1]; }
       else { goal = ai.post; look = ai.look; if (ai.post && dist(ai.post, [b.x, b.y]) < 0.6) { walk = true; b.crouch = ai.crouchHold ??= Math.random() < 0.35; } }
       if (ai.heard && now - ai.heard.t < 3 && Math.hypot(ai.heard.x - b.x, ai.heard.y - b.y) < 10) look = [ai.heard.x, ai.heard.y];

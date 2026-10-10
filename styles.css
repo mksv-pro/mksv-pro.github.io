@@ -1671,3 +1671,16 @@ canvas.twinkle { display: none; position: absolute; z-index: 1; pointer-events: 
 .siege .sg-binds { display: grid; grid-template-columns: 1fr 1fr; gap: .2rem 1.4rem; }
 .siege .sg-binds .sg-row { grid-template-columns: 1fr 7rem 7rem; } .siege .sg-menu .sg-binds button { margin: 0; text-align: center; padding: .2rem; font-size: .85rem; }
 .siege .sg-xprev { display: block; width: 320px; height: 180px; image-rendering: pixelated; border: 1px solid #6a4a2a; margin-bottom: .4rem; }
+.siege .sg-zone { position: absolute; left: 1.2cqw; top: 13.3cqw; width: 12.5cqw; text-align: center; font-size: .9cqw; color: #f4ecd8; text-shadow: 0 1px 2px #000; }
+.siege .sg-money { top: 15.6cqw; }
+.siege .sg-board { position: absolute; inset: 9% 12%; padding: 1rem 1.4rem; background: rgb(14 12 10 / .88); border: 1px solid #6a4a2a; font-size: 1cqw; overflow: auto; }
+.siege .sg-board h3, .siege .sg-endtable h3 { margin: 0 0 .5rem; font: 1.6cqw "EB Garamond", Georgia, serif; text-align: center; }
+.siege .sg-board table, .siege .sg-endtable table { width: 100%; border-collapse: collapse; margin-bottom: .8rem; }
+.siege .sg-board th, .siege .sg-board td, .siege .sg-endtable td, .siege .sg-endtable th { padding: .2em .5em; text-align: right; border-bottom: 1px solid rgb(255 255 255 / .08); }
+.siege .sg-board td:first-child, .siege .sg-board th:first-child, .siege .sg-endtable td:first-child { text-align: left; }
+.siege .sg-board table.sg-def td:first-child { color: #9cc0ff; } .siege .sg-board table.sg-att td:first-child { color: #ff9a86; }
+.siege .sg-board tr.dead { opacity: .5; } .siege .sg-board tr.me { background: rgb(255 216 106 / .1); } .siege .sg-board td:last-child { color: #ffd86a; }
+.siege .sg-hist { display: flex; justify-content: center; gap: 3px; margin-bottom: .6rem; } .siege .sg-hist i { font-style: normal; width: 1.5em; text-align: center; padding: .1em 0; background: rgb(255 255 255 / .06); }
+.siege .sg-death { position: absolute; left: 50%; bottom: 12cqw; transform: translateX(-50%); padding: .6em 1em; background: rgb(0 0 0 / .7); border: 1px solid #6a2a20; font-size: 1cqw; text-align: center; }
+.siege .sg-death p { margin: 0 0 .4em; } .siege .sg-death img { height: 1.6em; vertical-align: middle; image-rendering: pixelated; } .siege .sg-death table { margin: 0 auto; border-collapse: collapse; } .siege .sg-death td, .siege .sg-death th { padding: .1em .6em; }
+.siege .sg-end { inset: 5% 10%; }

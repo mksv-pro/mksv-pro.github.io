@@ -499,8 +499,8 @@
   const landDip = (a) => (a.land >= 0 && a.land < 0.35 ? Math.sin((a.land / 0.35) * Math.PI) * Math.min(0.045, (a.landV || 0) * 0.007) : 0); // (a landing: the weapon dips and comes back)
   function gunMatrix(h, a, extra) {
     const kick = a.kick || 0; const raise = a.raise ?? 1; const d = 1 - ease(raise);
-    const dip = landDip(a);
-    return chain(tr(h.at[0] + (a.bobX || 0) * 0.0012 + extra.x, h.at[1] - (a.bobY || 0) * 0.0012 - d * 0.22 + kick * 0.004 + extra.y - dip, h.at[2] - kick * 0.035 + extra.z),
+    const dip = landDip(a); const br = Math.sin((a.now || 0) * 1.6) * 0.0025; // (breathing, at rest)
+    return chain(tr(h.at[0] + (a.bobX || 0) * 0.0012 + extra.x, h.at[1] - (a.bobY || 0) * 0.0012 - d * 0.22 + kick * 0.004 + extra.y - dip + br, h.at[2] - kick * 0.035 + extra.z),
       ry(h.yaw + (a.sway || 0) * 0.003 + extra.yaw), rx(h.pitch - kick * 0.09 + d * 0.7 + extra.pitch + (a.swayY || 0) * 0.003 + dip * 2), rz(h.roll + extra.roll + d * 0.4 - (a.sway || 0) * 0.002));
   }
   function viewGun(t, wid, a) {
@@ -590,7 +590,8 @@
         if (a.heavy) { sz = 0.11 * hump; sy = 0.03 * hump; spitch = 0.75 * hump; sx = -0.04 * hump; }
         else { sx = (0.05 - 0.17 * e) * side; sy = 0.04 * hump; syaw = (0.6 - 1.5 * e) * side; sroll = (-0.9 + 1.6 * e) * side; spitch = 0.3 * hump; } }
       const kick = a.kick || 0; const d = 1 - ease(a.raise ?? 1);
-      return chain(sc(mirror, 1, 1), tr(0.13 + (a.bobX || 0) * 0.0012 + sx + ps.x * 0.0012, -0.1 - (a.bobY || 0) * 0.0012 + sy - ps.y * 0.0018 - d * 0.2 + kick * 0.0, 0.33 + sz),
+      const br = Math.sin((a.now || 0) * 1.6) * 0.003 - landDip(a);
+      return chain(sc(mirror, 1, 1), tr(0.13 + (a.bobX || 0) * 0.0012 + sx + ps.x * 0.0012, -0.1 - (a.bobY || 0) * 0.0012 + sy - ps.y * 0.0018 - d * 0.2 + br, 0.33 + sz),
         ry(-0.42 + syaw + (a.sway || 0) * 0.003), rx(-0.75 + spitch + d * 0.6), rz(-0.3 + sroll - ps.rot * 0.8));
     };
     const one = (mirror, lag) => {
