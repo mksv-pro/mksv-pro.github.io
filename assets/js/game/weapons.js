@@ -24,6 +24,8 @@
       recoil: [[0, 0], [0.05, 0.9], [0.1, 2], [0.15, 3.2], [0.1, 4.4], [0.2, 5.5], [0.3, 6.5], [0.2, 7.3], [0.1, 8], [-0.4, 8.5], [-1.2, 8.8], [-2, 9], [-2.6, 9.2], [-2.9, 9.3], [-2.4, 9.5],
         [-1.4, 9.6], [-0.2, 9.7], [1, 9.8], [2, 9.9], [2.8, 10], [3.1, 10.1], [2.6, 10.2], [1.6, 10.2], [0.4, 10.3], [-0.8, 10.3], [-1.8, 10.4], [-2.6, 10.4], [-2.2, 10.5], [-1.2, 10.5], [0, 10.6]] }, // (up, then left, right, left: the inverted 7)
     greatbow: { name: 'Great crossbow', slot: 1, price: 4750, dmg: 115, pierce: 0.97, rate: 0.7, mag: 5, reload: 3.6, spread: 8, mspread: 12, scoped: 0.06, speed: 0.8, auto: false, head: 1.2, fall: 0, recoil: spray(5, 2, 0, 7) },
+    nade: { name: 'Throwable', slot: 4, price: 0, speed: 1, rate: 1, nade: true }, // (slot 4: whichever pot or vial is in hand)
+    keg: { name: 'The keg', slot: 5, price: 0, speed: 0.95, rate: 1, keg: true }, // (slot 5: the attackers' charge)
   };
   // the buying menu's shelves, and how each weapon measures up (0..1) for its bars
   const SHELVES = [['Pistols', ['wheellock', 'pepperbox']], ['Heavy', ['blunderbuss']], ['Light', ['repeater']], ['Rifles', ['arquebus', 'caliver', 'ak47']], ['Marksman', ['greatbow']]];
@@ -71,10 +73,12 @@
   };
   /** A keyframed pose at t (0..1): each value eased between its keys; open defaults to 1, the rest to 0. */
   const DEF = { rot: 0, x: 0, y: 0, spin: 0, roll: 0, open: 1 };
-  function pose(keys, t) {
+  function pose(keys, t) { // (a Catmull-Rom spline through the keys, so the move flows through each)
     let k = 0; while (k < keys.length - 2 && t > keys[k + 1][0]) k += 1;
-    const [t0, a] = keys[k]; const [t1, b] = keys[Math.min(k + 1, keys.length - 1)]; const f = t1 > t0 ? Math.min(1, Math.max(0, (t - t0) / (t1 - t0))) : 1; const e = f * f * (3 - 2 * f);
-    const out = {}; Object.keys(DEF).forEach((n) => { const va = a[n] ?? DEF[n]; const vb = b[n] ?? DEF[n]; out[n] = va + (vb - va) * e; }); return out;
+    const [t1, b] = keys[k]; const [t2, c] = keys[Math.min(k + 1, keys.length - 1)]; const a = keys[Math.max(0, k - 1)][1]; const d = keys[Math.min(keys.length - 1, k + 2)][1];
+    const f = t2 > t1 ? Math.min(1, Math.max(0, (t - t1) / (t2 - t1))) : 1; const f2 = f * f; const f3 = f2 * f;
+    const out = {}; Object.keys(DEF).forEach((n) => { const p0 = a[n] ?? DEF[n]; const p1 = b[n] ?? DEF[n]; const p2 = c[n] ?? DEF[n]; const p3 = d[n] ?? DEF[n];
+      out[n] = 0.5 * (2 * p1 + (-p0 + p2) * f + (2 * p0 - 5 * p1 + 4 * p2 - p3) * f2 + (-p0 + 3 * p1 - 3 * p2 + p3) * f3); }); return out;
   }
   const FINISHES = {
     plain: { name: 'Forge-bright', at: () => [196, 202, 212] },

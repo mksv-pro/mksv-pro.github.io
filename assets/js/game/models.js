@@ -353,6 +353,10 @@
   MODELS.keg = () => model((mk) => { mk('body', (b) => { b.lathe([[0.17, 0], [0.2, 0.5], [0.17, 1]], [0, 0, 0], [0, 0.34, 0], 10, 'keg'); b.cyl([0, 0.339, 0], [0, 0.341, 0], 0.17, 0.17, 10, 'darkwood'); b.box([0, 0.2, 0.19], [0.14, 0.1, 0.02], 'quilt'); });
     mk('fuse', (b) => b.tube([[0, 0, 0], [0.03, 0.08, 0], [0.0, 0.16, 0.03], [-0.03, 0.24, 0]], 0.008, 4, 'cord', { bare: true })); mk('spark', (b) => b.sphere([0, 0, 0], 0.022, 6, 'spark')); });
 
+  // a fist for holding small things (its grip along +z), the keg tools' pliers
+  MODELS.fist = () => model((mk) => mk('rhand', (b) => b.with(rx(Math.PI / 2), () => hand(b, 0.015, norm([0.35, -0.9, 0.2]), 0.55))));
+  MODELS.pliers = () => model((mk) => mk('body', (b) => { b.tube([[-0.012, 0, -0.08], [0.004, 0, 0.0], [0.002, 0, 0.05]], 0.004, 5, 'steel'); b.tube([[0.012, 0, -0.08], [-0.004, 0, 0.0], [-0.002, 0, 0.05]], 0.004, 5, 'steel'); b.tube([[-0.012, 0, -0.08], [-0.02, 0, -0.16]], 0.008, 5, 'tabardAtt'); b.tube([[0.012, 0, -0.08], [0.02, 0, -0.16]], 0.008, 5, 'tabardAtt'); }));
+
   /* ---- rasterising: a part through matrix m into the target (buf, W, H), into the shared depth buffer ---- */
   const NEAR = 0.1; let ZB = null; const box = [0, 0, 0, 0]; const mo = new Float32Array(7); // (nearer than NEAR is cut: the stock and the sleeves leave the screen as in the old shooters)
   const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v / 16 - 0.47) * 9);
@@ -419,7 +423,7 @@
   function drawPart(t, part, m) {
     if (!part) return; const P = part.P; const N = part.N;
     for (let k = 0; k < part.n; k += 1) {
-      const v = [0, 1, 2].map((i) => { const o = k * 9 + i * 3; const p = [P[o], P[o + 1], P[o + 2]]; const q = ap(m, p); const n = apN(m, [N[o], N[o + 1], N[o + 2]]); return [q[0], q[1], q[2], p[0], p[1], p[2], n[0], n[1], n[2]]; });
+      const v = [0, 1, 2].map((i) => { const o = k * 9 + i * 3; const p = [P[o], P[o + 1], P[o + 2]]; const q = ap(m, p); const n = apN(m, [N[o], N[o + 1], N[o + 2]]); if (t.mirror) { q[0] = -q[0]; n[0] = -n[0]; } return [q[0], q[1], q[2], p[0], p[1], p[2], n[0], n[1], n[2]]; });
       if (t.ortho) { raster(t, v[0], v[1], v[2], part.M[k]); continue; }
       const ins = v.filter((q) => q[2] >= NEAR).length; if (!ins) continue;
       if (ins === 3) { raster(t, v[0], v[1], v[2], part.M[k]); continue; }
@@ -452,10 +456,12 @@
     greatbow: { at: [0.19, -0.115, 0.44], yaw: -0.18, pitch: 0.0, roll: 0.05, reload: 'crank', muzzle: [0, 0.03, 0.34] },
   };
   /** A pose from keyframes [[t, {name: value}], ...] at t: each value eased between its keys (0 where unset). */
-  function keys(ks, t, names) {
+  function keys(ks, t, names) { // (a Catmull-Rom spline through the keys: the move flows through each, not stopping at it)
     let k = 0; while (k < ks.length - 2 && t > ks[k + 1][0]) k += 1;
-    const [t0, a] = ks[k]; const [t1, b] = ks[Math.min(k + 1, ks.length - 1)]; const e = ease(t1 > t0 ? (t - t0) / (t1 - t0) : 1);
-    const out = {}; names.forEach((n) => { out[n] = lerp(a[n] ?? 0, b[n] ?? 0, e); }); return out;
+    const i0 = Math.max(0, k - 1); const i3 = Math.min(ks.length - 1, k + 2); const [t1, b] = ks[k]; const [t2, c] = ks[Math.min(k + 1, ks.length - 1)]; const a = ks[i0][1]; const d = ks[i3][1];
+    const f = t2 > t1 ? Math.min(1, Math.max(0, (t - t1) / (t2 - t1))) : 1; const f2 = f * f; const f3 = f2 * f;
+    const out = {}; names.forEach((n) => { const p0 = a[n] ?? 0; const p1 = b[n] ?? 0; const p2 = c[n] ?? 0; const p3 = d[n] ?? 0;
+      out[n] = 0.5 * (2 * p1 + (-p0 + p2) * f + (2 * p0 - 5 * p1 + 4 * p2 - p3) * f2 + (-p0 + 3 * p1 - 3 * p2 + p3) * f3); }); return out;
   }
   const GUN_INSPECT = [[0, {}], [0.18, { yaw: 0.18, roll: -0.75, pitch: -0.12, x: -0.04, y: 0.035, z: -0.02 }], [0.5, { yaw: 0.2, roll: -0.8, pitch: -0.12, x: -0.04, y: 0.038, z: -0.02 }], [0.68, { yaw: -0.15, pitch: -0.3, roll: 0.6, y: 0.02 }], [0.86, { yaw: -0.15, pitch: -0.3, roll: 0.6, y: 0.02 }], [1, {}]];
   const puffs = []; const trail = []; let post = []; // (drawn after the shading: the flash, the trail)
@@ -472,8 +478,8 @@
     sleeveRGB = a.team === 'att' ? [158, 44, 36] : [52, 82, 170];
     const amb = (a.amb || [1, 1, 1]).map((v) => Math.min(1.5, v));
     light = { amb, key: norm([-0.35, 0.75, -0.55]), flash: a.flash ? 1.2 : 0 };
-    begin(low); post = [];
-    if (wid === 'knife') viewKnife(low, kn, a); else viewGun(low, wid, a);
+    begin(low); post = []; low.mirror = a.hand === 'left';
+    if (a.defuseT >= 0) viewDefuse(low, a); else if (wid === 'knife') viewKnife(low, kn, a); else if (wid === 'nade') viewNade(low, a); else if (wid === 'keg') viewKeg(low, a); else viewGun(low, wid, a);
     resolve(low); outline(low);
     const x0 = Math.max(0, box[0] - 1); const x1 = Math.min(w - 1, box[2] + 1); const y0 = Math.max(0, box[1] - 1); const y1 = Math.min(h - 1, box[3] + 1);
     for (let y = y0; y <= y1; y += 1) for (let x = x0; x <= x1; x += 1) { const o = y * w + x; const v = low.buf[o]; if (!v) continue; low.buf[o] = 0;
@@ -490,10 +496,12 @@
         t.buf[o] = 0xff000000 | (((((v >> 16) & 255) * (1 - m) + c * m) | 0) << 16) | (((((v >> 8) & 255) * (1 - m) + c * m) | 0) << 8) | (((v & 255) * (1 - m) + c * m) | 0); }
     }
   }
+  const landDip = (a) => (a.land >= 0 && a.land < 0.35 ? Math.sin((a.land / 0.35) * Math.PI) * Math.min(0.045, (a.landV || 0) * 0.007) : 0); // (a landing: the weapon dips and comes back)
   function gunMatrix(h, a, extra) {
     const kick = a.kick || 0; const raise = a.raise ?? 1; const d = 1 - ease(raise);
-    return chain(tr(h.at[0] + (a.bobX || 0) * 0.0012 + extra.x, h.at[1] - (a.bobY || 0) * 0.0012 - d * 0.22 + kick * 0.004 + extra.y, h.at[2] - kick * 0.035 + extra.z),
-      ry(h.yaw + (a.sway || 0) * 0.003 + extra.yaw), rx(h.pitch - kick * 0.09 + d * 0.7 + extra.pitch), rz(h.roll + extra.roll + d * 0.4));
+    const dip = landDip(a);
+    return chain(tr(h.at[0] + (a.bobX || 0) * 0.0012 + extra.x, h.at[1] - (a.bobY || 0) * 0.0012 - d * 0.22 + kick * 0.004 + extra.y - dip, h.at[2] - kick * 0.035 + extra.z),
+      ry(h.yaw + (a.sway || 0) * 0.003 + extra.yaw), rx(h.pitch - kick * 0.09 + d * 0.7 + extra.pitch + (a.swayY || 0) * 0.003 + dip * 2), rz(h.roll + extra.roll + d * 0.4 - (a.sway || 0) * 0.002));
   }
   function viewGun(t, wid, a) {
     const md = get(wid); const h = HOLD[wid]; if (!md || !h) return;
@@ -526,7 +534,38 @@
     if (md.wheel) { const c = wid === 'pepperbox' ? (a.shots || 0) * (Math.PI / 3) + wheel : wheel + (a.cycle < 0.15 ? a.cycle * 40 : 0); drawPart(t, md.wheel, mul(M, wid === 'pepperbox' ? chain(tr(0, 0.03, 0), rz(c), tr(0, -0.03, 0)) : chain(tr(-0.019, 0.02, 0.012), rx(c), tr(0.019, -0.02, -0.012)))); }
     drawPart(t, md.rhand, M);
     if (md.lhand) drawPart(t, md.lhand, lh ? mul(M, lh) : M);
-    if (a.flash) { const p = ap(M, h.muzzle); post.push((T) => muzzleFlash(T, p)); if (h.smoke) for (let k = 0; k < 3; k += 1) puffs.push({ x: p[0], y: p[1], z: p[2], vx: (Math.random() - 0.6) * 0.06, s: h.smoke * (0.8 + Math.random() * 0.5), t: (a.now || 0) - k * 0.03 }); }
+    if (a.flash) { const p = ap(M, h.muzzle); if (t.mirror) p[0] = -p[0]; post.push((T) => muzzleFlash(T, p)); if (h.smoke) for (let k = 0; k < 3; k += 1) puffs.push({ x: p[0], y: p[1], z: p[2], vx: (Math.random() - 0.6) * 0.06, s: h.smoke * (0.8 + Math.random() * 0.5), t: (a.now || 0) - k * 0.03 }); }
+  }
+  /* A throwable in the right fist: drawn back while the button is held (the fuse lit), swung forward and let go. */
+  function viewNade(t, a) {
+    const id = { he: 'firepot', smoke: 'incense', flash: 'vial', fire: 'flask' }[a.nade] || 'firepot'; const pot = get(id); const fist = get('fist'); const d = 1 - ease(a.raise ?? 1);
+    const wind = a.pinT >= 0 ? ease(a.pinT / 0.3) : 0; const sw = a.throwT >= 0 && a.throwT < 0.7 ? a.throwT / 0.7 : -1; const dip = landDip(a);
+    let x = 0.17 + (a.bobX || 0) * 0.0012 + 0.03 * wind; let y = -0.17 - (a.bobY || 0) * 0.0012 + 0.07 * wind - d * 0.2 - dip; let z = 0.42 - 0.08 * wind; let pr = -0.55 - 0.5 * wind;
+    if (sw >= 0) { const e = Math.sin(Math.min(1, sw * 1.6) * Math.PI * 0.5); x -= 0.06 * e; y += 0.1 * Math.sin(sw * Math.PI) - 0.35 * Math.max(0, sw - 0.45); z += 0.25 * e; pr += 1.3 * e; }
+    const M = chain(tr(x, y, z), ry(-0.32 + (a.sway || 0) * 0.003), rx(pr + (a.swayY || 0) * 0.003), rz(-0.25));
+    drawPart(t, fist.rhand, M);
+    if (sw < 0 || sw < 0.22) { const P = mul(M, chain(tr(0, 0.02, 0.06), rx(-Math.PI / 2), sc(0.55))); Object.values(pot).forEach((part) => { if (part.P) drawPart(t, part, P); });
+      if (wind > 0.5 && (a.nade === 'he' || a.nade === 'fire')) drawPart(t, get('keg').spark, mul(P, chain(tr(0, 0.09, 0.02), sc(0.7)))); }
+  }
+  /* The keg in both hands; planting: set down before you, the fuse struck alight (sparks), the hands drawn back. */
+  function viewKeg(t, a) {
+    const kg = get('keg'); const fist = get('fist'); const d = 1 - ease(a.raise ?? 1); const p = a.plantT >= 0 ? a.plantT : -1; const dip = landDip(a);
+    const down = p >= 0 ? ease(p / 0.55) : 0; const strike = p > 0.55 ? Math.sin(((p - 0.55) / 0.45) * Math.PI * 7) : 0;
+    const K = chain(tr(0.04 + (a.bobX || 0) * 0.001, -0.4 - (a.bobY || 0) * 0.001 - down * 0.22 - d * 0.25 - dip, 0.78 + down * 0.08), ry(0.25 + (a.sway || 0) * 0.002), rx(-0.15 + down * 0.25));
+    drawPart(t, kg.body, K); const fz = mul(K, tr(0, 0.34, 0)); drawPart(t, kg.fuse, fz);
+    if (p > 0.72) drawPart(t, kg.spark, mul(K, tr(-0.03, 0.58, 0)));
+    const lift = p > 0.55 ? 1 : 0; // (the right hand goes to the fuse with the flint; the left steadies the keg)
+    drawPart(t, fist.rhand, mul(K, chain(tr(0.21 - lift * 0.17, 0.18 + lift * (0.34 + strike * 0.02), 0.0), ry(-Math.PI / 2 + lift * 1.2), rx(-0.3 - lift * 0.8))));
+    drawPart(t, fist.rhand, mul(K, chain(sc(-1, 1, 1), tr(0.21, 0.18 - down * 0.05, 0.0), ry(-Math.PI / 2), rx(-0.3))));
+  }
+  /* Defusing: the keg below and before you, its fuse burning; the tools' pliers (or bare fingers) pinch it out. */
+  function viewDefuse(t, a) {
+    const kg = get('keg'); const fist = get('fist'); const p = a.defuseT; const cut = Math.sin(p * Math.PI * (a.tools ? 16 : 10));
+    const K = chain(tr(0.0, -0.62, 0.8), ry(0.4), rx(0.3)); drawPart(t, kg.body, K);
+    const burn = Math.max(0.05, (1 - (a.burn || 0)) * (1 - p * 0.3)); drawPart(t, kg.fuse, mul(K, chain(tr(0, 0.34, 0), sc(1, burn, 1)))); if (p < 0.97) drawPart(t, kg.spark, mul(K, tr(-0.03 * burn, 0.34 + 0.24 * burn, 0)));
+    const R = mul(K, chain(tr(0.07 - 0.01 * cut, 0.34 + 0.24 * burn + 0.02, -0.16), ry(-0.5), rx(-0.25))); drawPart(t, fist.rhand, R);
+    if (a.tools) drawPart(t, get('pliers').body, mul(R, chain(tr(0, 0.0, 0.07), sc(1 + cut * 0.15, 1, 1))));
+    drawPart(t, fist.rhand, mul(K, chain(sc(-1, 1, 1), tr(0.22, 0.16, 0), ry(-Math.PI / 2), rx(-0.2))));
   }
   function muzzleFlash(t, p) {
     if (p[2] < NEAR) return; const sx = t.W / 2 + (t.f * p[0]) / p[2]; const sy = t.H / 2 - (t.f * p[1]) / p[2]; const R = (t.f * 0.07) / p[2]; const rays = 7; const ph = Math.random() * 6.283;
@@ -562,7 +601,7 @@
       drawPart(t, md.handle, K); drawPart(t, md.blade, B);
       if (md.h2) drawPart(t, md.h2, mul(K, chain(tr(0, 0, 0.044), rx(Math.sin(ps.open * Math.PI) * 2.6), tr(0, 0, -0.044))));
       drawPart(t, md.rhand, M);
-      if (a.swing >= 0) { const tip = ap(B, [0, info.curve(1), 0.05 + info.L]); trail.push([tip, a.now || 0]); }
+      if (a.swing >= 0) { const tip = ap(B, [0, info.curve(1), 0.05 + info.L]); if (t.mirror) tip[0] = -tip[0]; trail.push([tip, a.now || 0]); }
     };
     one(1, 0); if (sh.twin) one(-1, 0.15);
     // the swing's trail: where the tip has been, a thin bright arc fading (drawn over the shading)

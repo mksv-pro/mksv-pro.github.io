@@ -1659,3 +1659,15 @@ canvas.twinkle { display: none; position: absolute; z-index: 1; pointer-events: 
 .siege .sg-card li { display: grid; grid-template-columns: 6.5rem 1fr; align-items: center; gap: .3rem; }
 .siege .sg-card li i { height: .35rem; background: linear-gradient(90deg, #d8a838 var(--v), #3a2a18 var(--v)); border: 1px solid #5a4024; }
 .siege .sg-menu .sg-rebuy { display: inline-block; width: auto; margin-right: .6rem; }
+.siege .sg-chat { position: absolute; left: 1.2cqw; bottom: 7.5cqw; display: flex; flex-direction: column; gap: .15em; font-size: .95cqw; max-width: 30cqw; }
+.siege .sg-chat p { margin: 0; padding: .1em .5em; background: rgb(0 0 0 / .45); } .siege .sg-chat b { color: #9cc0ff; font-weight: normal; margin-right: .4em; }
+.siege .sg-fps { position: absolute; right: 1.2cqw; top: 10cqw; font: .9cqw ui-monospace, monospace; color: #b6ffa0; }
+.siege .sg-slots img.cur { outline: 2px solid #ffd86a; }
+.siege .sg-setmenu { inset: 6% 14%; }
+.siege .sg-settings { display: flex; flex-direction: column; gap: .3rem; margin: .4rem 0 .8rem; }
+.siege .sg-row { display: grid; grid-template-columns: 16rem 1fr auto auto; align-items: center; gap: .6rem; }
+.siege .sg-row input[type=range] { width: 100%; accent-color: #d8a838; } .siege .sg-row select { font: inherit; color: #f4ecd8; background: #3a2a18; border: 1px solid #6a4a2a; padding: .2rem; }
+.siege .sg-row b { font-size: .9rem; font-weight: normal; color: #ffd86a; min-width: 6rem; }
+.siege .sg-binds { display: grid; grid-template-columns: 1fr 1fr; gap: .2rem 1.4rem; }
+.siege .sg-binds .sg-row { grid-template-columns: 1fr 7rem 7rem; } .siege .sg-menu .sg-binds button { margin: 0; text-align: center; padding: .2rem; font-size: .85rem; }
+.siege .sg-xprev { display: block; width: 320px; height: 180px; image-rendering: pixelated; border: 1px solid #6a4a2a; margin-bottom: .4rem; }
