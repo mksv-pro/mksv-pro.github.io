@@ -99,7 +99,7 @@
       keg: {}, sites: [], posts: { def: [] }, round: 0, score: { def: 0, att: 0 }, phase: 'buy', phaseUntil: 0, frozen: true, lossStreak: { def: 0, att: 0 }, attSite: 0,
       knife: ARMS.knife(knife), knifeRecipe: knife, eyeH: 0.62, bobT: 0, drawAt: 0, sway: 0, hitMarkAt: -9, hitHead: false, heavySwing: false, pitch: 0, punch: 0, kick: 0, inspect: -1, swing: -1, flashUntil: 0, flashAt: 0, hurtAt: -9, scoped: false, msg: '', msgUntil: 0, opts, paused: false };
     g.give = give; Object.assign(g, api); // (the bots' handle on the game: what they read, what they do through it)
-    g.hAt = hAt; g.roofAt = roofAt; g.isWall = isWall; g.zoneAt = M.zoneAt; g.map = M; g.decals = [];
+    g.hAt = hAt; g.roofAt = roofAt; g.isWall = isWall; g.zoneAt = M.zoneAt; g.map = M; g.decals = []; g.chat = [];
     g.wall = (x, y) => isWall(x, y) || props.some((q) => q.r > 0.25 && Math.floor(q.x) === x && Math.floor(q.y) === y); // (for the bots' paths: walls and the bigger props)
     g.step = (x0, y0, x1, y1) => !g.wall(x1, y1) && hAt(x1, y1) - hAt(x0, y0) <= STEP + 0.01 && roofAt(x1, y1) - hAt(x1, y1) >= STAND; // (a bot can walk from one cell to the next)
     // the sites (their open cells, a centre to stand on), the spawns, the ways and posts the bots know
@@ -152,7 +152,7 @@
     if (carrier === g.player) say('You carry the keg.', 3);
   }
   function endRound(winner, why) {
-    if (g.phase === 'over') return;
+    if (g.phase === 'over') return; BOTS.roundOver(g, winner);
     g.phase = 'over'; g.phaseUntil = g.now + 5; g.score[winner] += 1;
     const loser = winner === 'def' ? 'att' : 'def';
     g.lossStreak[winner] = 0; g.lossStreak[loser] = Math.min(4, g.lossStreak[loser] + 1);
@@ -242,7 +242,7 @@
       t.alive = false; t.hp = 0; t.deaths += 1;
       if (by && by.team !== t.team) { by.kills += 1; by.money = Math.min(MAX_MONEY, by.money + (KILL_REWARD[wid] || 300)); }
       g.feed.unshift({ by: by ? by.name : '', byTeam: by ? by.team : '', w: wid, head, who: t.name, team: t.team, t: g.now }); g.feed.length = Math.min(6, g.feed.length);
-      if (g.keg.carrier === t && !g.keg.planted) { g.keg.carrier = null; g.keg.dropped = true; g.keg.x = t.x; g.keg.y = t.y; }
+      if (g.keg.carrier === t && !g.keg.planted) { g.keg.carrier = null; g.keg.dropped = true; g.keg.x = t.x; g.keg.y = t.y; g.keg.z = t.z; }
       if (t === g.player) { g.scoped = false; say('You fell. The round goes on without you.', 3); }
       checkElim();
     }
@@ -288,7 +288,7 @@
     return s;
   }
   /** Fire the current weapon of actor a (the visitor: the aim; a bot: at target with an aim error, degrees). */
-  function shoot(a, target, errDeg) {
+  function shoot(a, target) {
     const wid = cur(a); const w = ARMS.W[wid]; if (g.frozen || !a.alive || g.now < a.reloadUntil) return;
     if (g.now - a.lastShot < 1 / w.rate) return;
     if (w.melee) { a.lastShot = g.now; if (a === g.player) { g.swing = 0; g.heavySwing = mouseDown[2]; if (!g.heavySwing) g.swingSide = -(g.swingSide || 1); sfx('swish'); } stab(a, target); return; }
@@ -300,10 +300,9 @@
       const s = spreadOf(a, w) * (Math.random() + Math.random() - 1);
       const s2 = spreadOf(a, w) * (Math.random() + Math.random() - 1);
       if (a === g.player) hitscan(a, a.a + (rec[0] + s) * deg, g.pitch + (rec[1] * 0.9 + s2 * 0.6) * deg, w, wid);
-      else { // a bot: towards its target, off by its error
-        const yaw = Math.atan2(target.y - a.y, target.x - a.x) + (errDeg * (Math.random() + Math.random() - 1) + rec[0] * 0.5) * deg;
-        const d = Math.hypot(target.x - a.x, target.y - a.y); const aimZ = (target.crouch ? 0.4 : 0.55) + (Math.random() < 0.18 ? 0.25 : 0);
-        hitscan(a, yaw, Math.atan2(aimZ - 0.62 + (errDeg * (Math.random() - 0.5)) * deg * d, d), w, wid);
+      else { // a bot: along its own aim, its spread as anyone's (it stops to shoot well), the recoil part controlled
+        const ctrl = (BOTS.DIFF[g.difficulty] || BOTS.DIFF.normal).ctrl;
+        hitscan(a, a.a + (rec[0] * (1 - ctrl) + s) * deg, (a.aimPitch || 0) + (rec[1] * 0.9 * (1 - ctrl) + s2 * 0.6) * deg, w, wid);
       }
     }
     if (a === g.player) { g.punch += rec[1] * 0.012 + 0.004; g.kick = 1; g.flashFrame = true; if (am.mag === 0) reload(a); }
@@ -324,12 +323,12 @@
   const onSite = (a) => { const k = g.sites.findIndex((s) => s.cells.some(([x, y]) => Math.floor(x) === Math.floor(a.x) && Math.floor(y) === Math.floor(a.y))); return k < 0 ? null : k; };
   function plant(a, dt) {
     const k = g.keg; if (k.planted || k.carrier !== a || onSite(a) === null || g.phase !== 'live') return;
-    k.plantP += dt / 3.2; a.vx = 0; a.vy = 0; if (Math.random() < dt * 3) sfx('click', a);
-    if (k.plantP >= 1) { Object.assign(k, { planted: true, carrier: null, x: a.x, y: a.y, until: g.now + KEG_S, site: onSite(a), beepAt: g.now }); g.phase = 'planted'; a.money += 300; say(`The keg is planted on ${g.sites[k.site].name}.`, 4); sfx('planted'); }
+    k.plantP += dt / 3.2; a.vx = 0; a.vy = 0; a.planting = true; if (Math.random() < dt * 3) sfx('click', a);
+    if (k.plantP >= 1) { Object.assign(k, { planted: true, carrier: null, x: a.x + Math.cos(a.a) * 0.3, y: a.y + Math.sin(a.a) * 0.3, z: a.z, a: a.a, until: g.now + KEG_S, site: onSite(a), beepAt: g.now }); g.phase = 'planted'; a.money += 300; say(`The keg is planted on ${g.sites[k.site].name}.`, 4); sfx('planted'); }
   }
   function defuse(a, dt) {
     const k = g.keg; if (!k.planted || Math.hypot(k.x - a.x, k.y - a.y) > 1 || g.phase !== 'planted') return;
-    k.defuser = a; k.defuseP += dt / (a.tools ? 3.5 : 7); a.vx = 0; a.vy = 0; if (Math.random() < dt * 4) sfx('click', a);
+    k.defuser = a; k.defuseP += dt / (a.tools ? 5 : 10); a.vx = 0; a.vy = 0; a.defusing = true; if (Math.random() < dt * 4) sfx('click', a);
     if (k.defuseP >= 1) { k.planted = false; k.defused = true; endRound('def', 'defused'); }
   }
 
@@ -387,7 +386,7 @@
 
   /* ---- each frame ---- */
   function update(dt) {
-    const p = g.player;
+    const p = g.player; g.actors.forEach((a) => { a.planting = false; a.defusing = false; });
     // the phases
     if (g.phase === 'buy' && g.now > g.phaseUntil) { g.phase = 'live'; g.phaseUntil = g.now + ROUND_S; g.frozen = false; closeBuy(); }
     else if (g.phase === 'live' && g.now > g.phaseUntil) endRound('def', 'time');
@@ -426,7 +425,7 @@
     updateNades(dt);
   }
   // what the bots call
-  const api = { move: (a, dx, dy) => { a.wish = [dx, dy, 1]; }, fire: (a, t, e) => shoot(a, t, e), plant, defuse, throw: throwIt, sees, onSite };
+  const api = { move: (a, dx, dy, k = 1) => { a.wish = [dx, dy, k]; }, jump: (a) => jump(a), reload: (a) => reload(a), fire: (a, t) => shoot(a, t), plant, defuse, throw: throwIt, sees, onSite };
 
   /* ---- drawing ---- */
   /* Each cell's textures, found once: its top (floor), its sides (or a wall dressed for its place), the
