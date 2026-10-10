@@ -84,7 +84,7 @@
     ['lastweapon', 'Last weapon'], ['nextweapon', 'Next weapon'], ['prevweapon', 'Previous weapon'], ['forge', "The knife's forge"]];
   const BINDS = { attack: ['Mouse0'], attack2: ['Mouse2'], forward: ['KeyW', 'ArrowUp'], back: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'], jump: ['Space'], crouch: ['ControlLeft', 'KeyC'], walk: ['ShiftLeft'],
     reload: ['KeyR'], use: ['KeyE'], drop: ['KeyG'], inspect: ['KeyF'], buy: ['KeyB'], scores: ['Tab'], slot1: ['Digit1'], slot2: ['Digit2'], slot3: ['Digit3'], slot4: ['Digit4'], slot5: ['Digit5'], lastweapon: ['KeyQ'], nextweapon: ['WheelDown'], prevweapon: ['WheelUp'], forge: ['KeyK'] };
-  const SETTINGS0 = { sens: 0.0011, zoomSens: 1, fov: 1.6, invert: false, quality: 1, hand: 'right', bob: 1, volume: 0.8, fullscreen: true, showFps: false,
+  const SETTINGS0 = { sens: 0.0011, zoomSens: 1, fov: 1.6, invert: false, quality: 1, detail: 'half', hand: 'right', bob: 1, volume: 0.8, fullscreen: true, showFps: false,
     xhair: { style: 'dynamic', color: '#8cff6e', size: 8, gap: 4, thick: 2, outline: true, dot: false } };
   const settings = (() => { let st = {}; try { st = JSON.parse(localStorage.getItem('siege-settings') || '{}') || {}; } catch { /* (no storage: the defaults) */ } return { ...SETTINGS0, ...st, xhair: { ...SETTINGS0.xhair, ...(st.xhair || {}) }, binds: { ...BINDS, ...(st.binds || {}) } }; })();
   const saveSettings = () => { try { localStorage.setItem('siege-settings', JSON.stringify(settings)); } catch { /* (no storage: for this time only) */ } };
@@ -129,7 +129,7 @@
     [W, H] = QUALITY[settings.quality ?? 1];
     build(); prepCells(); prepProps(); prepLight(); prepSky(); bind(); newRound(true);
     let last = performance.now();
-    const loop = (t) => { raf = requestAnimationFrame(loop); const dt = Math.min(0.05, (t - last) / 1000); last = t; if (!g.paused) { g.now += dt; update(dt); } render(); hud(); };
+    const loop = (t) => { raf = requestAnimationFrame(loop); const dt = Math.min(0.05, (t - last) / 1000); last = t; window.__pf = window.__pf || {}; const __t = (k, t0) => { window.__pf[k] = (window.__pf[k] || 0) + performance.now() - t0; return performance.now(); }; let T0 = performance.now(); if (!g.paused) { g.now += dt; update(dt); } T0 = __t('update', T0); render(); T0 = __t('render', T0); hud(); __t('hud', T0); window.__pf.n = (window.__pf.n || 0) + 1; };
     raf = requestAnimationFrame(loop);
     say('Siege. Defend the two sites, A and B, from the keg. Click to take the mouse; B to buy; Esc to pause.', 6);
   }
@@ -560,7 +560,7 @@
   /** Whose eyes: the visitor's, or (fallen) a living one of the side, chosen by clicking. */
   function camActor() { const me = g.player; if (me.alive) return me; const mates = g.actors.filter((a) => a.alive && a.team === me.team); return mates.length ? mates[(g.specIdx || 0) % mates.length] : me; }
   function toScreen(x, y, z) { const c = cam; const rx = x - c.px; const ry = y - c.py; const ty = c.inv * (-c.plY * rx + c.plX * ry); if (ty < 0.05) return null; const tx = c.inv * (c.dirY * rx - c.dirX * ry); return [(W / 2) * (1 + tx / ty), c.hor + (c.eye - z) * c.F / ty, ty, c.F / ty]; }
-  let rowInv = null; let worldT = null;
+  let rowInv = null; let worldT = null; let colBuf = null; let colZ = null;
   function render() {
     const me = g.player; const p = camActor(); const self = p === me; // (fallen: the eyes of a living one of your side)
     const eye = (self ? g.eyeH : p.crouch ? 0.45 : 0.62) + p.z; const fov = settings.fov * (self && p.scoped ? 0.25 : 1);
@@ -570,71 +570,78 @@
     const yaw = p.a + (self ? (g.shake > 0.01 ? (Math.random() - 0.5) * g.shake * 0.02 : 0) : 0);
     const dirX = Math.cos(yaw); const dirY = Math.sin(yaw); const plX = -dirY * pl; const plY = dirX * pl;
     cam = { px: p.x, py: p.y, dirX, dirY, plX, plY, pl, hor, eye, F, inv: 1 / (plX * dirY - dirX * plY) };
-    lightFrame();
+    window.__pf = window.__pf || {}; const __t = (k, t0) => { window.__pf[k] = (window.__pf[k] || 0) + performance.now() - t0; return performance.now(); }; let T1 = performance.now(); lightFrame(); T1 = __t('light', T1);
     if (!skyTex || skyTex.length !== SKW * H) paintSky();
     const colS = new Int32Array(W); for (let x = 0; x < W; x += 1) { const ang = yaw + Math.atan(((2 * x) / W - 1) * pl); colS[x] = Math.floor(((ang / (2 * Math.PI)) % 1 + 1) % 1 * SKW); }
     if (!rowInv || rowInv.length !== H) rowInv = new Float32Array(H); for (let y = 0; y < H; y += 1) { const d = y + 0.5 - hor; rowInv[y] = Math.abs(d) < 0.01 ? 100 : 1 / d; }
     const zb = zbuf; const px0 = p.x; const py0 = p.y; const NEARD = 0.05; const hazeV = pack(HAZE); const mipK = T / F; // (texels a pixel, per unit of distance)
-    // a column at a time: the cells along the ray, near to far, each drawn into the rows still free ([ytop, ybot))
-    for (let x = 0; x < W; x += 1) {
-      const camx = (2 * x) / W - 1; const rdx = dirX + plX * camx; const rdy = dirY + plY * camx;
-      let mx = Math.floor(px0); let my = Math.floor(py0); const ddx = Math.abs(1 / rdx); const ddy = Math.abs(1 / rdy); const sx = rdx < 0 ? -1 : 1; const sy = rdy < 0 ? -1 : 1;
-      let sdx = (rdx < 0 ? px0 - mx : mx + 1 - px0) * ddx; let sdy = (rdy < 0 ? py0 - my : my + 1 - py0) * ddy; let side = 0;
-      let ytop = 0; let ybot = H; let d0 = 0; let ci = clamp(my, 0, MH - 1) * MW + clamp(mx, 0, MW - 1); let ch = M.h[ci];
+    // a column at a time: the cells along the ray, near to far, each drawn into the rows still free ([ytop, ybot)); into
+    // buffers laid out by columns (each column's pixels side by side in memory), turned the right way after
+    const step = settings.detail === 'full' ? 1 : 2; const CW = Math.ceil(W / step); // (half detail: each column two pixels wide, half the work)
+    if (!colBuf || colBuf.length !== CW * H) { colBuf = new Uint32Array(CW * H); colZ = new Float32Array(CW * H); }
+    const cb = colBuf; const cz = colZ; const LMN = lm.length;
+    let x = 0; let d0 = 0; let side = 0; let rdx = 0; let rdy = 0; let ytop = 0; let ybot = H; let sx = 1; let sy = 1;
+    const face = (zTop, zBot, t0, foot) => { // a vertical face at d0 from zBot up to zTop, textured by t0 (a dressed wall: by its foot); returns its top row
+      let r0 = Math.ceil(hor + (eye - zTop) * F / d0 - 0.5); let r1 = Math.ceil(hor + (eye - zBot) * F / d0 - 0.5); if (r0 < ytop) r0 = ytop; if (r1 > ybot) r1 = ybot; if (r0 >= r1) return r0;
+      const tp = d0 * mipK; const L = tp > 4 ? 2 : tp > 2 ? 1 : 0; const S = T >> L; const t = t0.m[L]; const S1 = S - 1;
+      let wxh = side === 0 ? py0 + d0 * rdy : px0 + d0 * rdx; wxh -= Math.floor(wxh); let tx = (wxh * S) | 0; if ((side === 0 && rdx > 0) || (side === 1 && rdy < 0)) tx = S1 - tx;
+      let li = (((((py0 + rdy * (d0 - 0.03)) * LR) | 0) * LW) + (((px0 + rdx * (d0 - 0.03)) * LR) | 0)) * 3; if (li < 0 || li >= LMN) li = 0;
+      const shade = (side ? 0.84 : 1) * (0.8 + 0.4 * Math.max(0, (side === 0 ? -sx * SUN[0] : -sy * SUN[1])));
+      const fa = d0 >= FOG_D ? 218 : (d0 * 218 / FOG_D) | 0; const fb = 256 - fa; const hr = HAZE[0] * fa; const hg = HAZE[1] * fa; const hb = HAZE[2] * fa; const lr = lm[li] * shade * fb; const lg = lm[li + 1] * shade * fb; const lb = lm[li + 2] * shade * fb;
+      const tall = t0.length > T * T; const dz = d0 / F; let z = eye - (r0 + 0.5 - hor) * dz; const aoTop = zBot + 0.22; const RM = 256 >> L;
+      for (let r = r0, o = x * H + r0; r < r1; r += 1, o += 1, z -= dz) {
+        let row; if (tall) { row = ((140 - (z - foot) * T) | 0) >> L; if (row < 0) row = 0; else if (row >= RM) row = RM - 1; } else row = (((zTop - z) * S) | 0) & S1;
+        const v = t[row * S + tx]; const ao = z < aoTop ? 0.66 + (z - zBot) * 1.5 : 1;
+        let R2 = ((v & 255) * lr * ao + hr) >> 8; let G2 = (((v >> 8) & 255) * lg * ao + hg) >> 8; let B2 = (((v >> 16) & 255) * lb * ao + hb) >> 8; if (R2 > 255) R2 = 255; if (G2 > 255) G2 = 255; if (B2 > 255) B2 = 255;
+        cb[o] = 0xff000000 | (B2 << 16) | (G2 << 8) | R2; cz[o] = d0;
+      }
+      return r0;
+    };
+    const flat = (e, r0, r1, tm, k) => { // a floor's (or ceiling's) rows r0..r1 at height distance e, its texture's mips tm, its light times k
+      for (let r = r0, o = x * H + r0; r < r1; r += 1, o += 1) {
+        const dist = e * rowInv[r]; const wx = px0 + rdx * dist; const wy = py0 + rdy * dist; const tp = dist * mipK; const L = tp > 4 ? 2 : tp > 2 ? 1 : 0; const S = T >> L; const t = tm[L];
+        const ix = wx | 0; const iy = wy | 0; const v = t[((((wy - iy) * S) | 0) & (S - 1)) * S + ((((wx - ix) * S) | 0) & (S - 1))];
+        let li = (((wy * LR) | 0) * LW + ((wx * LR) | 0)) * 3; if (li < 0 || li >= LMN) li = 0;
+        const fa = dist >= FOG_D ? 218 : (dist * 218 / FOG_D) | 0; const fb = (256 - fa) * k;
+        let R2 = ((v & 255) * lm[li] * fb + HAZE[0] * fa) >> 8; let G2 = (((v >> 8) & 255) * lm[li + 1] * fb + HAZE[1] * fa) >> 8; let B2 = (((v >> 16) & 255) * lm[li + 2] * fb + HAZE[2] * fa) >> 8; if (R2 > 255) R2 = 255; if (G2 > 255) G2 = 255; if (B2 > 255) B2 = 255;
+        cb[o] = 0xff000000 | (B2 << 16) | (G2 << 8) | R2; cz[o] = dist;
+      }
+    };
+    for (x = 0; x < CW; x += 1) {
+      const camx = (2 * (x * step + step * 0.5)) / W - 1; rdx = dirX + plX * camx; rdy = dirY + plY * camx;
+      let mx = Math.floor(px0); let my = Math.floor(py0); const ddx = Math.abs(1 / rdx); const ddy = Math.abs(1 / rdy); sx = rdx < 0 ? -1 : 1; sy = rdy < 0 ? -1 : 1;
+      let sdx = (rdx < 0 ? px0 - mx : mx + 1 - px0) * ddx; let sdy = (rdy < 0 ? py0 - my : my + 1 - py0) * ddy; side = 0;
+      ytop = 0; ybot = H; d0 = 0; let ci = clamp(my, 0, MH - 1) * MW + clamp(mx, 0, MW - 1); let ch = M.h[ci];
       for (let k = 0; k < 160; k += 1) {
         const d1 = sdx < sdy ? sdx : sdy; const dn = d0 < NEARD ? NEARD : d0;
         if (eye > ch) { // this cell's floor (or a crate's top), from its far edge to its near
           const e = (eye - ch) * F; let r0 = Math.ceil(hor + e / d1 - 0.5); let r1 = Math.ceil(hor + e / dn - 0.5); if (r0 < ytop) r0 = ytop; if (r1 > ybot) r1 = ybot;
-          if (r0 < r1) { const tm = topTex[ci].m;
-            for (let r = r0, o = r0 * W + x; r < r1; r += 1, o += W) {
-              const dist = e * rowInv[r]; const wx = px0 + rdx * dist; const wy = py0 + rdy * dist; const tp = dist * mipK; const L = tp > 4 ? 2 : tp > 2 ? 1 : 0; const S = T >> L; const t = tm[L];
-              const v = t[((((wy - Math.floor(wy)) * S) | 0) & (S - 1)) * S + ((((wx - Math.floor(wx)) * S) | 0) & (S - 1))];
-              let li = (((wy * LR) | 0) * LW + ((wx * LR) | 0)) * 3; if (li < 0 || li >= lm.length) li = 0;
-              const fa = dist >= FOG_D ? 218 : (dist * 218 / FOG_D) | 0; const fb = 256 - fa;
-              let R2 = (v & 255) * lm[li]; let G2 = ((v >> 8) & 255) * lm[li + 1]; let B2 = ((v >> 16) & 255) * lm[li + 2]; if (R2 > 255) R2 = 255; if (G2 > 255) G2 = 255; if (B2 > 255) B2 = 255;
-              buf[o] = 0xff000000 | (((B2 * fb + HAZE[2] * fa) >> 8) << 16) | (((G2 * fb + HAZE[1] * fa) >> 8) << 8) | ((R2 * fb + HAZE[0] * fa) >> 8); zb[o] = dist;
-            } }
+          if (r0 < r1) flat(e, r0, r1, topTex[ci].m, 1);
           if (r0 < ybot) ybot = r0 > ytop ? r0 : ytop;
         }
         const rf = M.roof[ci];
         if (rf < 1e9 && eye < rf && ytop < ybot) { // its ceiling, under a roof
           const e = (rf - eye) * F; let r0 = Math.ceil(hor - e / dn - 0.5); let r1 = Math.ceil(hor - e / d1 - 0.5); if (r0 < ytop) r0 = ytop; if (r1 > ybot) r1 = ybot;
-          if (r0 < r1) { const tm = ceilTex[ci].m;
-            for (let r = r0, o = r0 * W + x; r < r1; r += 1, o += W) {
-              const dist = -e * rowInv[r]; const wx = px0 + rdx * dist; const wy = py0 + rdy * dist; const tp = dist * mipK; const L = tp > 4 ? 2 : tp > 2 ? 1 : 0; const S = T >> L; const t = tm[L];
-              const v = t[((((wy - Math.floor(wy)) * S) | 0) & (S - 1)) * S + ((((wx - Math.floor(wx)) * S) | 0) & (S - 1))]; let li = (((wy * LR) | 0) * LW + ((wx * LR) | 0)) * 3; if (li < 0 || li >= lm.length) li = 0;
-              const fa = dist >= FOG_D ? 218 : (dist * 218 / FOG_D) | 0; const fb = 256 - fa;
-              let R2 = (v & 255) * lm[li] * 0.7; let G2 = ((v >> 8) & 255) * lm[li + 1] * 0.7; let B2 = ((v >> 16) & 255) * lm[li + 2] * 0.7; if (R2 > 255) R2 = 255; if (G2 > 255) G2 = 255; if (B2 > 255) B2 = 255;
-              buf[o] = 0xff000000 | (((B2 * fb + HAZE[2] * fa) >> 8) << 16) | (((G2 * fb + HAZE[1] * fa) >> 8) << 8) | ((R2 * fb + HAZE[0] * fa) >> 8); zb[o] = dist;
-            } }
+          if (r0 < r1) flat(-e, r0, r1, ceilTex[ci].m, 0.7);
           if (r1 > ytop) ytop = r1 < ybot ? r1 : ybot;
         }
         if (ytop >= ybot) break;
         if (sdx < sdy) { sdx += ddx; mx += sx; side = 0; } else { sdy += ddy; my += sy; side = 1; }
         d0 = d1; if (mx < 0 || my < 0 || mx >= MW || my >= MH) break;
         const ni = my * MW + mx; const nh = M.h[ni]; const nrf = M.roof[ni];
-        const face = (zTop, zBot, t0, foot) => { // a vertical face at d0 from zBot up to zTop, textured by t (a dressed wall: by its foot)
-          let r0 = Math.ceil(hor + (eye - zTop) * F / d0 - 0.5); let r1 = Math.ceil(hor + (eye - zBot) * F / d0 - 0.5); if (r0 < ytop) r0 = ytop; if (r1 > ybot) r1 = ybot; if (r0 >= r1) return r0;
-          const tp = d0 * mipK; const L = tp > 4 ? 2 : tp > 2 ? 1 : 0; const S = T >> L; const t = t0.m[L]; const S1 = S - 1;
-          let wxh = side === 0 ? py0 + d0 * rdy : px0 + d0 * rdx; wxh -= Math.floor(wxh); let tx = (wxh * S) | 0; if ((side === 0 && rdx > 0) || (side === 1 && rdy < 0)) tx = S1 - tx;
-          let li = (((((py0 + rdy * (d0 - 0.03)) * LR) | 0) * LW) + (((px0 + rdx * (d0 - 0.03)) * LR) | 0)) * 3; if (li < 0 || li >= lm.length) li = 0;
-          const nx2 = side === 0 ? -sx : 0; const ny2 = side === 1 ? -sy : 0; const shade = (side ? 0.84 : 1) * (0.8 + 0.4 * Math.max(0, nx2 * SUN[0] + ny2 * SUN[1]));
-          const fa = d0 >= FOG_D ? 218 : (d0 * 218 / FOG_D) | 0; const fb = 256 - fa; const lr = lm[li] * shade; const lg = lm[li + 1] * shade; const lb = lm[li + 2] * shade;
-          const tall = t0.length > T * T; const dz = d0 / F; let z = eye - (r0 + 0.5 - hor) * dz;
-          for (let r = r0, o = r0 * W + x; r < r1; r += 1, o += W, z -= dz) {
-            const row = tall ? clamp(((140 - (z - foot) * T) | 0) >> L, 0, (256 >> L) - 1) : (((zTop - z) * S) | 0) & S1; const v = t[row * S + tx]; const ao = z - zBot < 0.22 ? 0.66 + (z - zBot) * 1.5 : 1;
-            let R2 = (v & 255) * lr * ao; let G2 = ((v >> 8) & 255) * lg * ao; let B2 = ((v >> 16) & 255) * lb * ao; if (R2 > 255) R2 = 255; if (G2 > 255) G2 = 255; if (B2 > 255) B2 = 255;
-            buf[o] = 0xff000000 | (((B2 * fb + HAZE[2] * fa) >> 8) << 16) | (((G2 * fb + HAZE[1] * fa) >> 8) << 8) | ((R2 * fb + HAZE[0] * fa) >> 8); zb[o] = d0;
-          }
-          return r0;
-        };
         if (nh > ch) { const r0 = face(nh, ch, sideTex[ni], ch); if (r0 < ybot) ybot = r0 > ytop ? r0 : ytop; } // (where the ground rises: a step, a crate, a wall)
         if (nrf < rf && nrf < 1e9 && eye < nrf) { face(nrf + 40, nrf, sideTex[ni], nh); const r1 = Math.ceil(hor + (eye - nrf) * F / d0 - 0.5); if (r1 > ytop) ytop = r1 < ybot ? r1 : ybot; } // (where a roof begins: the house over it, out of sight)
         ci = ni; ch = nh;
         if (ytop >= ybot || ybot <= hor - (MAXH - eye) * F / d0) break; // (nothing farther could show)
       }
-      for (let r = ytop, o = ytop * W + x; r < ybot; r += 1, o += W) { buf[o] = r < hor ? skyTex[Math.min(H - 1, hor - r) * SKW + colS[x]] : hazeV; zb[o] = 1e9; } // (the sky, or haze past the map)
+      const sc = colS[Math.min(W - 1, x * step)]; for (let r = ytop, o = x * H + ytop; r < ybot; r += 1, o += 1) { cb[o] = r < hor ? skyTex[(hor - r < H ? hor - r : H - 1) * SKW + sc] : hazeV; cz[o] = 1e9; } // (the sky, or haze past the map)
     }
+    T1 = __t('cols-only', T1);
+    // turned the right way, by tiles (so both sides stay in the cache)
+    for (let x0 = 0; x0 < CW; x0 += 16) for (let y0 = 0; y0 < H; y0 += 16) { const x1 = Math.min(CW, x0 + 16); const y1 = Math.min(H, y0 + 16);
+      for (let xx = x0; xx < x1; xx += 1) { let o = xx * H + y0; const X = xx * step; let q = y0 * W + X; const two = step === 2 && X + 1 < W;
+        for (let yy = y0; yy < y1; yy += 1, o += 1, q += W) { const v = cb[o]; const d = cz[o]; buf[q] = v; zb[q] = d; if (two) { buf[q + 1] = v; zb[q + 1] = d; } } } }
+    T1 = __t('columns', T1);
     // the sprites, far to near, each pixel against the depth
     const spr = []; const now = g.now;
     // the men, the props, the keg, things thrown: models, against the depth (those out of sight skipped)
@@ -648,7 +655,7 @@
     (g.drops || []).forEach((d) => { if (vis(d.x, d.y, d.z, d.z + 0.2)) items.push({ model: d.id, x: d.x, y: d.y, z: d.z, a: d.a, lying: true, light: lit(d.x, d.y) }); });
     g.nades.forEach((n) => items.push({ nade: { he: 'firepot', smoke: 'incense', flash: 'vial', fire: 'flask' }[n.kind], x: n.x, y: n.y, z: n.z, spin: (now - n.t0) * 14, light: lit(n.x, n.y) }));
     const sunView = [SUN[0] * -dirY + SUN[1] * dirX, SUN[2], SUN[0] * dirX + SUN[1] * dirY];
-    MODELS.world(worldT, cam, items, sunView, now, g.knife);
+    T1 = __t('items', T1); MODELS.world(worldT, cam, items, sunView, now, g.knife); T1 = __t('models', T1);
     torches.forEach((t) => spr.push({ x: t.x, y: t.y, z: t.z - 0.15, h: 0.32, wk: 0.16, torch: t })); // (the torches: a bracket, a flame)
     g.smokes.forEach((sm) => { const k = Math.min(1, (now - sm.t0) / 1.5) * Math.min(1, (sm.until - now) / 2); for (let j = 0; j < 22; j += 1) { const q = j * 2.39996 + now * 0.05; const r = Math.sqrt(j / 22) * sm.r * k; spr.push({ x: sm.x + Math.cos(q) * r, y: sm.y + Math.sin(q) * r, z: sm.z - 0.1 + (j % 3) * 0.25, h: 1.5 * k, wk: 1.6 * k, cloud: [182, 184, 190], alpha: 0.9 }); } });
     g.fires.forEach((f) => f.flames.forEach((q) => spr.push({ x: q[0], y: q[1], z: f.z, h: 0.32 + Math.sin(now * 9 + q[2]) * 0.1, wk: 0.3, flame: true })));
@@ -681,6 +688,7 @@
         if (sp) dot(sp[0], sp[1], sp[2], f.kind === 'blood' ? [150, 10, 14] : f.kind === 'splinter' ? [170, 120, 70] : f.kind === 'debris' ? [90, 84, 78] : age < 0.08 ? [255, 250, 200] : [200, 180, 140], Math.max(1, Math.round(sp[3] / (f.kind === 'debris' ? 60 : 90)))); });
       if (f.kind === 'trail' && age < 0.07) { const n = 24; for (let k = 0; k <= n; k += 1) { const u = k / n; const sp = toScreen(f.x0 + (f.x1 - f.x0) * u, f.y0 + (f.y1 - f.y0) * u, f.z0 + (f.z1 - f.z0) * u); if (sp && u > 0.1) dot(sp[0], sp[1], sp[2], [255, 236, 160]); } }
     });
+    T1 = __t('sprites', T1);
     // in the hand
     if (self && p.alive && !p.scoped) {
       const wid = cur(p); const sp = Math.hypot(p.vx, p.vy) / 3.6; const ph = g.bobT; const lo = lightAt(p.x, p.y);
@@ -706,7 +714,7 @@
         r += (255 - r) * fl; gg += (255 - gg) * fl; b += (255 - b) * fl; buf[o] = 0xff000000 | ((b | 0) << 16) | ((gg | 0) << 8) | (r | 0); } }
     if (self && now - g.hurtAt < 0.4) { const k = 1 - (now - g.hurtAt) / 0.4; for (let y = 0; y < H; y += 2) for (let x = 0; x < W; x += 1) { const e = Math.max(Math.abs(x / W - 0.5), Math.abs(y / H - 0.5)) * 2; if (e > 0.7) { for (let yy = y; yy < Math.min(H, y + 2); yy += 1) { const o = yy * W + x; const c = unpack(buf[o]); const m = k * (e - 0.7) / 0.3; buf[o] = pack([c[0] + (210 - c[0]) * m * 0.7, c[1] * (1 - m * 0.6), c[2] * (1 - m * 0.6)]); } } } }
     if (!me.alive && self) for (let o = 0; o < W * H; o += 1) { const c = unpack(buf[o]); const m = (c[0] + c[1] + c[2]) / 3; buf[o] = pack([m * 0.8, m * 0.75, m * 0.7]); }
-    ctx.putImageData(img, 0, 0);
+    T1 = __t('viewmodel+fx', T1); ctx.putImageData(img, 0, 0); T1 = __t('put', T1);
     // the crosshair (its gap the spread), and the mark of a hit
     if (self && p.alive && !p.scoped && !['knife', 'keg'].includes(cur(p))) crosshair(ctx, W / 2, H / 2, cur(p) === 'nade' ? 0 : spreadOf(p, ARMS.W[cur(p)]));
     if (now - g.hitMarkAt < 0.18) { ctx.strokeStyle = g.hitHead ? '#ff4a3a' : '#ffffff'; ctx.lineWidth = 2; ctx.beginPath(); [[1, 1], [-1, 1], [1, -1], [-1, -1]].forEach(([a2, b2]) => { ctx.moveTo(W / 2 + a2 * 6, H / 2 + b2 * 6); ctx.lineTo(W / 2 + a2 * 13, H / 2 + b2 * 13); }); ctx.stroke(); }
@@ -717,7 +725,7 @@
       const o = Math.round(sp[1]) * W + Math.round(sp[0]); const hidden = !(sp[1] >= 0 && sp[1] < H && zb[o] >= sp[2] - 0.3); ctx.fillStyle = hidden ? 'rgba(120,170,255,.45)' : '#9cc0ff'; ctx.fillText(a.name, sp[0], sp[1]); });
     if (self && p.alive) { const t2 = g.actors.find((o) => o.alive && o.team !== p.team && Math.abs(wrap(Math.atan2(o.y - p.y, o.x - p.x) - p.a)) < 0.3 / Math.max(1, Math.hypot(o.x - p.x, o.y - p.y)) + 0.02 && sees(p, o));
       if (t2) { ctx.fillStyle = '#ff8a7a'; ctx.fillText(`${t2.name}`, W / 2, H / 2 + H / 14); } }
-    drawRadar();
+    T1 = __t('tags', T1); drawRadar(); __t('radar', T1);
   }
   /* The radar: the map painted once (walls with a lit edge, floors by kind, the sites), turned each frame
      with the one you watch facing up, a circle of about thirteen cells; the side's men, enemies some of
@@ -916,7 +924,7 @@ ${navigator.userAgent.includes('Firefox') ? ' In Firefox, Ctrl+W outside fullscr
       + check('invert', 'Look inverted', settings.invert) + range('fov', 'Field of view', 1.2, 2.0, 0.02, settings.fov, `${Math.round(settings.fov * 180 / Math.PI)}°`) + pick('hand', 'Weapon in the', settings.hand, [['right', 'right hand'], ['left', 'left hand']]) + range('bob', 'Weapon bob', 0, 1.5, 0.1, settings.bob, `× ${settings.bob.toFixed(1)}`);
     if (tab === 'xhair') body = `<canvas class="sg-xprev" width="160" height="90"></canvas>` + pick('xhair.style', 'Style', X.style, [['dynamic', 'Opens as you move and shoot'], ['static', 'Fixed'], ['dot', 'A dot only']])
       + pick('xhair.color', 'Colour', X.color, [['#8cff6e', 'Green'], ['#ffe14a', 'Yellow'], ['#5af0ff', 'Cyan'], ['#ffffff', 'White'], ['#ff5a5a', 'Red'], ['#ff6aff', 'Pink']]) + range('xhair.size', 'Length', 2, 20, 1, X.size, X.size) + range('xhair.gap', 'Gap', 0, 14, 1, X.gap, X.gap) + range('xhair.thick', 'Thickness', 1, 5, 1, X.thick, X.thick) + check('xhair.outline', 'Dark outline', X.outline) + check('xhair.dot', 'Centre dot', X.dot);
-    if (tab === 'video') body = pick('quality', 'Picture', settings.quality, QUALITY.map(([w, h], k) => [k, `${w} × ${h}`])) + check('fullscreen', 'Fullscreen when playing (the keyboard locked where the browser allows)', settings.fullscreen) + check('showFps', 'Frames a second', settings.showFps) + range('volume', 'Sound', 0, 1, 0.05, settings.volume, `${Math.round(settings.volume * 100)}%`);
+    if (tab === 'video') body = pick('quality', 'Picture', settings.quality, QUALITY.map(([w, h], k) => [k, `${w} × ${h}`])) + pick('detail', 'Walls and floors', settings.detail, [['half', 'Columns two pixels wide (quicker)'], ['full', 'Every column (slower)']]) + check('fullscreen', 'Fullscreen when playing (the keyboard locked where the browser allows)', settings.fullscreen) + check('showFps', 'Frames a second', settings.showFps) + range('volume', 'Sound', 0, 1, 0.05, settings.volume, `${Math.round(settings.volume * 100)}%`);
     openMenu(`<h3>Settings</h3><nav class="sg-tabs">${tabs.map(([k, n]) => `<button data-tab="${k}" class="${k === tab ? 'on' : ''}">${n}</button>`).join('')}</nav><div class="sg-settings">${body}</div><button data-act="back">Back</button>`, 'sg-pause sg-setmenu');
     const m = ui.menu;
     m.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => settingsMenu(b.dataset.tab)));
@@ -1079,5 +1087,5 @@ ${navigator.userAgent.includes('Firefox') ? ' In Firefox, Ctrl+W outside fullscr
     }[kind] || (() => {}))();
   }
 
-  window.Siege = { start, stop, state: () => g && { phase: g.phase, round: g.round, score: { ...g.score }, alive: g.actors.filter((a) => a.alive).length, player: { hp: g.player.hp, x: g.player.x, y: g.player.y, money: g.player.money } }, debug: () => g, sim: (sec) => { for (let k = 0; k < sec * 60 && g; k += 1) { g.now += 1 / 60; update(1 / 60); } } }; // (sim: the game run ahead without drawing, for the tests)
+  window.Siege = { start, stop, state: () => g && { phase: g.phase, round: g.round, score: { ...g.score }, alive: g.actors.filter((a) => a.alive).length, player: { hp: g.player.hp, x: g.player.x, y: g.player.y, money: g.player.money } }, debug: () => g, bench: (n = 30) => { window.__pf = {}; const t0 = performance.now(); for (let k = 0; k < n; k += 1) render(); const tt = (performance.now() - t0) / n; return `${tt.toFixed(2)} ms: ${Object.entries(window.__pf).map(([k2, v]) => `${k2} ${(v / n).toFixed(2)}`).join(', ')}`; }, audio: () => { if (!audio) audioOn(); let err = ''; try { sfx('shot', g.player, 'ak47'); sfx('step', g.player); } catch (e) { err = String(e); } return `${audio ? audio.state : 'none'} ${master ? master.gain.value : '-'} ${err}`; }, sim: (sec) => { for (let k = 0; k < sec * 60 && g; k += 1) { g.now += 1 / 60; update(1 / 60); } } }; // (sim: the game run ahead without drawing, for the tests)
 }());

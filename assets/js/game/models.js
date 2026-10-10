@@ -25,7 +25,7 @@
 
   /* ---- materials: each (x, y, z in its part's space, out) writes [r, g, b, specular, shininess, metal
      (the highlight and reflection take the colour), emissive] ---- */
-  const hash = (x, y, z) => { const s = Math.sin(x * 127.1 + y * 311.7 + z * 74.7) * 43758.5453; return s - Math.floor(s); };
+  const hash = (x, y, z) => { let h = (x * 374761393 + y * 668265263 + z * 1274126177) | 0; h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) & 1023) / 1023; }; // (an integer hash: cheap)
   const set = (o, r, g, b, sp, sh, metal = 0, em = 0) => { o[0] = r; o[1] = g; o[2] = b; o[3] = sp; o[4] = sh; o[5] = metal; o[6] = em; };
   const wood = (base, k) => (x, y, z, o) => { // the grain runs along z, wavering; pores
     const g = Math.sin(y * 260 * k + x * 90 + Math.sin(z * 16 + y * 50) * 2.6) * 0.5 + 0.5; const pore = hash(Math.floor(z * 500), Math.floor(y * 900), Math.floor(x * 900)) > 0.9 ? 0.82 : 1;
@@ -361,74 +361,83 @@
   const NEAR = 0.1; let ZB = null; const box = [0, 0, 0, 0]; const mo = new Float32Array(7); // (nearer than NEAR is cut: the stock and the sleeves leave the screen as in the old shooters)
   const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v / 16 - 0.47) * 9);
   let light = null; // { amb [r,g,b], key [x,y,z], flash }
-  let TID = null; let KA = null; let KB = null; let tris = []; // (the visibility buffer: each pixel's nearest triangle and its weights; shaded once, after)
+  let TID = null; let KA = null; let KB = null; // (the visibility buffer: each pixel's nearest triangle and its weights; shaded once, after)
+  /* The vertices of the frame in one pool (9 numbers each: the view position, the model position for the
+     material, the view normal), the triangles as three indices, their material and light: no allocation a
+     triangle, so no collector's pauses. */
+  let VP = new Float32Array(9 * 30000); let nV = 0; let TV = new Int32Array(3 * 12000); let TM = new Uint8Array(12000); let TL = []; let nT = 0;
+  const growV = (n) => { if ((nV + n) * 9 > VP.length) { const v = new Float32Array(VP.length * 2); v.set(VP); VP = v; } };
+  const growT = () => { if ((nT + 1) * 3 > TV.length) { const a = new Int32Array(TV.length * 2); a.set(TV); TV = a; const m = new Uint8Array(TM.length * 2); m.set(TM); TM = m; } };
   /** Start drawing into target t (its own buffers; t.keepZ: draw against the depth already in t.ZB, the world's). */
   function begin(t) { const n = t.W * t.H; if (!t.TID || t.TID.length !== n) { if (!t.keepZ) t.ZB = new Float32Array(n); t.TID = new Int32Array(n); t.KA = new Float32Array(n); t.KB = new Float32Array(n); }
-    ZB = t.ZB; TID = t.TID; KA = t.KA; KB = t.KB; if (!t.keepZ) ZB.fill(1e9); TID.fill(-1); tris = []; box[0] = t.W; box[1] = t.H; box[2] = -1; box[3] = -1; }
+    ZB = t.ZB; TID = t.TID; KA = t.KA; KB = t.KB; if (!t.keepZ) ZB.fill(1e9); TID.fill(-1); nV = 0; nT = 0; TL.length = 0; box[0] = t.W; box[1] = t.H; box[2] = -1; box[3] = -1; }
   function shade(t, x, y, mat, lx, ly, lz, nx, ny, nz, vx, vy, vz) {
     MATF[mat](lx, ly, lz, mo); let r = mo[0]; let g = mo[1]; let b = mo[2];
     if (!mo[6]) {
-      const vl = Math.sqrt(vx * vx + vy * vy + vz * vz) || 1; const dx = vx / vl; const dy = vy / vl; const dz = vz / vl;
-      if (nx * dx + ny * dy + nz * dz > 0) { nx = -nx; ny = -ny; nz = -nz; } // (lit from either side: the camera sees the face)
+      const vl = Math.sqrt(vx * vx + vy * vy + vz * vz) || 1; const dx = vx / vl; const dy = vy / vl; const dz = vz / vl; let nv = nx * dx + ny * dy + nz * dz;
+      if (nv > 0) { nx = -nx; ny = -ny; nz = -nz; nv = -nv; } // (lit from either side: the camera sees the face)
       const K = light.key; const nd = nx * K[0] + ny * K[1] + nz * K[2]; const dif = Math.max(0, nd * 0.75 + 0.25) * (light.kk ?? 1); // (a wrapped key light)
       const rim = Math.max(0, nx * 0.55 + ny * 0.25 + nz * 0.8) * 0.35; const A = light.amb;
-      const hx = K[0] - dx; const hy = K[1] - dy; const hz = K[2] - dz; const hl = Math.sqrt(hx * hx + hy * hy + hz * hz) || 1; const sp = Math.pow(Math.max(0, (nx * hx + ny * hy + nz * hz) / hl), mo[4]) * mo[3];
-      const rdy = dy - 2 * (nx * dx + ny * dy + nz * dz) * ny; const env = rdy > 0 ? 150 + 105 * rdy : 120 + 60 * rdy; // (the sky above, the ground below, in the metals)
+      const hx = K[0] - dx; const hy = K[1] - dy; const hz = K[2] - dz; const hl = Math.sqrt(hx * hx + hy * hy + hz * hz) || 1; const ndh = (nx * hx + ny * hy + nz * hz) / hl;
+      const q = 1 - (1 - ndh) * mo[4] * 0.25; const sp = q > 0 ? q * q * q * q * mo[3] : 0; // (the highlight: x^n, near enough, cheaper)
+      const rdy = dy - 2 * nv * ny; const env = rdy > 0 ? 150 + 105 * rdy : 120 + 60 * rdy; // (the sky above, the ground below, in the metals)
       const lr = A[0] * 0.5 + dif * 0.95 + rim * A[0]; const lg = A[1] * 0.5 + dif * 0.92 + rim * A[1]; const lb = A[2] * 0.5 + dif * 0.86 + rim * A[2];
-      const m = mo[5]; const e = m * 0.55;
-      r = r * lr * (1 - e) + (env * r / 255) * e * 1.6 + sp * (m ? r * 1.4 : 200) + light.flash * r * 0.6;
-      g = g * lg * (1 - e) + (env * g / 255) * e * 1.6 + sp * (m ? g * 1.4 : 200) + light.flash * g * 0.4;
-      b = b * lb * (1 - e) + (env * b / 255) * e * 1.6 + sp * (m ? b * 1.4 : 200) + light.flash * b * 0.15;
+      const m = mo[5]; const e = m * 0.55; const ek = (env / 255) * e * 1.6; const fl = light.flash;
+      r = r * (lr * (1 - e) + ek + fl * 0.6) + sp * (m ? r * 1.4 : 200);
+      g = g * (lg * (1 - e) + ek + fl * 0.4) + sp * (m ? g * 1.4 : 200);
+      b = b * (lb * (1 - e) + ek + fl * 0.15) + sp * (m ? b * 1.4 : 200);
     }
     const d = BAYER[(y & 3) * 4 + (x & 3)];
-    r = Math.max(0, Math.min(255, r + d)) & 0xf8; g = Math.max(0, Math.min(255, g + d)) & 0xf8; b = Math.max(0, Math.min(255, b + d)) & 0xf8;
+    r += d; g += d; b += d; r = r < 0 ? 0 : r > 255 ? 248 : r & 0xf8; g = g < 0 ? 0 : g > 255 ? 248 : g & 0xf8; b = b < 0 ? 0 : b > 255 ? 248 : b & 0xf8;
     t.buf[y * t.W + x] = 0xff000000 | (b << 16) | (g << 8) | r;
   }
-  function raster(t, A, B, C, mat) { // A, B, C: [X, Y, Z, lx, ly, lz, nx, ny, nz] in the view
-    const W = t.W; const H = t.H; const f = t.f; const cx = t.cx ?? W / 2; const cy = t.cy ?? H / 2; const orth = t.ortho;
-    const pa = orth ? [cx + A[0] * orth, cy - A[1] * orth] : [cx + (f * A[0]) / A[2], cy - (f * A[1]) / A[2]];
-    const pb = orth ? [cx + B[0] * orth, cy - B[1] * orth] : [cx + (f * B[0]) / B[2], cy - (f * B[1]) / B[2]];
-    const pc = orth ? [cx + C[0] * orth, cy - C[1] * orth] : [cx + (f * C[0]) / C[2], cy - (f * C[1]) / C[2]];
-    const area = (pb[0] - pa[0]) * (pc[1] - pa[1]) - (pb[1] - pa[1]) * (pc[0] - pa[0]); if (Math.abs(area) < 1e-9) return;
-    const x0 = Math.max(0, Math.floor(Math.min(pa[0], pb[0], pc[0]))); const x1 = Math.min(W - 1, Math.ceil(Math.max(pa[0], pb[0], pc[0])));
-    const y0 = Math.max(0, Math.floor(Math.min(pa[1], pb[1], pc[1]))); const y1 = Math.min(H - 1, Math.ceil(Math.max(pa[1], pb[1], pc[1])));
-    if (x0 > x1 || y0 > y1) return;
-    const id = tris.length; tris.push([A, B, C, mat, light]);
-    const ia = orth ? 1 : 1 / A[2]; const ib = orth ? 1 : 1 / B[2]; const ic = orth ? 1 : 1 / C[2];
-    // the weights as planes over the screen: wA = a0 + ax x + ay y (and wB), wC = 1 - wA - wB
-    const ax = (pb[1] - pc[1]) / area; const ay = (pc[0] - pb[0]) / area; const a0 = ((pb[0] * pc[1]) - (pc[0] * pb[1])) / area;
-    const bx = (pc[1] - pa[1]) / area; const by = (pa[0] - pc[0]) / area; const b0 = ((pc[0] * pa[1]) - (pa[0] * pc[1])) / area;
+  function raster(t, va, vb, vc, mat) { // three vertices of the pool, in the view
+    const W = t.W; const H = t.H; const f = t.f; const cx = t.cx ?? W / 2; const cy = t.cy ?? H / 2; const orth = t.ortho; const P = VP;
+    const a9 = va * 9; const b9 = vb * 9; const c9 = vc * 9; const Az = P[a9 + 2]; const Bz = P[b9 + 2]; const Cz = P[c9 + 2];
+    const ka2 = orth || f / Az; const kb2 = orth || f / Bz; const kc2 = orth || f / Cz;
+    const pax = cx + P[a9] * ka2; const pay = cy - P[a9 + 1] * ka2; const pbx = cx + P[b9] * kb2; const pby = cy - P[b9 + 1] * kb2; const pcx = cx + P[c9] * kc2; const pcy = cy - P[c9 + 1] * kc2;
+    const area = (pbx - pax) * (pcy - pay) - (pby - pay) * (pcx - pax); if (area < 1e-9 && area > -1e-9) return;
+    let x0 = Math.floor(Math.min(pax, pbx, pcx)); let x1 = Math.ceil(Math.max(pax, pbx, pcx)); let y0 = Math.floor(Math.min(pay, pby, pcy)); let y1 = Math.ceil(Math.max(pay, pby, pcy));
+    if (x0 < 0) x0 = 0; if (y0 < 0) y0 = 0; if (x1 > W - 1) x1 = W - 1; if (y1 > H - 1) y1 = H - 1; if (x0 > x1 || y0 > y1) return;
+    growT(); const id = nT; TV[id * 3] = va; TV[id * 3 + 1] = vb; TV[id * 3 + 2] = vc; TM[id] = mat; TL[id] = light; nT += 1;
+    const ia = orth ? 1 : 1 / Az; const ib = orth ? 1 : 1 / Bz; const ic = orth ? 1 : 1 / Cz;
+    const ax = (pby - pcy) / area; const ay = (pcx - pbx) / area; const a0 = ((pbx * pcy) - (pcx * pby)) / area; // (the weights as planes over the screen)
+    const bx = (pcy - pay) / area; const by = (pax - pcx) / area; const b0 = ((pcx * pay) - (pax * pcy)) / area;
     if (x0 < box[0]) box[0] = x0; if (y0 < box[1]) box[1] = y0; if (x1 > box[2]) box[2] = x1; if (y1 > box[3]) box[3] = y1;
     for (let y = y0; y <= y1; y += 1) {
-      const py = y + 0.5;
-      for (let x = x0; x <= x1; x += 1) {
-        const px = x + 0.5; const wa = a0 + ax * px + ay * py; const wb = b0 + bx * px + by * py; const wc = 1 - wa - wb;
-        if (wa < -1e-6 || wb < -1e-6 || wc < -1e-6) continue;
-        const iw = wa * ia + wb * ib + wc * ic; const z = orth ? wa * A[2] + wb * B[2] + wc * C[2] : 1 / iw; const o = y * W + x;
+      const py = y + 0.5; let wa = a0 + ax * (x0 + 0.5) + ay * py; let wb = b0 + bx * (x0 + 0.5) + by * py; let o = y * W + x0;
+      for (let x = x0; x <= x1; x += 1, o += 1, wa += ax, wb += bx) {
+        const wc = 1 - wa - wb; if (wa < -1e-6 || wb < -1e-6 || wc < -1e-6) continue;
+        const iw = wa * ia + wb * ib + wc * ic; const z = orth ? wa * Az + wb * Bz + wc * Cz : 1 / iw;
         if (z >= ZB[o]) continue; ZB[o] = z; TID[o] = id;
-        KA[o] = orth ? wa : (wa * ia) / iw; KB[o] = orth ? wb : (wb * ib) / iw;
+        if (orth) { KA[o] = wa; KB[o] = wb; } else { KA[o] = wa * ia * z; KB[o] = wb * ib * z; }
       }
     }
   }
   /** Shade each pixel once from its triangle: the attributes at its weights, then the light. */
   function resolve(t) {
-    const W = t.W; const orth = t.ortho;
+    const W = t.W; const orth = t.ortho; const P = VP;
     for (let y = Math.max(0, box[1]); y <= box[3]; y += 1) for (let x = Math.max(0, box[0]); x <= box[2]; x += 1) {
-      const o = y * W + x; const id = TID[o]; if (id < 0) continue; const T4 = tris[id]; const A = T4[0]; const B = T4[1]; const C = T4[2]; const mat = T4[3]; light = T4[4]; const ka = KA[o]; const kb = KB[o]; const kc = 1 - ka - kb;
-      let nx = ka * A[6] + kb * B[6] + kc * C[6]; let ny = ka * A[7] + kb * B[7] + kc * C[7]; let nz = ka * A[8] + kb * B[8] + kc * C[8]; const nl = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1; nx /= nl; ny /= nl; nz /= nl;
-      shade(t, x, y, mat, ka * A[3] + kb * B[3] + kc * C[3], ka * A[4] + kb * B[4] + kc * C[4], ka * A[5] + kb * B[5] + kc * C[5], nx, ny, nz,
-        orth ? 0 : ka * A[0] + kb * B[0] + kc * C[0], orth ? 0 : ka * A[1] + kb * B[1] + kc * C[1], orth ? 1 : ZB[o]);
+      const o = y * W + x; const id = TID[o]; if (id < 0) continue; const A = TV[id * 3] * 9; const B = TV[id * 3 + 1] * 9; const C = TV[id * 3 + 2] * 9; light = TL[id]; const ka = KA[o]; const kb = KB[o]; const kc = 1 - ka - kb;
+      let nx = ka * P[A + 6] + kb * P[B + 6] + kc * P[C + 6]; let ny = ka * P[A + 7] + kb * P[B + 7] + kc * P[C + 7]; let nz = ka * P[A + 8] + kb * P[B + 8] + kc * P[C + 8]; const nl = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1; nx /= nl; ny /= nl; nz /= nl;
+      shade(t, x, y, TM[id], ka * P[A + 3] + kb * P[B + 3] + kc * P[C + 3], ka * P[A + 4] + kb * P[B + 4] + kc * P[C + 4], ka * P[A + 5] + kb * P[B + 5] + kc * P[C + 5], nx, ny, nz,
+        orth ? 0 : ka * P[A] + kb * P[B] + kc * P[C], orth ? 0 : ka * P[A + 1] + kb * P[B + 1] + kc * P[C + 1], orth ? 1 : ZB[o]);
     }
   }
+  /** Each triangle of a part through matrix m into the pool (cut at the near plane), then rasterised. */
   function drawPart(t, part, m) {
-    if (!part) return; const P = part.P; const N = part.N;
+    if (!part) return; const P = part.P; const N = part.N; const mir = t.mirror ? -1 : 1; const near = t.ortho ? -1e9 : NEAR;
+    const m0 = m[0] * mir; const m1 = m[1] * mir; const m2 = m[2] * mir; const m3 = m[3] * mir; const m4 = m[4]; const m5 = m[5]; const m6 = m[6]; const m7 = m[7]; const m8 = m[8]; const m9 = m[9]; const m10 = m[10]; const m11 = m[11];
     for (let k = 0; k < part.n; k += 1) {
-      const v = [0, 1, 2].map((i) => { const o = k * 9 + i * 3; const p = [P[o], P[o + 1], P[o + 2]]; const q = ap(m, p); const n = apN(m, [N[o], N[o + 1], N[o + 2]]); if (t.mirror) { q[0] = -q[0]; n[0] = -n[0]; } return [q[0], q[1], q[2], p[0], p[1], p[2], n[0], n[1], n[2]]; });
-      if (t.ortho) { raster(t, v[0], v[1], v[2], part.M[k]); continue; }
-      const ins = v.filter((q) => q[2] >= NEAR).length; if (!ins) continue;
-      if (ins === 3) { raster(t, v[0], v[1], v[2], part.M[k]); continue; }
-      const poly = []; // (cut at the near plane)
-      for (let i = 0; i < 3; i += 1) { const a = v[i]; const b = v[(i + 1) % 3]; if (a[2] >= NEAR) poly.push(a); if ((a[2] >= NEAR) !== (b[2] >= NEAR)) { const s = (NEAR - a[2]) / (b[2] - a[2]); poly.push(a.map((q, j) => q + (b[j] - q) * s)); } }
+      growV(7); const base = nV; let ins = 0;
+      for (let i = 0; i < 3; i += 1) { const o = k * 9 + i * 3; const px = P[o]; const py = P[o + 1]; const pz = P[o + 2]; const nx = N[o]; const ny = N[o + 1]; const nz = N[o + 2]; const q = (base + i) * 9;
+        VP[q] = m0 * px + m1 * py + m2 * pz + m3; VP[q + 1] = m4 * px + m5 * py + m6 * pz + m7; VP[q + 2] = m8 * px + m9 * py + m10 * pz + m11; VP[q + 3] = px; VP[q + 4] = py; VP[q + 5] = pz;
+        VP[q + 6] = m0 * nx + m1 * ny + m2 * nz; VP[q + 7] = m4 * nx + m5 * ny + m6 * nz; VP[q + 8] = m8 * nx + m9 * ny + m10 * nz; if (VP[q + 2] >= near) ins += 1; }
+      nV += 3; if (!ins) continue;
+      if (ins === 3) { raster(t, base, base + 1, base + 2, part.M[k]); continue; }
+      const poly = []; // (cut at the near plane: new vertices in the pool)
+      for (let i = 0; i < 3; i += 1) { const a = base + i; const b = base + ((i + 1) % 3); const za = VP[a * 9 + 2]; const zb = VP[b * 9 + 2]; if (za >= near) poly.push(a);
+        if ((za >= near) !== (zb >= near)) { const s2 = (near - za) / (zb - za); const q = nV * 9; for (let j = 0; j < 9; j += 1) VP[q + j] = VP[a * 9 + j] + (VP[b * 9 + j] - VP[a * 9 + j]) * s2; poly.push(nV); nV += 1; } }
       for (let i = 1; i + 1 < poly.length; i += 1) raster(t, poly[0], poly[i], poly[i + 1], part.M[k]);
     }
   }
