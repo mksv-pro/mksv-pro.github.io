@@ -1,59 +1,22 @@
 /* Siege: a first-person game under the castle, five against five with bots, rounds and an economy, a
    keg of powder to plant or to defuse (after the tactical shooters, in the castle's century). The world
-   is a grid of blocks drawn by ray casting (Lodev's DDA, a ray a column; the floor cast row by row),
-   textured from textures.js in the castle's palette; actors, smoke, fire and thrown things are sprites
-   against a depth buffer. 320 x 180 pixels, scaled up whole. Loaded on demand (ui: the `siege` command,
-   the descent's stair); its arms in weapons.js, its bots in bots.js. */
+   (map.js) is a grid of cells of many heights (floors, steps, crates, walls, towers; roofs over some),
+   drawn a column at a time front to back (each cell's floor, the faces where the ground rises, the
+   ceilings and the lintels of covered places), with a depth for every pixel; textured from textures.js in
+   the castle's palette; actors, props, smoke, fire and thrown things against that depth. Loaded on demand
+   (ui: the `siege` command, the descent's stair); its arms in weapons.js and models.js, its bots in bots.js. */
 (function () {
-  const ARMS = window.SIEGE_ARMS; const MODELS = window.SIEGE_MODELS; const BOTS = window.SIEGE_BOTS; const PAL = window.HOURS_PALETTE; const TEX = window.TEXTURES;
+  const ARMS = window.SIEGE_ARMS; const MODELS = window.SIEGE_MODELS; const BOTS = window.SIEGE_BOTS; const PAL = window.HOURS_PALETTE; const TEX = window.TEXTURES; const M = window.SIEGE_MAP;
   let W = 960; let H = 540; // (the picture, scaled up whole to the screen: settings.quality picks it)
   const QUALITY = [[640, 360], [960, 540], [1280, 720]];
-  const WALL_H = 2.2; // a wall's height, in the units of the grid (a man is 0.86, his eyes at 0.62)
-  /* The town: the defenders' gate north (d), the attackers' camp south (t); A, the chapel's yard (a), east,
-     open to the sky; B, the granary (b), west, under its roof; between them the market street (mid, its
-     doors), short A, long A under an arch (^), the vaulted tunnels to B (_), the attackers' yard (:). */
-  const MAP = [ // walls: # ashlar, W planks, R brick, M mossy, H half-timber, L limewash, N a window, F and E the sides' banners, D a door, 1 and 2 the sites' signs, C crates
-    '############################################',
-    '################F####F####F#################',
-    '##WWWWWWWWWWHHR#dddddddddddd#RHLNLLLLNLLLL##',
-    '#Wbbbbbbbbbb,,,,ddddddwddddd,,,aaaaaaaaaaaL#',
-    '#Wbbbbbbbbbb,,,,dddddddddddd,,,aaaaawaaaaaL#',
-    '#Wbbbbbbbbbb2HRFdddddddddddd#RNaaaaaaaaaaaL#',
-    '#WbbbCCbbbbbW###F###....##F###LaaaCCaaaaaaL#',
-    '#WbbbCbbbbbbW######H....H#####LaaaCaaaaaaaN#',
-    '#WbbbbbbbbbbW######H....H#####LaaaaaaaaaaaL#',
-    '#WbbbbbbbhbbW#######D..D######LaaaaaaaCaaaL#',
-    '#WbobbbbbhbbW######H....H#####NaoaaaaaaaaaL#',
-    '#WbbbbbbbbbbW######N....N#####LaaoaaaaaaaaL#',
-    '##WWWW___2WW#######H....HNHHH1..aaaaaaaaaaN#',
-    '#####R___R#########H............LNLLL1,,,,R#',
-    '#####R___RRRRR#####H............N####H,,,,H#',
-    '####R_________RRRRRR....HHHHNHHH#####Ho,,,R#',
-    '####R_______________.o..N############H,,,,H#',
-    '####R_________RRRRRR....H############H,,,,H#',
-    '####R____RRRRR#####H....H############R^^^^R#',
-    '####R____R#########H....H############H^^^^H#',
-    '####R____R##########C...H############R,,,,R#',
-    '####R____R#########N....N############H,,,,H#',
-    '####R____R#########H...hH############H,,,C##',
-    '####R____R#########H....H############R,,,,R#',
-    '####R____R##M#M##M#H....H##M#M##M#M##H,,,,H#',
-    '#####:::::::::::::::::::::::::::::::::::::##',
-    '####M:::::::C::::::::::::o::::CC::::::::::##',
-    '#####:::::::::::::::::::::::::::::::::::::M#',
-    '######M#M##M#M#tttttttttttttt##M#M##M#M##M##',
-    '##############EttttttttttttotE##############',
-    '###############tthttttttttttt###############',
-    '###############tttttttttttttt###############',
-    '#################E####E####E################',
-    '############################################',
-  ];
-  const MW = MAP[0].length; const MH = MAP.length;
-  const WALLS = { '#': 'ashlar', W: 'planksUpright', R: 'brickRunning', M: 'mossyStone', C: 'staves', H: 'halfTimber', L: 'limewash', N: 'limewash+window', F: 'ashlar+banner:fleurDeLis:def', E: 'ashlar+banner:chevrony:att', D: 'halfTimber+door', 1: 'limewash+sign:A', 2: 'planksUpright+sign:B' };
-  const FLOORS = { '.': 'flagstones', ',': 'cobbles', ':': 'beatenEarth', a: 'terracotta', b: 'herringbone', d: 'cobbles', t: 'beatenEarth', _: 'beatenEarth', '^': 'flagstones' };
-  const ROOFS = { b: 'oakPlanks', _: 'brickRunning', '^': 'ashlar' }; // (covered floors: their ceilings)
-  const PROPS = { o: 'barrel', h: 'hay', w: 'well' }; // (they stop a man, not a shot)
-  const RADAR_FLOOR = { '.': '#6c6862', ',': '#5f5b55', ':': '#6e5e46', _: '#4a4036', '^': '#5c5852', o: '#6c6862', h: '#6c6862', w: '#6c6862' };
+  const MW = M.W; const MH = M.H;
+  // a man: 0.86 tall (0.62 crouched), his eyes 0.62 (0.45), his radius 0.22; he steps up 0.26 and jumps 0.66
+  const STAND = 0.86; const CROUCH = 0.62; const STEP = 0.26; const GRAV = 11; const JUMP_V = 3.8;
+  const hAt = (x, y) => (x < 0 || y < 0 || x >= MW || y >= MH ? 9 : M.h[y * MW + x]); // (a cell's floor, or a wall's top)
+  const roofAt = (x, y) => (x < 0 || y < 0 || x >= MW || y >= MH ? Infinity : M.roof[y * MW + x]);
+  const matAt = (x, y) => (x < 0 || y < 0 || x >= MW || y >= MH ? 'W' : M.MAT[y][x]);
+  const isWall = (x, y) => 'WHTS'.includes(matAt(x, y));
+  const PROPDEF = { barrel: { r: 0.28, top: 0.5, h: 0.92, wk: 0.66 }, hay: { r: 0.42, top: 0.45, h: 0.6, wk: 0.95 }, well: { r: 0.55, top: 0.55, h: 1.3, wk: 1.1 }, cart: { r: 0.5, top: 0.5, h: 0.9, wk: 1.4 }, tree: { r: 0.22, top: 9, h: 3.2, wk: 2.4 } };
   const T = 64; // texture size: each texture of textures.js at twice its own scale, given relief (texOf)
   const pack = (c) => (255 << 24) | (Math.max(0, Math.min(255, c[2] | 0)) << 16) | (Math.max(0, Math.min(255, c[1] | 0)) << 8) | Math.max(0, Math.min(255, c[0] | 0));
   const unpack = (v) => [v & 255, (v >> 8) & 255, (v >> 16) & 255];
@@ -102,6 +65,14 @@
     return t;
   }
 
+  /** A texture's smaller copies (each half the last, averaged): far floors and walls read these, not shimmering. */
+  function mipsOf(t) {
+    if (t.m) return t.m; const out = [t]; let src = t; let w = T; let h = t.length / T;
+    for (let k = 0; k < 2; k += 1) { const w2 = w >> 1; const h2 = h >> 1; const d = new Uint32Array(w2 * h2);
+      for (let y = 0; y < h2; y += 1) for (let x = 0; x < w2; x += 1) { let r = 0; let gg = 0; let b = 0; for (const [i, j] of [[0, 0], [1, 0], [0, 1], [1, 1]]) { const v = src[(y * 2 + j) * w + x * 2 + i]; r += v & 255; gg += (v >> 8) & 255; b += (v >> 16) & 255; } d[y * w2 + x] = 0xff000000 | ((b >> 2) << 16) | ((gg >> 2) << 8) | (r >> 2); }
+      out.push(d); src = d; w = w2; h = h2; }
+    t.m = out; return out;
+  }
   /* ---- the actors' sprites, 24 x 48, painted from parts: a steel helmet, a face (or the back of a head),
      a tabard of the side's colour with its charge (the defenders a white cross, the attackers a gold
      chevron), mail sleeves, hose, boots; four walking frames, a pose aiming at you (the muzzle a dark round,
@@ -149,7 +120,7 @@
      (a ring of stones, two posts and a beam with its bucket). Twice as fine as drawn, as the men are. */
   function propSprite(kind) {
     const key = `prop-${kind}`; if (sprites[key]) return sprites[key];
-    const [SW, SH] = { barrel: [20, 26], hay: [30, 20], well: [32, 36] }[kind]; const px = new Int32Array(SW * SH);
+    const [SW, SH] = { barrel: [20, 26], hay: [30, 20], well: [32, 36], cart: [44, 28], tree: [64, 88] }[kind]; const px = new Int32Array(SW * SH);
     const P = (x, y, c) => { if (x >= 0 && y >= 0 && x < SW && y < SH) px[y * SW + x] = pack(c); }; const n = (x, y) => { const v = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return v - Math.floor(v); };
     if (kind === 'barrel') for (let y = 0; y < SH; y += 1) { const bulge = Math.sin((y / (SH - 1)) * Math.PI) * 2; const w = 7 + bulge; for (let x = Math.round(10 - w); x <= Math.round(9 + w); x += 1) { const u = (x - (10 - w)) / (2 * w); const st = Math.floor(u * 7) % 2; const k = 0.62 + Math.sin(u * Math.PI) * 0.5;
       const hoop = y === 3 || y === 4 || y === SH - 5 || y === SH - 4; P(x, y, hoop ? [70 * k, 70 * k, 78 * k] : y < 2 ? [70, 46, 26] : [(st ? 150 : 132) * k, (st ? 96 : 84) * k, (st ? 52 : 44) * k]); } }
@@ -157,12 +128,17 @@
     if (kind === 'well') { for (let y = 20; y < SH; y += 1) for (let x = 2; x < SW - 2; x += 1) { const row = Math.floor((y - 20) / 4); const joint = (y - 20) % 4 === 0 || (x + row * 3) % 7 === 0; const k = 0.8 + (n(x >> 2, row) - 0.5) * 0.3; P(x, y, joint ? [90, 86, 80] : [168 * k, 162 * k, 150 * k]); }
       for (let y = 2; y < 20; y += 1) { P(4, y, [110, 74, 40]); P(5, y, [90, 60, 32]); P(SW - 5, y, [110, 74, 40]); P(SW - 6, y, [90, 60, 32]); } for (let x = 3; x < SW - 3; x += 1) { P(x, 2, [130, 88, 48]); P(x, 3, [96, 64, 34]); }
       for (let y = 4; y < 11; y += 1) P(16, y, [200, 190, 160]); for (let y = 11; y < 16; y += 1) for (let x = 13; x < 20; x += 1) P(x, y, y === 11 ? [70, 70, 76] : [120, 82, 46]); }
+    if (kind === 'cart') { for (let y = 6; y < 16; y += 1) for (let x = 2; x < SW - 2; x += 1) P(x, y, (y - 6) % 4 === 0 ? [96, 62, 32] : [150 + (n(x >> 2, y) - 0.5) * 30, 100, 56]); // (its box of planks, two wheels, the shafts)
+      [[11, 20], [33, 20]].forEach(([cx, cy]) => { for (let y = cy - 8; y <= cy + 8; y += 1) for (let x = cx - 8; x <= cx + 8; x += 1) { const d = Math.hypot(x - cx, y - cy); if (d > 8) continue; const spoke = Math.abs(Math.sin(Math.atan2(y - cy, x - cx) * 3)) < 0.2; if (d <= 6.5 && d >= 2 && !spoke) continue; P(x, y, d > 6.5 ? [70, 48, 26] : [110, 76, 40]); } });
+      for (let x = 0; x < 6; x += 1) P(x, 12 + (x >> 1), [120, 80, 44]); }
+    if (kind === 'tree') { for (let y = 40; y < SH; y += 1) for (let x = 28; x < 36; x += 1) P(x + Math.round(Math.sin(y * 0.15)), y, [92 + (x - 28) * 6, 64 + (x - 28) * 3, 40]); // (the trunk; the crown in clumps)
+      for (let k = 0; k < 26; k += 1) { const cx = 32 + Math.cos(k * 2.4) * (6 + (k % 5) * 4); const cy = 26 + Math.sin(k * 2.4) * (5 + (k % 4) * 4); const r = 9 + (k % 3) * 2; for (let y = Math.floor(cy - r); y <= cy + r; y += 1) for (let x = Math.floor(cx - r); x <= cx + r; x += 1) { const d = Math.hypot(x - cx, y - cy); if (d > r || n(x, y) > 0.92) continue; const k2 = 0.7 + (1 - (y - cy + r) / (2 * r)) * 0.45 - d / r * 0.15; P(x, y, [58 * k2, 112 * k2, 44 * k2]); } } }
     const out = new Int32Array(px); for (let y = 0; y < SH; y += 1) for (let x = 0; x < SW; x += 1) { if (px[y * SW + x]) continue; if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { const X = x + dx; const Y = y + dy; return X >= 0 && Y >= 0 && X < SW && Y < SH && px[Y * SW + X]; })) out[y * SW + x] = pack([16, 12, 18]); }
     const W2 = SW * 2; const H2 = SH * 2; const fine = new Int32Array(W2 * H2); for (let y = 0; y < H2; y += 1) for (let x = 0; x < W2; x += 1) fine[y * W2 + x] = out[(y >> 1) * SW + (x >> 1)];
     return (sprites[key] = { w: W2, h: H2, px: fine });
   }
   const props = []; // [{ x, y, img, h, wk }], found once
-  function prepProps() { props.length = 0; MAP.forEach((r, y) => [...r].forEach((c, x) => { const k = PROPS[c]; if (!k) return; const [h, wk] = { barrel: [0.92, 0.66], hay: [0.6, 0.95], well: [1.3, 1.1] }[k]; props.push({ x: x + 0.5, y: y + 0.5, img: propSprite(k), h, wk }); })); }
+  function prepProps() { props.length = 0; M.PROPS.forEach(([k, x, y]) => { const d = PROPDEF[k]; props.push({ kind: k, x, y, r: d.r, top: hAt(Math.floor(x), Math.floor(y)) + d.top, z: hAt(Math.floor(x), Math.floor(y)), img: propSprite(k), h: d.h, wk: d.wk }); }); }
   const KEG = { w: 7, h: 6, px: [0, 3, 3, 3, 3, 3, 0, 3, 2, 2, 2, 2, 2, 3, 3, 1, 1, 1, 1, 1, 3, 3, 2, 2, 2, 2, 2, 3, 3, 1, 1, 1, 1, 1, 3, 0, 3, 3, 3, 3, 3, 0].map((v) => [0, pack([120, 80, 44]), pack([150, 104, 60]), pack([60, 60, 70])][v]) };
 
   /* ---- the visitor's settings: mouse sensitivity (radians a count: 0.0011 is about a tactical shooter's 2.5 at 800 dpi), field of view, inverted look ---- */
@@ -173,8 +149,6 @@
   let g = null; let raf = 0; let root = null; let cv; let ctx; let img; let buf; let zbuf; let ui = {};
   const keys = new Set(); let mouseDown = [false, false, false];
   const store = (k, v) => { try { if (v === undefined) return JSON.parse(localStorage.getItem(k)); localStorage.setItem(k, JSON.stringify(v)); } catch { /* (no storage: nothing kept) */ } return null; };
-  const wallAt = (x, y) => { if (x < 0 || y < 0 || x >= MW || y >= MH) return '#'; const c = MAP[y][x]; return WALLS[c] ? c : null; };
-  const blocked = (x, y) => Boolean(wallAt(x, y)) || Boolean(PROPS[MAP[y][x]]); // (a wall, or a barrel, the hay, the well)
 
   function newActor(team, idx, isBot, name) {
     return { team, idx, isBot, name, x: 0, y: 0, z: 0, vz: 0, a: 0, vx: 0, vy: 0, hp: 100, armour: 0, helm: false, alive: true, money: 800, weapons: { 1: null, 2: team === 'def' ? 'wheellock' : 'wheellock', 3: 'knife' },
@@ -189,14 +163,16 @@
     g = { w: MW, h: MH, now: 0, actors: [], noises: [], nades: [], smokes: [], fires: [], fx: [], feed: [], arms: ARMS, difficulty: store('siege-diff') || 'normal',
       keg: {}, sites: [], posts: { def: [] }, round: 0, score: { def: 0, att: 0 }, phase: 'buy', phaseUntil: 0, frozen: true, lossStreak: { def: 0, att: 0 }, attSite: 0,
       knife: ARMS.knife(knife), knifeRecipe: knife, eyeH: 0.62, bobT: 0, drawAt: 0, sway: 0, hitMarkAt: -9, hitHead: false, heavySwing: false, pitch: 0, punch: 0, kick: 0, inspect: -1, swing: -1, flashUntil: 0, flashAt: 0, hurtAt: -9, scoped: false, msg: '', msgUntil: 0, opts, paused: false };
-    g.wall = blocked; g.give = give; Object.assign(g, api); // (the bots' handle on the game: what they read, what they do through it)
-    // the sites, the gates, the posts the defenders hold
-    const cells = (ch) => { const out = []; MAP.forEach((r, y) => [...r].forEach((c, x) => { if (c === ch) out.push([x + 0.5, y + 0.5]); })); return out; };
-    const free = (x, y) => { let best = null; let bd = 1e9; MAP.forEach((r, yy) => [...r].forEach((c, xx) => { if (WALLS[c] || PROPS[c]) return; const d = Math.hypot(xx + 0.5 - x, yy + 0.5 - y); if (d < bd) { bd = d; best = [xx + 0.5, yy + 0.5]; } })); return best; }; // (the open cell nearest a point: a centre may fall on a crate)
-    ['a', 'b'].forEach((ch) => { const cs = cells(ch); const cx = cs.reduce((s, c) => s + c[0], 0) / cs.length; const cy = cs.reduce((s, c) => s + c[1], 0) / cs.length; g.sites.push({ name: ch.toUpperCase(), cells: cs, c: free(cx, cy) }); });
-    g.spawns = { def: cells('d'), att: cells('t') };
-    g.lanes = [[[39.5, 21.5], [27.5, 13.5]], [[6.5, 20.5], [16.5, 16.5]]]; // (to A: long, or short by mid; to B: the tunnels, or lower mid)
-    g.posts.def = [g.sites[0].c, g.sites[1].c, free(27, 13), free(7, 13), free(21, 8)];
+    g.give = give; Object.assign(g, api); // (the bots' handle on the game: what they read, what they do through it)
+    g.hAt = hAt; g.roofAt = roofAt; g.isWall = isWall; g.zoneAt = M.zoneAt; g.map = M; g.decals = [];
+    g.wall = (x, y) => isWall(x, y) || props.some((q) => q.r > 0.25 && Math.floor(q.x) === x && Math.floor(q.y) === y); // (for the bots' paths: walls and the bigger props)
+    g.step = (x0, y0, x1, y1) => !g.wall(x1, y1) && hAt(x1, y1) - hAt(x0, y0) <= STEP + 0.01 && roofAt(x1, y1) - hAt(x1, y1) >= STAND; // (a bot can walk from one cell to the next)
+    // the sites (their open cells, a centre to stand on), the spawns, the ways and posts the bots know
+    const free = (x, y) => { let best = null; let bd = 1e9; for (let yy = 0; yy < MH; yy += 1) for (let xx = 0; xx < MW; xx += 1) { if (g.wall(xx, yy) || matAt(xx, yy) === 'k') continue; const d = Math.hypot(xx + 0.5 - x, yy + 0.5 - y); if (d < bd) { bd = d; best = [xx + 0.5, yy + 0.5]; } } return best; };
+    ['A', 'B'].forEach((n) => { const [x0, y0, x1, y1] = M.SITES[n]; const cs = []; for (let y = y0; y <= y1; y += 1) for (let x = x0; x <= x1; x += 1) if (!isWall(x, y) && matAt(x, y) !== 'k') cs.push([x + 0.5, y + 0.5]); g.sites.push({ name: n, cells: cs, c: free((x0 + x1 + 1) / 2, (y0 + y1 + 1) / 2) }); });
+    g.spawns = M.SPAWNS;
+    g.lanes = [M.LANES.A.map((l) => l[0]), M.LANES.B.map((l) => l[0])];
+    g.posts.def = [...M.POSTS.A, ...M.POSTS.B, ...M.POSTS.mid].map(([at]) => free(...at));
     // the sides: the visitor and four bots against five
     g.player = newActor('def', 0, false, 'You'); g.actors.push(g.player);
     const NAMES = ['Aymeric', 'Bertrand', 'Clotilde', 'Driss', 'Enguerrand', 'Fulk', 'Gersende', 'Hugues', 'Isabeau', 'Jehan'];
@@ -228,7 +204,7 @@
     g.actors.forEach((a) => {
       if (!a.alive) { a.weapons = { 1: null, 2: 'wheellock', 3: 'knife' }; a.armour = 0; a.helm = false; a.gear = {}; a.tools = false; }
       const s = a.team === 'def' ? dspawn[di++ % dspawn.length] : aspawn[ai2++ % aspawn.length];
-      Object.assign(a, { x: s[0], y: s[1], z: 0, vz: 0, vx: 0, vy: 0, hp: 100, alive: true, blindUntil: 0, reloadUntil: 0, shotN: 0, ai: {}, a: a.team === 'def' ? Math.PI / 2 : -Math.PI / 2 });
+      Object.assign(a, { x: s[0], y: s[1], z: hAt(Math.floor(s[0]), Math.floor(s[1])), ground: hAt(Math.floor(s[0]), Math.floor(s[1])), vz: 0, vx: 0, vy: 0, hp: 100, alive: true, blindUntil: 0, reloadUntil: 0, shotN: 0, ai: {}, a: a.team === 'def' ? Math.PI / 2 : -Math.PI / 2 });
       Object.keys(ARMS.W).forEach((id) => { if (ARMS.W[id].mag) a.ammo[id] = { mag: ARMS.W[id].mag, res: ARMS.W[id].mag * 3 }; });
       a.slot = a.weapons[1] ? 1 : 2;
       if (a.isBot) BOTS.buy(a, g);
@@ -236,7 +212,7 @@
     g.attSite = Math.random() < 0.5 ? 0 : 1;
     const atts = g.actors.filter((a) => a.team === 'att'); const carrier = atts[Math.floor(Math.random() * atts.length)];
     g.keg = { carrier, planted: false, dropped: false, x: 0, y: 0, plantP: 0, defuseP: 0, until: 0, beepAt: 0 };
-    g.nades = []; g.smokes = []; g.fires = []; g.fx = [];
+    g.nades = []; g.smokes = []; g.fires = []; g.fx = []; g.decals = [];
     g.phase = 'buy'; g.phaseUntil = g.now + BUY_S; g.frozen = true;
     if (carrier === g.player) say('You carry the keg.', 3);
   }
@@ -253,32 +229,74 @@
   }
   function say(t, s = 3) { g.msg = t; g.msgUntil = g.now + s; }
 
-  /* ---- moving: speed, acceleration and friction as in the tactical shooters; walls block a circle of 0.22 ---- */
+  /* ---- bodies among the heights: a circle of radius R standing at z; it fits where no cell under it rises
+     above its feet by more than a step (or a roof comes below its head) and no prop is in the way ---- */
   const R = 0.22;
-  function move(a, dx, dy, dt, speedK = 1) {
-    const w = ARMS.W[cur(a)]; const max = 3.6 * (w.speed || 1) * speedK * (a.crouch ? 0.34 : 1) * (a.scoped ? 0.6 : 1);
-    const n = Math.hypot(dx, dy); const tx = n ? (dx / n) * max : 0; const ty = n ? (dy / n) * max : 0;
-    const k = Math.min(1, dt * (n ? 14 : 9)); a.vx += (tx - a.vx) * k; a.vy += (ty - a.vy) * k; // (quick to start and to stop, as in the tactical shooters)
-    const nx = a.x + a.vx * dt; const ny = a.y + a.vy * dt;
-    const free = (x, y) => !blocked(Math.floor(x - R), Math.floor(y - R)) && !blocked(Math.floor(x + R), Math.floor(y - R)) && !blocked(Math.floor(x - R), Math.floor(y + R)) && !blocked(Math.floor(x + R), Math.floor(y + R));
-    if (free(nx, a.y)) a.x = nx; else a.vx = 0;
-    if (free(a.x, ny)) a.y = ny; else a.vy = 0;
-    a.moving = Math.hypot(a.vx, a.vy) > 0.6;
-    if (a.moving && !a.crouch && !(a === g.player && keys.has('ShiftLeft'))) { a.stepAt ||= 0; if (g.now > a.stepAt) { a.stepAt = g.now + 0.36; noise(a, 7); if (a !== g.player) sfx('step', a); } }
+  const under = (x, y, r) => [[Math.floor(x - r), Math.floor(y - r)], [Math.floor(x + r), Math.floor(y - r)], [Math.floor(x - r), Math.floor(y + r)], [Math.floor(x + r), Math.floor(y + r)]];
+  /** The highest support (a floor, a crate's top, a barrel's) under the circle at (x, y) no higher than z + up. */
+  function groundAt(x, y, z, up = STEP, r = R) {
+    let best = -9; for (const [cx, cy] of under(x, y, r)) { const h = hAt(cx, cy); if (h <= z + up && h > best) best = h; }
+    for (const q of props) if (q.top <= z + up && q.top > best && Math.hypot(q.x - x, q.y - y) < q.r + r) best = q.top;
+    return best;
   }
+  function fits(x, y, z, bh, up = STEP, r = R) {
+    for (const [cx, cy] of under(x, y, r)) if (hAt(cx, cy) > z + up || roofAt(cx, cy) < z + bh) return false;
+    for (const q of props) if (q.top > z + up && Math.hypot(q.x - x, q.y - y) < q.r + r) return false;
+    return true;
+  }
+  const ceilingAt = (x, y, r = R) => Math.min(...under(x, y, r).map(([cx, cy]) => roofAt(cx, cy)));
+  /* Moving, after the Source engine: friction on the ground, then acceleration towards the wished way (strong
+     on the ground; in the air capped low but quick, so a jump can be steered), gravity, steps up and down,
+     landing (a hard one hurts). Speeds in units a second (a man runs 3.4: the knife's pace). */
+  const MAXV = 3.4; const ACCEL = 5.5; const AIR_ACCEL = 12; const AIR_CAP = 0.42; const FRICTION = 5.2; const STOPV = 1.2;
+  function move(a, wx, wy, dt, speedK = 1) {
+    const w = ARMS.W[cur(a)]; const onGround = a.z <= (a.ground ?? 0) + 1e-3 && a.vz <= 0;
+    const max = MAXV * (w.speed || 1) * speedK * (a.crouch ? 0.34 : 1) * (a.scoped ? 0.6 : 1) * (g.now < (a.tagUntil || 0) ? 0.5 : 1) * (a.planting || a.defusing ? 0 : 1);
+    if (onGround) { const sp = Math.hypot(a.vx, a.vy); if (sp > 0) { const k = Math.max(0, sp - Math.max(sp, STOPV) * FRICTION * dt) / sp; a.vx *= k; a.vy *= k; } }
+    const n = Math.hypot(wx, wy);
+    if (n > 0 && max > 0) { const dx = wx / n; const dy = wy / n; const wish = onGround ? max : Math.min(max, AIR_CAP); const add = wish - (a.vx * dx + a.vy * dy);
+      if (add > 0) { const acc = Math.min((onGround ? ACCEL : AIR_ACCEL) * dt * max, add); a.vx += acc * dx; a.vy += acc * dy; } }
+    const bh = a.crouch ? CROUCH : STAND; const up = onGround ? STEP : a.crouch ? 0.12 : 0.02; // (in the air, a tucked crouch clears a little more)
+    const nx = a.x + a.vx * dt; if (fits(nx, a.y, a.z, bh, up)) a.x = nx; else a.vx = 0;
+    const ny = a.y + a.vy * dt; if (fits(a.x, ny, a.z, bh, up)) a.y = ny; else a.vy = 0;
+    a.ground = groundAt(a.x, a.y, a.z, up);
+    if (onGround && a.z - a.ground <= STEP + 0.01 && a.vz <= 0) a.z = a.ground; // (up a step, or down one: kept to the ground)
+    else { // in the air
+      a.vz -= GRAV * dt; a.z += a.vz * dt; const ceil = ceilingAt(a.x, a.y); if (a.z + bh > ceil) { a.z = ceil - bh; a.vz = Math.min(0, a.vz); }
+      a.ground = groundAt(a.x, a.y, Math.max(a.z, a.ground), up);
+      if (a.z <= a.ground) { const impact = -a.vz; a.z = a.ground; a.vz = 0; a.landAt = g.now; a.landV = impact; if (impact > 6.4) damage(a, (impact - 6.4) * 30, 1, false, null, 'fall'); if (impact > 2) noise(a, 9); }
+    }
+    a.moving = Math.hypot(a.vx, a.vy) > 0.6;
+    if (a.moving && onGround && !a.crouch && !(a === g.player && keys.has('ShiftLeft'))) { a.stepAt ||= 0; if (g.now > a.stepAt) { a.stepAt = g.now + 0.36; noise(a, 7); if (a !== g.player) sfx('step', a); } }
+  }
+  function jump(a) { if (a.z <= (a.ground ?? 0) + 1e-3 && a.vz <= 0 && !g.frozen) { a.vz = JUMP_V; a.z += 0.001; noise(a, 6); } }
   function noise(a, r) { g.noises.push({ x: a.x, y: a.y, t: g.now, r, team: a.team }); if (g.noises.length > 60) g.noises.splice(0, 20); }
 
-  /* ---- seeing and shooting ---- */
-  /** The distance along a ray from (x, y) at angle ang to the first wall (DDA). */
-  function wallDist(x, y, ang, max = 40) {
-    const dx = Math.cos(ang); const dy = Math.sin(ang); let mx = Math.floor(x); let my = Math.floor(y);
-    const ddx = Math.abs(1 / dx); const ddy = Math.abs(1 / dy); const sx = dx < 0 ? -1 : 1; const sy = dy < 0 ? -1 : 1;
-    let sdx = (dx < 0 ? x - mx : mx + 1 - x) * ddx; let sdy = (dy < 0 ? y - my : my + 1 - y) * ddy;
-    for (let k = 0; k < 200; k += 1) { if (sdx < sdy) { sdx += ddx; mx += sx; if (wallAt(mx, my)) return sdx - ddx; } else { sdy += ddy; my += sy; if (wallAt(mx, my)) return sdy - ddy; } if (Math.min(sdx, sdy) > max) return max; }
-    return max;
+  /* ---- seeing and shooting: rays in three dimensions through the cells ---- */
+  /** Where a ray from (x, y, z) along the unit vector (dx, dy, dz) first meets a cell's solid (rising above it at a side, its
+      floor or top below it, a roof above it) within maxD: { d, cx, cy, n ('side', 'top', 'roof') }, or null. skip(cx, cy): a cell let through. */
+  function trace(x, y, z, dx, dy, dz, maxD = 60, skip = null) {
+    let cx = Math.floor(x); let cy = Math.floor(y); const ddx = dx ? Math.abs(1 / dx) : 1e30; const ddy = dy ? Math.abs(1 / dy) : 1e30; const sx = dx < 0 ? -1 : 1; const sy = dy < 0 ? -1 : 1;
+    let tX = (dx < 0 ? x - cx : cx + 1 - x) * ddx; let tY = (dy < 0 ? y - cy : cy + 1 - y) * ddy; let t0 = 0;
+    for (let k = 0; k < 200; k += 1) {
+      const t1 = Math.min(tX, tY, maxD); const h = hAt(cx, cy); const rf = roofAt(cx, cy); const zA = z + dz * t0; const zB = z + dz * t1; const free = skip && skip(cx, cy);
+      if (!free) {
+        if (zA < h - 1e-6) return { d: t0, cx, cy, n: 'side' };
+        if (zB < h) return { d: (h - z) / dz, cx, cy, n: 'top' };
+        if (zA > rf + 1e-6) return { d: t0, cx, cy, n: 'side' };
+        if (zB > rf) return { d: (rf - z) / dz, cx, cy, n: 'roof' };
+      }
+      if (t1 >= maxD) return null;
+      t0 = t1; if (tX < tY) { tX += ddx; cx += sx; } else { tY += ddy; cy += sy; }
+    }
+    return null;
   }
+  /** Whether nothing solid stands between two points. */
+  function clear(x0, y0, z0, x1, y1, z1) { const dx = x1 - x0; const dy = y1 - y0; const dz = z1 - z0; const d = Math.hypot(dx, dy, dz) || 1e-6; return !trace(x0, y0, z0, dx / d, dy / d, dz / d, d - 0.02); }
+  const eyeOf = (a) => a.z + (a.crouch ? 0.45 : 0.62);
   const smokeHides = (ax, ay, bx, by) => g.smokes.some((s) => { if (g.now > s.until) return false; const vx = bx - ax; const vy = by - ay; const L2 = vx * vx + vy * vy || 1; const t = clamp(((s.x - ax) * vx + (s.y - ay) * vy) / L2, 0, 1); return Math.hypot(ax + vx * t - s.x, ay + vy * t - s.y) < s.r * Math.min(1, (g.now - s.t0) / 1.5); });
-  function sees(a, b) { const d = Math.hypot(b.x - a.x, b.y - a.y); return wallDist(a.x, a.y, Math.atan2(b.y - a.y, b.x - a.x), d + 1) >= d - 0.05 && !smokeHides(a.x, a.y, b.x, b.y); }
+  /** Whether a sees b: its head or its chest, through no wall and no smoke. */
+  function sees(a, b) { if (smokeHides(a.x, a.y, b.x, b.y)) return false; const e = eyeOf(a); const top = b.z + (b.crouch ? CROUCH : STAND); return clear(a.x, a.y, e, b.x, b.y, top - 0.08) || clear(a.x, a.y, e, b.x, b.y, top - 0.38); }
   function damage(t, dmg, pierce, head, by, wid) {
     if (!t.alive) return;
     const armoured = t.armour > 0 && (!head || t.helm);
@@ -301,23 +319,34 @@
     else if (!alive('def')) endRound('att', 'elim');
   }
   /** A shot by actor a along (yaw, pitch); the actors it can hit: the first in the line, before any wall. */
+  /** A shot by actor a along (yaw, pitch): the first enemy in the line (a standing cylinder, its head the top 0.15) before a wall;
+      the wood of crates and houses lets a rifle's shot through, weakened (w.pen: how much it keeps). */
   function hitscan(a, yaw, pitch, w, wid) {
-    const wd = wallDist(a.x, a.y, yaw); const eye = (a.crouch ? 0.45 : 0.62) + a.z; let best = null; let bd = wd;
+    const ex0 = a.x; const ey0 = a.y; const ez0 = eyeOf(a); const dx = Math.cos(yaw) * Math.cos(pitch); const dy = Math.sin(yaw) * Math.cos(pitch); const dz = Math.sin(pitch);
+    let wall = trace(ex0, ey0, ez0, dx, dy, dz, 60); let keep = 1; let through = null;
+    if (wall && w.pen && M.LEGEND[matAt(wall.cx, wall.cy)].wood) { const cell = [wall.cx, wall.cy]; const on = trace(ex0, ey0, ez0, dx, dy, dz, 60, (cx, cy) => cx === cell[0] && cy === cell[1]); through = wall; wall = on; keep = w.pen; }
+    const wd = wall ? wall.d : 60; let best = null; let bd = wd;
     g.actors.forEach((o) => {
       if (o === a || !o.alive || o.team === a.team) return;
-      const vx = o.x - a.x; const vy = o.y - a.y; const along = vx * Math.cos(yaw) + vy * Math.sin(yaw); if (along <= 0 || along >= bd) return;
-      const off = Math.abs(-vx * Math.sin(yaw) + vy * Math.cos(yaw)); if (off > 0.24) return;
-      const hz = eye + Math.tan(pitch) * along; const top = o.crouch ? 0.65 : 0.9; if (hz < 0 || hz > top) return;
-      best = { o, head: hz > top - 0.15, d: along, z: hz }; bd = along;
+      const vx = o.x - ex0; const vy = o.y - ey0; const h2 = Math.hypot(dx, dy) || 1e-6; const along = (vx * dx + vy * dy) / (h2 * h2); // (t along the ray where it passes nearest the axis)
+      if (along <= 0) return; const off = Math.abs(vx * dy - vy * dx) / h2; if (off > 0.24) return;
+      const t = along - Math.sqrt(Math.max(0, 0.0576 - off * off)) / h2; if (t >= bd) return; const hz = ez0 + dz * t; const top = o.z + (o.crouch ? CROUCH : STAND); if (hz < o.z || hz > top) return;
+      best = { o, head: hz > top - 0.15, d: t, z: hz, thin: through && t > through.d }; bd = t;
     });
-    if (smokeHides(a.x, a.y, a.x + Math.cos(yaw) * bd, a.y + Math.sin(yaw) * bd) && best && best.d > 2) best = null; // (a shot into smoke: no telling where it goes)
-    const end = best ? best.d : wd - 0.05; const ex = a.x + Math.cos(yaw) * end; const ey = a.y + Math.sin(yaw) * end; const ez = best ? best.z : eye + Math.tan(pitch) * wd;
-    g.fx.push({ kind: 'trail', x0: a.x + Math.cos(yaw) * 0.4, y0: a.y + Math.sin(yaw) * 0.4, z0: eye - 0.08, x1: ex, y1: ey, z1: ez, t: g.now }); // (the shot's trail)
-    const burst = (kind, n, sp) => ({ kind, t: g.now, parts: Array.from({ length: n }, () => ({ x: ex, y: ey, z: ez, vx: (Math.random() - 0.5) * sp - Math.cos(yaw) * sp * 0.4, vy: (Math.random() - 0.5) * sp - Math.sin(yaw) * sp * 0.4, vz: Math.random() * sp })) });
-    if (best) { g.fx.push(burst('blood', 10, 2.2)); if (a === g.player) { g.hitMarkAt = g.now; g.hitHead = best.head; sfx(best.head ? 'tink' : 'hit'); } damage(best.o, w.dmg * (best.head ? w.head : 1) * (1 - (w.fall || 0)) ** (best.d / 10), w.pierce ?? 1, best.head, a, wid); }
-    else g.fx.push(burst('spark', 7, 3)); // (stone chips and a spark off the wall)
+    if (best && smokeHides(ex0, ey0, ex0 + dx * bd, ey0 + dy * bd) && best.d > 2) best = null; // (a shot into smoke: no telling where it goes)
+    const end = best ? best.d : wd - 0.03; const ex = ex0 + dx * end; const ey = ey0 + dy * end; const ez = ez0 + dz * end;
+    g.fx.push({ kind: 'trail', x0: ex0 + dx * 0.4, y0: ey0 + dy * 0.4, z0: ez0 - 0.08, x1: ex, y1: ey, z1: ez, t: g.now });
+    const burst = (kind, n, sp, X = ex, Y = ey, Z = ez) => ({ kind, t: g.now, parts: Array.from({ length: n }, () => ({ x: X, y: Y, z: Z, vx: (Math.random() - 0.5) * sp - dx * sp * 0.4, vy: (Math.random() - 0.5) * sp - dy * sp * 0.4, vz: Math.random() * sp })) });
+    if (through) { const t2 = through.d; g.fx.push(burst('splinter', 6, 2.5, ex0 + dx * t2, ey0 + dy * t2, ez0 + dz * t2)); decal(ex0 + dx * t2, ey0 + dy * t2, ez0 + dz * t2, 'hole'); }
+    if (best) { g.fx.push(burst('blood', 10, 2.2)); if (a === g.player) { g.hitMarkAt = g.now; g.hitHead = best.head; sfx(best.head ? 'tink' : 'hit'); }
+      const dmg = w.dmg * (best.head ? w.head : 1) * (1 - (w.fall || 0)) ** (best.d / 10) * (best.thin ? keep : 1);
+      best.o.tagUntil = g.now + 0.35; if (Math.random() < 0.5) decal(best.o.x + dx * 0.6, best.o.y + dy * 0.6, best.o.z, 'blood');
+      damage(best.o, dmg, w.pierce ?? 1, best.head, a, wid); }
+    else if (wall) { g.fx.push(burst('spark', 7, 3)); decal(ex, ey, ez, 'hole'); } // (stone chips, a spark, a hole)
     return best;
   }
+  /** A mark where a shot struck (a hole: just off the surface it hit) or blood fell (on the floor below); the oldest go. */
+  function decal(x, y, z, kind) { const d = { x, y, z, kind }; if (kind === 'blood') d.z = hAt(Math.floor(x), Math.floor(y)) + 0.01; g.decals.push(d); if (g.decals.length > 220) g.decals.shift(); }
   function spreadOf(a, w) {
     const sp = Math.hypot(a.vx, a.vy); let s = w.spread + (w.mspread || 0) * clamp(sp / 3.6, 0, 1) + (a.z > 0.02 ? 6 : 0);
     if (a.crouch) s *= 0.7; if (w.scoped && a.scoped) s = w.scoped + (w.mspread || 0) * clamp(sp / 3.6, 0, 1) * 0.6;
@@ -370,41 +399,56 @@
   }
 
   /* ---- thrown things: bounce off walls and floor, then go off ---- */
-  function throwIt(a, kind, target) {
-    const key = { he: 'he', smoke: 'smoke', flash: 'flash', fire: 'fire' }[kind]; if (!a.gear[key] || g.frozen) return;
-    a.gear[key] -= 1; let yaw = a.a; let up = 0.35;
-    if (a === g.player) up = 0.35 + g.pitch; else if (target) { yaw = Math.atan2(target.y - a.y, target.x - a.x); const d = Math.hypot(target.x - a.x, target.y - a.y); up = clamp(0.15 + d * 0.025, 0.1, 0.6); }
-    const sp = 9; g.nades.push({ kind, x: a.x, y: a.y, z: 0.6, vx: Math.cos(yaw) * sp * Math.cos(up), vy: Math.sin(yaw) * sp * Math.cos(up), vz: sp * Math.sin(up), t0: g.now, by: a, still: 0 });
-    sfx('throw', a);
+  /* ---- thrown things: they fly, bounce off walls, floors and roofs (losing speed), roll, then go off ---- */
+  /** Throw: power 1 (a full throw), 0.5 (a lob, underhand), 0.75 (both buttons); a bot throws at a point (target: { x, y }). */
+  function throwIt(a, kind, target, power = 1) {
+    if (!a.gear[kind] || g.frozen) return false;
+    a.gear[kind] -= 1; let yaw = a.a; let up = 0.3 + (a === g.player ? g.pitch : 0); let sp = 10 * power;
+    if (a !== g.player && target) { yaw = Math.atan2(target.y - a.y, target.x - a.x); const d = Math.hypot(target.x - a.x, target.y - a.y); up = 0.62; sp = clamp(Math.sqrt((d * 18) / Math.sin(2 * up)) * 0.92, 4, 11); } // (a lob that lands near it)
+    const z = eyeOf(a) - 0.05; g.nades.push({ kind, x: a.x + Math.cos(yaw) * 0.25, y: a.y + Math.sin(yaw) * 0.25, z, vx: Math.cos(yaw) * sp * Math.cos(up) + a.vx * 0.6, vy: Math.sin(yaw) * sp * Math.cos(up) + a.vy * 0.6, vz: sp * Math.sin(up), t0: g.now, by: a, spin: Math.random() * 6 });
+    sfx('throw', a); if (a === g.player) { g.throwAt = g.now; g.throwKind = kind; } return true;
   }
   function updateNades(dt) {
+    const steps = 3; const h = dt / steps;
     g.nades = g.nades.filter((n) => {
-      n.vz -= 18 * dt; const nx = n.x + n.vx * dt; const ny = n.y + n.vy * dt;
-      if (blocked(Math.floor(nx), Math.floor(n.y))) n.vx *= -0.5; else n.x = nx;
-      if (blocked(Math.floor(n.x), Math.floor(ny))) n.vy *= -0.5; else n.y = ny;
-      n.z += n.vz * dt; if (n.z < 0) { n.z = 0; n.vz *= -0.4; n.vx *= 0.7; n.vy *= 0.7; if (n.kind === 'fire') { goOff(n); return false; } }
-      const age = g.now - n.t0; const slow = Math.hypot(n.vx, n.vy) < 0.4 && n.z < 0.05;
-      if ((n.kind === 'he' && age > 1.6) || (n.kind === 'flash' && age > 1.4) || (n.kind === 'smoke' && (slow || age > 2.5))) { goOff(n); return false; }
+      for (let k = 0; k < steps; k += 1) {
+        n.vz -= 18 * h; const nx = n.x + n.vx * h; const ny = n.y + n.vy * h; const nz = n.z + n.vz * h;
+        const solid = (x, y, z) => z < hAt(Math.floor(x), Math.floor(y)) || z > roofAt(Math.floor(x), Math.floor(y));
+        if (solid(nx, n.y, n.z)) { n.vx *= -0.45; n.vy *= 0.8; sfx('clink', n); } else n.x = nx;
+        if (solid(n.x, ny, n.z)) { n.vy *= -0.45; n.vx *= 0.8; sfx('clink', n); } else n.y = ny;
+        const fl = hAt(Math.floor(n.x), Math.floor(n.y)); const rf = roofAt(Math.floor(n.x), Math.floor(n.y));
+        if (nz < fl) { n.z = fl; if (n.vz < -1.5) sfx('clink', n); n.vz = Math.abs(n.vz) > 1.5 ? -n.vz * 0.38 : 0; n.vx *= 0.72; n.vy *= 0.72; if (n.kind === 'fire') { goOff(n); return false; } }
+        else if (nz > rf) { n.z = rf - 0.01; n.vz = -Math.abs(n.vz) * 0.3; } else n.z = nz;
+        if (n.z <= fl + 1e-3) { n.vx *= 1 - 2.5 * h; n.vy *= 1 - 2.5 * h; } // (rolling, slowing)
+      }
+      const age = g.now - n.t0; const slow = Math.hypot(n.vx, n.vy) < 0.3 && n.z <= hAt(Math.floor(n.x), Math.floor(n.y)) + 0.01;
+      if ((n.kind === 'he' && age > 1.6) || (n.kind === 'flash' && age > 1.5) || (n.kind === 'smoke' && ((slow && age > 0.8) || age > 3))) { goOff(n); return false; }
       return true;
     });
-    g.smokes = g.smokes.filter((s) => g.now < s.until); g.fires = g.fires.filter((f) => g.now < f.until && !g.smokes.some((s) => Math.hypot(s.x - f.x, s.y - f.y) < s.r));
-    g.fires.forEach((f) => g.actors.forEach((a) => { if (a.alive && Math.hypot(a.x - f.x, a.y - f.y) < f.r && Math.random() < dt * 4) damage(a, 8, 1, false, f.by, 'fire'); }));
-    g.fx = g.fx.filter((f) => g.now - f.t < 0.9);
+    g.smokes = g.smokes.filter((sm) => g.now < sm.until);
+    g.fires = g.fires.filter((f) => { f.flames = f.flames.filter((q) => !g.smokes.some((sm) => Math.hypot(sm.x - q[0], sm.y - q[1]) < sm.r * Math.min(1, (g.now - sm.t0) / 1.5))); return g.now < f.until && f.flames.length; }); // (smoke puts fire out)
+    g.fires.forEach((f) => g.actors.forEach((a) => { if (a.alive && a.z < f.z + 0.3 && f.flames.some((q) => Math.hypot(a.x - q[0], a.y - q[1]) < 0.42) && Math.random() < dt * 5) damage(a, 7, 1, false, f.by, 'fire'); }));
+    g.fx = g.fx.filter((f) => g.now - f.t < (f.kind === 'debris' ? 1.6 : 0.9));
   }
   function goOff(n) {
-    const at = { x: n.x, y: n.y };
-    if (n.kind === 'he') { sfx('boom', at); g.fx.push({ kind: 'blast', x: n.x, y: n.y, z: 0.3, t: g.now }); g.actors.forEach((a) => { const d = Math.hypot(a.x - n.x, a.y - n.y); if (a.alive && d < 3.5 && wallDist(n.x, n.y, Math.atan2(a.y - n.y, a.x - n.x), d + 1) >= d - 0.1) damage(a, 98 * (1 - d / 3.5), 0.5, false, n.by, 'he'); }); noise(at, 25); }
-    if (n.kind === 'smoke') { g.smokes.push({ x: n.x, y: n.y, r: 2.3, t0: g.now, until: g.now + 15 }); sfx('hiss', at); }
-    if (n.kind === 'fire') { g.fires.push({ x: n.x, y: n.y, r: 1.7, until: g.now + 7, by: n.by }); sfx('whoosh', at); }
+    const at = { x: n.x, y: n.y }; const z0 = n.z + 0.1;
+    if (n.kind === 'he') { sfx('boom', at); g.fx.push({ kind: 'blast', x: n.x, y: n.y, z: n.z, t: g.now }); g.fx.push({ kind: 'debris', t: g.now, parts: Array.from({ length: 24 }, () => ({ x: n.x, y: n.y, z: z0, vx: (Math.random() - 0.5) * 7, vy: (Math.random() - 0.5) * 7, vz: Math.random() * 5 })) });
+      g.actors.forEach((a) => { const d = Math.hypot(a.x - n.x, a.y - n.y, (a.z + 0.4 - z0) * 1.5); if (a.alive && d < 3.6 && clear(n.x, n.y, z0, a.x, a.y, a.z + 0.5)) damage(a, 98 * (1 - d / 3.6) ** 1.3, 0.5, false, n.by, 'he'); }); noise(at, 25); shake(0.6, at); }
+    if (n.kind === 'smoke') { g.smokes.push({ x: n.x, y: n.y, z: hAt(Math.floor(n.x), Math.floor(n.y)), r: 2.3, t0: g.now, until: g.now + 17 }); sfx('hiss', at); g.fires.forEach((f) => { f.flames = f.flames.filter((q) => Math.hypot(q[0] - n.x, q[1] - n.y) > 2.3); }); }
+    if (n.kind === 'fire') { // the fire spreads over the floor it fell on, not up walls nor through them
+      const fz = hAt(Math.floor(n.x), Math.floor(n.y)); const flames = [];
+      for (let k = 0; k < 34; k += 1) { const q = k * 2.39996; const r = Math.sqrt(k / 34) * 1.9; const x = n.x + Math.cos(q) * r; const y = n.y + Math.sin(q) * r; if (Math.abs(hAt(Math.floor(x), Math.floor(y)) - fz) < 0.05 && clear(n.x, n.y, fz + 0.2, x, y, fz + 0.2)) flames.push([x, y, Math.random() * 6]); }
+      if (!g.smokes.some((sm) => Math.hypot(sm.x - n.x, sm.y - n.y) < sm.r)) g.fires.push({ x: n.x, y: n.y, z: fz, flames, until: g.now + 7, by: n.by }); sfx('whoosh', at); }
     if (n.kind === 'flash') {
       sfx('flash', at);
       g.actors.forEach((a) => {
-        if (!a.alive) return; const d = Math.hypot(a.x - n.x, a.y - n.y); if (d > 18 || wallDist(n.x, n.y, Math.atan2(a.y - n.y, a.x - n.x), d + 1) < d - 0.1) return;
-        const facing = Math.cos(wrap(Math.atan2(n.y - a.y, n.x - a.x) - a.a)); const s = clamp((0.4 + 0.6 * Math.max(0, facing)) * (1 - d / 20) * 4.2, 0.3, 4.2);
-        a.blindUntil = g.now + s; if (a === g.player) { g.flashUntil = g.now + s; g.flashAt = g.now; }
+        if (!a.alive) return; const e = eyeOf(a); const d = Math.hypot(a.x - n.x, a.y - n.y); if (d > 18 || !clear(n.x, n.y, z0, a.x, a.y, e)) return;
+        const facing = Math.cos(wrap(Math.atan2(n.y - a.y, n.x - a.x) - a.a)); const s2 = clamp((0.25 + 0.75 * Math.max(0, facing) ** 1.5) * (1 - d / 20) * 4.5, 0.2, 4.5);
+        a.blindUntil = g.now + s2 * 0.9; if (a === g.player || a === camActor()) { if (a === g.player) { g.flashUntil = g.now + s2; g.flashAt = g.now; g.flashSnap = true; } }
       });
     }
   }
+  function shake(k, at) { const p = g.player; const d = Math.hypot(at.x - p.x, at.y - p.y); g.shake = Math.max(g.shake || 0, k * clamp(1 - d / 10, 0, 1)); }
 
   /* ---- each frame ---- */
   function update(dt) {
@@ -425,9 +469,8 @@
       const fwd = (keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0); const side = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0);
       p.crouch = keys.has('ControlLeft') || keys.has('KeyC');
       const dx = Math.cos(p.a) * fwd + Math.cos(p.a + Math.PI / 2) * side; const dy = Math.sin(p.a) * fwd + Math.sin(p.a + Math.PI / 2) * side;
-      if (!g.frozen) move(p, dx, dy, dt, keys.has('ShiftLeft') ? 0.52 : 1);
-      if (keys.has('Space') && p.z === 0 && !g.frozen) { p.vz = 4.2; keys.delete('Space'); }
-      p.vz -= 13 * dt; p.z = Math.max(0, p.z + p.vz * dt); if (p.z === 0) p.vz = 0;
+      p.wish = [dx, dy, keys.has('ShiftLeft') ? 0.52 : 1];
+      if (keys.has('Space')) { jump(p); keys.delete('Space'); }
       const w = ARMS.W[cur(p)];
       if (mouseDown[0] && (w.auto || !p.heldShot)) { shoot(p); p.heldShot = true; }
       if (!mouseDown[0]) p.heldShot = false;
@@ -443,16 +486,20 @@
     g.actors.forEach((a) => { if (!a.reloadId || g.now < a.reloadUntil) return; const w = ARMS.W[a.reloadId]; const am = a.ammo[a.reloadId]; if (am && cur(a) === a.reloadId) { const n = Math.min(w.mag - am.mag, am.res); am.mag += n; am.res -= n; } a.reloadId = null; });
     // the bots
     g.actors.forEach((b) => { if (b.isBot) { BOTS.think(b, g, dt); if (b.alive && g.keg.dropped && b.team === 'att' && Math.hypot(g.keg.x - b.x, g.keg.y - b.y) < 0.7) { g.keg.dropped = false; g.keg.carrier = b; } } });
+    // bodies: each moves as it wished (the visitor's keys, a bot's mind), falls, lands
+    g.actors.forEach((a) => { if (!a.alive) return; const w = g.frozen || !a.wish ? [0, 0, 1] : a.wish; move(a, w[0], w[1], dt, w[2]); a.wish = null; });
     updateNades(dt);
   }
   // what the bots call
-  const api = { move: (a, dx, dy, dt) => move(a, dx, dy, dt), fire: (a, t, e) => shoot(a, t, e), plant, defuse, throw: throwIt, sees, onSite };
+  const api = { move: (a, dx, dy) => { a.wish = [dx, dy, 1]; }, fire: (a, t, e) => shoot(a, t, e), plant, defuse, throw: throwIt, sees, onSite };
 
   /* ---- drawing ---- */
-  const cellWall = []; const cellFloor = []; const cellRoof = []; // (each cell's textures, found once; a prop's floor and roof are its neighbours')
+  /* Each cell's textures, found once: its top (floor), its sides (or a wall dressed for its place), the
+     ceiling under its roof and the lintel where its roof begins; the tallest cell (to stop rays early). */
+  const topTex = []; const sideTex = []; const ceilTex = []; let MAXH = 0;
   function prepCells() {
-    const under = (x, y) => { let c = MAP[y][x]; if (!PROPS[c]) return c; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const n = MAP[y + dy]?.[x + dx]; if (n && FLOORS[n]) { c = n; break; } } return c; };
-    for (let y = 0; y < MH; y += 1) for (let x = 0; x < MW; x += 1) { const c = MAP[y][x]; const u = under(x, y); cellWall[y * MW + x] = WALLS[c] ? texOf(WALLS[c]) : null; cellFloor[y * MW + x] = texOf(FLOORS[u] || 'flagstones'); cellRoof[y * MW + x] = ROOFS[u] ? texOf(ROOFS[u]) : null; }
+    for (let y = 0; y < MH; y += 1) for (let x = 0; x < MW; x += 1) { const c = y * MW + x; const L = M.LEGEND[M.MAT[y][x]];
+      topTex[c] = texOf(L.top); sideTex[c] = texOf(M.DECOR[`${x},${y}`] || L.side); ceilTex[c] = texOf(L.ceil || 'oakPlanks'); [topTex[c], sideTex[c], ceilTex[c]].forEach(mipsOf); MAXH = Math.max(MAXH, M.h[c]); }
   }
   const FOG_D = 46; const SKY = [80, 136, 210]; const HAZE = [206, 214, 224];
   /* The light: a grid of four samples a cell, each [r, g, b] (1 = daylight in the yard's shade). Torches on
@@ -460,16 +507,23 @@
      the moment (shots, fires, blasts, the planted keg) added each frame without shadows. */
   const LR = 4; const LW = MW * LR; const LH = MH * LR; const lmStatic = new Float32Array(LW * LH * 3); const lm = new Float32Array(LW * LH * 3);
   const AMB = [0.62, 0.64, 0.7]; let torches = [];
+  /* The light, a grid of four samples a cell (at each cell's own floor): the sky's light (dimmer under a roof), the
+     sun's (where it reaches: a ray towards it, two of them for soft edges, so walls and towers cast their shadows
+     across the yards), the torches' (with their shadows); the light of the moment added each frame. */
+  const SUN = (() => { const az = 2.4; const el = 0.62; return [Math.cos(az) * Math.cos(el), Math.sin(az) * Math.cos(el), Math.sin(el)]; })();
+  const SUNC = [0.62, 0.54, 0.4];
   function prepLight() {
     torches = [];
-    for (let y = 1; y < MH - 1; y += 1) for (let x = 1; x < MW - 1; x += 1) { // a torch on a wall where a floor cell faces it, about one in eight
-      if (WALLS[MAP[y][x]] || PROPS[MAP[y][x]] || (x * 7 + y * 13) % (cellRoof[y * MW + x] ? 5 : 8)) continue; // (thicker under a roof)
-      const face = [[0, -1], [1, 0], [0, 1], [-1, 0]].find(([dx, dy]) => WALLS[MAP[y + dy][x + dx]] && MAP[y + dy][x + dx] !== 'C'); if (!face) continue;
-      torches.push({ x: x + 0.5 + face[0] * 0.42, y: y + 0.5 + face[1] * 0.42, ph: Math.random() * 6 });
+    for (let y = 1; y < MH - 1; y += 1) for (let x = 1; x < MW - 1; x += 1) { // a torch on a wall facing a floor: one in twelve outside, one in four under a roof
+      const h = hAt(x, y); if (isWall(x, y) || (x * 7 + y * 13) % (roofAt(x, y) < 1e9 ? 4 : 12)) continue;
+      const face = [[0, -1], [1, 0], [0, 1], [-1, 0]].find(([dx, dy]) => hAt(x + dx, y + dy) > h + 1.6 && matAt(x + dx, y + dy) !== 'k'); if (!face) continue;
+      torches.push({ x: x + 0.5 + face[0] * 0.42, y: y + 0.5 + face[1] * 0.42, z: h + 1.15, ph: Math.random() * 6 });
     }
     for (let j = 0; j < LH; j += 1) for (let i = 0; i < LW; i += 1) {
-      const sx = (i + 0.5) / LR; const sy = (j + 0.5) / LR; const o = (j * LW + i) * 3; const roofed = cellRoof[Math.floor(sy) * MW + Math.floor(sx)]; let r = AMB[0] * (roofed ? 0.42 : 1); let gg = AMB[1] * (roofed ? 0.42 : 1); let b = AMB[2] * (roofed ? 0.46 : 1); // (dim under a roof)
-      torches.forEach((t) => { const d = Math.hypot(t.x - sx, t.y - sy); if (d > 6) return; if (d > 0.3 && wallDist(t.x, t.y, Math.atan2(sy - t.y, sx - t.x), d + 0.1) < d - 0.15) return; const k = (1 - d / 6) ** 2 * 1.3; r += k; gg += k * 0.72; b += k * 0.42; });
+      const sx = (i + 0.5) / LR; const sy = (j + 0.5) / LR; const cx = Math.floor(sx); const cy = Math.floor(sy); const o = (j * LW + i) * 3; const fz = hAt(cx, cy) + 0.05; const roofed = roofAt(cx, cy) < 1e9;
+      let r = AMB[0] * (roofed ? 0.38 : 0.72); let gg = AMB[1] * (roofed ? 0.38 : 0.74); let b = AMB[2] * (roofed ? 0.42 : 0.82);
+      if (!isWall(cx, cy)) { let sun = 0; for (const jit of [-0.04, 0.04]) if (!trace(sx, sy, fz, SUN[0] + jit, SUN[1] - jit, SUN[2], 40)) sun += 0.5; r += SUNC[0] * sun; gg += SUNC[1] * sun; b += SUNC[2] * sun; }
+      torches.forEach((t) => { const d = Math.hypot(t.x - sx, t.y - sy); if (d > 6) return; if (d > 0.3 && !clear(t.x, t.y, t.z, sx, sy, fz + 0.1)) return; const k = (1 - d / 6) ** 2 * 1.2; r += k; gg += k * 0.72; b += k * 0.42; });
       lmStatic[o] = r; lmStatic[o + 1] = gg; lmStatic[o + 2] = b;
     }
   }
@@ -508,64 +562,83 @@
   let cam = null;
   /** Whose eyes: the visitor's, or (fallen) a living one of the side, chosen by clicking. */
   function camActor() { const me = g.player; if (me.alive) return me; const mates = g.actors.filter((a) => a.alive && a.team === me.team); return mates.length ? mates[(g.specIdx || 0) % mates.length] : me; }
-  function toScreen(x, y, z) { const c = cam; const rx = x - c.px; const ry = y - c.py; const ty = c.inv * (-c.plY * rx + c.plX * ry); if (ty < 0.05) return null; const tx = c.inv * (c.dirY * rx - c.dirX * ry); const sc = H / ty / (c.pl * 2); return [(W / 2) * (1 + tx / ty), c.hor + (c.eye - z) * sc, ty, sc]; }
+  function toScreen(x, y, z) { const c = cam; const rx = x - c.px; const ry = y - c.py; const ty = c.inv * (-c.plY * rx + c.plX * ry); if (ty < 0.05) return null; const tx = c.inv * (c.dirY * rx - c.dirX * ry); return [(W / 2) * (1 + tx / ty), c.hor + (c.eye - z) * c.F / ty, ty, c.F / ty]; }
+  let rowInv = null;
   function render() {
-    const me = g.player; const p = camActor(); const self = p === me; // (dead: the eyes of a living one of your side)
+    const me = g.player; const p = camActor(); const self = p === me; // (fallen: the eyes of a living one of your side)
     const eye = (self ? g.eyeH : p.crouch ? 0.45 : 0.62) + p.z; const fov = settings.fov * (self && p.scoped ? 0.25 : 1);
-    const hor = Math.floor(H / 2 + (self ? g.pitch + g.punch : 0) * H * 0.9);
-    const dirX = Math.cos(p.a); const dirY = Math.sin(p.a); const pl = Math.tan(fov / 2); const plX = -dirY * pl; const plY = dirX * pl;
-    cam = { px: p.x, py: p.y, dirX, dirY, plX, plY, pl, hor, eye, inv: 1 / (plX * dirY - dirX * plY) };
+    const pl = Math.tan(fov / 2); const F = (W / 2) / pl; // (one focal length both ways: square pixels)
+    const sh = g.shake > 0.01 ? (Math.random() - 0.5) * g.shake * 0.03 : 0;
+    const hor = Math.floor(H / 2 + Math.tan(clamp((self ? g.pitch + g.punch : 0) + sh, -1.2, 1.2)) * F);
+    const yaw = p.a + (self ? (g.shake > 0.01 ? (Math.random() - 0.5) * g.shake * 0.02 : 0) : 0);
+    const dirX = Math.cos(yaw); const dirY = Math.sin(yaw); const plX = -dirY * pl; const plY = dirX * pl;
+    cam = { px: p.x, py: p.y, dirX, dirY, plX, plY, pl, hor, eye, F, inv: 1 / (plX * dirY - dirX * plY) };
     lightFrame();
-    // the sky: read from its panorama by the way each column looks
     if (!skyTex || skyTex.length !== SKW * H) paintSky();
-    const colS = new Int32Array(W); for (let x = 0; x < W; x += 1) { const ang = p.a + Math.atan(((2 * x) / W - 1) * pl); colS[x] = Math.floor(((ang / (2 * Math.PI)) % 1 + 1) % 1 * SKW); }
-    // and the ceilings of the covered places, cast as the floor is (at the walls' height); the sky where there is none
-    const rx0 = dirX - plX; const ry0 = dirY - plY; const rx1 = dirX + plX; const ry1 = dirY + plY; const posZ = eye * H; const posC = (WALL_H - eye) * H;
-    for (let y = 0; y < Math.min(H, hor); y += 1) {
-      const row = Math.min(H - 1, hor - y) * SKW; let o = y * W; const rowD = posC / ((hor - y) * 2 * pl);
-      if (rowD > 40) { for (let x = 0; x < W; x += 1) buf[o + x] = skyTex[row + colS[x]]; continue; }
-      let fx = p.x + rowD * rx0; let fy = p.y + rowD * ry0; const sx = (rowD * (rx1 - rx0)) / W; const sy = (rowD * (ry1 - ry0)) / W; const fog = clamp(rowD / FOG_D, 0, 1) * 0.85;
-      const fa = Math.round(fog * 256); const fb = 256 - fa; const hr = HAZE[0] * fa; const hg = HAZE[1] * fa; const hb = HAZE[2] * fa;
-      for (let x = 0; x < W; x += 1, o += 1, fx += sx, fy += sy) {
-        const cx = fx | 0; const cy = fy | 0; const t = fx >= 0 && fy >= 0 && cx < MW && cy < MH ? cellRoof[cy * MW + cx] : null;
-        if (!t) { buf[o] = skyTex[row + colS[x]]; continue; }
-        const v = t[((((fy - cy) * T) | 0) & (T - 1)) * T + ((((fx - cx) * T) | 0) & (T - 1))]; const lo = (((fy * LR) | 0) * LW + ((fx * LR) | 0)) * 3;
-        let r = (v & 255) * lm[lo] * 0.75; let gg = ((v >> 8) & 255) * lm[lo + 1] * 0.75; let bb = ((v >> 16) & 255) * lm[lo + 2] * 0.75; if (r > 255) r = 255; if (gg > 255) gg = 255; if (bb > 255) bb = 255;
-        buf[o] = 0xff000000 | (((bb * fb + hb) >> 8) << 16) | (((gg * fb + hg) >> 8) << 8) | ((r * fb + hr) >> 8);
-      }
-    }
-    // the floor, row by row (each pixel's place on it, its cell's texture, its light)
-    for (let y = Math.max(0, hor + 1); y < H; y += 1) {
-      const rowD = posZ / ((y - hor) * 2 * pl); const fog = clamp(rowD / FOG_D, 0, 1) * 0.85;
-      let fx = p.x + rowD * rx0; let fy = p.y + rowD * ry0; const sx = (rowD * (rx1 - rx0)) / W; const sy = (rowD * (ry1 - ry0)) / W; let o = y * W;
-      const fa = Math.round(fog * 256); const fb = 256 - fa; const hr = HAZE[0] * fa; const hg = HAZE[1] * fa; const hb = HAZE[2] * fa;
-      for (let x = 0; x < W; x += 1, o += 1) { // (inlined: the texel, lit, fogged)
-        const cx = fx | 0; const cy = fy | 0; const inside = fx >= 0 && fy >= 0 && cx < MW && cy < MH; const t = inside ? cellFloor[cy * MW + cx] : cellFloor[0];
-        const v = t[((((fy - cy) * T) | 0) & (T - 1)) * T + ((((fx - cx) * T) | 0) & (T - 1))]; const lo = inside ? (((fy * LR) | 0) * LW + ((fx * LR) | 0)) * 3 : 0;
-        let r = (v & 255) * lm[lo]; let gg = ((v >> 8) & 255) * lm[lo + 1]; let bb = ((v >> 16) & 255) * lm[lo + 2]; if (r > 255) r = 255; if (gg > 255) gg = 255; if (bb > 255) bb = 255;
-        buf[o] = 0xff000000 | (((bb * fb + hb) >> 8) << 16) | (((gg * fb + hg) >> 8) << 8) | ((r * fb + hr) >> 8); fx += sx; fy += sy; }
-    }
-    // the walls, a ray a column (lit by the light in front of them; darker at their foot)
+    const colS = new Int32Array(W); for (let x = 0; x < W; x += 1) { const ang = yaw + Math.atan(((2 * x) / W - 1) * pl); colS[x] = Math.floor(((ang / (2 * Math.PI)) % 1 + 1) % 1 * SKW); }
+    if (!rowInv || rowInv.length !== H) rowInv = new Float32Array(H); for (let y = 0; y < H; y += 1) { const d = y + 0.5 - hor; rowInv[y] = Math.abs(d) < 0.01 ? 100 : 1 / d; }
+    const zb = zbuf; const px0 = p.x; const py0 = p.y; const NEARD = 0.05; const hazeV = pack(HAZE); const mipK = T / F; // (texels a pixel, per unit of distance)
+    // a column at a time: the cells along the ray, near to far, each drawn into the rows still free ([ytop, ybot))
     for (let x = 0; x < W; x += 1) {
       const camx = (2 * x) / W - 1; const rdx = dirX + plX * camx; const rdy = dirY + plY * camx;
-      let mx = Math.floor(p.x); let my = Math.floor(p.y); const ddx = Math.abs(1 / rdx); const ddy = Math.abs(1 / rdy); const sx = rdx < 0 ? -1 : 1; const sy = rdy < 0 ? -1 : 1;
-      let sdx = (rdx < 0 ? p.x - mx : mx + 1 - p.x) * ddx; let sdy = (rdy < 0 ? p.y - my : my + 1 - p.y) * ddy; let side = 0; let t = null;
-      for (let k = 0; k < 90 && !t; k += 1) { if (sdx < sdy) { sdx += ddx; mx += sx; side = 0; } else { sdy += ddy; my += sy; side = 1; } t = mx < 0 || my < 0 || mx >= MW || my >= MH ? cellWall[0] || texOf('ashlar') : cellWall[my * MW + mx]; }
-      const perp = Math.max(0.05, side === 0 ? sdx - ddx : sdy - ddy); zbuf[x] = perp;
-      const lh = H / perp / (pl * 2); const top = Math.floor(hor - lh * (WALL_H - eye)); const bot = Math.floor(hor + lh * eye);
-      let wx = side === 0 ? p.y + perp * rdy : p.x + perp * rdx; wx -= Math.floor(wx); let tx = (wx * T) | 0; if ((side === 0 && rdx > 0) || (side === 1 && rdy < 0)) tx = T - 1 - tx;
-      const lo = lightAt(p.x + rdx * (perp - 0.03), p.y + rdy * (perp - 0.03));
-      const fog = clamp(perp / FOG_D, 0, 1) * 0.85; const shade = side ? 0.82 : 1; const span = bot - top;
-      const fa = Math.round(fog * 256); const fb = 256 - fa; const hr = HAZE[0] * fa; const hg = HAZE[1] * fa; const hb = HAZE[2] * fa;
-      const lr = lm[lo] * shade; const lg = lm[lo + 1] * shade; const lb = lm[lo + 2] * shade; const dv = (T * WALL_H) / span; const tm = t.length > T * T ? 255 : T - 1; const y0 = Math.max(0, top); const y1 = Math.min(H, bot); const aoY = top + span * 0.85;
-      let tv = (y0 - top) * dv; let o = y0 * W + x;
-      for (let y = y0; y < y1; y += 1, o += W, tv += dv) { // (inlined: the texel down the column, lit, darker at the foot, fogged)
-        const v = t[((tv | 0) & tm) * T + tx]; const ao = y > aoY ? 1 - ((y - aoY) / span) * 2 : 1;
-        let r = (v & 255) * lr * ao; let gg = ((v >> 8) & 255) * lg * ao; let bb = ((v >> 16) & 255) * lb * ao; if (r > 255) r = 255; if (gg > 255) gg = 255; if (bb > 255) bb = 255;
-        buf[o] = 0xff000000 | (((bb * fb + hb) >> 8) << 16) | (((gg * fb + hg) >> 8) << 8) | ((r * fb + hr) >> 8);
+      let mx = Math.floor(px0); let my = Math.floor(py0); const ddx = Math.abs(1 / rdx); const ddy = Math.abs(1 / rdy); const sx = rdx < 0 ? -1 : 1; const sy = rdy < 0 ? -1 : 1;
+      let sdx = (rdx < 0 ? px0 - mx : mx + 1 - px0) * ddx; let sdy = (rdy < 0 ? py0 - my : my + 1 - py0) * ddy; let side = 0;
+      let ytop = 0; let ybot = H; let d0 = 0; let ci = clamp(my, 0, MH - 1) * MW + clamp(mx, 0, MW - 1); let ch = M.h[ci];
+      for (let k = 0; k < 160; k += 1) {
+        const d1 = sdx < sdy ? sdx : sdy; const dn = d0 < NEARD ? NEARD : d0;
+        if (eye > ch) { // this cell's floor (or a crate's top), from its far edge to its near
+          const e = (eye - ch) * F; let r0 = Math.ceil(hor + e / d1 - 0.5); let r1 = Math.ceil(hor + e / dn - 0.5); if (r0 < ytop) r0 = ytop; if (r1 > ybot) r1 = ybot;
+          if (r0 < r1) { const tm = topTex[ci].m;
+            for (let r = r0, o = r0 * W + x; r < r1; r += 1, o += W) {
+              const dist = e * rowInv[r]; const wx = px0 + rdx * dist; const wy = py0 + rdy * dist; const tp = dist * mipK; const L = tp > 4 ? 2 : tp > 2 ? 1 : 0; const S = T >> L; const t = tm[L];
+              const v = t[((((wy - Math.floor(wy)) * S) | 0) & (S - 1)) * S + ((((wx - Math.floor(wx)) * S) | 0) & (S - 1))];
+              let li = (((wy * LR) | 0) * LW + ((wx * LR) | 0)) * 3; if (li < 0 || li >= lm.length) li = 0;
+              const fa = dist >= FOG_D ? 218 : (dist * 218 / FOG_D) | 0; const fb = 256 - fa;
+              let R2 = (v & 255) * lm[li]; let G2 = ((v >> 8) & 255) * lm[li + 1]; let B2 = ((v >> 16) & 255) * lm[li + 2]; if (R2 > 255) R2 = 255; if (G2 > 255) G2 = 255; if (B2 > 255) B2 = 255;
+              buf[o] = 0xff000000 | (((B2 * fb + HAZE[2] * fa) >> 8) << 16) | (((G2 * fb + HAZE[1] * fa) >> 8) << 8) | ((R2 * fb + HAZE[0] * fa) >> 8); zb[o] = dist;
+            } }
+          if (r0 < ybot) ybot = r0 > ytop ? r0 : ytop;
+        }
+        const rf = M.roof[ci];
+        if (rf < 1e9 && eye < rf && ytop < ybot) { // its ceiling, under a roof
+          const e = (rf - eye) * F; let r0 = Math.ceil(hor - e / dn - 0.5); let r1 = Math.ceil(hor - e / d1 - 0.5); if (r0 < ytop) r0 = ytop; if (r1 > ybot) r1 = ybot;
+          if (r0 < r1) { const tm = ceilTex[ci].m;
+            for (let r = r0, o = r0 * W + x; r < r1; r += 1, o += W) {
+              const dist = -e * rowInv[r]; const wx = px0 + rdx * dist; const wy = py0 + rdy * dist; const tp = dist * mipK; const L = tp > 4 ? 2 : tp > 2 ? 1 : 0; const S = T >> L; const t = tm[L];
+              const v = t[((((wy - Math.floor(wy)) * S) | 0) & (S - 1)) * S + ((((wx - Math.floor(wx)) * S) | 0) & (S - 1))]; let li = (((wy * LR) | 0) * LW + ((wx * LR) | 0)) * 3; if (li < 0 || li >= lm.length) li = 0;
+              const fa = dist >= FOG_D ? 218 : (dist * 218 / FOG_D) | 0; const fb = 256 - fa;
+              let R2 = (v & 255) * lm[li] * 0.7; let G2 = ((v >> 8) & 255) * lm[li + 1] * 0.7; let B2 = ((v >> 16) & 255) * lm[li + 2] * 0.7; if (R2 > 255) R2 = 255; if (G2 > 255) G2 = 255; if (B2 > 255) B2 = 255;
+              buf[o] = 0xff000000 | (((B2 * fb + HAZE[2] * fa) >> 8) << 16) | (((G2 * fb + HAZE[1] * fa) >> 8) << 8) | ((R2 * fb + HAZE[0] * fa) >> 8); zb[o] = dist;
+            } }
+          if (r1 > ytop) ytop = r1 < ybot ? r1 : ybot;
+        }
+        if (ytop >= ybot) break;
+        if (sdx < sdy) { sdx += ddx; mx += sx; side = 0; } else { sdy += ddy; my += sy; side = 1; }
+        d0 = d1; if (mx < 0 || my < 0 || mx >= MW || my >= MH) break;
+        const ni = my * MW + mx; const nh = M.h[ni]; const nrf = M.roof[ni];
+        const face = (zTop, zBot, t0, foot) => { // a vertical face at d0 from zBot up to zTop, textured by t (a dressed wall: by its foot)
+          let r0 = Math.ceil(hor + (eye - zTop) * F / d0 - 0.5); let r1 = Math.ceil(hor + (eye - zBot) * F / d0 - 0.5); if (r0 < ytop) r0 = ytop; if (r1 > ybot) r1 = ybot; if (r0 >= r1) return r0;
+          const tp = d0 * mipK; const L = tp > 4 ? 2 : tp > 2 ? 1 : 0; const S = T >> L; const t = t0.m[L]; const S1 = S - 1;
+          let wxh = side === 0 ? py0 + d0 * rdy : px0 + d0 * rdx; wxh -= Math.floor(wxh); let tx = (wxh * S) | 0; if ((side === 0 && rdx > 0) || (side === 1 && rdy < 0)) tx = S1 - tx;
+          let li = (((((py0 + rdy * (d0 - 0.03)) * LR) | 0) * LW) + (((px0 + rdx * (d0 - 0.03)) * LR) | 0)) * 3; if (li < 0 || li >= lm.length) li = 0;
+          const nx2 = side === 0 ? -sx : 0; const ny2 = side === 1 ? -sy : 0; const shade = (side ? 0.84 : 1) * (0.8 + 0.4 * Math.max(0, nx2 * SUN[0] + ny2 * SUN[1]));
+          const fa = d0 >= FOG_D ? 218 : (d0 * 218 / FOG_D) | 0; const fb = 256 - fa; const lr = lm[li] * shade; const lg = lm[li + 1] * shade; const lb = lm[li + 2] * shade;
+          const tall = t0.length > T * T; const dz = d0 / F; let z = eye - (r0 + 0.5 - hor) * dz;
+          for (let r = r0, o = r0 * W + x; r < r1; r += 1, o += W, z -= dz) {
+            const row = tall ? clamp(((140 - (z - foot) * T) | 0) >> L, 0, (256 >> L) - 1) : (((zTop - z) * S) | 0) & S1; const v = t[row * S + tx]; const ao = z - zBot < 0.22 ? 0.66 + (z - zBot) * 1.5 : 1;
+            let R2 = (v & 255) * lr * ao; let G2 = ((v >> 8) & 255) * lg * ao; let B2 = ((v >> 16) & 255) * lb * ao; if (R2 > 255) R2 = 255; if (G2 > 255) G2 = 255; if (B2 > 255) B2 = 255;
+            buf[o] = 0xff000000 | (((B2 * fb + HAZE[2] * fa) >> 8) << 16) | (((G2 * fb + HAZE[1] * fa) >> 8) << 8) | ((R2 * fb + HAZE[0] * fa) >> 8); zb[o] = d0;
+          }
+          return r0;
+        };
+        if (nh > ch) { const r0 = face(nh, ch, sideTex[ni], ch); if (r0 < ybot) ybot = r0 > ytop ? r0 : ytop; } // (where the ground rises: a step, a crate, a wall)
+        if (nrf < rf && nrf < 1e9 && eye < nrf) { face(nrf + 40, nrf, sideTex[ni], nh); const r1 = Math.ceil(hor + (eye - nrf) * F / d0 - 0.5); if (r1 > ytop) ytop = r1 < ybot ? r1 : ybot; } // (where a roof begins: the house over it, out of sight)
+        ci = ni; ch = nh;
+        if (ytop >= ybot || ybot <= hor - (MAXH - eye) * F / d0) break; // (nothing farther could show)
       }
+      for (let r = ytop, o = ytop * W + x; r < ybot; r += 1, o += W) { buf[o] = r < hor ? skyTex[Math.min(H - 1, hor - r) * SKW + colS[x]] : hazeV; zb[o] = 1e9; } // (the sky, or haze past the map)
     }
-    // the sprites, far to near
+    // the sprites, far to near, each pixel against the depth
     const spr = []; const now = g.now;
     g.actors.forEach((a) => {
       if (a === p) return; const toMe = Math.atan2(p.y - a.y, p.x - a.x); const view = Math.abs(wrap(toMe - a.a)) < Math.PI / 2 ? 'front' : 'back';
@@ -573,24 +646,24 @@
       if (!a.alive) { const f = Math.min(2, Math.floor((now - (a.diedAt || 0)) / 0.12)); img = soldier(a.team, view, 'dead', f); h = 0.9; wk = 0.9; }
       else if (now - a.lastShot < 0.18 && view === 'front' && cur(a) !== 'knife') img = soldier(a.team, view, 'aim', now - a.lastShot < 0.06 ? 1 : 0);
       else img = soldier(a.team, view, a.moving ? 'walk' : 'idle', a.moving ? Math.floor(now * 8 + a.idx) % 4 : 0);
-      spr.push({ x: a.x, y: a.y, img, h: a.crouch ? h * 0.72 : h, z: 0, wk, hit: now - (a.hitAt || -9) < 0.1, lit: true, lo: lightAt(a.x, a.y) });
+      spr.push({ x: a.x, y: a.y, img, h: a.crouch ? h * 0.72 : h, z: a.z, wk, hit: now - (a.hitAt || -9) < 0.1, lit: true, lo: lightAt(a.x, a.y) });
     });
-    torches.forEach((t) => spr.push({ x: t.x, y: t.y, z: 1.15, h: 0.32, wk: 0.16, torch: t })); // (the torches: a bracket, a flame)
-    props.forEach((q) => spr.push({ x: q.x, y: q.y, img: q.img, h: q.h, wk: q.wk, z: 0, lit: true, lo: lightAt(q.x, q.y) }));
-    if (g.keg.dropped || g.keg.planted) spr.push({ x: g.keg.x, y: g.keg.y, img: KEG, h: 0.22, z: 0, wk: 0.26, glow: g.keg.planted && Math.floor(now * 4) % 2 });
+    torches.forEach((t) => spr.push({ x: t.x, y: t.y, z: t.z - 0.15, h: 0.32, wk: 0.16, torch: t })); // (the torches: a bracket, a flame)
+    props.forEach((q) => spr.push({ x: q.x, y: q.y, img: q.img, h: q.h, wk: q.wk, z: q.z, lit: true, lo: lightAt(q.x, q.y) }));
+    if (g.keg.dropped || g.keg.planted) spr.push({ x: g.keg.x, y: g.keg.y, img: KEG, h: 0.22, z: g.keg.z || 0, wk: 0.26, glow: g.keg.planted && Math.floor(now * 4) % 2 });
     g.nades.forEach((n) => spr.push({ x: n.x, y: n.y, z: n.z, h: 0.1, wk: 0.1, dot: n.kind === 'flash' ? [240, 240, 255] : n.kind === 'smoke' ? [150, 150, 150] : [120, 80, 40] }));
-    g.smokes.forEach((sm) => { const k = Math.min(1, (now - sm.t0) / 1.5) * Math.min(1, (sm.until - now) / 2); for (let j = 0; j < 16; j += 1) { const q = j * 2.39996 + now * 0.05; const r = Math.sqrt(j / 16) * sm.r * k; spr.push({ x: sm.x + Math.cos(q) * r, y: sm.y + Math.sin(q) * r, z: 0, h: 1.5 * k, wk: 1.5 * k, cloud: [182, 184, 190], alpha: 0.85 }); } });
-    g.fires.forEach((f) => { for (let j = 0; j < 10; j += 1) { const q = j * 2.39996 + now; const r = Math.sqrt(j / 10) * f.r; spr.push({ x: f.x + Math.cos(q) * r, y: f.y + Math.sin(q) * r, z: 0, h: 0.4 + Math.random() * 0.25, wk: 0.3, flame: true }); } });
-    g.fx.forEach((f) => { if (f.kind === 'blast') spr.push({ x: f.x, y: f.y, z: 0, h: f.big ? 3 : 1.5, wk: f.big ? 4 : 1.7, flame: true }); });
+    g.smokes.forEach((sm) => { const k = Math.min(1, (now - sm.t0) / 1.5) * Math.min(1, (sm.until - now) / 2); for (let j = 0; j < 22; j += 1) { const q = j * 2.39996 + now * 0.05; const r = Math.sqrt(j / 22) * sm.r * k; spr.push({ x: sm.x + Math.cos(q) * r, y: sm.y + Math.sin(q) * r, z: sm.z - 0.1 + (j % 3) * 0.25, h: 1.5 * k, wk: 1.6 * k, cloud: [182, 184, 190], alpha: 0.9 }); } });
+    g.fires.forEach((f) => f.flames.forEach((q) => spr.push({ x: q[0], y: q[1], z: f.z, h: 0.32 + Math.sin(now * 9 + q[2]) * 0.1, wk: 0.3, flame: true })));
+    g.fx.forEach((f) => { if (f.kind === 'blast') spr.push({ x: f.x, y: f.y, z: f.z - 0.2, h: f.big ? 3 : 1.5, wk: f.big ? 4 : 1.7, flame: true }); });
     spr.forEach((s2) => { const rx = s2.x - p.x; const ry = s2.y - p.y; s2.ty = cam.inv * (-plY * rx + plX * ry); s2.tx = cam.inv * (dirY * rx - dirX * ry); });
     spr.filter((s2) => s2.ty > 0.1).sort((a, b) => b.ty - a.ty).forEach((s2) => {
-      const scale = H / s2.ty / (pl * 2); const sx = (W / 2) * (1 + s2.tx / s2.ty);
+      const scale = F / s2.ty; const sx = (W / 2) * (1 + s2.tx / s2.ty);
       const hgt = s2.h * scale; const wid = s2.wk * scale; const bot = hor + (eye - s2.z) * scale; const top = bot - hgt; const fog = clamp(s2.ty / FOG_D, 0, 1) * 0.8;
       for (let x = Math.max(0, Math.floor(sx - wid / 2)); x < Math.min(W, sx + wid / 2); x += 1) {
-        if (s2.ty >= zbuf[x]) continue; const u = (x - (sx - wid / 2)) / wid;
+        const u = (x - (sx - wid / 2)) / wid;
         for (let y = Math.max(0, Math.floor(top)); y < Math.min(H, bot); y += 1) {
-          const v = (y - top) / hgt; const o = y * W + x;
-          if (s2.img) { let c = s2.img.px[Math.floor(v * s2.img.h) * s2.img.w + Math.floor(u * s2.img.w)]; if (!c) continue; if (s2.glow) c = pack([255, 120, 60]); if (s2.hit) c = pack(unpack(c).map((q) => q + (255 - q) * 0.7)); buf[o] = s2.lit ? litFog(c, s2.lo, fog) : fogged(c, fog); }
+          const v = (y - top) / hgt; const o = y * W + x; if (s2.ty >= zb[o]) continue;
+          if (s2.img) { let c = s2.img.px[Math.floor(v * s2.img.h) * s2.img.w + Math.floor(u * s2.img.w)]; if (!c) continue; if (s2.glow) c = pack([255, 120, 60]); if (s2.hit) c = pack(unpack(c).map((q) => q + (255 - q) * 0.7)); buf[o] = s2.lit ? litFog(c, s2.lo, fog) : fogged(c, fog); zb[o] = s2.ty; }
           else if (s2.dot) { if (Math.hypot(u - 0.5, v - 0.5) < 0.5) buf[o] = pack(s2.dot); }
           else if (s2.cloud) { const r = Math.hypot(u - 0.5, (v - 0.5) * 1.2); if (r < 0.5) { const al = clamp(s2.alpha * (1 - r * 1.7), 0, 1); const c = unpack(buf[o]); buf[o] = pack(c.map((q, i) => q + (s2.cloud[i] - q) * al)); } }
           else if (s2.torch) { if (v > 0.55) { if (Math.abs(u - 0.5) < 0.12) buf[o] = pack([60, 44, 30]); } else { const fl = Math.sin(now * 14 + s2.torch.ph + v * 6) * 0.08; const r = Math.hypot((u - 0.5 - fl) * 1.6, (v - 0.32) * 1.1); if (r < 0.32) buf[o] = pack(r < 0.12 ? [255, 250, 200] : r < 0.22 ? [255, 190, 70] : [230, 90, 20]); } }
@@ -598,11 +671,16 @@
         }
       }
     });
-    // particles in the world: sparks off stone, blood off a hit, the trails of shots (each against the depth)
-    const dot = (X, Y, d, c, r = 1) => { X |= 0; Y |= 0; for (let j = -r + 1; j < r; j += 1) for (let i2 = -r + 1; i2 < r; i2 += 1) { const xx = X + i2; const yy = Y + j; if (xx >= 0 && yy >= 0 && xx < W && yy < H && d < zbuf[xx]) buf[yy * W + xx] = pack(c); } };
+    // the marks of the fight: bullet holes on walls and crates, blood on floors (each a few pixels where its surface shows)
+    g.decals.forEach((d) => { const sp = toScreen(d.x, d.y, d.z); if (!sp) return; const X = sp[0] | 0; const Y = sp[1] | 0; const rr = Math.max(1, Math.round(sp[3] * (d.kind === 'blood' ? 0.09 : 0.022)));
+      for (let j = -rr; j <= rr; j += 1) for (let i2 = -rr; i2 <= rr; i2 += 1) { if (i2 * i2 + j * j * (d.kind === 'blood' ? 3 : 1) > rr * rr) continue; const xx = X + i2; const yy = Y + j; if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue; const o = yy * W + xx; if (Math.abs(zb[o] - sp[2]) > 0.12 + sp[2] * 0.02) continue;
+        const c = unpack(buf[o]); buf[o] = d.kind === 'blood' ? pack([c[0] * 0.55 + 50, c[1] * 0.25, c[2] * 0.25]) : pack(c.map((q) => q * (i2 * i2 + j * j < rr * rr * 0.4 ? 0.22 : 0.6))); } });
+    // particles in the world: sparks off stone, splinters off wood, blood off a hit, debris, the trails of shots (each against the depth)
+    const dot = (X, Y, d, c, r = 1) => { X |= 0; Y |= 0; for (let j = -r + 1; j < r; j += 1) for (let i2 = -r + 1; i2 < r; i2 += 1) { const xx = X + i2; const yy = Y + j; if (xx >= 0 && yy >= 0 && xx < W && yy < H && d < zb[yy * W + xx]) buf[yy * W + xx] = pack(c); } };
     g.fx.forEach((f) => {
       const age = now - f.t;
-      if (f.kind === 'spark' || f.kind === 'blood') f.parts.forEach((q) => { const pz = q.z + q.vz * age - 4.9 * age * age; if (pz < 0) return; const sp = toScreen(q.x + q.vx * age, q.y + q.vy * age, pz); if (sp) dot(sp[0], sp[1], sp[2], f.kind === 'blood' ? [150, 10, 14] : age < 0.08 ? [255, 250, 200] : [200, 180, 140], Math.max(1, Math.round(sp[3] / 90))); });
+      if (f.parts) f.parts.forEach((q) => { const pz = q.z + q.vz * age - 4.9 * age * age; const qx = q.x + q.vx * age; const qy = q.y + q.vy * age; if (pz < hAt(Math.floor(qx), Math.floor(qy))) return; const sp = toScreen(qx, qy, pz);
+        if (sp) dot(sp[0], sp[1], sp[2], f.kind === 'blood' ? [150, 10, 14] : f.kind === 'splinter' ? [170, 120, 70] : f.kind === 'debris' ? [90, 84, 78] : age < 0.08 ? [255, 250, 200] : [200, 180, 140], Math.max(1, Math.round(sp[3] / (f.kind === 'debris' ? 60 : 90)))); });
       if (f.kind === 'trail' && age < 0.07) { const n = 24; for (let k = 0; k <= n; k += 1) { const u = k / n; const sp = toScreen(f.x0 + (f.x1 - f.x0) * u, f.y0 + (f.y1 - f.y0) * u, f.z0 + (f.z1 - f.z0) * u); if (sp && u > 0.1) dot(sp[0], sp[1], sp[2], [255, 236, 160]); } }
     });
     // in the hand
@@ -639,10 +717,12 @@
      them see, the keg; the sites' letters held at the rim when off it. */
   const RS = 8; let radarMap = null;
   function prepRadar() {
-    const c = document.createElement('canvas'); c.width = MW * RS; c.height = MH * RS; const x = c.getContext('2d');
-    const FLOORC = { a: '#8a6a3a', b: '#8a6a3a', d: '#3e5276', t: '#74403a' };
-    for (let y = 0; y < MH; y += 1) for (let X = 0; X < MW; X += 1) { const ch = MAP[y][X]; const wall = WALLS[ch]; x.fillStyle = wall ? (ch === 'C' ? '#4a3420' : '#15120f') : FLOORC[ch] || RADAR_FLOOR[ch] || '#5c5852'; x.fillRect(X * RS, y * RS, RS, RS); if (PROPS[ch]) { x.fillStyle = '#4a3420'; x.fillRect(X * RS + 1, y * RS + 1, RS - 2, RS - 2); } if (ROOFS[ch]) { x.fillStyle = 'rgba(0,0,0,.22)'; x.fillRect(X * RS, y * RS, RS, RS); } }
-    x.fillStyle = '#b8ac90'; for (let y = 0; y < MH; y += 1) for (let X = 0; X < MW; X += 1) { if (!WALLS[MAP[y][X]]) continue; [[0, -1], [1, 0], [0, 1], [-1, 0]].forEach(([dx, dy]) => { if (wallAt(X + dx, y + dy)) return; x.fillRect(X * RS + (dx === 1 ? RS - 1 : 0), y * RS + (dy === 1 ? RS - 1 : 0), dx ? 1 : RS, dy ? 1 : RS); }); }
+    const c = document.createElement('canvas'); c.width = MW * RS; c.height = MH * RS; const x = c.getContext('2d'); const site = (X, y) => g.sites.some((st) => st.cells.some(([a, b]) => Math.floor(a) === X && Math.floor(b) === y));
+    for (let y = 0; y < MH; y += 1) for (let X = 0; X < MW; X += 1) { const m = matAt(X, y); const h = hAt(X, y); const k = Math.round(h * 36);
+      x.fillStyle = isWall(X, y) ? (m === 'T' ? '#0c0a09' : '#17130f') : m === 'k' ? '#5e4428' : site(X, y) ? `rgb(${140 + k},${108 + k},${60 + k})` : `rgb(${88 + k},${84 + k},${78 + k})`; x.fillRect(X * RS, y * RS, RS, RS);
+      if (roofAt(X, y) < 1e9) { x.fillStyle = 'rgba(0,0,0,.28)'; x.fillRect(X * RS, y * RS, RS, RS); } }
+    x.fillStyle = '#d8ccb0'; for (let y = 0; y < MH; y += 1) for (let X = 0; X < MW; X += 1) { const h = hAt(X, y); [[0, -1], [1, 0], [0, 1], [-1, 0]].forEach(([dx, dy]) => { const n = hAt(X + dx, y + dy); if (h - n < 0.3 || isWall(X + dx, y + dy)) return; x.fillRect(X * RS + (dx === 1 ? RS - 1 : 0), y * RS + (dy === 1 ? RS - 1 : 0), dx ? 1 : RS, dy ? 1 : RS); }); } // (edges: walls and ledges, on the high side)
+    props.forEach((q) => { x.fillStyle = '#4a3420'; x.beginPath(); x.arc(q.x * RS, q.y * RS, q.r * RS, 0, 6.2832); x.fill(); });
     radarMap = c;
   }
   function drawRadar() {
@@ -680,7 +760,7 @@
 <div class="sg-slots"></div><div class="sg-ammo"><div class="sg-wname"></div><div class="sg-rounds"><b class="sg-mag"></b><span class="sg-res"></span></div><div class="sg-ticks"></div></div>
 <div class="sg-menu" hidden></div><div class="sg-help">Click: take the mouse · WASD/ZQSD move · Shift walk · Ctrl crouch · Space jump · R reload · 1 2 3 4 weapons · G throw · E plant/defuse · B buy · F inspect · Tab scores · K knife · Esc pause</div></div>`;
     document.body.append(root);
-    cv = root.querySelector('canvas'); ctx = cv.getContext('2d'); img = ctx.createImageData(W, H); buf = new Uint32Array(img.data.buffer); zbuf = new Float32Array(W);
+    cv = root.querySelector('canvas'); ctx = cv.getContext('2d'); img = ctx.createImageData(W, H); buf = new Uint32Array(img.data.buffer); zbuf = new Float32Array(W * H);
     const q = (sel) => root.querySelector(sel);
     ui = { radar: q('.sg-radar'), time: q('.sg-time'), round: q('.sg-round'), sides: [...root.querySelectorAll('.sg-side')], cash: q('.sg-cash'), delta: q('.sg-delta'), feed: q('.sg-feed'), msg: q('.sg-msg'), banner: q('.sg-banner'), prog: q('.sg-prog'), spec: q('.sg-spec'),
       hp: q('.sg-hp'), ar: q('.sg-ar'), kegc: q('.sg-kegc'), slots: q('.sg-slots'), ammo: q('.sg-ammo'), wname: q('.sg-wname'), mag: q('.sg-mag'), res: q('.sg-res'), ticks: q('.sg-ticks'), menu: q('.sg-menu'), help: q('.sg-help') };
@@ -783,7 +863,7 @@
       if (act === 'knife') forge();
       if (act === 'sens-' || act === 'sens+') { settings.sens = clamp(settings.sens * (act === 'sens+' ? 1.15 : 1 / 1.15), 0.0002, 0.006); saveSettings(); pauseMenu(); }
       if (act === 'fov-' || act === 'fov+') { settings.fov = clamp(settings.fov + (act === 'fov+' ? 0.08 : -0.08), 1.1, 2); saveSettings(); pauseMenu(); }
-      if (act === 'quality') { settings.quality = ((settings.quality ?? 1) + 1) % QUALITY.length; saveSettings(); [W, H] = QUALITY[settings.quality]; cv.width = W; cv.height = H; img = ctx.createImageData(W, H); buf = new Uint32Array(img.data.buffer); zbuf = new Float32Array(W); pauseMenu(); }
+      if (act === 'quality') { settings.quality = ((settings.quality ?? 1) + 1) % QUALITY.length; saveSettings(); [W, H] = QUALITY[settings.quality]; cv.width = W; cv.height = H; img = ctx.createImageData(W, H); buf = new Uint32Array(img.data.buffer); zbuf = new Float32Array(W * H); pauseMenu(); }
       if (act === 'invert') { settings.invert = !settings.invert; saveSettings(); pauseMenu(); }
       if (act === 'diff') { g.difficulty = { easy: 'normal', normal: 'hard', hard: 'easy' }[g.difficulty]; store('siege-diff', g.difficulty); pauseMenu(); }
       if (act === 'again') { const o = g.opts; stop(); start(o); }
