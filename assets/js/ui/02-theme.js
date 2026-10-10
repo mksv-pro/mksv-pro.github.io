@@ -41,7 +41,7 @@ function applyTheme(theme, persist) {
       document.head.append(s);
     });
     const parsed = document.readyState === 'loading' ? new Promise((r) => document.addEventListener('DOMContentLoaded', r, { once: true })) : Promise.resolve(); // (the page's other scripts first: the castle is handed their functions)
-    hoursLoading ||= parsed.then(() => load(ARMS_SRC)).then(() => load(TEX_SRC)).then(() => load(ART_SRC)).then(() => load(PHYSICS_SRC)).then(() => load(HOURS_SRC)).then(() => window.Hours.start({
+    hoursLoading ||= parsed.then(() => load(ARMS_SRC)).then(() => load(PALETTE_SRC)).then(() => load(TEX_SRC)).then(() => load(ART_SRC)).then(() => load(PHYSICS_SRC)).then(() => load(HOURS_SRC)).then(() => window.Hours.start({
       plate: document.querySelector('.plate-img'),
       sky: () => skyAt(skyNow()),
       reduceMotion,

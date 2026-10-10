@@ -304,6 +304,7 @@
     q: () => step(3), e: () => step(1),
     Enter: act, ' ': act,
     '<': close,
+    '>': () => { if (opts.deeper) { close(); opts.deeper(); } }, // (a stair further down: the game)
     m: () => opts.map(room),
     i: () => opts.inventory(),
     ',': () => { msg.textContent = room ? opts.pickUp(room) : 'There is nothing here to pick up.'; },
@@ -326,8 +327,9 @@
   <button type="button" data-k="Enter">[read]</button>
   <button type="button" data-k="m">[map]</button>
   <button type="button" data-k="<">[climb]</button>
+  <button type="button" data-k=">">[deeper]</button>
 </div>
-<p class="dg-keys">arrows or WASD &middot; Q E strafe &middot; Enter reads a plaque or a label &middot; m map &middot; Esc or &lt; climbs back</p>`;
+<p class="dg-keys">arrows or WASD &middot; Q E strafe &middot; Enter reads a plaque or a label &middot; m map &middot; Esc or &lt; climbs back &middot; &gt; goes deeper, to the siege</p>`;
     document.body.append(dlg);
     canvas = dlg.querySelector('canvas');
     ctx = canvas.getContext('2d');

@@ -84,19 +84,22 @@ CASES = {
                     "if (window !== top) await new Promise(() => {}); enterEngine(); await wait(5000); const f = document.querySelector('.engine-win iframe').contentWindow;"
                     " f.openCmd(); f.run('cd work'); await wait(800); f.run('look'); await wait(300); window.saw = /working model/.test(f.document.getElementById('cmd-out').textContent);",
                     "window.saw && document.documentElement.dataset.room === 'work' && document.querySelectorAll('.engine-gear').length === 3"),
+    "siege": ("?theme=dark", (1600, 900),  # (the game under the castle: it loads, a round is bought and fought)
+              "await wait(1000); openCmd(); run('siege'); await wait(10000); window.st = Siege.state();",
+              "!!document.querySelector('.siege canvas') && window.st && window.st.phase !== 'buy' && window.st.round >= 1"),
     "room-to-banner": ("?theme=hours&sky=noon&weather=clear#teaching", (1600, 900),  # (a room, then the window turns upright: the banner shows the landscape)
                        "await wait(2500); document.documentElement.classList.add('banner'); document.documentElement.setAttribute('data-theme', 'dark'); await wait(800);",
                        "/^Pixel-art landscape/.test(document.querySelector('.plate-img').getAttribute('aria-label')) && " + CANVAS),
     "terminal": ("?theme=dark", (1600, 900), "", "document.documentElement.getAttribute('data-theme') === 'dark'"),
     # a bare visit: the front gate asks how; the castle's choice lifts it; a section's link skips it
     "gate": ("", (1920, 1080), "await wait(1500);", "document.documentElement.classList.contains('gated') && !!document.querySelector('#gate canvas')"),
-    "gate-castle": ("", (1920, 1080), "await wait(800); document.querySelector('[data-gate=castle]').click(); await wait(1500);", "!document.documentElement.classList.contains('gated') && !document.getElementById('gate')"),
+    "gate-castle": ("", (1920, 1080), "await wait(800); document.querySelector('[data-gate=castle]').click(); await wait(4500);", "!document.documentElement.classList.contains('gated') && !document.getElementById('gate')"),
     "gate-terminal": ("", (1920, 1080), "if (window !== top) await new Promise(() => {}); await wait(800); document.querySelector('[data-gate=terminal]').click(); await wait(9000);", "document.documentElement.classList.contains('engine-on') && !!document.querySelector('.engine-win iframe')"),
     # the rooms that grow with the years, given 40 things each (?fill): what does not fit is in an archive
     **{f"fill-{r}": (f"?theme=hours&sky=noon&weather=clear&fill=40#{r}", (1920, 1080), "await wait(3500);",
                      "[...document.querySelectorAll('.spot')].some((b) => /more\\)/.test(b.getAttribute('aria-label') || b.textContent || b.title || ''))")
        for r in ("experience", "work", "publications", "talks", "teaching", "news")},
-    "gate-tour": ("", (1920, 1080), "if (window !== top) await new Promise(() => {}); await wait(800); document.querySelector('[data-gate=tour]').click(); await wait(6000);",
+    "gate-tour": ("", (1920, 1080), "if (window !== top) await new Promise(() => {}); await wait(800); document.querySelector('[data-gate=tour]').click(); await wait(9500);",
                   "!document.documentElement.classList.contains('gated') && /village/.test(document.querySelector('.msg-text').textContent)"),
     "gate-keep": ("", (1920, 1080), "if (window !== top) await new Promise(() => {}); await wait(800); document.getElementById('gate-keep').checked = true; document.querySelector('[data-gate=castle]').click(); await wait(1500); window.kept = localStorage.getItem('gate'); localStorage.removeItem('gate');",
                   "window.kept === 'castle'"),
@@ -142,7 +145,7 @@ PROBE = """<script>(() => {
   }, 2000));
 })();</script>"""
 # firefox --screenshot shoots at the load event and quits: a slow image holds the event back while the case runs
-HOLD_S = 12
+HOLD_S = 14
 HOLD = '<img src="/__hold" alt="" style="position:fixed;width:1px">'
 GIF = bytes.fromhex("47494638396101000100800000000000ffffff21f90401000000002c00000000010001000002024401003b")
 

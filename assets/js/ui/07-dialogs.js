@@ -191,7 +191,16 @@ function descend() {
     inventory: showInventory,
     read: (id) => goTo(id),
     vintages: () => vintages().map((v) => v.note),
+    deeper: () => siege(), // (a stair further down: the game)
   }));
+}
+/* The game under the castle (assets/js/game/): its colours, textures, arms, bots and engine, loaded in
+   that order on the first visit; Esc pauses it, its menu leaves it. */
+let siegeLoading = null;
+function siege() {
+  const load = (src) => new Promise((resolve, reject) => { const s = document.createElement('script'); s.src = src; s.onload = resolve; s.onerror = reject; document.head.append(s); });
+  siegeLoading ||= [PALETTE_SRC, TEX_SRC, ...SIEGE_SRC].reduce((p, src) => p.then(() => (src.includes('palette') && window.HOURS_PALETTE) || (src.includes('textures') && window.TEXTURES) ? null : load(src)), Promise.resolve());
+  siegeLoading.then(() => { document.querySelectorAll('dialog[open]').forEach((d) => d.close()); if (cmdOpen()) closeCmd(); window.Siege.start({ onLeave: () => {} }); });
 }
 /** Each year of study as a wine (the descent's racks, the tower's cellar): its year, a tasting note, its courses. */
 function vintages() {

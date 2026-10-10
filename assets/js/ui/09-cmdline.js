@@ -212,6 +212,8 @@ function run(line) {
       return print(esc(useItem(arg || 'a')));
     case 'rumour': case 'rumor': case 'listen':
       return print(esc(T.rumour(RUMOURS[Math.floor(Math.random() * RUMOURS.length)])));
+    case 'siege': case 'game': case 'undercroft': // the game under the castle
+      closeCmd(); siege(); return undefined;
     case 'descend': case '>': case 'down':
       closeCmd();
       return descend();
@@ -342,7 +344,7 @@ cmdForm.addEventListener('submit', (e) => {
 /* Tab completes the word under the cursor: a command or a room first, then what that command
    takes; one match is completed, several are completed to their common start and listed. */
 const COMMANDS = ['help', 'look', 'ls', 'map', 'cd', 'take', 'inventory', 'use', 'rumour', 'descend',
-  'cv', 'mail', 'github', 'theme', 'sky', 'weather', 'event', 'photo', 'tour', 'tower', 'village', 'banner', 'music', 'volume', 'keys', 'quit', 'clear', 'go', 'gate', 'search', 'whoami', 'history', 'paper', 'glass', 'examine', 'textures'];
+  'cv', 'mail', 'github', 'theme', 'sky', 'weather', 'event', 'photo', 'tour', 'tower', 'village', 'banner', 'music', 'volume', 'keys', 'quit', 'clear', 'go', 'gate', 'search', 'whoami', 'history', 'paper', 'glass', 'examine', 'textures', 'siege'];
 const roomWords = () => ROOM_IDS.map((id) => WORLD[id].label.toLowerCase());
 const ARGS = {
   cd: roomWords, open: roomWords, go: () => ['north', 'south', 'east', 'west'], walk: () => ['north', 'south', 'east', 'west'],
