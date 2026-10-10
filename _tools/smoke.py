@@ -96,7 +96,7 @@ CASES = {
                     " g.player.slot = 3; g.drawAt = -9; g.inspect = 0; await wait(700);",
                     "!!document.querySelector('.siege canvas')"),
     "siege-bots": ("?theme=dark", (1600, 900),  # (two minutes run ahead without drawing: the bots fight, plant or defuse, rounds end)
-                   "await wait(1000); openCmd(); run('siege'); await wait(2500); const g = Siege.debug(); g.player.hp = 1e9; Siege.sim(120); window.st = Siege.state(); window.fallen = g.feed.length;",
+                   "await wait(1000); openCmd(); run('siege'); await wait(2500); const g = Siege.debug(); g.player.hp = 1e9; Siege.sim(200); window.st = Siege.state(); window.fallen = g.feed.length;",
                    "window.st && (window.st.round >= 2 || window.fallen >= 3)"),
     "room-to-banner": ("?theme=hours&sky=noon&weather=clear#teaching", (1600, 900),  # (a room, then the window turns upright: the banner shows the landscape)
                        "await wait(2500); document.documentElement.classList.add('banner'); document.documentElement.setAttribute('data-theme', 'dark'); await wait(800);",
