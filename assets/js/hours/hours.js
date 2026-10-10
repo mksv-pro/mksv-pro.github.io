@@ -2785,6 +2785,11 @@ qqqqqTqqq
         [[4, 0], [10, 1], [17, 0]].forEach(([dx, dy]) => rect(kx + dx, ky - 3 - dy, 5, 3, I.BEARD_HI)); // the letters showing
       }
       for (let k = 0; k < 7; k += 1) set(S(0.1) + Math.floor(rng() * S(0.8)), floorY(0.2 + rng() * 0.6), I.BEARD_SH); // feathers
+      { // the feeder: a wooden trough of grain on the floor; a click brings the ravens down to it
+        const fx = S(0.3); const fy = floorY(0.45); rect(fx - 6, fy - 2, 13, 2, I.TIMBER); rect(fx - 6, fy - 3, 13, 1, I.TIMBER_HI); for (let k = -5; k <= 5; k += 2) set(fx + k, fy - 4, I.WHEAT);
+        deco.push({ type: 'feeder', x: fx, y: fy - 4 });
+        extra.push({ t: { kind: 'feeder', label: 'The ravens\' feeder', act: () => feedRavens() }, b: box(fx - 7, fy - 6, 15, 7) });
+      }
     } else if (kind === 'maproom') { // the map room: the realm engraved large on the back wall (as drawRealm), a pennant for each place
       const mx0 = S(0.08); const mx1 = S(0.92); const my0 = 14; const my1 = yf - 34; const Wm = mx1 - mx0; const Hm = my1 - my0;
       rect(mx0 - 3, my0 - 3, Wm + 6, Hm + 6, I.TIMBER); rect(mx0 - 3, my0 - 3, Wm + 6, 1, I.TIMBER_HI); rect(mx0 - 3, my1 + 2, Wm + 6, 1, I.TIMBER_SH); // its frame
@@ -2849,6 +2854,11 @@ qqqqqTqqq
       }
       const cr = Math.max(4, Math.min(7, Math.floor((S(0.98) - S(0.66)) / 4.4))); const cx0 = S(0.66) + cr;
       const lid = cask(cx0, yf - 1, cr); cask(cx0 + 2 * cr + 2, yf + 1, cr); // two, one a little nearer
+      [[cx0, yf - 1], [cx0 + 2 * cr + 2, yf + 1]].forEach(([xc, yb], k) => { // each knocked on (how full it sounds) or drawn from at its spigot
+        const h = Math.round(cr * 2.6); rect(xc - 1, yb - Math.round(h * 0.3), 2, 1, I.GOLD_SH); set(xc - 2, yb - Math.round(h * 0.3), I.GOLD); // (the spigot)
+        extra.push({ t: { kind: 'cask', label: `The ${k ? 'nearer' : 'farther'} cask`, act: () => caskTap(k) }, b: box(xc - cr, yb - h, 2 * cr + 1, Math.round(h * 0.6)) });
+        extra.push({ t: { kind: 'spigot', label: `The ${k ? 'nearer' : 'farther'} cask's spigot`, act: () => caskDraw(k, xc - 2, yb - Math.round(h * 0.3)) }, b: box(xc - 3, yb - Math.round(h * 0.3) - 2, 5, 5) });
+      });
       candle(cx0, lid - 1, false);
       // (the way down is not drawn: the descent is the status line's Rank, > or `descend`)
       { // a cobweb in the vault's left corner; a drop forming on the vault, falling now and then (drawInterior)
@@ -2860,6 +2870,7 @@ qqqqqTqqq
       lantern(S(0.66), Math.round(H * 0.3));
     } else { // contact: the letterbox in the door, a lodestone and the register on the table, a map of Paris
       const a = S(0.42); const b = S(0.62); const dt = yf - 52; door(a, b, dt); // (a great door: ~1.7 adults)
+      deco.push({ type: 'portcullis', a, b, t: dt }); // (its iron grid before the door, raised by the winch: drawInterior)
       lantern(b + 6, dt + 14);
       for (let k = 0; k < 3; k += 1) { set(a - 6 + k * 2, dt + 18, I.GOLD); set(a - 6 + k * 2, dt + 19, I.GOLD_SH); }
       const tb = table3d(S(0.2), Sw(0.26));
@@ -3007,13 +3018,15 @@ qqqqqTqqq
         deco.push({ type: 'globe', x: cx, y: cy, r: 4.2 });
       }
       const pubs0 = things.map((t, i) => [t, i]).filter(([t]) => t.kind === 'book');
+      const onLectern = [...pubs0, ...things.map((t, i) => [t, i]).filter(([t]) => t.kind === 'volume')]; // (it turns: the works, then the catalogue's volumes)
       const lx = pubs0.length ? floorFree([S(0.32), S(0.68), S(0.26), S(0.74), S(0.2), S(0.8), S(0.38), S(0.62)], 0.72, 13, 8) : null;
       if (lx !== null) { // a reading lectern, the newest work open on it (its card: that work's)
         const fy = floorY(0.72); const top = fy - 17;
         rect(lx + 5, top + 5, 3, fy - top - 5, I.TIMBER_SH); rect(lx + 1, fy - 1, 11, 1, I.TIMBER_SH); // its post and foot
         for (let k = 0; k < 13; k += 1) set(lx + k, top + 3 + Math.floor(k / 5), I.TIMBER_HI);
-        openBook(lx, top + 2, 13);
-        extra.push({ t: { ...pubs0[0][0], label: `On the lectern: ${pubs0[0][0].label}` }, b: box(lx - 1, top - 3, 15, fy - top + 3) });
+        openBook(lx, top + 2, 13); const lt = onLectern[lecternIx % onLectern.length][0];
+        rect(lx + 6, top + 1, 1, 3, BOOK[lecternIx % BOOK.length]); // (its ribbon, the book's colour: another book, another colour)
+        extra.push({ t: { ...lt, kind: 'lectern', book: lt.kind, label: `On the lectern: ${lt.label}`, count: onLectern.length }, b: box(lx - 1, top - 3, 15, fy - top + 3) });
       }
     } else if (kind === 'talks') {
       const cl = deco.find((d) => d.type === 'astroclock');
@@ -3041,8 +3054,8 @@ qqqqqTqqq
       p = placeOn([S(0.64), S(0.66)], 74, 12, 9);
       if (p) { rect(p[0], p[1], 12, 6, I.TIMBER); rect(p[0], p[1], 12, 1, I.TIMBER_HI); for (let k = 0; k < 3; k += 1) { set(p[0] + 2 + k * 4, p[1] + 2, I.ARM_SH); rect(p[0] + 2 + k * 4, p[1] + 3, 1, 4 + (k % 2), I.GOLD); set(p[0] + 3 + k * 4, p[1] + 6 + (k % 2), I.GOLD_SH); } } // the keys on their board
       p = placeOn([BR - 22, BR - 26, S(0.86)], 26, 17, 17);
-      if (p) { // the winch of the portcullis: a spoked wheel, its chain going up
-        const cx = p[0] + 8; const cy = p[1] + 8;
+      if (p) { // the winch of the portcullis: a spoked wheel, its chain going up (turned: a drag, or a click to raise or lower it all)
+        const cx = p[0] + 8; const cy = p[1] + 8; extra.push({ t: { kind: 'winch', label: 'The winch of the portcullis', act: () => winchTo(gate.to > 0.5 ? 0 : 1) }, b: box(cx - 8, cy - 8, 17, 17) });
         for (let q = 0; q < 6.28; q += 0.05) { set(cx + Math.round(Math.cos(q) * 7), cy + Math.round(Math.sin(q) * 7), I.TIMBER); set(cx + Math.round(Math.cos(q) * 6), cy + Math.round(Math.sin(q) * 6), I.TIMBER_SH); }
         for (let q = 0; q < 6.28; q += 6.28 / 6) for (let r = 0; r < 6; r += 1) set(cx + Math.round(Math.cos(q) * r), cy + Math.round(Math.sin(q) * r), I.TIMBER_HI);
         rect(cx - 1, cy - 1, 3, 3, I.ARM_SH); for (let yy = 4; yy < cy - 7; yy += 1) set(cx + 7, yy, yy % 2 ? I.ARM_SH : I.ARM);
@@ -5818,9 +5831,18 @@ qqqqqTqqq
         for (let y = 4 - top; y < 4; y += 1) put(d.x, d.y + y, P('GOLD'));
         for (let y = 0; y < bot; y += 1) { put(d.x, d.y + 7 - y, P('GOLD')); if (y < bot - 1) { put(d.x - 1, d.y + 7 - y, P('GOLD_SH')); put(d.x + 1, d.y + 7 - y, P('GOLD_SH')); } }
         if (k > 0 && k < 1 && Math.floor(t * 6) % 2) put(d.x, d.y + 5, P('GOLD_HI'));
-      } else if (d.type === 'raven') { // at home in its pigeonhole: it turns round now and then, blinks
-        const sp = (Math.floor((t + d.ph) / 6) % 3 === 2 && !reduce) ? (SPRITES.ravenL ||= flip(SPRITES.raven)) : SPRITES.raven;
-        for (let y = 0; y < sp.h; y += 1) for (let x = 0; x < sp.w; x += 1) { const c = sp.px[y * sp.w + x]; if (c >= 0) put(d.x + x, d.y + y, ipal32[c]); }
+      } else if (d.type === 'raven') { // at home in its pigeonhole: it turns round now and then, blinks; fed, down to the trough and back
+        let x0 = d.x; let y0 = d.y; let sp = (Math.floor((t + d.ph) / 6) % 3 === 2 && !reduce) ? (SPRITES.ravenL ||= flip(SPRITES.raven)) : SPRITES.raven;
+        const fd = feeding && interior.deco.find((q) => q.type === 'feeder');
+        if (fd) {
+          const e = t - feeding.t0 - (d.ph % 1) * 0.6; const k2 = interior.deco.indexOf(d) % 5; const tx = fd.x - 6 + k2 * 3; const ty = fd.y - sp.h + 1;
+          const fly = (f) => [d.x + (tx - d.x) * f, d.y + (ty - d.y) * f - Math.sin(f * Math.PI) * 10];
+          if (e > 0 && e < 1.2) { [x0, y0] = fly(e / 1.2); if (Math.floor(t * 10) % 2) y0 -= 1; }
+          else if (e >= 1.2 && e < 6) { x0 = tx; y0 = ty + (Math.floor(t * 4 + k2) % 3 === 0 ? 1 : 0); sp = tx > fd.x ? (SPRITES.ravenL ||= flip(SPRITES.raven)) : SPRITES.raven; }
+          else if (e >= 6 && e < 7.2) { [x0, y0] = fly(1 - (e - 6) / 1.2); }
+          if (t - feeding.t0 > 8) feeding = null;
+        }
+        for (let y = 0; y < sp.h; y += 1) for (let x = 0; x < sp.w; x += 1) { const c = sp.px[y * sp.w + x]; if (c >= 0) put(Math.round(x0) + x, Math.round(y0) + y, ipal32[c]); }
       } else if (d.type === 'drip') { // a drop swells on the vault for four seconds, falls in a third of one, splashes
         const ph = reduce ? 0 : (t % 5) / 5; const blue = [150, 175, 200];
         if (ph < 0.8) blend(d.x, d.y + Math.floor(ph * 2.5), blue, 0.4 + ph * 0.6);
@@ -5978,6 +6000,27 @@ qqqqqTqqq
           const day = p3[0] * sun[0] + p3[1] * sun[1] + p3[2] * sun[2] > -0.05 * bayer(d.x + x, d.y + y);
           put(d.x + x, d.y + y, P(day ? (land ? (lat / deg < -66 ? 'SNOW' : 'FERN') : q < 0.3 && u + v < 0 ? 'WATER_HI' : 'WATER') : land ? 'FG_PINE' : 'T_NAVY'));
         }
+      } else if (d.type === 'anvil') { // the bar of iron, on the anvil or in the fire, glowing as hot as it is
+        const T = barTemp(t); const gl = glowOf(T); const hf = interior.flames.find((q) => q.hearth);
+        const [bx, by] = bar.where === 'fire' && hf ? [hf.x - 5, hf.y - 2] : [d.x + 3, d.y - 1];
+        for (let k = 0; k < 10; k += 1) put(bx + k, by, gl ? pack(gl) : P('ARM_SH'));
+        if (gl) for (let k = -1; k <= 10; k += 2) blend(bx + k, by - 1, gl, 0.35);
+        if (interior.struck && t - interior.struck < 0.4 && bar.where === 'anvil' && T > 950) for (let k = 0; k < 8; k += 1) { const a = k * 0.8; const r = (t - interior.struck) * 30; put(bx + 5 + Math.round(Math.cos(a) * r), by - Math.abs(Math.round(Math.sin(a) * r)), P(k % 2 ? 'FL_YEL' : 'GOLD_HI')); }
+      } else if (d.type === 'portcullis') { // the door behind opens on the day as it rises; its bars stripe the light on the floor
+        const dt = Math.min(0.05, t - (gate.at || t)); gate.at = t; if (gate.lift !== gate.to) { gate.lift += Math.sign(gate.to - gate.lift) * Math.min(Math.abs(gate.to - gate.lift), dt / 3); if (!reduce && Math.random() < 0.15) sfx('tick'); }
+        const H0 = interior.yf; const up = Math.round(gate.lift * (H0 - d.t));
+        const day = 1 - look.night; const nightK = look.night > 0.5;
+        if (gate.lift > 0.15) for (let y = d.t; y < H0; y += 1) for (let x = d.a; x < d.b; x += 1) { // (the door open: the sky, the far hills, the road going off)
+          const r = (d.b - d.a) / 2; const ax = (x + 0.5 - d.a - r) / r; const ay = (y - d.t - r) / r; if (!(y >= d.t + r || ax * ax + ay * ay <= 1)) continue;
+          const f = (y - d.t) / (H0 - d.t); const hill = 0.62 + 0.05 * Math.sin(x * 0.7) + 0.03 * Math.sin(x * 1.9); const road = Math.abs(x - (d.a + d.b) / 2) < (f - 0.75) * (d.b - d.a) * 1.4;
+          const c = f > 0.75 ? (road ? (nightK ? [70, 60, 55] : [207, 167, 126]) : (nightK ? [30, 50, 40] : [90, 140, 70])) : f > hill ? (nightK ? [24, 40, 36] : [70, 120, 90]) : mix(nightK ? [20, 26, 50] : [120, 165, 215], nightK ? [40, 50, 80] : [215, 228, 236], f / hill);
+          put(x, y, pack(c));
+        }
+        for (let y = Math.max(d.t, d.t - up); y < H0 - up; y += 1) for (let x = d.a; x < d.b; x += 1) if ((x - d.a) % 4 === 1 || (y - d.t + up) % 5 === 2) put(x, y, P(((x - d.a) % 4 === 1) ? 'ARM_SH' : 'OUTLINE')); // the grid, what of it is still down
+        if (gate.lift > 0.15 && day > 0.2) for (let y = H0; y < interior.H; y += 1) { const k = (y - H0) / (interior.H - H0); const w0 = (d.b - d.a) * (1 + k * 1.2); const x0 = (d.a + d.b) / 2 - w0 / 2;
+          for (let x = Math.floor(x0); x < x0 + w0; x += 1) { const barred = gate.lift < 0.97 && Math.floor((x - x0) / (w0 / ((d.b - d.a) / 4))) % 2 === 0 && k < 1 - gate.lift; blend(x, y, [255, 240, 200], (barred ? 0.05 : 0.28) * day * gate.lift * (1 - k * 0.6)); } }
+      } else if (d.type === 'feeder') { // the grain: pecked at while the ravens are down
+        if (pour && t - pour.t0 < 1.5) for (let k = 0; k < 4; k += 1) blend(pour.x, pour.y + 1 + ((t * 12 + k) % 5), [120, 20, 40], 0.8);
       } else if (d.type === 'inked') { // the visitor's drawing on the copyist's page, a few dark strokes as small as the page
         const n = Math.min(14, Math.ceil(inkOf() / 12)); for (let k = 0; k < n; k += 1) put(d.x + ((k * 5) % 8), d.y + ((k * 3) % 3) - Math.floor(((k * 5) % 8) / 3), P('OUTLINE'));
       } else if (d.type === 'gear') { // a brass wheel: a solid disc, its rim, spokes and teeth that turn, the axle
@@ -5991,6 +6034,7 @@ qqqqqTqqq
       }
     });
     drawGuide(t, put, blend);
+    if (pour && t - pour.t0 < 1.5) for (let k = 0; k < 4; k += 1) blend(pour.x, pour.y + 1 + Math.floor((t * 12 + k) % 6), [110, 16, 36], 0.85); // (wine from the spigot)
     if (flight && interior.sills.length) { // the raven leaving by the window: across its sky, smaller as it goes
       const e = (t - flight.t0) / 1.6; const sl = interior.sills[0];
       if (e >= 1) flight = null;
@@ -6532,6 +6576,39 @@ qqqqqTqqq
      staff and a trail of sparks goes from its orb to a thing not yet looked at, which glints; once a visit of the room. */
   const session0 = (k, v) => { try { if (v === undefined) return sessionStorage.getItem(k); sessionStorage.setItem(k, v); } catch { /* (no storage: every load) */ } return null; };
   let inkOf = () => 0; let pinsOf = () => [];
+  /* The workshop's bar of iron: on the anvil, into the fire (a click on the anvil), out again (a click on the
+     hearth), hammered while hot. Its temperature runs to the fire's (up to 1450 K, 10 s) in it, back to the room's
+     (Newton, 60 s) out of it; its glow the colour of a black body at that temperature (none below the
+     Draper point, 798 K: dark iron). */
+  const bar = { where: 'anvil', T: 293, at: 0 };
+  function barTemp(t) { const dt = Math.min(600, t - (bar.at || t)); bar.at = t; const goal = bar.where === 'fire' ? 1450 * (0.6 + 0.4 * heatOf()) : 293; bar.T = goal + (bar.T - goal) * Math.exp(-dt / (bar.where === 'fire' ? 10 : 60)); return bar.T; }
+  const glowOf = (T) => (T < 798 ? null : T < 950 ? [120 + (T - 798) * 0.6, 22, 12] : T < 1150 ? [220, 40 + (T - 950) * 0.5, 14] : T < 1350 ? [250, 140 + (T - 1150) * 0.45, 40] : [255, 235, 170]);
+  const glowName = (T) => (T < 798 ? 'dark' : T < 950 ? 'a dull red' : T < 1100 ? 'cherry red' : T < 1250 ? 'orange' : T < 1400 ? 'yellow' : 'near white');
+  const barLine = (T) => `The bar is ${glowName(T)}, about ${Math.round(T)} K (${Math.round(T - 273)} °C)`;
+  /* The library's lectern turns from book to book (a drag on it, or its arrow keys): which one is open. */
+  let lecternIx = 0;
+  /* The cellar's casks: how full (kept on this device); knocked on, an emptier one rings lower and longer
+     (the air inside a Helmholtz resonator: f goes as one over the square root of its volume). */
+  const casks = (() => { try { return JSON.parse(localStorage.getItem('casks')) || [0.9, 0.55]; } catch { return [0.9, 0.55]; } })();
+  let pour = null;
+  function caskTap(k) {
+    const lv = casks[k]; const f = Math.round(150 / Math.sqrt(Math.max(0.05, 1 - lv)));
+    sfx('knock', { f, ring: 1 - lv });
+    say(`${lv > 0.85 ? 'Full' : lv > 0.6 ? 'Two-thirds full' : lv > 0.4 ? 'Half full' : lv > 0.15 ? 'Low' : 'All but empty'}: it answers ${lv > 0.6 ? 'with a dull knock' : 'with a hollow boom'}, about ${f} Hz.`);
+  }
+  function caskDraw(k, x, y) {
+    if (casks[k] < 0.05) { say('Nothing comes out: this one is dry.'); return; }
+    casks[k] = Math.max(0, casks[k] - 0.1); pour = { x, y, t0: now() }; sfx('pour');
+    try { localStorage.setItem('casks', JSON.stringify(casks)); } catch { /* (no storage: full again next time) */ }
+    say(`You draw a jug. The cask is ${Math.round(casks[k] * 100)}% full now.`);
+  }
+  /* The gatehouse's portcullis: 0 down, 1 up; the winch turns it there (a few seconds), the door behind it
+     opens on the day once it is up, the light coming in barred by what is still down. */
+  const gate = { lift: 0, to: 0, at: 0 };
+  function winchTo(v) { gate.to = clamp(v); sfx('tick'); say(v > 0.5 ? 'You turn the winch: the portcullis rises, chain by chain.' : 'You let it down.'); if (!running) render(now()); }
+  /* The rookery's ravens come down to the feeder (a click on it), peck, and go back to their holes. */
+  let feeding = null;
+  function feedRavens() { feeding = { t0: now() }; sfx('flap'); setTimeout(() => sfx('caw'), 700); say('Grain in the trough: the ravens come down to it.'); }
   /* The schoolroom's chalk: taken (a click on it), it draws on the board where the pointer drags,
      a double-click wipes round it with the rag; put down with a click or Esc. Kept on this device. */
   let board = null; const chalk = { on: false, px: new Set((() => { try { return JSON.parse(localStorage.getItem('chalk')) || []; } catch { return []; } })()) };
@@ -6592,10 +6669,16 @@ qqqqqTqqq
     const sl = interior.sills.find((q) => ix >= q.x0 - 1 && ix <= q.x0 + q.w && iy >= q.top && iy < q.y);
     if (sl) { const on = !opens.get(interior.id); opens.set(interior.id, on); reshape(); sfx(on ? 'glint' : 'drop'); say(on ? 'You open the window: the air of Paris comes in.' : 'You shut the window.'); return; }
     const f = interior.flames.find((q) => q.hearth && Math.abs(ix - q.x) <= q.w / 2 + 2 && iy > q.y - 18 && iy <= q.y + 2);
+    if (f && bar.where === 'fire' && interior.deco.some((q) => q.type === 'anvil')) { const T = barTemp(now()); bar.where = 'anvil'; sfx('glint'); say(`${barLine(T)}: out of the fire with the tongs, onto the anvil.${T > 950 ? ' Strike while it is hot (click the anvil).' : ''}`); return; }
     if (f) { fireFed = now(); interior.toldEmbers = false; say(heatOf() > 0.9 ? 'You put a log on the fire; it catches and roars.' : 'The fire burns well.'); sfx('crackle'); return; }
     const pick = (a) => a[Math.floor(Math.random() * a.length)];
     const an = interior.deco.find((q) => q.type === 'anvil' && ix >= q.x - 2 && ix < q.x + q.w + 2 && iy >= q.y - 2 && iy < q.y + q.h);
-    if (an) { interior.struck = now(); sfx('anvil'); return; }
+    if (an) {
+      const T = barTemp(now());
+      if (bar.where === 'anvil' && T > 950) { interior.struck = now(); bar.T -= 30; sfx('anvil'); say(`${barLine(bar.T)}. Clang: it gives a little under the hammer.`); return; }
+      if (bar.where === 'anvil') { bar.where = 'fire'; sfx('crackle'); say(`${barLine(T)}: too cold to forge. Into the fire with it (click the hearth to take it out).`); return; }
+      interior.struck = now(); sfx('anvil'); return;
+    }
     const dw = interior.deco.find((q) => q.type === 'dweller' && ix >= q.x && ix < q.x + q.w && iy >= q.y && iy < q.y + q.h);
     if (dw) { dw.act = now(); sfx(GESTURE_CUE[dw.kind] || 'steps', { floor: 'stone', n: 2 }); return; }
     const m = interior.deco.find((q) => q.type === 'master');
@@ -7272,6 +7355,13 @@ qqqqqTqqq
     reveal(on) { if (revealing !== on) { revealing = on; if (!running && interior) render(now()); } },
     /** A key 1 to 8 just after the bell was rung: a note of the carillon (true when taken). */
     carillon(k) { if (now() > carillonUntil || view.state !== 'scene') return false; carillonUntil = now() + 15; scene.ringUntil = now() + 1; sfx('carillon', { k }); return true; },
+    /** The library's lectern turned a book on (dir 1) or back (-1). */
+    lectern(dir) {
+      const lt = interior && interior.things.find((q) => q.kind === 'lectern'); if (lt && lt.count < 2) { say('One book on the lectern so far: it turns when there are more.'); return; }
+      lecternIx = (lecternIx + dir + 64) % 64; sfx('page'); this.refresh();
+    },
+    /** The gatehouse winch turned by a drag: dy room px (down raises). */
+    winchBy(dy) { gate.to = clamp(gate.to + dy / 40); if (!running) render(now()); },
     /** The room drawn again (a card pinned up or taken down). */
     refresh() { if (interior && view.id && view.state === 'room') { interior = makeInterior(view.id); lightInterior(); lifted = -1; openIx = -1; publishSpots(true); if (!running) render(now()); } },
     /** Texture `name` (textures.js) painted into canvas cv in its daylight colours. */

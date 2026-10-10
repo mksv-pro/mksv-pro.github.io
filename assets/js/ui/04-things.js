@@ -243,6 +243,21 @@ function setSpots(rects, items) {
       });
       b.addEventListener('click', (e) => { if (moved) { e.stopImmediatePropagation(); moved = false; } }); // (a drag is not a click)
     }
+    if (items[i].kind === 'lectern' || items[i].kind === 'winch') { // the lectern turns, the winch winds: a drag (or the arrow keys); a click still opens or turns all the way
+      let x0 = null; let y0 = 0; let moved = false; const lect = items[i].kind === 'lectern';
+      b.addEventListener('pointerdown', (e) => { x0 = e.clientX; y0 = e.clientY; moved = false; try { b.setPointerCapture(e.pointerId); } catch { /* (a pointer the browser no longer knows) */ } });
+      b.addEventListener('pointermove', (e) => {
+        if (x0 === null) return; const dx = e.clientX - x0; const dy = e.clientY - y0;
+        if (lect && Math.abs(dx) > 30) { moved = true; x0 = e.clientX; window.Hours.lectern(dx < 0 ? 1 : -1); }
+        else if (!lect && Math.abs(dy) > 3) { moved = true; y0 = e.clientY; window.Hours.winchBy(dy / 4); }
+      });
+      b.addEventListener('pointerup', () => { x0 = null; });
+      b.addEventListener('keydown', (e) => {
+        if (lect && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) { e.preventDefault(); e.stopPropagation(); window.Hours.lectern(e.key === 'ArrowRight' ? 1 : -1); }
+        if (!lect && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) { e.preventDefault(); e.stopPropagation(); window.Hours.winchBy(e.key === 'ArrowUp' ? 6 : -6); }
+      });
+      b.addEventListener('click', (e) => { if (moved) { e.stopImmediatePropagation(); moved = false; } }, true); // (a drag is not a click)
+    }
     b.dataset.kind = items[i].kind; b.dataset.i = String(i);
     const html = (Object.getOwnPropertyDescriptor(items[i], 'html') || {}).value; // (not a live card's getter: it runs on opening)
     if (/real-fig|astrolabe/.test(html || '')) b.dataset.detail = ''; // (a picture inside: the magnifier)
