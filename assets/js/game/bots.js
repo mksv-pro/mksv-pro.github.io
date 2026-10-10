@@ -29,7 +29,7 @@
   /** What a bot buys with its money, by side (the attackers' rifle, the defenders' own). */
   function buy(b, g) {
     const A = g.arms.W; const G = g.arms.GEAR; const spend = (p) => { if (b.money < p) return false; b.money -= p; return true; };
-    const rifle = b.team === 'att' ? 'arquebus' : 'caliver';
+    const rifle = Math.random() < 0.3 ? 'ak47' : b.team === 'att' ? 'arquebus' : 'caliver'; // (the cellar's rifle, now and then)
     if (b.money >= 6200 && Math.random() < 0.15 && !b.weapons[1]) { if (spend(A.greatbow.price)) g.give(b, 'greatbow'); }
     else if (b.money >= A[rifle].price + 1000 && !b.weapons[1]) { if (spend(A[rifle].price)) g.give(b, rifle); }
     else if (b.money >= 2000 && !b.weapons[1]) { const w = Math.random() < 0.5 ? 'repeater' : 'blunderbuss'; if (spend(A[w].price)) g.give(b, w); }

@@ -6,7 +6,8 @@
    the descent's stair); its arms in weapons.js, its bots in bots.js. */
 (function () {
   const ARMS = window.SIEGE_ARMS; const BOTS = window.SIEGE_BOTS; const PAL = window.HOURS_PALETTE; const TEX = window.TEXTURES;
-  const W = 640; const H = 360; // (the picture, scaled up whole to the screen)
+  let W = 960; let H = 540; // (the picture, scaled up whole to the screen: settings.quality picks it)
+  const QUALITY = [[640, 360], [960, 540], [1280, 720]];
   const WALL_H = 2.2; // a wall's height, in the units of the grid (a man is 0.86, his eyes at 0.62)
   const MAP = [ // # stone, W wood, R brick, M mossy stone, C crate; floors: . yard, a and b the keg's sites, d the defenders' gate, t the attackers'
     '#############MMMMMMMM#############',
@@ -37,12 +38,26 @@
   const MW = MAP[0].length; const MH = MAP.length;
   const WALLS = { '#': 'ashlar', W: 'planksUpright', R: 'brickRunning', M: 'mossyStone', C: 'staves' };
   const FLOORS = { '.': 'flagstones', a: 'mosaic', b: 'encaustic', d: 'cobbles', t: 'cobbles' };
-  const T = 32; // texture size
+  const T = 64; // texture size: each texture of textures.js at twice its own scale, given relief (texOf)
   const pack = (c) => (255 << 24) | (Math.max(0, Math.min(255, c[2] | 0)) << 16) | (Math.max(0, Math.min(255, c[1] | 0)) << 8) | Math.max(0, Math.min(255, c[0] | 0));
   const unpack = (v) => [v & 255, (v >> 8) & 255, (v >> 16) & 255];
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
-  const tex = {}; const texOf = (name) => (tex[name] ||= (() => { const t = new Uint32Array(T * T); const f = TEX[name].fn; for (let y = 0; y < T; y += 1) for (let x = 0; x < T; x += 1) t[y * T + x] = pack(PAL.colourOf(f(x, y))); return t; })());
+  /* A texture baked for the game: textures.js at twice its scale (its pattern keeps its size on a wall),
+     each texel shaded a little at random (grain), and lit or shadowed where its colour changes from the
+     texel above or to the left (a bevel: the joints sink, the stones stand out). */
+  const tex = {}; const texOf = (name) => (tex[name] ||= (() => {
+    const f = TEX[name].fn; const base = new Array(T * T);
+    for (let y = 0; y < T; y += 1) for (let x = 0; x < T; x += 1) base[y * T + x] = PAL.colourOf(f(x >> 1, y >> 1));
+    const lum = (c) => c[0] * 0.3 + c[1] * 0.59 + c[2] * 0.11; const t = new Uint32Array(T * T);
+    for (let y = 0; y < T; y += 1) for (let x = 0; x < T; x += 1) {
+      const c = base[y * T + x]; const up = base[((y + T - 1) % T) * T + x]; const lf = base[y * T + ((x + T - 1) % T)]; const dn = base[((y + 1) % T) * T + x];
+      const n = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; const grain = 0.94 + (n - Math.floor(n)) * 0.12;
+      const bevel = lum(c) - lum(up) > 18 || lum(c) - lum(lf) > 18 ? 1.14 : lum(dn) - lum(c) > 18 ? 0.8 : 1;
+      t[y * T + x] = pack(c.map((v) => v * grain * bevel));
+    }
+    return t;
+  })());
 
   /* ---- the actors' sprites, 24 x 48, painted from parts: a steel helmet, a face (or the back of a head),
      a tabard of the side's colour with its charge (the defenders a white cross, the attackers a gold
@@ -56,8 +71,8 @@
     const R = (x, y, w, h, c) => { for (let j2 = 0; j2 < h; j2 += 1) for (let i2 = 0; i2 < w; i2 += 1) P(x + i2, y + j2, c); };
     const cloth = team === 'def' ? [[70, 110, 230], [44, 72, 170], [28, 46, 120]] : [[224, 64, 50], [160, 36, 32], [104, 22, 22]];
     const steel = [[214, 220, 230], [150, 158, 172], [90, 96, 112]]; const skin = [[240, 190, 150], [206, 146, 110]]; const hose = [[96, 72, 56], [66, 50, 40]]; const boot = [[46, 36, 30], [26, 20, 18]];
-    if (pose === 'dead') { const st = soldier(team, view, 'idle', 0); const ang = [0.5, 1.1, Math.PI / 2][frame]; const out = { w: 48, h: 48, px: new Int32Array(48 * 48) };
-      for (let y = 0; y < 48; y += 1) for (let x = 0; x < 48; x += 1) { const dx = x - 24; const dy = y - 47; const sx = Math.round(dx * Math.cos(ang) + dy * Math.sin(ang) + 12); const sy = Math.round(-dx * Math.sin(ang) + dy * Math.cos(ang) + 47); if (sx >= 0 && sy >= 0 && sx < 24 && sy < 48) out.px[y * 48 + x] = st.px[sy * 24 + sx]; }
+    if (pose === 'dead') { const st = soldier(team, view, 'idle', 0); const ang = [0.5, 1.1, Math.PI / 2][frame]; const D = 96; const out = { w: D, h: D, px: new Int32Array(D * D) };
+      for (let y = 0; y < D; y += 1) for (let x = 0; x < D; x += 1) { const dx = x - D / 2; const dy = y - (D - 1); const sx = Math.round(dx * Math.cos(ang) + dy * Math.sin(ang) + st.w / 2); const sy = Math.round(-dx * Math.sin(ang) + dy * Math.cos(ang) + st.h - 1); if (sx >= 0 && sy >= 0 && sx < st.w && sy < st.h) out.px[y * D + x] = st.px[sy * st.w + sx]; }
       return (sprites[key] = out); }
     const step = pose === 'walk' ? [0, 1, 0, -1][frame] : 0;
     // legs and boots
@@ -75,7 +90,17 @@
     R(5, 9, 14, 1, steel[2]); // the brim
     // outline
     const out = new Int32Array(px); for (let y = 0; y < SH; y += 1) for (let x = 0; x < SW; x += 1) { if (px[y * SW + x]) continue; if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { const X = x + dx; const Y = y + dy; return X >= 0 && Y >= 0 && X < SW && Y < SH && px[Y * SW + X]; })) out[y * SW + x] = pack([16, 12, 18]); }
-    return (sprites[key] = { w: SW, h: SH, px: out });
+    // twice as fine: each pixel four, shaded by what it is (mail in rings, cloth in folds), lit from the upper left
+    const W2 = SW * 2; const H2 = SH * 2; const fine = new Int32Array(W2 * H2);
+    for (let y = 0; y < H2; y += 1) for (let x = 0; x < W2; x += 1) {
+      const v = out[(y >> 1) * SW + (x >> 1)]; if (!v) continue; const c = unpack(v);
+      const grey = Math.abs(c[0] - c[1]) < 14 && Math.abs(c[1] - c[2]) < 18 && c[0] > 70; const isCloth = c[team === 'def' ? 2 : 0] > 120 && !grey;
+      let k = 1.12 - (x / W2) * 0.22 - (y / H2) * 0.1; // (the light)
+      if (grey) k *= (x + y) % 2 ? 1.08 : 0.9; // (rings of mail, a helmet's sheen)
+      if (isCloth) k *= 0.92 + 0.14 * Math.sin(x * 0.9 + (y >> 3)); // (folds)
+      fine[y * W2 + x] = v === pack([16, 12, 18]) ? v : pack(c.map((q) => q * k));
+    }
+    return (sprites[key] = { w: W2, h: H2, px: fine });
   }
   const KEG = { w: 7, h: 6, px: [0, 3, 3, 3, 3, 3, 0, 3, 2, 2, 2, 2, 2, 3, 3, 1, 1, 1, 1, 1, 3, 3, 2, 2, 2, 2, 2, 3, 3, 1, 1, 1, 1, 1, 3, 0, 3, 3, 3, 3, 3, 0].map((v) => [0, pack([120, 80, 44]), pack([150, 104, 60]), pack([60, 60, 70])][v]) };
 
@@ -114,7 +139,8 @@
     const NAMES = ['Aymeric', 'Bertrand', 'Clotilde', 'Driss', 'Enguerrand', 'Fulk', 'Gersende', 'Hugues', 'Isabeau', 'Jehan'];
     for (let k = 1; k < 5; k += 1) g.actors.push(newActor('def', k, true, NAMES[k - 1]));
     for (let k = 0; k < 5; k += 1) g.actors.push(newActor('att', k, true, NAMES[k + 4]));
-    build(); prepCells(); bind(); newRound(true);
+    [W, H] = QUALITY[settings.quality ?? 1];
+    build(); prepCells(); prepLight(); prepSky(); bind(); newRound(true);
     let last = performance.now();
     const loop = (t) => { raf = requestAnimationFrame(loop); const dt = Math.min(0.05, (t - last) / 1000); last = t; if (!g.paused) { g.now += dt; update(dt); } render(); hud(); };
     raf = requestAnimationFrame(loop);
@@ -129,7 +155,7 @@
   const START_MONEY = 800; const MAX_MONEY = 16000; const ROUND_S = 115; const KEG_S = 40; const BUY_S = 7;
   const KILL_REWARD = { knife: 1500, wheellock: 300, pepperbox: 300, blunderbuss: 900, repeater: 600, arquebus: 300, caliver: 300, greatbow: 100, he: 300, fire: 300 };
   function newRound(first) {
-    g.round += 1;
+    g.round += 1; g.lastBought = g.bought && g.bought.length ? g.bought : g.lastBought; g.bought = [];
     if (!first && g.round === 8) { // the sides change at the half; money starts again
       g.actors.forEach((a) => { a.team = a.team === 'def' ? 'att' : 'def'; a.money = START_MONEY; a.weapons = { 1: null, 2: 'wheellock', 3: 'knife' }; a.armour = 0; a.helm = false; a.gear = {}; a.tools = false; });
       g.score = { def: g.score.att, att: g.score.def }; g.lossStreak = { def: 0, att: 0 }; say('The sides change: now you carry the keg. Plant it on A or B (stand on a site, hold E).', 5);
@@ -238,7 +264,7 @@
   function shoot(a, target, errDeg) {
     const wid = cur(a); const w = ARMS.W[wid]; if (g.frozen || !a.alive || g.now < a.reloadUntil) return;
     if (g.now - a.lastShot < 1 / w.rate) return;
-    if (w.melee) { a.lastShot = g.now; if (a === g.player) { g.swing = 0; g.heavySwing = mouseDown[2]; sfx('swish'); } stab(a, target); return; }
+    if (w.melee) { a.lastShot = g.now; if (a === g.player) { g.swing = 0; g.heavySwing = mouseDown[2]; if (!g.heavySwing) g.swingSide = -(g.swingSide || 1); sfx('swish'); } stab(a, target); return; }
     const am = a.ammo[wid]; if (!am || am.mag <= 0) { reload(a); return; }
     am.mag -= 1; if (g.now - a.lastShot > 0.45) a.shotN = 0; a.lastShot = g.now; noise(a, 18); sfx('shot', a, wid);
     const rec = w.recoil[Math.min(a.shotN, w.recoil.length - 1)]; a.shotN += 1;
@@ -361,10 +387,57 @@
   /* ---- drawing ---- */
   const cellWall = []; const cellFloor = []; // (each cell's textures, found once)
   function prepCells() { for (let y = 0; y < MH; y += 1) for (let x = 0; x < MW; x += 1) { const c = MAP[y][x]; cellWall[y * MW + x] = WALLS[c] ? texOf(WALLS[c]) : null; cellFloor[y * MW + x] = texOf(FLOORS[c] || 'flagstones'); } }
-  const FOG_D = 46; const SKY = [92, 146, 214]; const HAZE = [206, 214, 224];
-  /** A packed colour mixed towards the haze by k (0..1) and darkened by sh. */
-  const fogged = (v, k, sh = 1) => { const a = Math.round(k * 256); const b = 256 - a; return (255 << 24) | ((((v >> 16) & 255) * sh * b + HAZE[2] * a) >> 8) << 16 | ((((v >> 8) & 255) * sh * b + HAZE[1] * a) >> 8) << 8 | (((v & 255) * sh * b + HAZE[0] * a) >> 8); };
-  /** Where a point of the world lands on the screen: [x, y, depth], or null behind. */
+  const FOG_D = 46; const SKY = [80, 136, 210]; const HAZE = [206, 214, 224];
+  /* The light: a grid of four samples a cell, each [r, g, b] (1 = daylight in the yard's shade). Torches on
+     the walls, found once with their shadows (a sample sees a torch, or not, through the grid); the light of
+     the moment (shots, fires, blasts, the planted keg) added each frame without shadows. */
+  const LR = 4; const LW = MW * LR; const LH = MH * LR; const lmStatic = new Float32Array(LW * LH * 3); const lm = new Float32Array(LW * LH * 3);
+  const AMB = [0.62, 0.64, 0.7]; let torches = [];
+  function prepLight() {
+    torches = [];
+    for (let y = 1; y < MH - 1; y += 1) for (let x = 1; x < MW - 1; x += 1) { // a torch on a wall where a floor cell faces it, about one in eight
+      if (WALLS[MAP[y][x]] || (x * 7 + y * 13) % 8) continue;
+      const face = [[0, -1], [1, 0], [0, 1], [-1, 0]].find(([dx, dy]) => WALLS[MAP[y + dy][x + dx]] && MAP[y + dy][x + dx] !== 'C'); if (!face) continue;
+      torches.push({ x: x + 0.5 + face[0] * 0.42, y: y + 0.5 + face[1] * 0.42, ph: Math.random() * 6 });
+    }
+    for (let j = 0; j < LH; j += 1) for (let i = 0; i < LW; i += 1) {
+      const sx = (i + 0.5) / LR; const sy = (j + 0.5) / LR; const o = (j * LW + i) * 3; let r = AMB[0]; let gg = AMB[1]; let b = AMB[2];
+      torches.forEach((t) => { const d = Math.hypot(t.x - sx, t.y - sy); if (d > 6) return; if (d > 0.3 && wallDist(t.x, t.y, Math.atan2(sy - t.y, sx - t.x), d + 0.1) < d - 0.15) return; const k = (1 - d / 6) ** 2 * 1.3; r += k; gg += k * 0.72; b += k * 0.42; });
+      lmStatic[o] = r; lmStatic[o + 1] = gg; lmStatic[o + 2] = b;
+    }
+  }
+  function lightFrame() {
+    lm.set(lmStatic); const now = g.now; const add = (x, y, R, c) => { const i0 = Math.max(0, Math.floor((x - R) * LR)); const i1 = Math.min(LW - 1, Math.ceil((x + R) * LR)); const j0 = Math.max(0, Math.floor((y - R) * LR)); const j1 = Math.min(LH - 1, Math.ceil((y + R) * LR));
+      for (let j = j0; j <= j1; j += 1) for (let i = i0; i <= i1; i += 1) { const d = Math.hypot((i + 0.5) / LR - x, (j + 0.5) / LR - y); if (d >= R) continue; const k = (1 - d / R) ** 2; const o = (j * LW + i) * 3; lm[o] += c[0] * k; lm[o + 1] += c[1] * k; lm[o + 2] += c[2] * k; } };
+    torches.forEach((t) => { const f = 0.15 * Math.sin(now * 13 + t.ph) * Math.sin(now * 7.3 + t.ph * 2); add(t.x, t.y, 2.5, [f, f * 0.7, f * 0.3]); }); // (they flicker)
+    g.actors.forEach((a) => { if (a.alive && now - a.lastShot < 0.06 && cur(a) !== 'knife') add(a.x + Math.cos(a.a) * 0.5, a.y + Math.sin(a.a) * 0.5, 3.5, [1.4, 1.1, 0.6]); }); // (muzzle flashes)
+    g.fires.forEach((f) => add(f.x, f.y, 4, [1, 0.55, 0.2]));
+    g.fx.forEach((f) => { if (f.kind === 'blast') add(f.x, f.y, f.big ? 12 : 6, [3 * (1 - (now - f.t) / 0.9), 2 * (1 - (now - f.t) / 0.9), 0.8 * (1 - (now - f.t) / 0.9)]); });
+    if (g.keg.planted && Math.floor(now * 4) % 2) add(g.keg.x, g.keg.y, 2, [1.2, 0.3, 0.1]);
+  }
+  const lightAt = (x, y) => { const i = clamp(Math.floor(x * LR), 0, LW - 1); const j = clamp(Math.floor(y * LR), 0, LH - 1); return (j * LW + i) * 3; };
+  /** A packed colour lit by the light at lm offset o (times sh), then mixed towards the haze by k (0..1). */
+  const litFog = (v, o, k, sh = 1) => {
+    const a = Math.round(k * 256); const b = 256 - a;
+    const r = Math.min(255, (v & 255) * lm[o] * sh); const gg = Math.min(255, ((v >> 8) & 255) * lm[o + 1] * sh); const bb = Math.min(255, ((v >> 16) & 255) * lm[o + 2] * sh);
+    return (255 << 24) | (((bb * b + HAZE[2] * a) >> 8) << 16) | (((gg * b + HAZE[1] * a) >> 8) << 8) | ((r * b + HAZE[0] * a) >> 8);
+  };
+  const fogged = (v, k) => { const a = Math.round(k * 256); const b = 256 - a; return (255 << 24) | ((((v >> 16) & 255) * b + HAZE[2] * a) >> 8) << 16 | ((((v >> 8) & 255) * b + HAZE[1] * a) >> 8) << 8 | (((v & 255) * b + HAZE[0] * a) >> 8); };
+  /** The sky's clouds: a band all round the horizon (value noise), seen by the way you face. */
+  let clouds = null;
+  /* The sky all round, painted once (gradient, clouds, the sun's disc and glow) at SKW columns by H rows
+     above the horizon; each frame only reads it. */
+  const SKW = 2048; let skyTex = null;
+  function paintSky() {
+    skyTex = new Uint32Array(SKW * H); const sunA = 2.4; const cl = clouds;
+    for (let r = 0; r < H; r += 1) { const k = clamp(r / (H * 0.8), 0, 1); const base = SKY.map((v, i) => HAZE[i] + (v - HAZE[i]) * k); const cy = Math.floor(clamp(r / (H * 0.55), 0, 0.999) * cl.h);
+      for (let c = 0; c < SKW; c += 1) { const ang = (c / SKW) * 2 * Math.PI; const a = cl.a[cy * cl.w + Math.floor((c / SKW) * cl.w)]; const sd = Math.hypot(wrap(ang - sunA) * 4, r / H * 6 - 1.2); const gl = sd < 1.2 ? (1.2 - sd) : 0;
+        skyTex[r * SKW + c] = sd < 0.25 ? 0xffe6faff : pack([base[0] + (248 - base[0]) * a * 0.9 + gl * 40, base[1] + (248 - base[1]) * a * 0.9 + gl * 36, base[2] + (252 - base[2]) * a * 0.9 + gl * 24]); } }
+  }
+  function prepSky() { const CW = 1024; const CH = 128; clouds = { w: CW, h: CH, a: new Float32Array(CW * CH) }; const n = (x, y) => { const v = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return v - Math.floor(v); };
+    const sm = (x, y) => { const xi = Math.floor(x); const yi = Math.floor(y); const xf = x - xi; const yf = y - yi; const u = xf * xf * (3 - 2 * xf); const v = yf * yf * (3 - 2 * yf); const w = (i) => ((i % (CW / 16)) + CW / 16) % (CW / 16); return (n(w(xi), yi) * (1 - u) + n(w(xi + 1), yi) * u) * (1 - v) + (n(w(xi), yi + 1) * (1 - u) + n(w(xi + 1), yi + 1) * u) * v; };
+    for (let y = 0; y < CH; y += 1) for (let x = 0; x < CW; x += 1) { let a = 0; let amp = 0.55; let f = 1 / 16; for (let o = 0; o < 4; o += 1) { a += sm(x * f, y * f * 2.5) * amp; amp *= 0.5; f *= 2; } clouds.a[y * CW + x] = clamp((a - 0.52) * 3, 0, 1) * (1 - y / CH * 0.3); } }
+  /** Where a point of the world lands on the screen: [x, y, depth, scale], or null behind. */
   let cam = null;
   function toScreen(x, y, z) { const c = cam; const rx = x - c.px; const ry = y - c.py; const ty = c.inv * (-c.plY * rx + c.plX * ry); if (ty < 0.05) return null; const tx = c.inv * (c.dirY * rx - c.dirX * ry); const sc = H / ty / (c.pl * 2); return [(W / 2) * (1 + tx / ty), c.hor + (c.eye - z) * sc, ty, sc]; }
   function render() {
@@ -372,17 +445,24 @@
     const hor = Math.floor(H / 2 + (g.pitch + g.punch) * H * 0.9);
     const dirX = Math.cos(p.a); const dirY = Math.sin(p.a); const pl = Math.tan(fov / 2); const plX = -dirY * pl; const plY = dirX * pl;
     cam = { px: p.x, py: p.y, dirX, dirY, plX, plY, pl, hor, eye, inv: 1 / (plX * dirY - dirX * plY) };
-    // the sky: deeper blue overhead, the haze at the horizon, a few clouds drifting
-    for (let y = 0; y < Math.min(H, hor); y += 1) { const k = clamp((hor - y) / (H * 0.8), 0, 1); const c = pack(SKY.map((v, i) => HAZE[i] + (v - HAZE[i]) * k)); buf.fill(c, y * W, y * W + W); }
-    // the floor, row by row (each pixel's place on it, its cell's texture)
+    lightFrame();
+    // the sky: read from its panorama by the way each column looks
+    if (!skyTex || skyTex.length !== SKW * H) paintSky();
+    const colS = new Int32Array(W); for (let x = 0; x < W; x += 1) { const ang = p.a + Math.atan(((2 * x) / W - 1) * pl); colS[x] = Math.floor(((ang / (2 * Math.PI)) % 1 + 1) % 1 * SKW); }
+    for (let y = 0; y < Math.min(H, hor); y += 1) { const row = Math.min(H - 1, hor - y) * SKW; const o = y * W; for (let x = 0; x < W; x += 1) buf[o + x] = skyTex[row + colS[x]]; }
+    // the floor, row by row (each pixel's place on it, its cell's texture, its light)
     const rx0 = dirX - plX; const ry0 = dirY - plY; const rx1 = dirX + plX; const ry1 = dirY + plY; const posZ = eye * H;
     for (let y = Math.max(0, hor + 1); y < H; y += 1) {
       const rowD = posZ / ((y - hor) * 2 * pl); const fog = clamp(rowD / FOG_D, 0, 1) * 0.85;
       let fx = p.x + rowD * rx0; let fy = p.y + rowD * ry0; const sx = (rowD * (rx1 - rx0)) / W; const sy = (rowD * (ry1 - ry0)) / W; let o = y * W;
-      for (let x = 0; x < W; x += 1, o += 1) { const cx = Math.floor(fx); const cy = Math.floor(fy); const t = cx >= 0 && cy >= 0 && cx < MW && cy < MH ? cellFloor[cy * MW + cx] : cellFloor[0];
-        buf[o] = fogged(t[((((fy - cy) * T) | 0) & (T - 1)) * T + ((((fx - cx) * T) | 0) & (T - 1))], fog); fx += sx; fy += sy; }
+      const fa = Math.round(fog * 256); const fb = 256 - fa; const hr = HAZE[0] * fa; const hg = HAZE[1] * fa; const hb = HAZE[2] * fa;
+      for (let x = 0; x < W; x += 1, o += 1) { // (inlined: the texel, lit, fogged)
+        const cx = fx | 0; const cy = fy | 0; const inside = fx >= 0 && fy >= 0 && cx < MW && cy < MH; const t = inside ? cellFloor[cy * MW + cx] : cellFloor[0];
+        const v = t[((((fy - cy) * T) | 0) & (T - 1)) * T + ((((fx - cx) * T) | 0) & (T - 1))]; const lo = inside ? (((fy * LR) | 0) * LW + ((fx * LR) | 0)) * 3 : 0;
+        let r = (v & 255) * lm[lo]; let gg = ((v >> 8) & 255) * lm[lo + 1]; let bb = ((v >> 16) & 255) * lm[lo + 2]; if (r > 255) r = 255; if (gg > 255) gg = 255; if (bb > 255) bb = 255;
+        buf[o] = 0xff000000 | (((bb * fb + hb) >> 8) << 16) | (((gg * fb + hg) >> 8) << 8) | ((r * fb + hr) >> 8); fx += sx; fy += sy; }
     }
-    // the walls, a ray a column
+    // the walls, a ray a column (lit by the light in front of them; darker at their foot)
     for (let x = 0; x < W; x += 1) {
       const camx = (2 * x) / W - 1; const rdx = dirX + plX * camx; const rdy = dirY + plY * camx;
       let mx = Math.floor(p.x); let my = Math.floor(p.y); const ddx = Math.abs(1 / rdx); const ddy = Math.abs(1 / rdy); const sx = rdx < 0 ? -1 : 1; const sy = rdy < 0 ? -1 : 1;
@@ -391,8 +471,16 @@
       const perp = Math.max(0.05, side === 0 ? sdx - ddx : sdy - ddy); zbuf[x] = perp;
       const lh = H / perp / (pl * 2); const top = Math.floor(hor - lh * (WALL_H - eye)); const bot = Math.floor(hor + lh * eye);
       let wx = side === 0 ? p.y + perp * rdy : p.x + perp * rdx; wx -= Math.floor(wx); let tx = (wx * T) | 0; if ((side === 0 && rdx > 0) || (side === 1 && rdy < 0)) tx = T - 1 - tx;
-      const fog = clamp(perp / FOG_D, 0, 1) * 0.85; const shade = side ? 0.8 : 1; const span = bot - top;
-      for (let y = Math.max(0, top); y < Math.min(H, bot); y += 1) buf[y * W + x] = fogged(t[((((y - top) / span) * T * WALL_H) & (T - 1)) * T + tx], fog, shade);
+      const lo = lightAt(p.x + rdx * (perp - 0.03), p.y + rdy * (perp - 0.03));
+      const fog = clamp(perp / FOG_D, 0, 1) * 0.85; const shade = side ? 0.82 : 1; const span = bot - top;
+      const fa = Math.round(fog * 256); const fb = 256 - fa; const hr = HAZE[0] * fa; const hg = HAZE[1] * fa; const hb = HAZE[2] * fa;
+      const lr = lm[lo] * shade; const lg = lm[lo + 1] * shade; const lb = lm[lo + 2] * shade; const dv = (T * WALL_H) / span; const y0 = Math.max(0, top); const y1 = Math.min(H, bot); const aoY = top + span * 0.85;
+      let tv = (y0 - top) * dv; let o = y0 * W + x;
+      for (let y = y0; y < y1; y += 1, o += W, tv += dv) { // (inlined: the texel down the column, lit, darker at the foot, fogged)
+        const v = t[((tv | 0) & (T - 1)) * T + tx]; const ao = y > aoY ? 1 - ((y - aoY) / span) * 2 : 1;
+        let r = (v & 255) * lr * ao; let gg = ((v >> 8) & 255) * lg * ao; let bb = ((v >> 16) & 255) * lb * ao; if (r > 255) r = 255; if (gg > 255) gg = 255; if (bb > 255) bb = 255;
+        buf[o] = 0xff000000 | (((bb * fb + hb) >> 8) << 16) | (((gg * fb + hg) >> 8) << 8) | ((r * fb + hr) >> 8);
+      }
     }
     // the sprites, far to near
     const spr = []; const now = g.now;
@@ -402,8 +490,9 @@
       if (!a.alive) { const f = Math.min(2, Math.floor((now - (a.diedAt || 0)) / 0.12)); img = soldier(a.team, view, 'dead', f); h = 0.9; wk = 0.9; }
       else if (now - a.lastShot < 0.18 && view === 'front' && cur(a) !== 'knife') img = soldier(a.team, view, 'aim', now - a.lastShot < 0.06 ? 1 : 0);
       else img = soldier(a.team, view, a.moving ? 'walk' : 'idle', a.moving ? Math.floor(now * 8 + a.idx) % 4 : 0);
-      spr.push({ x: a.x, y: a.y, img, h: a.crouch ? h * 0.72 : h, z: 0, wk, hit: now - (a.hitAt || -9) < 0.1 });
+      spr.push({ x: a.x, y: a.y, img, h: a.crouch ? h * 0.72 : h, z: 0, wk, hit: now - (a.hitAt || -9) < 0.1, lit: true, lo: lightAt(a.x, a.y) });
     });
+    torches.forEach((t) => spr.push({ x: t.x, y: t.y, z: 1.15, h: 0.32, wk: 0.16, torch: t })); // (the torches: a bracket, a flame)
     if (g.keg.dropped || g.keg.planted) spr.push({ x: g.keg.x, y: g.keg.y, img: KEG, h: 0.22, z: 0, wk: 0.26, glow: g.keg.planted && Math.floor(now * 4) % 2 });
     g.nades.forEach((n) => spr.push({ x: n.x, y: n.y, z: n.z, h: 0.1, wk: 0.1, dot: n.kind === 'flash' ? [240, 240, 255] : n.kind === 'smoke' ? [150, 150, 150] : [120, 80, 40] }));
     g.smokes.forEach((sm) => { const k = Math.min(1, (now - sm.t0) / 1.5) * Math.min(1, (sm.until - now) / 2); for (let j = 0; j < 16; j += 1) { const q = j * 2.39996 + now * 0.05; const r = Math.sqrt(j / 16) * sm.r * k; spr.push({ x: sm.x + Math.cos(q) * r, y: sm.y + Math.sin(q) * r, z: 0, h: 1.5 * k, wk: 1.5 * k, cloud: [182, 184, 190], alpha: 0.85 }); } });
@@ -417,9 +506,10 @@
         if (s2.ty >= zbuf[x]) continue; const u = (x - (sx - wid / 2)) / wid;
         for (let y = Math.max(0, Math.floor(top)); y < Math.min(H, bot); y += 1) {
           const v = (y - top) / hgt; const o = y * W + x;
-          if (s2.img) { let c = s2.img.px[Math.floor(v * s2.img.h) * s2.img.w + Math.floor(u * s2.img.w)]; if (!c) continue; if (s2.glow) c = pack([255, 120, 60]); if (s2.hit) c = pack(unpack(c).map((q) => q + (255 - q) * 0.7)); buf[o] = fogged(c, fog); }
+          if (s2.img) { let c = s2.img.px[Math.floor(v * s2.img.h) * s2.img.w + Math.floor(u * s2.img.w)]; if (!c) continue; if (s2.glow) c = pack([255, 120, 60]); if (s2.hit) c = pack(unpack(c).map((q) => q + (255 - q) * 0.7)); buf[o] = s2.lit ? litFog(c, s2.lo, fog) : fogged(c, fog); }
           else if (s2.dot) { if (Math.hypot(u - 0.5, v - 0.5) < 0.5) buf[o] = pack(s2.dot); }
           else if (s2.cloud) { const r = Math.hypot(u - 0.5, (v - 0.5) * 1.2); if (r < 0.5) { const al = clamp(s2.alpha * (1 - r * 1.7), 0, 1); const c = unpack(buf[o]); buf[o] = pack(c.map((q, i) => q + (s2.cloud[i] - q) * al)); } }
+          else if (s2.torch) { if (v > 0.55) { if (Math.abs(u - 0.5) < 0.12) buf[o] = pack([60, 44, 30]); } else { const fl = Math.sin(now * 14 + s2.torch.ph + v * 6) * 0.08; const r = Math.hypot((u - 0.5 - fl) * 1.6, (v - 0.32) * 1.1); if (r < 0.32) buf[o] = pack(r < 0.12 ? [255, 250, 200] : r < 0.22 ? [255, 190, 70] : [230, 90, 20]); } }
           else if (s2.flame) { const r = Math.hypot(u - 0.5, (v - 0.72)); if (r < 0.5 && Math.random() < 0.9 - r) buf[o] = pack(r < 0.16 ? [255, 244, 180] : r < 0.3 ? [255, 168, 56] : [214, 64, 22]); }
         }
       }
@@ -438,7 +528,7 @@
       const raise = clamp((now - g.drawAt) / 0.32, 0, 1); const rl = now < p.reloadUntil ? 1 - (p.reloadUntil - now) / ARMS.W[wid].reload : -1;
       ARMS.drawHeld(wid, g.knife, put, W, H, {
         kick: g.kick, bobX: Math.sin(ph) * 7 * sp + g.sway * 0.6, bobY: Math.abs(Math.cos(ph)) * 5 * sp + (1 - raise) ** 2 * 120 + (p.z > 0 ? -6 : 0),
-        rot: -g.sway * 0.01 + (1 - raise) * 0.5, inspect: g.inspect, swing: g.swing, heavy: g.heavySwing, reload: rl, flash: g.flashFrame,
+        rot: -g.sway * 0.01 + (1 - raise) * 0.5, inspect: g.inspect, swing: g.swing, heavy: g.heavySwing, side: g.swingSide || 1, drawT: wid === 'knife' ? clamp((now - g.drawAt) / 0.9, 0, 1) : -1, reload: rl, flash: g.flashFrame,
       });
       g.flashFrame = false;
     }
@@ -498,20 +588,45 @@
   function openMenu(html, cls) { ui.menu.innerHTML = html; ui.menu.className = `sg-menu ${cls}`; ui.menu.hidden = false; if (document.pointerLockElement) document.exitPointerLock(); }
   function closeMenu() { ui.menu.hidden = true; }
   const closeBuy = () => { if (ui.menu && ui.menu.classList.contains('sg-buy')) closeMenu(); };
-  function buyMenu() {
+  /* The buying menu: a tab per shelf (the number keys pick a tab, then an item), a card per piece with its
+     drawing, price and bars; owned and unaffordable pieces marked; R buys again what was bought last round. */
+  const icon = (id, w, h, kn) => { const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); const im = x.createImageData(w, h); const b = new Uint32Array(im.data.buffer);
+    ARMS.drawIcon(id, (px, py, col) => { if (px >= 0 && py >= 0 && px < w && py < h) b[py * w + px] = pack(col); }, w, h, kn); x.putImageData(im, 0, 0); return c; };
+  const TABS = () => [...ARMS.SHELVES.map(([n, ids]) => [n, ids.map((id) => ['w', id])]), ['Throwables', ['firepot', 'incense', 'vial', 'flask'].map((id) => ['g', id])], ['Gear', ['gambeson', 'helm', 'tools'].map((id) => ['g', id])]];
+  function owns(p, kind, id) {
+    if (kind === 'w') return Object.values(p.weapons).includes(id); const o = ARMS.GEAR[id];
+    if (o.armour) return p.armour >= 100 && (p.helm || !o.helm); if (o.tools) return p.tools; return (p.gear[o.kind] || 0) >= o.max;
+  }
+  function purchase(kind, id) {
+    const p = g.player; const o = kind === 'w' ? ARMS.W[id] : ARMS.GEAR[id]; if (p.money < o.price || owns(p, kind, id)) return false;
+    if (kind === 'w') give(p, id);
+    else if (o.armour) { p.armour = 100; if (o.helm) p.helm = true; }
+    else if (o.tools) { if (p.team !== 'def') return false; p.tools = true; }
+    else p.gear[o.kind] = (p.gear[o.kind] || 0) + 1;
+    p.money -= o.price; sfx('buy'); (g.bought ||= []).push([kind, id]); return true;
+  }
+  function buyMenu(tab = g.buyTab || 0) {
     if (g.phase !== 'buy' && !(g.phase === 'live' && g.now < g.phaseUntil - ROUND_S + 15)) { say('The buying time is over.', 2); return; }
-    const p = g.player; const row = (id, o, kind) => `<button data-buy="${kind}:${id}" ${p.money < o.price ? 'disabled' : ''}>${o.name} <span>${o.price}</span></button>`;
-    const W2 = ARMS.W;
-    openMenu(`<h3>Buy · ${p.money} crowns</h3><div class="sg-cols"><div><h4>Pistols</h4>${['wheellock', 'pepperbox'].map((k) => row(k, W2[k], 'w')).join('')}<h4>Light</h4>${['repeater', 'blunderbuss'].map((k) => row(k, W2[k], 'w')).join('')}</div>`
-      + `<div><h4>Rifles</h4>${['arquebus', 'caliver', 'greatbow'].map((k) => row(k, W2[k], 'w')).join('')}</div><div><h4>Gear</h4>${Object.entries(ARMS.GEAR).map(([k, o]) => row(k, o, 'g')).join('')}</div></div><p class="dim">B or Esc to close; the round starts when the buying time ends.</p>`, 'sg-buy');
-    ui.menu.querySelectorAll('[data-buy]').forEach((b) => b.addEventListener('click', () => {
-      const [kind, id] = b.dataset.buy.split(':'); const o = kind === 'w' ? ARMS.W[id] : ARMS.GEAR[id]; if (p.money < o.price) return;
-      if (kind === 'w') give(p, id);
-      else if (o.armour) { if (p.armour >= 100 && (p.helm || !o.helm)) return; p.armour = 100; if (o.helm) p.helm = true; }
-      else if (o.tools) { if (p.tools || p.team !== 'def') return; p.tools = true; }
-      else { if ((p.gear[o.kind] || 0) >= o.max) return; p.gear[o.kind] = (p.gear[o.kind] || 0) + 1; }
-      p.money -= o.price; sfx('buy'); buyMenu();
-    }));
+    const p = g.player; const tabs = TABS(); g.buyTab = tab = clamp(tab, 0, tabs.length - 1);
+    const bar = (v) => `<i style="--v:${Math.round(clamp(v, 0, 1) * 100)}%"></i>`;
+    const cards = tabs[tab][1].map(([kind, id], k) => { const o = kind === 'w' ? ARMS.W[id] : ARMS.GEAR[id]; const have = owns(p, kind, id); const poor = p.money < o.price; const no = kind === 'g' && o.tools && p.team !== 'def';
+      const st = kind === 'w' ? Object.entries(ARMS.STATS(o)).map(([n, v]) => `<li><span>${n}</span>${bar(v)}</li>`).join('') : `<li class="dim">${o.kind ? `up to ${o.max}` : o.helm ? 'stops headshots' : o.armour ? 'halves the damage' : 'defenders only'}</li>`;
+      return `<button class="sg-card${have ? ' own' : ''}" data-buy="${kind}:${id}" ${poor || have || no ? 'disabled' : ''}><kbd>${k + 1}</kbd><span class="sg-ic" data-ic="${id}"></span><b>${o.name}</b><em>${have ? 'owned' : `${o.price}`}</em><ul>${st}</ul></button>`; }).join('');
+    openMenu(`<h3>Buy <span class="sg-purse">${p.money} crowns</span></h3><nav class="sg-tabs">${tabs.map(([n], k) => `<button data-tab="${k}" class="${k === tab ? 'on' : ''}"><kbd>${k + 1}</kbd> ${n}</button>`).join('')}</nav>
+<div class="sg-cards">${cards}</div><p class="dim"><button class="sg-rebuy" data-act="rebuy" ${g.lastBought && g.lastBought.length ? '' : 'disabled'}>R · buy again last round's</button> Shift+number: a tab; number: buy · B or Esc to close.</p>`, 'sg-buy');
+    ui.menu.querySelectorAll('[data-ic]').forEach((el) => el.append(icon(el.dataset.ic, 150, 60, g.knife)));
+    ui.menu.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => buyMenu(Number(b.dataset.tab))));
+    ui.menu.querySelectorAll('[data-buy]').forEach((b) => b.addEventListener('click', () => { const [kind, id] = b.dataset.buy.split(':'); if (purchase(kind, id)) buyMenu(tab); }));
+    ui.menu.querySelector('[data-act="rebuy"]').addEventListener('click', () => rebuy());
+  }
+  function rebuy() { (g.lastBought || []).forEach(([kind, id]) => purchase(kind, id)); if (!ui.menu.hidden && ui.menu.classList.contains('sg-buy')) buyMenu(); }
+  /** Number keys while buying: Shift+n a tab, n the tab's n-th item; R buys again. True when the key was used. */
+  function buyKey(e) {
+    if (ui.menu.hidden || !ui.menu.classList.contains('sg-buy')) return false;
+    if (e.code === 'KeyR') { rebuy(); return true; }
+    const m = /^Digit([1-9])$/.exec(e.code); if (!m) return false; const n = Number(m[1]) - 1;
+    if (e.shiftKey) { buyMenu(n); return true; }
+    const it = TABS()[g.buyTab || 0][1][n]; if (it && purchase(...it)) buyMenu(); return true;
   }
   function scores(on) {
     if (!on) { if (ui.menu.classList.contains('sg-scores')) closeMenu(); return; }
@@ -523,6 +638,7 @@
     openMenu(`<h3>Siege, paused</h3><button data-act="resume">Resume</button><button data-act="knife">The knife's forge</button><button data-act="diff">Bots: ${g.difficulty}</button>
 <div class="sg-set"><span>Mouse</span><button data-act="sens-">−</button><b>${(settings.sens * 1000).toFixed(2)}</b><button data-act="sens+">+</button></div>
 <div class="sg-set"><span>Field of view</span><button data-act="fov-">−</button><b>${Math.round(settings.fov * 180 / Math.PI)}°</b><button data-act="fov+">+</button></div>
+<button data-act="quality">Picture: ${W} × ${H}</button>
 <button data-act="invert">Look: ${settings.invert ? 'inverted' : 'normal'}</button><button data-act="again">A new match</button><button data-act="leave">Leave (back to the castle)</button>`, 'sg-pause');
     ui.menu.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => {
       const act = b.dataset.act;
@@ -530,6 +646,7 @@
       if (act === 'knife') forge();
       if (act === 'sens-' || act === 'sens+') { settings.sens = clamp(settings.sens * (act === 'sens+' ? 1.15 : 1 / 1.15), 0.0002, 0.006); saveSettings(); pauseMenu(); }
       if (act === 'fov-' || act === 'fov+') { settings.fov = clamp(settings.fov + (act === 'fov+' ? 0.08 : -0.08), 1.1, 2); saveSettings(); pauseMenu(); }
+      if (act === 'quality') { settings.quality = ((settings.quality ?? 1) + 1) % QUALITY.length; saveSettings(); [W, H] = QUALITY[settings.quality]; cv.width = W; cv.height = H; img = ctx.createImageData(W, H); buf = new Uint32Array(img.data.buffer); zbuf = new Float32Array(W); pauseMenu(); }
       if (act === 'invert') { settings.invert = !settings.invert; saveSettings(); pauseMenu(); }
       if (act === 'diff') { g.difficulty = { easy: 'normal', normal: 'hard', hard: 'easy' }[g.difficulty]; store('siege-diff', g.difficulty); pauseMenu(); }
       if (act === 'again') { const o = g.opts; stop(); start(o); }
@@ -558,6 +675,7 @@
       if (!g) return; if (e.code === 'Escape') { e.preventDefault(); if (!ui.menu.hidden && !ui.menu.classList.contains('sg-pause')) { closeMenu(); g.paused = false; } else if (g.paused) { g.paused = false; closeMenu(); } else pauseMenu(); return; }
       if (['Tab', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
       e.stopImmediatePropagation(); keys.add(e.code); const p = g.player;
+      if (buyKey(e)) return;
       if (e.code === 'Tab') scores(true);
       if (e.code === 'KeyB') { if (ui.menu.classList.contains('sg-buy') && !ui.menu.hidden) closeMenu(); else buyMenu(); }
       if (e.code === 'KeyR') reload(p);

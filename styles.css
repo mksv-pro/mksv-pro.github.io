@@ -1595,3 +1595,21 @@ canvas.twinkle { display: none; position: absolute; z-index: 1; pointer-events: 
 
 .siege .sg-set { display: flex; align-items: center; gap: .5rem; margin: .3rem 0; } .siege .sg-set span { flex: 1; }
 .siege .sg-set button { width: 2.2rem !important; text-align: center !important; } .siege .sg-set b { min-width: 3.5rem; text-align: center; }
+.siege .sg-buy { inset: 6% 6%; }
+.siege .sg-purse { float: right; color: #9bff9b; font-size: 1rem; }
+.siege .sg-tabs { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .7rem; }
+.siege .sg-menu .sg-tabs button { display: inline-block; width: auto; margin: 0; }
+.siege .sg-menu kbd { display: inline-block; min-width: 1.1em; padding: 0 .25em; font: .75rem monospace; color: #f6d77a; border: 1px solid #8a6a3a; text-align: center; }
+.siege .sg-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: .6rem; }
+.siege .sg-menu .sg-card { position: relative; display: flex; flex-direction: column; gap: .25rem; margin: 0; padding: .5rem; background: linear-gradient(#3a2a18, #24180e); border: 1px solid #6a4a2a; }
+.siege .sg-menu .sg-card:hover:not([disabled]) { background: linear-gradient(#5a4024, #3a2a18); border-color: #d8a838; }
+.siege .sg-menu .sg-card.own { opacity: .75; border-color: #4a8a4a; }
+.siege .sg-card kbd { position: absolute; top: .4rem; left: .4rem; }
+.siege .sg-ic { display: block; height: 60px; background: radial-gradient(ellipse at center, #4a3826, transparent 70%); }
+.siege .sg-ic canvas { display: block; margin: 0 auto; image-rendering: pixelated; }
+.siege .sg-card b { color: #f6d77a; font-weight: normal; } .siege .sg-card em { font-style: normal; color: #9bff9b; }
+.siege .sg-card.own em { color: #8ac88a; }
+.siege .sg-card ul { margin: 0; padding: 0; list-style: none; font-size: .78rem; }
+.siege .sg-card li { display: grid; grid-template-columns: 6.5rem 1fr; align-items: center; gap: .3rem; }
+.siege .sg-card li i { height: .35rem; background: linear-gradient(90deg, #d8a838 var(--v), #3a2a18 var(--v)); border: 1px solid #5a4024; }
+.siege .sg-menu .sg-rebuy { display: inline-block; width: auto; margin-right: .6rem; }

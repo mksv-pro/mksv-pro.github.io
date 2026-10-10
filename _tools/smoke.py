@@ -87,6 +87,14 @@ CASES = {
     "siege": ("?theme=dark", (1600, 900),  # (the game under the castle: it loads, a round is bought and fought)
               "await wait(1000); openCmd(); run('siege'); await wait(10000); window.st = Siege.state();",
               "!!document.querySelector('.siege canvas') && window.st && window.st.phase !== 'buy' && window.st.round >= 1"),
+    "siege-buy": ("?theme=dark", (1600, 900),  # (the buying menu: Shift+4 opens the rifles' shelf, 3 buys the AK-47)
+                  "await wait(1000); openCmd(); run('siege'); await wait(2500); const k = (code, shift) => dispatchEvent(new KeyboardEvent('keydown', { code, shiftKey: !!shift }));"
+                  " k('KeyB'); await wait(200); k('Digit4', true); await wait(200); Siege.debug().player.money = 9000; k('Digit3'); await wait(300);",
+                  "document.querySelectorAll('.sg-card canvas').length >= 3 && Object.values(Siege.debug().player.weapons).includes('ak47')"),
+    "siege-knife": ("?theme=dark", (1600, 900),  # (the knife in the hand, inspected: its own keyframes)
+                    "await wait(1000); openCmd(); run('siege'); await wait(2500); const g = Siege.debug(); g.knifeRecipe = { shape: 'karambit', finish: 'jade', seed: 7, wear: 0.05 }; g.knife = SIEGE_ARMS.knife(g.knifeRecipe);"
+                    " g.player.slot = 3; g.drawAt = -9; g.inspect = 0; await wait(700);",
+                    "!!document.querySelector('.siege canvas')"),
     "room-to-banner": ("?theme=hours&sky=noon&weather=clear#teaching", (1600, 900),  # (a room, then the window turns upright: the banner shows the landscape)
                        "await wait(2500); document.documentElement.classList.add('banner'); document.documentElement.setAttribute('data-theme', 'dark'); await wait(800);",
                        "/^Pixel-art landscape/.test(document.querySelector('.plate-img').getAttribute('aria-label')) && " + CANVAS),
