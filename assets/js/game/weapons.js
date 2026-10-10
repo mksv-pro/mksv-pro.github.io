@@ -2,8 +2,7 @@
    spread, how it moves you, its recoil: the spray's path, shot by shot, in degrees of yaw and pitch, the
    same each time, so it can be learnt), the throwables, the gear; the knives, in twelve shapes, each with
    its own drawing out and inspection (keyframes), with finishes made from a seed (a pattern, its colours,
-   its wear); each drawn in the hand at the screen's foot, and in profile for the buying menu.
-   Loaded by siege.js; nothing here draws the world. */
+   its wear). Their models and drawing: models.js. */
 (function () {
   /** A spray: n shots climbing, then swaying left and right (a few degrees), like the real ones. */
   const spray = (n, climb, sway, seed) => Array.from({ length: n }, (_, k) => {
@@ -96,7 +95,7 @@
     const sh = SHAPES[k.shape] || SHAPES.dagger; const fi = FINISHES[k.finish] || FINISHES.plain; const r = (k.seed % 1000) / 1000;
     const scratch = (u, v) => { const n = Math.sin(u * 91 + v * 37 + k.seed) * Math.sin(u * 23 - v * 71 + k.seed * 0.3); return n > 1 - k.wear * 1.6; };
     return {
-      ...k, shape: sh, finishName: fi.name, wearName: WEAR.find(([w]) => k.wear <= w)[1],
+      ...k, shapeId: SHAPES[k.shape] ? k.shape : 'dagger', shape: sh, finishName: fi.name, wearName: WEAR.find(([w]) => k.wear <= w)[1],
       name: `${sh.name} | ${fi.name}`,
       colour: (u, v) => (scratch(u, v) ? [178, 182, 190] : fi.at(u, v, r)),
     };
@@ -104,134 +103,5 @@
   /** A knife never seen: a shape and finish at random, a seed, a wear. */
   const randomKnife = () => ({ shape: Object.keys(SHAPES)[Math.floor(Math.random() * Object.keys(SHAPES).length)], finish: Object.keys(FINISHES)[Math.floor(Math.random() * Object.keys(FINISHES).length)], seed: Math.floor(Math.random() * 1000), wear: Math.random() ** 1.7 });
 
-  /* ---- the weapons' materials, textured: wood with its grain along the piece, steel and brass with a
-     band of light along them (a polished cylinder), blued steel darker; each shaded round. m: the name,
-     u along (0..1), v across (0..1), L the piece's length (for the grain's scale). */
-  const MAT = { wood: [[176, 118, 62], [126, 82, 44], [78, 48, 26]], walnut: [[176, 92, 50], [124, 60, 32], [70, 32, 18]], dark: [[96, 70, 46], [66, 46, 30], [36, 24, 16]],
-    iron: [[222, 228, 238], [134, 140, 154], [56, 60, 72]], blued: [[132, 140, 164], [62, 68, 88], [24, 26, 38]], brass: [[255, 228, 140], [214, 166, 56], [140, 96, 26]], string: [[236, 228, 200], [200, 190, 160], [150, 140, 110]] };
-  function matColour(m, u, v, L) {
-    const M = MAT[m]; const round = Math.sin(v * Math.PI); let c = v < 0.22 ? M[0] : round > 0.55 ? M[1] : M[2];
-    if (m === 'wood' || m === 'walnut' || m === 'dark') { const gr = Math.sin(u * L * 0.9 + Math.sin(v * 9 + u * 3) * 1.6); c = c.map((q) => q * (gr > 0.6 ? 1.12 : gr < -0.7 ? 0.84 : 1)); }
-    else if (m === 'iron' || m === 'blued' || m === 'brass') { const hi = Math.max(0, 1 - Math.abs(v - 0.28) / 0.07); c = c.map((q) => q + (255 - q) * hi * (m === 'blued' ? 0.35 : 0.6)); if ((Math.floor(u * L * 2) + Math.floor(v * 6)) % 7 === 0) c = c.map((q) => q * 0.94); }
-    return c;
-  }
-  /* ---- in the hand: each weapon seen from behind, as in the old shooters, pointing up to the middle of the
-     screen: tapered pieces (near and wide at the foot, far and narrow up the screen), textured and shaded, a
-     hand or two on it. Coordinates from the anchor at the screen's foot, right of centre, in pixels of a
-     320-wide picture: [from, to, width at from, width at to, material]; hands [x, y, r]; the muzzle. */
-  const GUNS = {
-    wheellock: { parts: [[[12, 4], [5, -24], 11, 8, 'wood'], [[5, -24], [-12, -56], 6, 3, 'iron'], [[3, -20], [8, -28], 5, 4, 'brass']], hands: [[10, -6, 9]], muzzle: [-12, -57] },
-    pepperbox: { parts: [[[12, 4], [5, -24], 11, 8, 'wood'], [[5, -24], [-10, -52], 9, 7, 'iron'], [[3, -20], [8, -28], 5, 4, 'brass']], hands: [[10, -6, 9]], muzzle: [-10, -53] },
-    blunderbuss: { parts: [[[20, 8], [2, -34], 18, 11, 'wood'], [[2, -34], [-26, -78], 7, 5, 'iron'], [[-26, -78], [-34, -92], 5, 12, 'iron'], [[6, -30], [10, -40], 6, 5, 'brass']], hands: [[14, -6, 9], [-12, -56, 7]], muzzle: [-34, -94] },
-    arquebus: { parts: [[[20, 8], [2, -34], 18, 11, 'wood'], [[2, -34], [-38, -104], 6, 3, 'iron'], [[-4, -44], [-16, -66], 9, 6, 'wood'], [[6, -32], [12, -42], 6, 5, 'brass'], [[-10, -54], [-12, -58], 8, 7, 'brass']], hands: [[14, -6, 9], [-14, -62, 7]], muzzle: [-38, -106] },
-    caliver: { parts: [[[18, 8], [2, -32], 15, 10, 'dark'], [[2, -32], [-34, -96], 5, 3, 'iron'], [[-4, -42], [-14, -60], 8, 6, 'dark'], [[6, -30], [11, -38], 5, 4, 'brass']], hands: [[13, -6, 9], [-12, -56, 7]], muzzle: [-34, -98] },
-    ak47: { parts: [[[22, 10], [7, -24], 15, 10, 'walnut'], [[9, -18], [5, -6], 6, 6, 'walnut'], [[7, -24], [-6, -46], 11, 9, 'blued'], [[-1, -36], [6, -24], 7, 7, 'blued'], [[6, -24], [9, -12], 7, 8, 'blued'], [[9, -12], [8, 0], 8, 9, 'blued'],
-      [[-6, -46], [-18, -66], 9, 7, 'walnut'], [[-8, -52], [-22, -74], 3, 3, 'blued'], [[-18, -66], [-30, -88], 4, 3, 'iron'], [[-29, -86], [-30, -92], 2, 2, 'blued']], hands: [[12, -12, 9], [-12, -58, 7]], muzzle: [-30, -90] },
-    repeater: { parts: [[[16, 8], [-12, -60], 13, 7, 'wood'], [[-6, -46], [-10, -66], 11, 9, 'dark']], prod: [[-12, -62], 58, 6], hands: [[12, -4, 9]], muzzle: [-12, -66] },
-    greatbow: { parts: [[[18, 8], [-14, -70], 14, 7, 'wood'], [[-2, -40], [-12, -64], 4, 4, 'brass'], [[-4, -46], [-12, -66], 5, 4, 'brass']], prod: [[-14, -72], 84, 8], hands: [[13, -4, 9], [-6, -48, 7]], muzzle: [-14, -76] },
-  };
-  /** The tools both drawings use: a tapered textured piece, a hand and its sleeve, on put(x, y, c). */
-  function kit(put) {
-    const piece = (pp, q, w0, w1, col) => {
-      const L = Math.max(1, Math.hypot(q[0] - pp[0], q[1] - pp[1])); const nx = -(q[1] - pp[1]) / L; const ny = (q[0] - pp[0]) / L;
-      for (let s2 = 0; s2 <= L; s2 += 0.6) { const u = s2 / L; const cx = pp[0] + (q[0] - pp[0]) * u; const cy = pp[1] + (q[1] - pp[1]) * u; const w = w0 + (w1 - w0) * u;
-        for (let k = -w / 2; k <= w / 2; k += 0.6) { const v = (k + w / 2) / Math.max(1, w); const c = typeof col === 'function' ? col(u, v) : matColour(col, u, v, L);
-          put(cx + nx * k, cy + ny * k, k < -w / 2 + 0.7 || k > w / 2 - 0.7 ? c.map((q2) => q2 * 0.45) : c); } }
-    };
-    const hand = (x, y, r, mirror = 1, arm = r * 2.4) => { // a gloved hand: leather, its knuckles, the cuff and the red sleeve going off the screen
-      for (let j = -r; j <= r; j += 1) for (let i = -r; i <= r; i += 1) { const d = Math.hypot(i, j * 1.15); if (d > r) continue; const kn = j < -r * 0.3 && Math.abs(((i + r) % 4) - 2) < 0.8; put(x + i * mirror, y + j, d > r - 1.3 ? [52, 34, 22] : kn ? [150, 104, 70] : i * mirror < -r * 0.25 && j < 0 ? [138, 96, 64] : [112, 76, 48]); }
-      for (let j = 0; j < 3; j += 1) for (let i = -r - 1; i <= r + 1; i += 1) put(x + i * mirror, y + r + j, [70, 46, 30]);
-      for (let j = 3; j < arm; j += 1) for (let i = -r - 2; i <= r + 2; i += 1) put(x + (i + j * 0.45) * mirror, y + r + j, Math.abs(i) > r + 1 ? [80, 20, 20] : (j + Math.floor(i / 3)) % 6 === 0 ? [124, 30, 28] : [172, 46, 40]);
-    };
-    return { piece, hand };
-  }
-  function drawHeld(id, kn, put0, Wd, Hd, a) {
-    // the whole moves as one: walking (bobX, bobY), turning (rot), the shot's kick (back and up), the reload (down
-    // and over, then back), an inspection (a gun turned to show its side; a knife: its own keyframes), drawing out
-    const base = Wd / 320; const isKnife = id === 'knife'; const S = base * (isKnife ? 1.35 : 1); const fat = isKnife ? 1 : 1.8;
-    const rl = a.reload >= 0 ? a.reload : -1; const down = rl >= 0 ? Math.sin(Math.min(1, rl / 0.35) * Math.PI / 2) * (rl > 0.75 ? 1 - (rl - 0.75) / 0.25 : 1) : 0;
-    const ins = !isKnife && a.inspect >= 0 ? Math.sin(a.inspect * Math.PI) : 0;
-    const rot = (a.rot || 0) - (a.kick || 0) * 0.16 + down * 0.7 + ins * 0.55;
-    const ox = (a.bobX || 0) * base + (a.kick || 0) * 4 * base + ins * 30 * base; const oy = (a.bobY || 0) * base + (a.kick || 0) * 10 * base + down * 70 * base - ins * 8 * base;
-    const ax = Wd * 0.62; const ay = Hd + (isKnife ? -14 : 6) * base;
-    const make = (rr, xo, yo, alpha, mirror = 1, ancX = ax) => (x, y, c) => {
-      const X = ancX + xo + (x * mirror * Math.cos(rr) - y * Math.sin(rr)) * S; const Y = ay + yo + (x * mirror * Math.sin(rr) + y * Math.cos(rr)) * S;
-      const n = Math.ceil(S) + 1; for (let j2 = 0; j2 < n; j2 += 1) for (let i2 = 0; i2 < n; i2 += 1) put0(Math.round(X + i2 - n / 2), Math.round(Y + j2 - n / 2), c, alpha);
-    };
-    if (isKnife) {
-      const sh = kn.shape;
-      // its pose: drawing out, or inspected (its keyframes), or swung (light: an arc from one side, the next from the other; heavy: a thrust)
-      let ps = { ...DEF };
-      if (a.drawT >= 0 && a.drawT < 1) ps = pose(sh.draw || RISE, a.drawT); else if (a.inspect >= 0) ps = pose(sh.inspect || SHOW, a.inspect);
-      const side = a.side || 1;
-      const blade = (pr, P2, mirror = 1) => { // the knife in its hand at pose P2, on pr
-        const pv = sh.pivot === 'ring' ? [31, 8] : [23, -4]; const sp = (P2.spin || 0) * Math.PI * 2; // (it turns about its pivot: the ring, or the grip)
-        const put = (x, y, c) => { const dx = x - pv[0]; const dy = y - pv[1]; pr(pv[0] + dx * Math.cos(sp) - dy * Math.sin(sp), pv[1] + dx * Math.sin(sp) + dy * Math.cos(sp), c); };
-        const { piece } = kit(put); const { hand } = kit(pr); const hx = 18; const hy = -14; const L = 50 * sh.len; const roll = Math.max(0.12, Math.abs(Math.cos((P2.roll || 0) * Math.PI / 2)));
-        const fold = sh.fold ? (1 - (P2.open ?? 1)) * Math.PI * 0.95 : 0; // (shut: the blade swung down into the handle)
-        const dir = [-26, -L]; const fd = [dir[0] * Math.cos(fold) - dir[1] * Math.sin(fold), dir[0] * Math.sin(fold) + dir[1] * Math.cos(fold)];
-        piece([hx + 9, hy + 20], [hx, hy], 7, 6, sh.push ? 'dark' : 'walnut'); // the grip (the push dagger's: a T in the fist)
-        if (!sh.push) piece([hx - 8, hy - 1], [hx + 8, hy + 1], 3, 3, 'brass');
-        const steps = 32; let prev = [hx, hy - 2];
-        for (let k = 1; k <= steps; k += 1) { const u = k / steps; const bend = sh.curve * Math.sin(u * Math.PI) * 9; const wave = sh.wave ? Math.sin(u * Math.PI * 7) * 2.2 : 0;
-          const cur2 = [hx + fd[0] * u + bend + wave, hy - 2 + fd[1] * u];
-          const wd = (uu) => Math.max(1, sh.blade(uu) * 8 * roll);
-          piece(prev, cur2, wd((k - 1) / steps), wd(u), (uu, v) => { const c = kn.colour((k - 1 + uu) / steps, v); const edge = v > 0.8 ? 1.32 : v < 0.2 ? 0.7 : 1; const lit = 0.78 + 0.45 * Math.abs(Math.sin((P2.roll || 0) * 1.6 + v * 1.4)); const clipK = sh.clip && (k - 1 + uu) / steps > 0.72 && v < 0.35 ? 1.25 : 1; return c.map((q2) => Math.min(255, q2 * edge * lit * clipK)); });
-          if (sh.fuller && u > 0.1 && u < 0.7) put(cur2[0], cur2[1], kn.colour(u, 0.5).map((q2) => q2 * 0.55));
-          prev = cur2; }
-        if (sh.ring) for (let q = 0; q < 6.28; q += 0.18) put(hx + 13 + Math.cos(q) * 4, hy + 22 + Math.sin(q) * 4, matColour('iron', 0.5, (Math.sin(q) + 1) / 2, 10));
-        hand(hx + 5, hy + 8, 9, mirror);
-      };
-      const draw1 = (mirror, ancX, phase) => {
-        if (a.swing >= 0) { const sw = Math.min(1, Math.max(0, a.swing - phase));
-          const arc = (t2) => (a.heavy ? { r: -0.15, x: -30 * Math.sin(t2 * Math.PI) * base * mirror, y: -46 * Math.sin(t2 * Math.PI) * base } : { r: side * (0.9 - t2 * 2.2), x: side * (40 - t2 * 110) * base * mirror, y: (-30 - Math.sin(t2 * Math.PI) * 20) * base });
-          [0.2, 0.12, 0.06, 0].forEach((lag, k) => { const t2 = Math.max(0, sw - lag); const p2 = arc(t2); blade(make(rot + p2.r + ps.rot, ox + p2.x + ps.x * base, oy + p2.y + ps.y * base, k === 3 ? 1 : 0.18 + k * 0.14, mirror, ancX), ps, mirror); });
-        } else blade(make(rot + ps.rot, ox + ps.x * base, oy + ps.y * base, 1, mirror, ancX), ps, mirror);
-      };
-      draw1(1, ax, 0); if (sh.twin) draw1(-1, Wd * 0.38, 0.15); // (the push daggers: both hands, the left a beat behind)
-      return;
-    }
-    const gun = GUNS[id]; if (!gun) return;
-    const { piece, hand } = kit(make(rot, ox, oy, 1)); const put = make(rot, ox, oy, 1);
-    if (gun.prod) { const [[px, py], span, bend] = gun.prod; const half = span * 0.6; // the bow across, its string drawn back to the nut
-      for (let k = -half; k <= half; k += 0.6) { const y = py + (Math.abs(k) / half) ** 2 * bend; for (let w = 0; w < 3; w += 1) put(px + k, y + w * 1.2, matColour('iron', 0.5, w / 3, 10)); }
-      for (let k = -half; k <= half; k += 0.6) { const t2 = Math.abs(k) / half; put(px + k, py + bend + (1 - t2) * 14, MAT.string[1]); } }
-    gun.parts.forEach(([p2, q, w0, w1, m]) => piece(p2, q, w0 * fat, w1 * fat, m));
-    gun.hands.forEach(([x, y, r], k) => hand(x, y, Math.round(r * 1.15), k ? -1 : 1, 30 - y)); // (the sleeve down to the screen's foot) // (the front hand: the left arm's, from the lower left)
-    if (a.flash) { const [fx, fy] = gun.muzzle; for (let k = 0; k < 110; k += 1) { const q = Math.random() * 6.28; const r2 = Math.random() * 12 * (0.6 + Math.random() * 0.6); put(fx + Math.cos(q) * r2, fy + Math.sin(q) * r2 * 0.75 - 4, [255, 240 - r2 * 9, 160 - r2 * 12]); } }
-  }
-
-  /* ---- in profile: each weapon side on for the buying menu (and the forge), its muzzle to the right, on
-     put(x, y, c) over a box w x h. Pieces as in the hand: [from, to, width at from, width at to, material]. */
-  const ICONS = {
-    wheellock: [[[14, 32], [24, 18], 9, 8, 'wood'], [[22, 18], [72, 16], 6, 5, 'iron'], [[24, 18], [28, 18], 7, 7, 'brass']],
-    pepperbox: [[[14, 32], [24, 18], 9, 8, 'wood'], [[22, 18], [62, 17], 10, 9, 'iron'], [[24, 18], [28, 18], 7, 7, 'brass']],
-    blunderbuss: [[[2, 26], [34, 20], 13, 9, 'wood'], [[34, 19], [80, 17], 6, 6, 'iron'], [[80, 17], [94, 16], 6, 13, 'iron'], [[34, 22], [64, 21], 6, 5, 'wood']],
-    arquebus: [[[2, 26], [36, 20], 13, 9, 'wood'], [[36, 19], [98, 17], 4, 4, 'iron'], [[36, 22], [76, 20], 6, 5, 'wood'], [[38, 18], [44, 18], 6, 6, 'brass']],
-    caliver: [[[4, 25], [36, 20], 11, 8, 'dark'], [[36, 19], [96, 17], 4, 3, 'iron'], [[36, 21], [74, 20], 5, 4, 'dark'], [[38, 18], [43, 18], 5, 5, 'brass']],
-    ak47: [[[2, 24], [28, 20], 11, 9, 'walnut'], [[28, 19], [50, 19], 9, 9, 'blued'], [[34, 23], [30, 34], 5, 5, 'walnut'], [[44, 23], [47, 31], 7, 7, 'blued'], [[47, 31], [44, 40], 7, 7, 'blued'],
-      [[50, 19], [68, 19], 7, 6, 'walnut'], [[50, 15], [72, 15], 3, 3, 'blued'], [[68, 19], [94, 19], 3, 3, 'iron'], [[91, 14], [91, 18], 2, 2, 'blued']],
-    repeater: [[[6, 24], [70, 20], 9, 7, 'wood'], [[36, 12], [52, 12], 8, 8, 'dark'], [[70, 4], [70, 36], 3, 3, 'iron']],
-    greatbow: [[[4, 24], [74, 20], 10, 7, 'wood'], [[30, 13], [52, 13], 4, 4, 'brass'], [[74, 2], [74, 38], 4, 4, 'iron']],
-  };
-  function drawIcon(id, put0, w, h, kn) {
-    const k = Math.min(w / 100, h / 40); const put = (x, y, c) => { const n = Math.ceil(k); for (let j = 0; j < n; j += 1) for (let i = 0; i < n; i += 1) put0(Math.round(x * k + i), Math.round(y * k + j), c); };
-    const { piece } = kit(put);
-    if (id === 'knife' && kn) { const sh = kn.shape; piece([4, 22], [30, 20], 7, 7, sh.push ? 'dark' : 'walnut'); if (!sh.push) piece([30, 15], [30, 26], 3, 3, 'brass'); const steps = 30; let prev = [30, 20];
-      for (let i = 1; i <= steps; i += 1) { const u = i / steps; const cur2 = [30 + 64 * sh.len * u, 20 - sh.curve * Math.sin(u * Math.PI) * 9 + (sh.wave ? Math.sin(u * Math.PI * 7) * 1.6 : 0)]; piece(prev, cur2, Math.max(1, sh.blade((i - 1) / steps) * 8), Math.max(1, sh.blade(u) * 8), (uu, v) => kn.colour((i - 1 + uu) / steps, v)); prev = cur2; }
-      return; }
-    (ICONS[id] || GEAR_ICONS[id] || []).forEach(([pp, q, w0, w1, m]) => piece(pp, q, w0, w1, m));
-  }
-  // the gear, side on in the same box: pots and vials (wide short pieces), the gambeson, the helm, the tools
-  const GEAR_ICONS = {
-    firepot: [[[50, 36], [50, 12], 22, 26, 'dark'], [[50, 12], [50, 6], 10, 8, 'iron'], [[50, 6], [58, 0], 2, 2, 'string']],
-    incense: [[[50, 36], [50, 14], 26, 22, 'brass'], [[50, 14], [50, 8], 14, 10, 'brass'], [[44, 6], [56, 6], 3, 3, 'iron']],
-    vial: [[[50, 38], [50, 16], 14, 14, 'blued'], [[50, 16], [50, 6], 6, 6, 'iron'], [[50, 6], [50, 2], 7, 7, 'wood']],
-    flask: [[[50, 38], [50, 18], 24, 18, 'brass'], [[50, 18], [50, 6], 6, 6, 'iron'], [[50, 6], [56, 0], 3, 2, 'string']],
-    gambeson: [[[50, 38], [50, 6], 30, 22, 'string'], [[30, 10], [36, 24], 8, 6, 'string'], [[70, 10], [64, 24], 8, 6, 'string']],
-    helm: [[[50, 38], [50, 8], 30, 22, 'string'], [[50, 6], [50, -2], 26, 14, 'iron'], [[34, 4], [66, 4], 3, 3, 'iron']],
-    tools: [[[24, 30], [60, 12], 4, 4, 'iron'], [[24, 30], [16, 34], 6, 6, 'wood'], [[40, 34], [80, 10], 3, 3, 'iron'], [[76, 12], [84, 6], 6, 6, 'iron']],
-  };
-
-  window.SIEGE_ARMS = { W, GEAR, SHAPES, FINISHES, SHELVES, STATS, knife, randomKnife, drawHeld, drawIcon };
+  window.SIEGE_ARMS = { W, GEAR, SHAPES, FINISHES, SHELVES, STATS, knife, randomKnife, pose };
 }());

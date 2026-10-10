@@ -1571,18 +1571,64 @@ canvas.twinkle { display: none; position: absolute; z-index: 1; pointer-events: 
 
 /* ---- Siege, the game under the castle (assets/js/game/siege.js): the picture whole, the interface over it ---- */
 .siege { position: fixed; inset: 0; z-index: 200; background: #000; display: grid; place-items: center; font: 14px/1.3 var(--ui); color: #f4ecd8; user-select: none; }
-.siege > canvas:first-child { width: min(100vw, calc(100vh * 16 / 9)); height: auto; aspect-ratio: 16 / 9; image-rendering: pixelated; cursor: crosshair; }
-.siege .sg-radar { position: absolute; left: 12px; top: 12px; width: 204px; image-rendering: pixelated; opacity: .85; border: 2px solid #6a4a2a; }
-.siege .sg-top { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 1.2rem; align-items: center; padding: .25rem .9rem; background: rgb(0 0 0 / .45); border: 1px solid #6a4a2a; }
-.siege .sg-time { font-size: 1.3rem; min-width: 5ch; text-align: center; } .siege .sg-red { color: #ff7a5a; }
-.siege .sg-def, .siege .sg-feed .sg-def { color: #8ab0ff; } .siege .sg-att, .siege .sg-feed .sg-att { color: #ff8a7a; }
-.siege .sg-feed { position: absolute; top: 12px; right: 12px; text-align: right; } .siege .sg-feed p { margin: 0 0 .2rem; padding: .1rem .5rem; background: rgb(0 0 0 / .5); }
-.siege .sg-msg { position: absolute; top: 22%; left: 50%; transform: translateX(-50%); padding: .4rem 1rem; background: rgb(0 0 0 / .55); font-size: 1.05rem; text-align: center; max-width: 70vw; }
-.siege .sg-keg { position: absolute; bottom: 30%; left: 50%; transform: translateX(-50%); color: #ffb040; font-size: 1.1rem; }
-.siege .sg-hp { position: absolute; left: 14px; bottom: 14px; padding: .3rem .7rem; background: rgb(0 0 0 / .5); } .siege b { font-size: 1.3rem; }
-.siege .sg-money { position: absolute; left: 14px; top: 168px; color: #9bff9b; padding: .2rem .5rem; background: rgb(0 0 0 / .45); }
-.siege .sg-ammo { position: absolute; right: 14px; bottom: 14px; text-align: right; padding: .3rem .7rem; background: rgb(0 0 0 / .5); } .siege .dim { opacity: .7; font-size: .85rem; }
-.siege .sg-help { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); font-size: .7rem; opacity: .55; white-space: nowrap; }
+.siege .sg-stage { position: relative; width: min(100vw, calc(100vh * 16 / 9)); aspect-ratio: 16 / 9; container-type: inline-size; overflow: hidden; }
+.siege .sg-stage > canvas:first-child { display: block; width: 100%; height: 100%; image-rendering: pixelated; cursor: crosshair; }
+.siege .sg-radar { position: absolute; left: 1.2cqw; top: 1.2cqw; width: 12.5cqw; filter: drop-shadow(0 2px 4px rgb(0 0 0 / .6)); }
+.siege .sg-money { position: absolute; left: 1.2cqw; top: calc(14.4cqw); display: flex; gap: .6em; align-items: baseline; font-size: 1.15cqw; }
+.siege .sg-cash { color: #b6ffa0; padding: .15em .55em; background: rgb(0 0 0 / .5); border-left: 3px solid #6fcf5a; }
+.siege .sg-delta { font-weight: bold; opacity: 0; } .siege .sg-delta.up { color: #8dff6a; } .siege .sg-delta.down { color: #ff7a5a; }
+/* the score: your side left, theirs right, each man a shield (dim when fallen), the clock between */
+.siege .sg-top { position: absolute; top: .8cqw; left: 50%; transform: translateX(-50%); display: flex; align-items: stretch; font-size: 1.1cqw; filter: drop-shadow(0 2px 3px rgb(0 0 0 / .7)); }
+.siege .sg-side { display: flex; align-items: center; gap: .5em; padding: .25em .6em; background: linear-gradient(rgb(20 20 30 / .8), rgb(10 10 16 / .7)); }
+.siege .sg-side.sg-l { clip-path: polygon(0 0, 100% 0, 100% 100%, 10px 100%); } .siege .sg-side.sg-r { clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%); }
+.siege .sg-sc { font: bold 1.9em/1 "EB Garamond", Georgia, serif; min-width: 1.2em; text-align: center; }
+.siege .sg-side.sg-def .sg-sc { color: #9cc0ff; } .siege .sg-side.sg-att .sg-sc { color: #ff9a86; }
+.siege .sg-pips { display: flex; gap: 3px; } .siege .sg-side.sg-r .sg-pips { flex-direction: row-reverse; }
+.siege .sg-pips i { width: .9em; height: 1.1em; clip-path: polygon(0 0, 100% 0, 100% 55%, 50% 100%, 0 55%); }
+.siege .sg-side.sg-def .sg-pips i { background: #6a9cff; } .siege .sg-side.sg-att .sg-pips i { background: #ff6a52; }
+.siege .sg-pips i.dead { background: #3a3a44 !important; } .siege .sg-pips i.me { outline: 2px solid #fff; outline-offset: -2px; }
+.siege .sg-clock { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: .2em .9em; background: rgb(0 0 0 / .78); border-bottom: 2px solid #b08a3a; }
+.siege .sg-time { font: bold 1.6em/1 ui-monospace, monospace; letter-spacing: .04em; } .siege .sg-time.sg-red { color: #ff6a4a; animation: sg-blink 1s steps(2) infinite; } .siege .sg-time.sg-buyt { color: #ffd86a; }
+.siege .sg-round { font-size: .7em; opacity: .7; text-transform: uppercase; letter-spacing: .12em; }
+@keyframes sg-blink { 50% { opacity: .55; } }
+/* health and armour, bottom left: an icon, the number, a bar */
+.siege .sg-vit { position: absolute; left: 1.2cqw; bottom: 1.6cqw; display: flex; gap: .8cqw; align-items: flex-end; font-size: 1.1cqw; }
+.siege .sg-hp, .siege .sg-ar { display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; column-gap: .45em; align-items: center; padding: .35em .7em .45em; background: linear-gradient(90deg, rgb(0 0 0 / .65), rgb(0 0 0 / .35)); }
+.siege .sg-vit b { font: bold 2.2em/1 ui-monospace, monospace; }
+.siege .sg-bar { grid-column: 1 / -1; height: .32em; background: rgb(255 255 255 / .14); margin-top: .3em; } .siege .sg-bar i { display: block; height: 100%; background: #f4ecd8; transition: width .25s; }
+.siege .sg-i-hp { width: 1.3em; height: 1.3em; background: linear-gradient(#f4ecd8, #f4ecd8) center / 34% 100% no-repeat, linear-gradient(#f4ecd8, #f4ecd8) center / 100% 34% no-repeat; }
+.siege .sg-hp.low b, .siege .sg-hp.low .sg-i-hp { color: #ff5a3a; animation: sg-blink .6s steps(2) infinite; } .siege .sg-hp.low .sg-bar i { background: #ff5a3a; }
+.siege .sg-i-ar { width: 1.15em; height: 1.35em; background: #9cb4d8; clip-path: polygon(0 0, 100% 0, 100% 55%, 50% 100%, 0 55%); } .siege .sg-ar .sg-bar i { background: #9cb4d8; }
+.siege .sg-ar.helm .sg-i-ar { background: linear-gradient(#ffe08a 30%, #9cb4d8 30%); }
+.siege .sg-kegc { padding: .4em .7em; color: #ffb040; background: rgb(0 0 0 / .6); border: 1px solid #ffb040; animation: sg-blink 1.4s steps(2) infinite; }
+/* the weapon, bottom right: its name, the rounds left (big) and the reserve, a tick for each round */
+.siege .sg-ammo { position: absolute; right: 1.2cqw; bottom: 1.6cqw; text-align: right; font-size: 1.1cqw; padding: .4em .8em .5em; background: linear-gradient(270deg, rgb(0 0 0 / .65), rgb(0 0 0 / .3)); }
+.siege .sg-wname { font-size: .85em; opacity: .8; } .siege .sg-rounds b { font: bold 2.4em/1 ui-monospace, monospace; } .siege .sg-rounds span { margin-left: .3em; opacity: .7; font-family: ui-monospace, monospace; }
+.siege .sg-mag.low { color: #ff7a4a; } .siege .sg-ammo.rel .sg-rounds { opacity: .45; } .siege .sg-ammo.rel .sg-wname::after { content: " · reloading"; color: #ffd86a; }
+.siege .sg-ticks { display: flex; justify-content: flex-end; gap: 2px; margin-top: .3em; } .siege .sg-ticks i { width: 3px; height: .8em; background: #e8c070; } .siege .sg-ticks i.out { background: rgb(255 255 255 / .15); }
+/* the slots, right: shown a while after a change, and in the buying time */
+.siege .sg-slots { position: absolute; right: 1.2cqw; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: .3em; font-size: 1cqw; opacity: .25; transition: opacity .3s; }
+.siege .sg-slots.show { opacity: 1; }
+.siege .sg-slots p { display: flex; align-items: center; justify-content: flex-end; gap: .5em; margin: 0; padding: .2em .5em; background: rgb(0 0 0 / .45); border-right: 3px solid transparent; }
+.siege .sg-slots p.on { background: rgb(60 40 20 / .75); border-right-color: #ffd86a; } .siege .sg-slots img { height: 2.2em; image-rendering: pixelated; } .siege .sg-slots img.sm { height: 1.8em; }
+.siege .sg-slots kbd, .siege .sg-feed kbd { font: .8em ui-monospace, monospace; color: #ffd86a; }
+/* the feed of the fallen, top right: who, with what (its drawing), to the head, whom */
+.siege .sg-feed { position: absolute; top: 1.2cqw; right: 1.2cqw; display: flex; flex-direction: column; align-items: flex-end; gap: .25em; font-size: 1cqw; }
+.siege .sg-feed p { display: flex; align-items: center; gap: .45em; margin: 0; padding: .15em .6em; background: rgb(0 0 0 / .55); }
+.siege .sg-feed p.me { background: rgb(80 20 16 / .7); border: 1px solid #ff6a52; } .siege .sg-feed img { height: 1.7em; image-rendering: pixelated; }
+.siege .sg-hs { width: .9em; height: .9em; border-radius: 50%; border: 2px solid #ff4a3a; box-shadow: inset 0 0 0 2px rgb(0 0 0 / .4); }
+.siege .sg-def, .siege .sg-feed .sg-def { color: #9cc0ff; } .siege .sg-att, .siege .sg-feed .sg-att { color: #ff9a86; }
+.siege .sg-msg { position: absolute; top: 20%; left: 50%; transform: translateX(-50%); padding: .4em 1em; background: rgb(0 0 0 / .55); font-size: 1.15cqw; text-align: center; max-width: 60cqw; }
+.siege .sg-banner { position: absolute; top: 28%; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; padding: .7em 0; background: linear-gradient(90deg, transparent, rgb(0 0 0 / .75) 25%, rgb(0 0 0 / .75) 75%, transparent); animation: sg-in .35s ease-out; }
+.siege .sg-banner b { font: 3cqw/1.1 "EB Garamond", Georgia, serif; letter-spacing: .06em; text-transform: uppercase; } .siege .sg-banner span { font-size: 1.2cqw; opacity: .8; }
+.siege .sg-banner.sg-def b { color: #9cc0ff; } .siege .sg-banner.sg-att b { color: #ff9a86; }
+@keyframes sg-in { from { opacity: 0; transform: scaleY(.3); } }
+.siege .sg-prog { position: absolute; left: 50%; bottom: 26%; transform: translateX(-50%); width: 22cqw; font-size: 1.05cqw; text-align: center; color: #ffd86a; }
+.siege .sg-prog i { display: block; height: .5em; margin-top: .3em; background: #ffb040; box-shadow: 0 0 0 2px rgb(0 0 0 / .6); }
+.siege .sg-spec { position: absolute; bottom: 7cqw; left: 50%; transform: translateX(-50%); padding: .3em 1em; font-size: 1.1cqw; background: rgb(0 0 0 / .6); }
+.siege .sg-help { position: absolute; bottom: .3cqw; left: 50%; transform: translateX(-50%); font-size: .7cqw; opacity: .5; white-space: nowrap; }
+.siege .dim { opacity: .7; font-size: .85rem; }
+.siege [hidden] { display: none !important; }
 .siege .sg-menu { position: absolute; inset: 8% 12%; overflow: auto; padding: 1rem 1.4rem; background: rgb(24 18 12 / .94); border: 2px solid #b08a3a; }
 .siege .sg-menu h3 { margin: 0 0 .6rem; font: 1.3rem "EB Garamond", Georgia, serif; color: #f6d77a; } .siege .sg-menu h4 { margin: .6rem 0 .3rem; color: #d8a838; }
 .siege .sg-menu button { display: block; width: 100%; margin: .2rem 0; padding: .35rem .6rem; font: inherit; text-align: left; color: #f4ecd8; background: #3a2a18; border: 1px solid #6a4a2a; cursor: pointer; }
@@ -1590,7 +1636,7 @@ canvas.twinkle { display: none; position: absolute; z-index: 1; pointer-events: 
 .siege .sg-menu button span { float: right; color: #9bff9b; }
 .siege .sg-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; }
 .siege .sg-menu table { width: 100%; border-collapse: collapse; } .siege .sg-menu td, .siege .sg-menu th { padding: .2rem .5rem; text-align: left; border-bottom: 1px solid #4a3a28; }
-.siege .sg-knife { display: block; width: 320px; height: 180px; image-rendering: pixelated; margin: 0 auto .5rem; border: 1px solid #6a4a2a; }
+.siege .sg-knife { display: block; width: 360px; height: 110px; image-rendering: pixelated; margin: 0 auto .5rem; border: 1px solid #6a4a2a; }
 .siege .sg-forge > button { display: inline-block; width: auto; }
 
 .siege .sg-set { display: flex; align-items: center; gap: .5rem; margin: .3rem 0; } .siege .sg-set span { flex: 1; }

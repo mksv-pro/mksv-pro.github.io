@@ -41,6 +41,11 @@
     if (b.team === 'def' && b.money >= 600 && Math.random() < 0.5) { spend(G.tools.price); b.tools = true; }
     b.slot = b.weapons[1] ? 1 : 2;
   }
+  /** The attackers' ways to a site (g.lanes[site]: points to pass first), one chosen for each man each round. */
+  function viaFirst(b, g, goal) {
+    const ai = b.ai; const lanes = g.lanes && g.lanes[g.attSite]; if (!lanes || ai.viaDone) return goal;
+    ai.via ||= lanes[(b.idx + g.round) % lanes.length]; if (Math.hypot(ai.via[0] - b.x, ai.via[1] - b.y) < 1.5) { ai.viaDone = true; return goal; } return ai.via;
+  }
   const angTo = (a, b) => Math.atan2(b.y - a.y, b.x - a.x);
   const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
   /** One bot's thinking for dt seconds. */
@@ -50,13 +55,15 @@
     if (now < b.blindUntil) { g.move(b, Math.cos(b.a + Math.PI) * 0.5, Math.sin(b.a + Math.PI) * 0.5, dt); return; } // (blinded: backs off, does not shoot)
     // what it sees: the nearest enemy in its field of view, in sight
     const foes = g.actors.filter((o) => o.alive && o.team !== b.team);
-    let seen = null; let best = 1e9;
+    let seen = null; let best = 1e9; // (the nearest in sight)
     foes.forEach((o) => { const d = Math.hypot(o.x - b.x, o.y - b.y); const off = Math.abs(wrap(angTo(b, o) - b.a)); if (d < 28 && (off < 1.1 || d < 2.2) && d < best && g.sees(b, o)) { best = d; seen = o; } });
     if (seen) { if (ai.target !== seen) { ai.target = seen; ai.reactAt = now + D.react * (0.8 + Math.random() * 0.5); } ai.lastSeen = { x: seen.x, y: seen.y, t: now }; } else ai.target = null;
     // heard: the last noise near enough (shots, steps, the keg's beep)
     const heard = g.noises.filter((n) => n.team !== b.team && now - n.t < 1.5 && Math.hypot(n.x - b.x, n.y - b.y) < n.r).pop();
     if (!seen && heard && (!ai.lastSeen || now - ai.lastSeen.t > 2)) ai.lastSeen = { x: heard.x, y: heard.y, t: now };
-    // aim and shoot
+    // aim and shoot (within the weapon's reach, or when hit: farther off, it keeps to its way)
+    const reach = ((w) => (w.scoped ? 40 : w.pellets ? 9 : w.slot === 2 ? 15 : 24))(g.arms.W[b.weapons[b.slot] || 'knife']);
+    if (seen && best > reach && now - (b.hitAt || -9) > 2) seen = null;
     if (seen) {
       const want = angTo(b, seen); const da = wrap(want - b.a); b.a += Math.sign(da) * Math.min(Math.abs(da), D.turn * dt);
       const close = best < 4;
@@ -73,15 +80,15 @@
       if (keg.planted) goal = ai.guard || (ai.guard = [keg.x + (Math.random() - 0.5) * 4, keg.y + (Math.random() - 0.5) * 4]);
       if (goal && g.wall(Math.floor(goal[0]), Math.floor(goal[1]))) goal = ai.guard = [keg.x, keg.y]; // (not inside a wall)
       else if (keg.carrier === b) {
-        const site = g.sites[ai.site ?? (ai.site = g.attSite)]; goal = site.c;
+        const site = g.sites[ai.site ?? (ai.site = g.attSite)]; goal = viaFirst(b, g, site.c);
         if (g.onSite(b) !== null) { g.plant(b, dt); return; }
       } else if (keg.dropped) goal = [keg.x, keg.y];
-      else { const site = g.sites[g.attSite]; goal = ai.wait && now < ai.wait ? null : site.c; if (!ai.smoked && b.gear.smoke && Math.hypot(site.c[0] - b.x, site.c[1] - b.y) < 9) { ai.smoked = true; g.throw(b, 'smoke', { x: site.c[0], y: site.c[1] }); } }
+      else { const site = g.sites[g.attSite]; goal = ai.wait && now < ai.wait ? null : viaFirst(b, g, site.c); if (!ai.smoked && b.gear.smoke && Math.hypot(site.c[0] - b.x, site.c[1] - b.y) < 9) { ai.smoked = true; g.throw(b, 'smoke', { x: site.c[0], y: site.c[1] }); } }
     } else {
       if (keg.planted) { goal = [keg.x, keg.y]; if (Math.hypot(keg.x - b.x, keg.y - b.y) < 0.9) { g.defuse(b, dt); return; } }
       else goal = ai.post || (ai.post = g.posts.def[(b.idx * 3) % g.posts.def.length]);
     }
-    if (ai.lastSeen && now - ai.lastSeen.t < 6 && !keg.planted) goal = [ai.lastSeen.x, ai.lastSeen.y]; // (where it saw or heard one)
+    if (ai.lastSeen && now - ai.lastSeen.t < 6 && !keg.planted && Math.hypot(ai.lastSeen.x - b.x, ai.lastSeen.y - b.y) < 12) goal = [ai.lastSeen.x, ai.lastSeen.y]; // (where it saw or heard one, near)
     if (!goal) { b.moving = false; return; }
     if (!ai.path || now > ai.pathAt || ai.goalKey !== `${Math.floor(goal[0])},${Math.floor(goal[1])}`) {
       ai.path = path(g, [Math.floor(b.x), Math.floor(b.y)], [Math.floor(goal[0]), Math.floor(goal[1])]); ai.pathAt = now + 1 + Math.random(); ai.goalKey = `${Math.floor(goal[0])},${Math.floor(goal[1])}`;
