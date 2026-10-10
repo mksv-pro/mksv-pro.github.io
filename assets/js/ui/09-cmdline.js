@@ -107,8 +107,11 @@ const eventNames = () => [...window.Hours.events(), ...Object.keys(WX_EVENTS), .
 let tuneListP = null;
 const tuneList = () => (tuneListP ||= fetch(new URL('assets/data/real/index.json', SITE), { cache: 'no-cache' }).then((r) => r.json())
   .then((ix) => (ix.tunes ? fetch(new URL(`assets/data/real/tunes.json?v=${ix.tunes.v}`, SITE)).then((r) => r.json()) : { tunes: [] }))
-  .then((o) => o.tunes).catch(() => []));
-const WHEN = { day: 'by day', evening: 'in the evening', december: 'in December', night: 'at night, on the harp', market: 'at the market, pipes and drum' };
+  .then((o) => o.tunes)
+  .then((list) => (/^(localhost|127\.0\.0\.1|0\.0\.0\.0|192\.168\.\d+\.\d+)$/.test(location.hostname) // (and, on a local server, the songs turned into tunes here: sound.js MINE)
+    ? fetch(new URL('assets/data/local/tunes.json', SITE), { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : { tunes: [] })).then((o) => [...list, ...o.tunes]).catch(() => list) : list))
+  .catch(() => []));
+const WHEN = { day: 'by day', evening: 'in the evening', december: 'in December', night: 'at night, on the harp', market: 'at the market, pipes and drum', tavern: 'in the tavern, the band and a cantor (local)' };
 const nowPlaying = () => { const n = window.Sound && window.Sound.now ? window.Sound.now() : null; return n ? `${esc(n.title)}, ${esc(n.composer)}${n.year ? ` (${esc(n.year)})` : ''}` : null; };
 /** Sound and music on, in the castle (the terminal is silent); the promise of the sound, or null. */
 function hearing() {

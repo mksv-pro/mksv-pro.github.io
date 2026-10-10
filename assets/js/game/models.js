@@ -404,9 +404,15 @@
     const ax = (pby - pcy) / area; const ay = (pcx - pbx) / area; const a0 = ((pbx * pcy) - (pcx * pby)) / area; // (the weights as planes over the screen)
     const bx = (pcy - pay) / area; const by = (pax - pcx) / area; const b0 = ((pcx * pay) - (pax * pcy)) / area;
     if (x0 < box[0]) box[0] = x0; if (y0 < box[1]) box[1] = y0; if (x1 > box[2]) box[2] = x1; if (y1 > box[3]) box[3] = y1;
-    for (let y = y0; y <= y1; y += 1) {
-      const py = y + 0.5; let wa = a0 + ax * (x0 + 0.5) + ay * py; let wb = b0 + bx * (x0 + 0.5) + by * py; let o = y * W + x0;
-      for (let x = x0; x <= x1; x += 1, o += 1, wa += ax, wb += bx) {
+    const cx2 = -(ax + bx); const E = -1e-6;
+    for (let y = y0; y <= y1; y += 1) { // (each row from where the three weights are all >= 0 to where one turns negative: the work as the area, not the box)
+      const py = y + 0.5; const A0 = a0 + ay * py; const B0 = b0 + by * py; const C0 = 1 - A0 - B0; let lo = x0; let hi = x1;
+      if (ax > 0) { const v = Math.ceil((E - A0) / ax - 0.5); if (v > lo) lo = v; } else if (ax < 0) { const v = Math.floor((E - A0) / ax - 0.5); if (v < hi) hi = v; } else if (A0 < E) continue;
+      if (bx > 0) { const v = Math.ceil((E - B0) / bx - 0.5); if (v > lo) lo = v; } else if (bx < 0) { const v = Math.floor((E - B0) / bx - 0.5); if (v < hi) hi = v; } else if (B0 < E) continue;
+      if (cx2 > 0) { const v = Math.ceil((E - C0) / cx2 - 0.5); if (v > lo) lo = v; } else if (cx2 < 0) { const v = Math.floor((E - C0) / cx2 - 0.5); if (v < hi) hi = v; } else if (C0 < E) continue;
+      if (lo > 0) lo -= 1; if (hi < W - 1) hi += 1; if (lo < x0) lo = x0; if (hi > x1) hi = x1; // (one pixel of margin each side; the test below decides)
+      let wa = A0 + ax * (lo + 0.5); let wb = B0 + bx * (lo + 0.5); let o = y * W + lo;
+      for (let x = lo; x <= hi; x += 1, o += 1, wa += ax, wb += bx) {
         const wc = 1 - wa - wb; if (wa < -1e-6 || wb < -1e-6 || wc < -1e-6) continue;
         const iw = wa * ia + wb * ib + wc * ic; const z = orth ? wa * Az + wb * Bz + wc * Cz : 1 / iw;
         if (z >= ZB[o]) continue; ZB[o] = z; TID[o] = id;
@@ -482,7 +488,7 @@
   let low = null;
   function view(t, wid, kn, a) {
     // drawn at half the picture's size (or less: about 300 rows) and enlarged whole, as the consoles' 3D was
-    const k = Math.max(1, Math.round(t.H / 300)); const w = Math.ceil(t.W / k); const h = Math.ceil(t.H / k);
+    const k = Math.max(2, Math.round(t.H / 300)); const w = Math.ceil(t.W / k); const h = Math.ceil(t.H / k);
     if (!low || low.W !== w || low.H !== h) low = { buf: new Uint32Array(w * h), W: w, H: h }; low.f = (h / 2) / Math.tan(0.5); low.ortho = 0; t.f = (t.H / 2) / Math.tan(0.5);
     sleeveRGB = a.team === 'att' ? [158, 44, 36] : [52, 82, 170];
     const amb = (a.amb || [1, 1, 1]).map((v) => Math.min(1.5, v));
@@ -672,22 +678,33 @@
    * Draw the things of the world into t = { buf, W, H, ZB (the world's depth), F, hor }.
    * items: [{ man: actor (x, y, z, a, team, wid, ...) } | { model: id, x, y, z, a, k, lying } | { keg, x, y, z, burn (0..1) } | { nade: id, x, y, z, spin }], each with light: [r, g, b].
    */
+  /* The men and things in the world, drawn at half the picture's size against the world's depth halved (the
+     nearest of each 2 × 2), then enlarged into it with their depth; the outline at full size. A man a step away
+     fills half the screen: 19 ms at 960 × 540 drawn whole. */
+  let lowW = null;
   function world(t, cam, items, sunView, now, kn) {
-    t.keepZ = true; t.f = cam.F; t.cx = t.W / 2; t.cy = cam.hor; t.ortho = 0; begin(t); sleeveRGB = [52, 82, 170];
+    const w = t.W >> 1; const h = t.H >> 1; const W = t.W; const H = t.H; const Z = t.ZB;
+    if (!lowW || lowW.W !== w || lowW.H !== h) lowW = { W: w, H: h, buf: new Uint32Array(w * h), ZB: new Float32Array(w * h), keepZ: true, ortho: 0 };
+    const LZ = lowW.ZB; for (let y = 0; y < h; y += 1) for (let x = 0, o = 2 * y * W, q = y * w; x < w; x += 1, o += 2, q += 1) { const a = Z[o] < Z[o + 1] ? Z[o] : Z[o + 1]; const b = Z[o + W] < Z[o + W + 1] ? Z[o + W] : Z[o + W + 1]; LZ[q] = a < b ? a : b; }
+    lowW.f = cam.F / 2; lowW.cx = w / 2; lowW.cy = cam.hor / 2; begin(lowW); sleeveRGB = [52, 82, 170]; const lt = lowW;
     items.forEach((it) => {
       const L = it.light || [1, 1, 1]; const lum = (L[0] + L[1] + L[2]) / 3; light = { amb: L.map((v) => Math.min(1.4, v * 0.62)), key: sunView, kk: Math.max(0.12, Math.min(1, (lum - 0.5) * 1.8)), flash: it.flash || 0 };
-      if (it.man) { const a = it.man; const M0 = placeIn(cam, a.x, a.y, a.z, a.a, UNIT); manParts(a, M0, now, kn).forEach(([part, m]) => drawPart(t, part, m)); return; }
-      if (it.keg) { const kg = get('keg'); const M0 = placeIn(cam, it.x, it.y, it.z, it.a || 0, UNIT); drawPart(t, kg.body, M0); const f = mul(M0, chain(tr(0, 0.34, 0), sc(1, Math.max(0.05, 1 - it.burn), 1))); drawPart(t, kg.fuse, f);
-        if (it.burn < 1) drawPart(t, kg.spark, mul(M0, tr(-0.03 * (1 - it.burn), 0.34 + 0.24 * (1 - it.burn), 0))); return; }
+      if (it.man) { const a = it.man; const M0 = placeIn(cam, a.x, a.y, a.z, a.a, UNIT); manParts(a, M0, now, kn).forEach(([part, m]) => drawPart(lt, part, m)); return; }
+      if (it.keg) { const kg = get('keg'); const M0 = placeIn(cam, it.x, it.y, it.z, it.a || 0, UNIT); drawPart(lt, kg.body, M0); const f = mul(M0, chain(tr(0, 0.34, 0), sc(1, Math.max(0.05, 1 - it.burn), 1))); drawPart(lt, kg.fuse, f);
+        if (it.burn < 1) drawPart(lt, kg.spark, mul(M0, tr(-0.03 * (1 - it.burn), 0.34 + 0.24 * (1 - it.burn), 0))); return; }
       const md = get(it.model || it.nade); if (!md) return; let M0 = placeIn(cam, it.x, it.y, it.z, it.a || 0, it.k || UNIT);
       if (it.lying) M0 = mul(M0, chain(tr(0, 0.025, 0), rz(Math.PI / 2))); if (it.nade) M0 = mul(M0, chain(sc(0.6), rx(it.spin || 0)));
-      Object.entries(md).forEach(([k, part]) => { if (part.P && !/hand/.test(k) && k !== 'rod') drawPart(t, part, M0); });
+      Object.entries(md).forEach(([k, part]) => { if (part.P && !/hand/.test(k) && k !== 'rod') drawPart(lt, part, M0); });
     });
-    resolve(t);
+    resolve(lt); if (box[2] < 0) return;
+    // enlarged into the picture, with the depth
+    const x0 = Math.max(1, 2 * box[0] - 1); const y0 = Math.max(1, 2 * box[1] - 1); const x1 = Math.min(W - 2, 2 * box[2] + 2); const y1 = Math.min(H - 2, 2 * box[3] + 2);
+    const on = (x, y) => TID[(y >> 1) * w + (x >> 1)] >= 0; const LB = lt.buf;
+    for (let y = y0; y <= y1; y += 1) for (let x = x0; x <= x1; x += 1) { const q = (y >> 1) * w + (x >> 1); if (TID[q] >= 0) { const o = y * W + x; t.buf[o] = LB[q]; Z[o] = LZ[q]; } }
     // the outline: where a figure stands against what is behind it, a dark edge
-    const W = t.W; const H = t.H; const x0 = Math.max(1, box[0] - 1); const y0 = Math.max(1, box[1] - 1); const x1 = Math.min(W - 2, box[2] + 1); const y1 = Math.min(H - 2, box[3] + 1);
-    for (let y = y0; y <= y1; y += 1) for (let x = x0; x <= x1; x += 1) { const o = y * W + x; if (TID[o] >= 0) continue; const z = ZB[o];
-      for (const n of [o - 1, o + 1, o - W, o + W]) if (TID[n] >= 0 && ZB[n] < z - 0.05) { const v = t.buf[o]; t.buf[o] = 0xff000000 | ((((v >> 16) & 255) * 0.35) << 16) | ((((v >> 8) & 255) * 0.35) << 8) | ((v & 255) * 0.35); break; } }
+    const near = (x, y, z) => on(x, y) && Z[y * W + x] < z - 0.05;
+    for (let y = y0; y <= y1; y += 1) for (let x = x0; x <= x1; x += 1) { if (on(x, y)) continue; const o = y * W + x; const z = Z[o];
+      if (near(x - 1, y, z) || near(x + 1, y, z) || near(x, y - 1, z) || near(x, y + 1, z)) { const v = t.buf[o]; t.buf[o] = 0xff000000 | ((((v >> 16) & 255) * 0.35) << 16) | ((((v >> 8) & 255) * 0.35) << 8) | ((v & 255) * 0.35); } }
   }
 
   window.SIEGE_MODELS = { view, icon, world, HOLD, knifeModel, mat: { tr, rx, ry, rz, chain } };

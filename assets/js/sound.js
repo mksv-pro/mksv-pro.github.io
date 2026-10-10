@@ -13,6 +13,7 @@
   // recorded foley for the interface (_tools/sounds.py: Kenney's RPG Audio, CC0, treated to match)
   const SND = new URL('../snd/', document.currentScript.src);
   const REAL = new URL('../data/real/', document.currentScript.src); // (real tunes: _tools/fetch_tunes.py)
+  const MINE = new URL('../data/local/tunes.json', document.currentScript.src); // (songs turned into tunes here: _tools/mp3_to_tune.py)
   const RECORDED = ['door', 'card', 'seal', 'page', 'close']; const takes = {};
   let ac = null; let master; let dry; let wet; let noise; let timer = 0; let state = () => ({});
   let crackleAt = 0; // when the fire's next crackle is due (AudioContext time)
@@ -160,12 +161,15 @@
   ];
   /* ---- real tunes (Mutopia's MIDI, reduced to a tune and a bass): after a while of the composed air,
      one fitting the hour is played through, then the air comes back. Satie, at night, on a harp. */
-  let tunes = null; let tunesAsked = null; let playing = null; let airUntil = 0;
+  let tunes = null; let tunesAsked = null; let playing = null; let airUntil = 0; const voices = {}; // (voices: a local tune's recorded singer, decoded once)
   /** One of the real assets (assets/data/real/<name>.json, its version from index.json), or null. */
   const realJson = (name) => fetch(new URL('index.json', REAL), { cache: 'no-cache' }).then((r) => r.json())
     .then((ix) => (ix[name] ? fetch(new URL(`${name}.json?v=${ix[name].v}`, REAL)).then((r) => r.json()) : null));
+  // songs turned into tunes on this machine (_tools/mp3_to_tune.py: assets/data/local/, gitignored), read on a local server only
+  const LOCAL = /^(localhost|127\.0\.0\.1|0\.0\.0\.0|192\.168\.\d+\.\d+)$/.test(location.hostname);
+  const localTunes = () => (LOCAL ? fetch(MINE, { cache: 'no-cache' }).then((r) => (r.ok ? r.json() : { tunes: [] })).then((o) => o.tunes).catch(() => []) : Promise.resolve([]));
   function askTunes() { // (once; the promise of the list)
-    return (tunesAsked ||= realJson('tunes').then((o) => { tunes = o ? o.tunes : null; return tunes; }).catch(() => null));
+    return (tunesAsked ||= Promise.all([realJson('tunes').catch(() => null), localTunes()]).then(([o, mine]) => { tunes = o || mine.length ? [...(o ? o.tunes : []), ...mine] : null; return tunes; }).catch(() => null));
   }
   function harp(m, at, vol, len) { // plucked in the middle: the odd harmonics, a long ring
     const t = t0() + Math.max(0, at); const f1 = MIDI(m); const g = ac.createGain(); g.gain.value = vol;
@@ -205,14 +209,34 @@
     const b = ac.createGain(); b.gain.setValueAtTime(v * 0.5, t); b.gain.exponentialRampToValueAtTime(0.0001, t + (strong ? 0.12 : 0.07));
     n.connect(hp).connect(b); b.connect(mus.in); n.start(t, Math.random()); n.stop(t + 0.15);
   }
+  function hat(at) { // a snare's brush: a short tick of high noise
+    const t = t0() + Math.max(0, at); const n = ac.createBufferSource(); n.buffer = noise; const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 6500;
+    const g = ac.createGain(); g.gain.setValueAtTime(0.035, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.04); n.connect(hp).connect(g); g.connect(mus.in); n.start(t, Math.random()); n.stop(t + 0.06);
+  }
+  /** A cantor's syllable: two sawtooths a few cents apart through the vowel's formants (the chapel's). */
+  function cantor(m, at, len, vowel) {
+    const t = t0() + Math.max(0, at); const f = MIDI(m); const g = ac.createGain(); const fm = FORMANTS[vowel] || FORMANTS.a;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.05, t + 0.03); g.gain.setValueAtTime(0.05, t + Math.max(0.04, len - 0.05)); g.gain.exponentialRampToValueAtTime(0.0001, t + len + 0.05);
+    fm.forEach((F, k) => { const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = F; bp.Q.value = [6, 9, 12][k]; const a = ac.createGain(); a.gain.value = [1, 0.45, 0.2][k] * 3; [-6, 6].forEach((c) => { const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = c; o.connect(bp); o.start(t); o.stop(t + len + 0.1); }); bp.connect(a).connect(g); });
+    g.connect(mus.in);
+  }
   function pickTune(s, but = null) {
     const pool = tunes.filter((q) => q.when === whenOf(s) && q !== but); return pool.length ? pool[Math.floor(Math.random() * pool.length)] : null;
   }
   /** Schedule the playing tune's notes up to half a second ahead; false when it has ended. */
   function playTune() {
-    const q = playing; const bd = 60 / q.tune.bpm; const harpy = q.tune.when === 'night'; const band = q.tune.when === 'market';
+    const q = playing; const bd = 60 / q.tune.bpm; const harpy = q.tune.when === 'night'; const band = q.tune.when === 'market' || q.tune.when === 'tavern';
     const last = q.tune.notes.at(-1); const span = Math.ceil(last[0] + last[1]) + 1; // (beats; the tune again from there)
-    if (band) { // the drum's pulse: the beat, doubled or more till it is no quicker than ~0.3 s; once round, again till a minute
+    if (q.tune.voice && !q.vo) { // the singer's own voice (mp3_to_tune.py --voice), in step with the band from beat 0
+      q.vo = true;
+      (voices[q.tune.id] ||= fetch(new URL(q.tune.voice, MINE)).then((r) => r.arrayBuffer()).then((b) => ac.decodeAudioData(b)).catch(() => null)).then((buf) => {
+        if (!buf || playing !== q) return;
+        const src = ac.createBufferSource(); src.buffer = buf; const g = ac.createGain(); g.gain.value = 0.9; src.connect(g).connect(mus.in);
+        src.start(Math.max(t0(), q.t0), Math.max(0, t0() - q.t0)); q.src = src; // (decoded late: it catches up)
+      });
+    }
+    if (band && q.tune.drums) q.drone ??= drone(q.tune.tonic ?? 2, q.t0 - t0() - 0.3); // (a tune with its own drums: no made-up pulse)
+    else if (band) { // the drum's pulse: the beat, doubled or more till it is no quicker than ~0.3 s; once round, again till a minute
       q.reps ??= Math.min(3, Math.max(1, Math.ceil(60 / (span * bd)))); q.rep ??= 1;
       q.step ??= bd * 2 ** Math.max(0, Math.ceil(Math.log2(0.3 / bd))); q.hit ??= 0;
       q.drone ??= drone(q.tune.tonic ?? 2, q.t0 - t0() - 0.3);
@@ -225,6 +249,10 @@
     while (q.i < q.tune.notes.length) {
       const [b, d, m0, v] = q.tune.notes[q.i]; const at = q.t0 + b * bd;
       if (at > t0() + 0.5) return true;
+      if (v >= 2) { // the tabor's own hits (36 kick, 38 snare, 42 hat), the cantor's syllables
+        if (at > t0() - 0.05) { if (v === 3) cantor(m0, at - t0(), Math.max(0.12, d * bd), q.tune.notes[q.i][4]); else if (m0 === 42) hat(at - t0()); else tabor(at - t0(), m0 === 36); }
+        q.i += 1; continue;
+      }
       let m = m0; while (m > (band ? 79 : 84)) m -= 12; while (m < (band ? 55 : 38)) m += 12; // (the instrument's compass)
       const jitter = (Math.random() - 0.5) * 0.015; // (a player, not a machine)
       if (at > t0() - 0.05) {
@@ -239,7 +267,7 @@
     return going;
   }
   /** Stop what plays (its drone too). */
-  const hush = () => { if (playing && playing.drone) playing.drone.stop(); playing = null; };
+  const hush = () => { if (playing && playing.drone) playing.drone.stop(); if (playing && playing.src) playing.src.stop(); playing = null; };
   const air = { next: 0, deg: 7, left: 0, beat: 0 };
   function compose() { // schedule the air up to half a second ahead
     askTunes();
@@ -444,7 +472,8 @@
 
   function tick() { // every 250 ms: the beds follow the page; events now and then
     const s = state(); const wx = s.wx || {}; const wet0 = { drizzle: 0.3, showers: 0.6, rain: 0.8, storm: 1 }[wx.kind] || 0;
-    const inside = Boolean(s.room); const room = inside ? 0.6 : 1; const outW = inside ? (s.open ? 0.6 : 0.12) : 1; // (a window open: the weather comes in) const pan = (inside || s.place ? {} : s.pan) || {};
+    const inside = Boolean(s.room); const room = inside ? 0.6 : 1; const outW = inside ? (s.open ? 0.6 : 0.12) : 1; // (a window open: the weather comes in)
+    const pan = (inside || s.place ? {} : s.pan) || {};
     set(master.gain, s.on ? volume * 0.55 : 0, 0.4);
     useVerb(inside ? (RV[s.room] ? s.room : 'out') : 'out'); placeMusic(s);
     set(beds.fire.g.gain, (s.room === 'work' || s.room === 'workshop' ? 0.12 : 0.05) * room); set(beds.fire.p.pan, pan.fire || 0, 0.3);

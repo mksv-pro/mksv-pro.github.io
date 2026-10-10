@@ -3480,7 +3480,7 @@ qqqqqTqqq
   const now = () => (performance.now() - t0) / 1000;
   // on, as the castle theme (the tower on narrow screens) or as the narrow terminal's banner (the landscape only)
   const banner = () => root.getAttribute('data-theme') !== 'hours' && root.classList.contains('banner');
-  const isOn = () => root.getAttribute('data-theme') === 'hours' || root.classList.contains('banner');
+  const isOn = () => (root.getAttribute('data-theme') === 'hours' || root.classList.contains('banner')) && !root.classList.contains('siege-on'); // (under the game: still)
   const SCENE_LABEL = 'Pixel-art landscape under the sky over Paris at this hour: a castle with an observatory on a '
     + 'rock above a river, mountains and a forest; in front, a knight resting by a bonfire with a sword driven '
     + 'into its coals, and a wizard with a glowing staff, in tall grass.';

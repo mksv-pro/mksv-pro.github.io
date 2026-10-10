@@ -194,6 +194,7 @@ function collisionFig(canvas) {
   let last = 0;
   const draw = (now) => {
     if (!canvas.isConnected) return;
+    if (root.classList.contains('siege-on')) { last = 0; requestAnimationFrame(draw); return; } // (under the game: still)
     const dt = Math.min(0.05, last ? (now - last) / 1000 : 0.016); last = now; t0 += dt;
     for (let k = 0; k < 8; k += 1) step(dt / 8);
     if (Math.hypot(r[0], r[1]) > 170 || t0 > 7) reset();

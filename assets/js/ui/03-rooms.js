@@ -87,7 +87,7 @@ function twinkle() {
     let last = 0;
     const draw = (now) => {
       requestAnimationFrame(draw);
-      if (now - last < 120 || root.getAttribute('data-theme') !== 'dark' || document.hidden) return; last = now;
+      if (now - last < 120 || root.getAttribute('data-theme') !== 'dark' || document.hidden || root.classList.contains('siege-on')) return; last = now;
       const dpr = devicePixelRatio || 1; const W = pic.clientWidth; const H = pic.clientHeight;
       if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
       Object.assign(cv.style, { left: `${pic.offsetLeft}px`, top: `${pic.offsetTop}px`, width: `${W}px`, height: `${H}px` }); // (over the picture, in the sticky figure)

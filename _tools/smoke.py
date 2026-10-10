@@ -98,6 +98,13 @@ CASES = {
     "siege-bots": ("?theme=dark", (1600, 900),  # (two minutes run ahead without drawing: the bots fight, plant or defuse, rounds end)
                    "await wait(1000); openCmd(); run('siege'); await wait(2500); const g = Siege.debug(); g.player.hp = 1e9; Siege.sim(200); window.st = Siege.state(); window.fallen = g.feed.length;",
                    "window.st && (window.st.round >= 2 || window.fallen >= 3)"),
+    "siege-esc": ("?theme=dark", (1600, 900),  # (Esc: play to pause, pause stays, settings back to pause; buying closed; fallen, E takes over a bot)
+                  "await wait(1000); openCmd(); run('siege'); await wait(2500); const g = Siege.debug(); const k = (code) => dispatchEvent(new KeyboardEvent('keydown', { code })); const m = () => document.querySelector('.sg-menu'); const r = [];"
+                  " k('Escape'); r.push(m().classList.contains('sg-pause') && g.paused); k('Escape'); r.push(!m().hidden && g.paused);"
+                  " m().querySelector('[data-act=settings]').click(); k('Escape'); r.push(m().classList.contains('sg-pause') && !m().classList.contains('sg-setmenu'));"
+                  " m().hidden = true; g.paused = false; k('KeyB'); r.push(!m().hidden); k('Escape'); r.push(m().hidden && !g.paused);"
+                  " g.player.alive = false; g.player.hp = 0; await wait(100); k('KeyE'); r.push(g.player.name !== 'You' && g.player.alive); window.r = r;",
+                  "window.r && window.r.every(Boolean)"),
     "room-to-banner": ("?theme=hours&sky=noon&weather=clear#teaching", (1600, 900),  # (a room, then the window turns upright: the banner shows the landscape)
                        "await wait(2500); document.documentElement.classList.add('banner'); document.documentElement.setAttribute('data-theme', 'dark'); await wait(800);",
                        "/^Pixel-art landscape/.test(document.querySelector('.plate-img').getAttribute('aria-label')) && " + CANVAS),

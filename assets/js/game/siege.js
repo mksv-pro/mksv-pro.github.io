@@ -129,12 +129,12 @@
     [W, H] = QUALITY[settings.quality ?? 1];
     build(); prepCells(); prepProps(); prepLight(); prepSky(); bind(); newRound(true);
     let last = performance.now();
-    const loop = (t) => { raf = requestAnimationFrame(loop); const dt = Math.min(0.05, (t - last) / 1000); last = t; window.__pf = window.__pf || {}; const __t = (k, t0) => { window.__pf[k] = (window.__pf[k] || 0) + performance.now() - t0; return performance.now(); }; let T0 = performance.now(); if (!g.paused) { g.now += dt; update(dt); } T0 = __t('update', T0); render(); T0 = __t('render', T0); hud(); __t('hud', T0); window.__pf.n = (window.__pf.n || 0) + 1; };
-    raf = requestAnimationFrame(loop);
+    const loop = (t) => { raf = requestAnimationFrame(loop); const dt = Math.min(0.05, (t - last) / 1000); last = t; if (!g.paused) { g.now += dt; update(dt); } const r0 = performance.now(); render(); autoQuality(performance.now() - r0); hud(); };
+    raf = requestAnimationFrame(loop); document.documentElement.classList.add('siege-on'); // (the castle behind stops drawing)
     say('Siege. Defend the two sites, A and B, from the keg. Click to take the mouse; B to buy; Esc to pause.', 6);
   }
   function stop() {
-    cancelAnimationFrame(raf); raf = 0; if (document.pointerLockElement) document.exitPointerLock();
+    cancelAnimationFrame(raf); raf = 0; if (document.pointerLockElement) document.exitPointerLock(); document.documentElement.classList.remove('siege-on');
     unbind(); if (root) root.remove(); root = null; g = null; if (audio) { audio.close(); audio = null; }
   }
 
@@ -570,7 +570,7 @@
     const yaw = p.a + (self ? (g.shake > 0.01 ? (Math.random() - 0.5) * g.shake * 0.02 : 0) : 0);
     const dirX = Math.cos(yaw); const dirY = Math.sin(yaw); const plX = -dirY * pl; const plY = dirX * pl;
     cam = { px: p.x, py: p.y, dirX, dirY, plX, plY, pl, hor, eye, F, inv: 1 / (plX * dirY - dirX * plY) };
-    window.__pf = window.__pf || {}; const __t = (k, t0) => { window.__pf[k] = (window.__pf[k] || 0) + performance.now() - t0; return performance.now(); }; let T1 = performance.now(); lightFrame(); T1 = __t('light', T1);
+    lightFrame();
     if (!skyTex || skyTex.length !== SKW * H) paintSky();
     const colS = new Int32Array(W); for (let x = 0; x < W; x += 1) { const ang = yaw + Math.atan(((2 * x) / W - 1) * pl); colS[x] = Math.floor(((ang / (2 * Math.PI)) % 1 + 1) % 1 * SKW); }
     if (!rowInv || rowInv.length !== H) rowInv = new Float32Array(H); for (let y = 0; y < H; y += 1) { const d = y + 0.5 - hor; rowInv[y] = Math.abs(d) < 0.01 ? 100 : 1 / d; }
@@ -636,12 +636,10 @@
       }
       const sc = colS[Math.min(W - 1, x * step)]; for (let r = ytop, o = x * H + ytop; r < ybot; r += 1, o += 1) { cb[o] = r < hor ? skyTex[(hor - r < H ? hor - r : H - 1) * SKW + sc] : hazeV; cz[o] = 1e9; } // (the sky, or haze past the map)
     }
-    T1 = __t('cols-only', T1);
     // turned the right way, by tiles (so both sides stay in the cache)
     for (let x0 = 0; x0 < CW; x0 += 16) for (let y0 = 0; y0 < H; y0 += 16) { const x1 = Math.min(CW, x0 + 16); const y1 = Math.min(H, y0 + 16);
       for (let xx = x0; xx < x1; xx += 1) { let o = xx * H + y0; const X = xx * step; let q = y0 * W + X; const two = step === 2 && X + 1 < W;
         for (let yy = y0; yy < y1; yy += 1, o += 1, q += W) { const v = cb[o]; const d = cz[o]; buf[q] = v; zb[q] = d; if (two) { buf[q + 1] = v; zb[q + 1] = d; } } } }
-    T1 = __t('columns', T1);
     // the sprites, far to near, each pixel against the depth
     const spr = []; const now = g.now;
     // the men, the props, the keg, things thrown: models, against the depth (those out of sight skipped)
@@ -655,7 +653,7 @@
     (g.drops || []).forEach((d) => { if (vis(d.x, d.y, d.z, d.z + 0.2)) items.push({ model: d.id, x: d.x, y: d.y, z: d.z, a: d.a, lying: true, light: lit(d.x, d.y) }); });
     g.nades.forEach((n) => items.push({ nade: { he: 'firepot', smoke: 'incense', flash: 'vial', fire: 'flask' }[n.kind], x: n.x, y: n.y, z: n.z, spin: (now - n.t0) * 14, light: lit(n.x, n.y) }));
     const sunView = [SUN[0] * -dirY + SUN[1] * dirX, SUN[2], SUN[0] * dirX + SUN[1] * dirY];
-    T1 = __t('items', T1); MODELS.world(worldT, cam, items, sunView, now, g.knife); T1 = __t('models', T1);
+    MODELS.world(worldT, cam, items, sunView, now, g.knife);
     torches.forEach((t) => spr.push({ x: t.x, y: t.y, z: t.z - 0.15, h: 0.32, wk: 0.16, torch: t })); // (the torches: a bracket, a flame)
     g.smokes.forEach((sm) => { const k = Math.min(1, (now - sm.t0) / 1.5) * Math.min(1, (sm.until - now) / 2); for (let j = 0; j < 22; j += 1) { const q = j * 2.39996 + now * 0.05; const r = Math.sqrt(j / 22) * sm.r * k; spr.push({ x: sm.x + Math.cos(q) * r, y: sm.y + Math.sin(q) * r, z: sm.z - 0.1 + (j % 3) * 0.25, h: 1.5 * k, wk: 1.6 * k, cloud: [182, 184, 190], alpha: 0.9 }); } });
     g.fires.forEach((f) => f.flames.forEach((q) => spr.push({ x: q[0], y: q[1], z: f.z, h: 0.32 + Math.sin(now * 9 + q[2]) * 0.1, wk: 0.3, flame: true })));
@@ -688,7 +686,6 @@
         if (sp) dot(sp[0], sp[1], sp[2], f.kind === 'blood' ? [150, 10, 14] : f.kind === 'splinter' ? [170, 120, 70] : f.kind === 'debris' ? [90, 84, 78] : age < 0.08 ? [255, 250, 200] : [200, 180, 140], Math.max(1, Math.round(sp[3] / (f.kind === 'debris' ? 60 : 90)))); });
       if (f.kind === 'trail' && age < 0.07) { const n = 24; for (let k = 0; k <= n; k += 1) { const u = k / n; const sp = toScreen(f.x0 + (f.x1 - f.x0) * u, f.y0 + (f.y1 - f.y0) * u, f.z0 + (f.z1 - f.z0) * u); if (sp && u > 0.1) dot(sp[0], sp[1], sp[2], [255, 236, 160]); } }
     });
-    T1 = __t('sprites', T1);
     // in the hand
     if (self && p.alive && !p.scoped) {
       const wid = cur(p); const sp = Math.hypot(p.vx, p.vy) / 3.6; const ph = g.bobT; const lo = lightAt(p.x, p.y);
@@ -714,7 +711,7 @@
         r += (255 - r) * fl; gg += (255 - gg) * fl; b += (255 - b) * fl; buf[o] = 0xff000000 | ((b | 0) << 16) | ((gg | 0) << 8) | (r | 0); } }
     if (self && now - g.hurtAt < 0.4) { const k = 1 - (now - g.hurtAt) / 0.4; for (let y = 0; y < H; y += 2) for (let x = 0; x < W; x += 1) { const e = Math.max(Math.abs(x / W - 0.5), Math.abs(y / H - 0.5)) * 2; if (e > 0.7) { for (let yy = y; yy < Math.min(H, y + 2); yy += 1) { const o = yy * W + x; const c = unpack(buf[o]); const m = k * (e - 0.7) / 0.3; buf[o] = pack([c[0] + (210 - c[0]) * m * 0.7, c[1] * (1 - m * 0.6), c[2] * (1 - m * 0.6)]); } } } }
     if (!me.alive && self) for (let o = 0; o < W * H; o += 1) { const c = unpack(buf[o]); const m = (c[0] + c[1] + c[2]) / 3; buf[o] = pack([m * 0.8, m * 0.75, m * 0.7]); }
-    T1 = __t('viewmodel+fx', T1); ctx.putImageData(img, 0, 0); T1 = __t('put', T1);
+    ctx.putImageData(img, 0, 0);
     // the crosshair (its gap the spread), and the mark of a hit
     if (self && p.alive && !p.scoped && !['knife', 'keg'].includes(cur(p))) crosshair(ctx, W / 2, H / 2, cur(p) === 'nade' ? 0 : spreadOf(p, ARMS.W[cur(p)]));
     if (now - g.hitMarkAt < 0.18) { ctx.strokeStyle = g.hitHead ? '#ff4a3a' : '#ffffff'; ctx.lineWidth = 2; ctx.beginPath(); [[1, 1], [-1, 1], [1, -1], [-1, -1]].forEach(([a2, b2]) => { ctx.moveTo(W / 2 + a2 * 6, H / 2 + b2 * 6); ctx.lineTo(W / 2 + a2 * 13, H / 2 + b2 * 13); }); ctx.stroke(); }
@@ -725,7 +722,7 @@
       const o = Math.round(sp[1]) * W + Math.round(sp[0]); const hidden = !(sp[1] >= 0 && sp[1] < H && zb[o] >= sp[2] - 0.3); ctx.fillStyle = hidden ? 'rgba(120,170,255,.45)' : '#9cc0ff'; ctx.fillText(a.name, sp[0], sp[1]); });
     if (self && p.alive) { const t2 = g.actors.find((o) => o.alive && o.team !== p.team && Math.abs(wrap(Math.atan2(o.y - p.y, o.x - p.x) - p.a)) < 0.3 / Math.max(1, Math.hypot(o.x - p.x, o.y - p.y)) + 0.02 && sees(p, o));
       if (t2) { ctx.fillStyle = '#ff8a7a'; ctx.fillText(`${t2.name}`, W / 2, H / 2 + H / 14); } }
-    T1 = __t('tags', T1); drawRadar(); __t('radar', T1);
+    drawRadar();
   }
   /* The radar: the map painted once (walls with a lit edge, floors by kind, the sites), turned each frame
      with the one you watch facing up, a circle of about thirteen cells; the side's men, enemies some of
@@ -773,12 +770,12 @@
 <div class="sg-feed"></div><div class="sg-msg"></div><div class="sg-banner" hidden></div><div class="sg-prog" hidden><span></span><i></i></div><div class="sg-spec" hidden></div><div class="sg-chat"></div><div class="sg-fps"></div>
 <div class="sg-vit"><div class="sg-hp"><i class="sg-i-hp"></i><b></b><span class="sg-bar"><i></i></span></div><div class="sg-ar"><i class="sg-i-ar"></i><b></b><span class="sg-bar"><i></i></span></div><div class="sg-kegc" hidden>✹ the keg</div></div>
 <div class="sg-slots"></div><div class="sg-ammo"><div class="sg-wname"></div><div class="sg-rounds"><b class="sg-mag"></b><span class="sg-res"></span></div><div class="sg-ticks"></div></div>
-<div class="sg-menu" hidden></div><div class="sg-board" hidden></div><div class="sg-death" hidden></div><div class="sg-zone"></div><div class="sg-help">Click: play (fullscreen, the mouse taken) · Esc: pause, settings, keys · B buy · Tab scores</div></div>`;
+<div class="sg-menu" hidden></div><i class="sg-vcur" hidden></i><div class="sg-board" hidden></div><div class="sg-death" hidden></div><div class="sg-zone"></div><div class="sg-help">Click: play (fullscreen, the mouse taken) · Esc: pause, settings, keys · B buy · Tab scores</div></div>`;
     document.body.append(root);
     cv = root.querySelector('canvas'); ctx = cv.getContext('2d'); img = ctx.createImageData(W, H); buf = new Uint32Array(img.data.buffer); zbuf = new Float32Array(W * H); worldT = { buf, W, H, ZB: zbuf };
     const q = (sel) => root.querySelector(sel);
     ui = { radar: q('.sg-radar'), time: q('.sg-time'), round: q('.sg-round'), sides: [...root.querySelectorAll('.sg-side')], cash: q('.sg-cash'), delta: q('.sg-delta'), feed: q('.sg-feed'), msg: q('.sg-msg'), banner: q('.sg-banner'), prog: q('.sg-prog'), spec: q('.sg-spec'),
-      hp: q('.sg-hp'), ar: q('.sg-ar'), kegc: q('.sg-kegc'), slots: q('.sg-slots'), ammo: q('.sg-ammo'), wname: q('.sg-wname'), mag: q('.sg-mag'), res: q('.sg-res'), ticks: q('.sg-ticks'), menu: q('.sg-menu'), help: q('.sg-help'), chat: q('.sg-chat'), fps: q('.sg-fps'), board: q('.sg-board'), death: q('.sg-death'), zone: q('.sg-zone') };
+      hp: q('.sg-hp'), ar: q('.sg-ar'), kegc: q('.sg-kegc'), slots: q('.sg-slots'), ammo: q('.sg-ammo'), wname: q('.sg-wname'), mag: q('.sg-mag'), res: q('.sg-res'), ticks: q('.sg-ticks'), menu: q('.sg-menu'), help: q('.sg-help'), chat: q('.sg-chat'), fps: q('.sg-fps'), board: q('.sg-board'), vcur: q('.sg-vcur'), death: q('.sg-death'), zone: q('.sg-zone') };
     hudKey = {};
   }
   const MODEL_OF = { he: 'firepot', smoke: 'incense', flash: 'vial', fire: 'flask', fall: 'helm' };
@@ -827,8 +824,25 @@
     g.fpsN = (g.fpsN || 0) + 1; if (performance.now() - (g.fpsT || 0) > 500) { ui.fps.textContent = settings.showFps ? `${Math.round(g.fpsN * 1000 / (performance.now() - (g.fpsT || performance.now() - 500)))} fps` : ''; g.fpsN = 0; g.fpsT = performance.now(); }
   }
   /* ---- menus: buy (B, in the buying time), scores (Tab), pause (Esc), the knife's forge (K) ---- */
-  function openMenu(html, cls) { ui.menu.innerHTML = html; ui.menu.className = `sg-menu ${cls}`; ui.menu.hidden = false; if (document.pointerLockElement) document.exitPointerLock(); }
-  function closeMenu() { ui.menu.hidden = true; }
+  /* The buying menu keeps the mouse (a drawn cursor moves on it, a click acts under it): the round goes on. The
+     others let the mouse go. Esc: from play, the pause; from the buying menu, closed; from settings or the forge,
+     back to the pause; on the pause, nothing (the browser will not take the mouse back on Esc: Resume does). */
+  function openMenu(html, cls, keep) { ui.menu.innerHTML = html; ui.menu.className = `sg-menu ${cls}`; ui.menu.hidden = false; if (!keep && document.pointerLockElement) document.exitPointerLock(); vcursor(); }
+  function closeMenu() { ui.menu.hidden = true; vcursor(); }
+  const menuIs = (cls) => !ui.menu.hidden && ui.menu.classList.contains(cls);
+  function vcursor() { const on = menuIs('sg-buy') && document.pointerLockElement === cv; ui.vcur.hidden = !on; if (on && !g.vcur) { const r = ui.menu.parentElement.getBoundingClientRect(); g.vcur = [r.width / 2, r.height / 2]; } if (on) vmove(0, 0); }
+  function vmove(dx, dy) {
+    const r = ui.menu.parentElement.getBoundingClientRect(); const c = g.vcur; c[0] = clamp(c[0] + dx, 0, r.width - 1); c[1] = clamp(c[1] + dy, 0, r.height - 1); ui.vcur.style.translate = `${c[0]}px ${c[1]}px`;
+    const el = vunder(); ui.menu.querySelectorAll('.vh').forEach((b) => { if (b !== el) b.classList.remove('vh'); }); if (el) el.classList.add('vh');
+  }
+  const vunder = () => { const r = ui.menu.parentElement.getBoundingClientRect(); ui.vcur.hidden = true; const el = document.elementFromPoint(r.left + g.vcur[0], r.top + g.vcur[1]); ui.vcur.hidden = false; return el && ui.menu.contains(el) ? el.closest('button:not([disabled])') : null; };
+  function escape() {
+    if (ui.menu.hidden) pauseMenu();
+    else if (menuIs('sg-buy')) closeMenu();
+    else if (menuIs('sg-setmenu') || menuIs('sg-forge')) pauseMenu();
+  }
+  /** Resume: the menu stays until the mouse is taken (the browser may refuse it just after an Esc). */
+  function resume() { grab(); }
   const closeBuy = () => { if (ui.menu && ui.menu.classList.contains('sg-buy')) closeMenu(); };
   /* The buying menu: a tab per shelf (the number keys pick a tab, then an item), a card per piece with its
      drawing, price and bars; owned and unaffordable pieces marked; R buys again what was bought last round. */
@@ -861,7 +875,7 @@
       const st = kind === 'w' ? Object.entries(ARMS.STATS(o)).map(([n, v]) => `<li><span>${n}</span>${bar(v)}</li>`).join('') : `<li class="dim">${o.kind ? `up to ${o.max}` : o.helm ? 'stops headshots' : o.armour ? 'halves the damage' : 'defenders only'}</li>`;
       return `<button class="sg-card${have ? ' own' : ''}" data-buy="${kind}:${id}" ${poor || have || no ? 'disabled' : ''}><kbd>${k + 1}</kbd><span class="sg-ic" data-ic="${id}"></span><b>${o.name}</b><em>${have ? 'owned' : `${o.price}`}</em><ul>${st}</ul></button>`; }).join('');
     openMenu(`<h3>Buy <span class="sg-purse">${p.money} crowns</span></h3><nav class="sg-tabs">${tabs.map(([n], k) => `<button data-tab="${k}" class="${k === tab ? 'on' : ''}"><kbd>${k + 1}</kbd> ${n}</button>`).join('')}</nav>
-<div class="sg-cards">${cards}</div><p class="dim"><button class="sg-rebuy" data-act="rebuy" ${g.lastBought && g.lastBought.length ? '' : 'disabled'}>R · buy again last round's</button> Shift+number: a tab; number: buy · B or Esc to close.</p>`, 'sg-buy');
+<div class="sg-cards">${cards}</div><p class="dim"><button class="sg-rebuy" data-act="rebuy" ${g.lastBought && g.lastBought.length ? '' : 'disabled'}>R · buy again last round's</button> Shift+number: a tab; number: buy · B or Esc to close.</p>`, 'sg-buy', true);
     ui.menu.querySelectorAll('[data-ic]').forEach((el) => el.append(icon(el.dataset.ic, 150, 60, g.knife)));
     ui.menu.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => buyMenu(Number(b.dataset.tab))));
     ui.menu.querySelectorAll('[data-buy]').forEach((b) => b.addEventListener('click', () => { const [kind, id] = b.dataset.buy.split(':'); if (purchase(kind, id)) buyMenu(tab); }));
@@ -901,7 +915,7 @@
 <button data-act="again">A new match</button><button data-act="leave">Leave (back to the castle)</button>`, 'sg-pause');
     ui.menu.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => {
       const act = b.dataset.act;
-      if (act === 'resume') { g.paused = false; closeMenu(); grab(); }
+      if (act === 'resume') resume();
       if (act === 'settings') settingsMenu('controls');
       if (act === 'knife') forge();
       if (act === 'diff') { g.difficulty = { easy: 'normal', normal: 'hard', hard: 'easy' }[g.difficulty]; store('siege-diff', g.difficulty); pauseMenu(); }
@@ -949,6 +963,12 @@ ${navigator.userAgent.includes('Firefox') ? ' In Firefox, Ctrl+W outside fullscr
     if (X.outline) { c.fillStyle = 'rgba(0,0,0,.75)'; bars.forEach(([x, y, w, h]) => c.fillRect(Math.round(cx + x) - 1, Math.round(cy + y) - 1, w + 2, h + 2)); }
     c.fillStyle = X.color; bars.forEach(([x, y, w, h]) => c.fillRect(Math.round(cx + x), Math.round(cy + y), w, h));
   }
+  /** Too slow a machine (the picture over 20 ms, two seconds running): a smaller picture, then half detail. */
+  function autoQuality(ms) {
+    g.rms = (g.rms ?? 10) * 0.97 + ms * 0.03; if (g.paused || g.rms < 20 || g.now - (g.qAt ?? 0) < 2) return; g.qAt = g.now; g.rms = 10;
+    if (settings.quality > 0) { settings.quality -= 1; applyQuality(); } else if (settings.detail === 'full') settings.detail = 'half'; else return;
+    saveSettings(); say(`A smaller picture for this machine: ${W} × ${H}${settings.detail === 'half' ? ', half detail' : ''} (Settings to change it).`, 4);
+  }
   function applyQuality() { [W, H] = QUALITY[settings.quality] || QUALITY[1]; cv.width = W; cv.height = H; img = ctx.createImageData(W, H); buf = new Uint32Array(img.data.buffer); zbuf = new Float32Array(W * H); worldT = { buf, W, H, ZB: zbuf }; skyTex = null; }
   function forge() { // the knife: its shape, its finish, a new one at random; drawn as it is held
     g.paused = true; const k = g.knifeRecipe;
@@ -970,7 +990,7 @@ ${navigator.userAgent.includes('Firefox') ? ' In Firefox, Ctrl+W outside fullscr
      allows (Esc and Ctrl+W then reach the game); the mouse raw where it allows. ---- */
   const H_ = {};
   async function grab() {
-    if (!audio) audioOn();
+    wake();
     try { if (settings.fullscreen && !document.fullscreenElement) await root.requestFullscreen({ navigationUI: 'hide' }); } catch { /* (refused: windowed) */ }
     try { if (document.fullscreenElement && navigator.keyboard && navigator.keyboard.lock) await navigator.keyboard.lock(); } catch { /* (no keyboard lock here) */ }
     try { await Promise.resolve(cv.requestPointerLock({ unadjustedMovement: true })); } catch { try { await Promise.resolve(cv.requestPointerLock()); } catch { /* (no lock: the menu stays) */ } }
@@ -1018,16 +1038,17 @@ ${navigator.userAgent.includes('Firefox') ? ' In Firefox, Ctrl+W outside fullscr
     H_.key = (e) => {
       if (!g) return;
       if (capture) { e.preventDefault(); e.stopImmediatePropagation(); if (e.code !== 'Escape') capture(e.code); else capture(null); return; }
-      if (e.code === 'Escape') { e.preventDefault(); if (!ui.menu.hidden && !ui.menu.classList.contains('sg-pause')) { closeMenu(); g.paused = false; } else if (g.paused) { g.paused = false; closeMenu(); grab(); } else pauseMenu(); return; }
+      wake(); if (e.code === 'Escape') { e.preventDefault(); if (!e.repeat) escape(); return; }
       if (document.pointerLockElement === cv || !ui.menu.hidden) { if (e.code !== 'F11' && e.code !== 'F12') e.preventDefault(); }
       e.stopImmediatePropagation(); if (e.repeat) return;
       keys.add(e.code); press(e.code, e);
     };
     H_.up = (e) => { if (!g) return; if (e.code.startsWith('Alt') || document.pointerLockElement === cv) e.preventDefault(); keys.delete(e.code); release(e.code); };
-    H_.mouse = (e) => { if (!playing()) return; const p = g.player.alive ? g.player : null; if (!p) return; const k = settings.sens * (p.scoped ? 0.3 * settings.zoomSens : 1); p.a += e.movementX * k; g.pitch = clamp(g.pitch - e.movementY * k * (settings.invert ? -1 : 1), -1.2, 1.2); g.sway = clamp(g.sway + e.movementX * 0.06, -14, 14); g.swayY = clamp((g.swayY || 0) + e.movementY * 0.06, -10, 10); };
+    H_.mouse = (e) => { if (g && menuIs('sg-buy') && document.pointerLockElement === cv) { vmove(e.movementX, e.movementY); return; } if (!playing()) return; const p = g.player.alive ? g.player : null; if (!p) return; const k = settings.sens * (p.scoped ? 0.3 * settings.zoomSens : 1); p.a += e.movementX * k; g.pitch = clamp(g.pitch - e.movementY * k * (settings.invert ? -1 : 1), -1.2, 1.2); g.sway = clamp(g.sway + e.movementX * 0.06, -14, 14); g.swayY = clamp((g.swayY || 0) + e.movementY * 0.06, -10, 10); };
     H_.down = (e) => {
-      if (!g || !root.contains(e.target)) return; if (e.button > 0) e.preventDefault();
+      if (!g || !root.contains(e.target)) return; if (e.button > 0) e.preventDefault(); wake();
       if (capture) { capture(`Mouse${e.button}`); return; }
+      if (menuIs('sg-buy') && document.pointerLockElement === cv) { if (e.button === 0) { const b = vunder(); if (b) b.click(); } return; }
       if (e.target.closest('.sg-menu')) return;
       if (document.pointerLockElement !== cv) { grab(); return; }
       keys.add(`Mouse${e.button}`); press(`Mouse${e.button}`);
@@ -1040,7 +1061,12 @@ ${navigator.userAgent.includes('Firefox') ? ' In Firefox, Ctrl+W outside fullscr
     H_.blur = () => { keys.clear(); if (g && !g.paused && ui.menu.hidden) pauseMenu(); }; // (the window left: nothing stays held)
     H_.unload = (e) => { if (g) { e.preventDefault(); e.returnValue = ''; } }; // (Ctrl+W, a slip: the browser asks first)
     H_.pop = () => { if (g) { history.pushState({ siege: 1 }, ''); if (!g.paused) pauseMenu(); } }; // (the back button: stays, pauses)
-    H_.lock = () => { if (g && document.pointerLockElement !== cv && !g.paused && ui.menu.hidden) pauseMenu(); }; // (the browser let go of the mouse: pause)
+    H_.lock = () => { // (the mouse let go with no menu or the buying one: pause; taken again on the pause: play)
+      if (!g) return; const locked = document.pointerLockElement === cv;
+      if (!locked && (ui.menu.hidden || menuIs('sg-buy')) && !g.matchOver) pauseMenu();
+      else if (locked && g.paused && !g.matchOver) { g.paused = false; closeMenu(); }
+      vcursor();
+    };
     history.pushState({ siege: 1 }, '');
     addEventListener('keydown', H_.key, true); addEventListener('keyup', H_.up, true); addEventListener('mousemove', H_.mouse); addEventListener('mousedown', H_.down, true); addEventListener('mouseup', H_.mup, true);
     addEventListener('wheel', H_.wheel, { passive: false, capture: true }); addEventListener('contextmenu', H_.ctx); addEventListener('auxclick', H_.aux, true); addEventListener('dragstart', H_.drag, true); addEventListener('blur', H_.blur);
@@ -1057,6 +1083,7 @@ ${navigator.userAgent.includes('Firefox') ? ' In Firefox, Ctrl+W outside fullscr
   /* ---- sound, made on the spot: each sound placed (left or right of the listener, fainter far off, muffled
      behind walls), footsteps by what is underfoot (stone, wood, earth), the weapons by their kind ---- */
   let audio = null; let noiseBuf = null; let master = null;
+  function wake() { if (!audio) audioOn(); else if (audio.state === 'suspended') audio.resume(); }
   function audioOn() { try { audio = new AudioContext(); master = audio.createGain(); master.gain.value = settings.volume; master.connect(audio.destination); noiseBuf = audio.createBuffer(1, audio.sampleRate, audio.sampleRate); const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i += 1) d[i] = Math.random() * 2 - 1; } catch { audio = null; } }
   function sfx(kind, from, wid) {
     if (!audio || !g) return; const p = camActor(); let pan = 0; let vol = 1; let muffle = 20000;
@@ -1087,5 +1114,5 @@ ${navigator.userAgent.includes('Firefox') ? ' In Firefox, Ctrl+W outside fullscr
     }[kind] || (() => {}))();
   }
 
-  window.Siege = { start, stop, state: () => g && { phase: g.phase, round: g.round, score: { ...g.score }, alive: g.actors.filter((a) => a.alive).length, player: { hp: g.player.hp, x: g.player.x, y: g.player.y, money: g.player.money } }, debug: () => g, bench: (n = 30) => { window.__pf = {}; const t0 = performance.now(); for (let k = 0; k < n; k += 1) render(); const tt = (performance.now() - t0) / n; return `${tt.toFixed(2)} ms: ${Object.entries(window.__pf).map(([k2, v]) => `${k2} ${(v / n).toFixed(2)}`).join(', ')}`; }, audio: () => { if (!audio) audioOn(); let err = ''; try { sfx('shot', g.player, 'ak47'); sfx('step', g.player); } catch (e) { err = String(e); } return `${audio ? audio.state : 'none'} ${master ? master.gain.value : '-'} ${err}`; }, sim: (sec) => { for (let k = 0; k < sec * 60 && g; k += 1) { g.now += 1 / 60; update(1 / 60); } } }; // (sim: the game run ahead without drawing, for the tests)
+  window.Siege = { start, stop, state: () => g && { phase: g.phase, round: g.round, score: { ...g.score }, alive: g.actors.filter((a) => a.alive).length, player: { hp: g.player.hp, x: g.player.x, y: g.player.y, money: g.player.money } }, debug: () => g, sim: (sec) => { for (let k = 0; k < sec * 60 && g; k += 1) { g.now += 1 / 60; update(1 / 60); } } }; // (sim: the game run ahead without drawing, for the tests)
 }());

@@ -1632,7 +1632,7 @@ canvas.twinkle { display: none; position: absolute; z-index: 1; pointer-events: 
 .siege .sg-menu { position: absolute; inset: 8% 12%; overflow: auto; padding: 1rem 1.4rem; background: rgb(24 18 12 / .94); border: 2px solid #b08a3a; }
 .siege .sg-menu h3 { margin: 0 0 .6rem; font: 1.3rem "EB Garamond", Georgia, serif; color: #f6d77a; } .siege .sg-menu h4 { margin: .6rem 0 .3rem; color: #d8a838; }
 .siege .sg-menu button { display: block; width: 100%; margin: .2rem 0; padding: .35rem .6rem; font: inherit; text-align: left; color: #f4ecd8; background: #3a2a18; border: 1px solid #6a4a2a; cursor: pointer; }
-.siege .sg-menu button:hover:not([disabled]), .siege .sg-menu button.on { background: #6a4a2a; } .siege .sg-menu button[disabled] { opacity: .4; cursor: not-allowed; }
+.siege .sg-menu button:hover:not([disabled]), .siege .sg-menu button.vh:not([disabled]), .siege .sg-menu button.on { background: #6a4a2a; } .siege .sg-menu button[disabled] { opacity: .4; cursor: not-allowed; }
 .siege .sg-menu button span { float: right; color: #9bff9b; }
 .siege .sg-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: 1rem; }
 .siege .sg-menu table { width: 100%; border-collapse: collapse; } .siege .sg-menu td, .siege .sg-menu th { padding: .2rem .5rem; text-align: left; border-bottom: 1px solid #4a3a28; }
@@ -1648,7 +1648,7 @@ canvas.twinkle { display: none; position: absolute; z-index: 1; pointer-events: 
 .siege .sg-menu kbd { display: inline-block; min-width: 1.1em; padding: 0 .25em; font: .75rem monospace; color: #f6d77a; border: 1px solid #8a6a3a; text-align: center; }
 .siege .sg-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: .6rem; }
 .siege .sg-menu .sg-card { position: relative; display: flex; flex-direction: column; gap: .25rem; margin: 0; padding: .5rem; background: linear-gradient(#3a2a18, #24180e); border: 1px solid #6a4a2a; }
-.siege .sg-menu .sg-card:hover:not([disabled]) { background: linear-gradient(#5a4024, #3a2a18); border-color: #d8a838; }
+.siege .sg-menu .sg-card:hover:not([disabled]), .siege .sg-menu .sg-card.vh:not([disabled]) { background: linear-gradient(#5a4024, #3a2a18); border-color: #d8a838; }
 .siege .sg-menu .sg-card.own { opacity: .75; border-color: #4a8a4a; }
 .siege .sg-card kbd { position: absolute; top: .4rem; left: .4rem; }
 .siege .sg-ic { display: block; height: 60px; background: radial-gradient(ellipse at center, #4a3826, transparent 70%); }
@@ -1658,6 +1658,7 @@ canvas.twinkle { display: none; position: absolute; z-index: 1; pointer-events: 
 .siege .sg-card ul { margin: 0; padding: 0; list-style: none; font-size: .78rem; }
 .siege .sg-card li { display: grid; grid-template-columns: 6.5rem 1fr; align-items: center; gap: .3rem; }
 .siege .sg-card li i { height: .35rem; background: linear-gradient(90deg, #d8a838 var(--v), #3a2a18 var(--v)); border: 1px solid #5a4024; }
+.siege .sg-vcur { position: absolute; left: 0; top: 0; z-index: 5; width: 13px; height: 20px; pointer-events: none; background: #f6d77a; clip-path: polygon(0 0, 0 82%, 27% 64%, 45% 100%, 62% 93%, 45% 59%, 85% 59%); }
 .siege .sg-menu .sg-rebuy { display: inline-block; width: auto; margin-right: .6rem; }
 .siege .sg-chat { position: absolute; left: 1.2cqw; bottom: 7.5cqw; display: flex; flex-direction: column; gap: .15em; font-size: .95cqw; max-width: 30cqw; }
 .siege .sg-chat p { margin: 0; padding: .1em .5em; background: rgb(0 0 0 / .45); } .siege .sg-chat b { color: #9cc0ff; font-weight: normal; margin-right: .4em; }

@@ -63,7 +63,7 @@
     // the defenders: two, two and one, stacked towards a site hit twice
     const hist = T.def.history.slice(-2); const hot = hist.length === 2 && hist[0].site === hist[1].site ? hist[1].site : null;
     const slots = [...M.POSTS.A.slice(0, hot === 'A' ? 3 : 2).map((p) => ['A', p]), ...M.POSTS.B.slice(0, hot === 'B' ? 3 : 2).map((p) => ['B', p]), ['mid', M.POSTS.mid[0]]];
-    defs.forEach((a, k) => { const [where, [at, look]] = slots[k % slots.length]; Object.assign(a.ai, { task: 'post', post: nearOpen(g, at[0], at[1]), look, where, rotator: where === 'mid' || k % 2 === 1 }); });
+    defs.forEach((a, k) => { const [where, [at, look]] = slots[k % slots.length]; Object.assign(a.ai, { task: 'post', post: nearOpen(g, at[0], at[1]), base: at, shiftAt: 0, look, where, rotator: where === 'mid' || k % 2 === 1 }); });
     T.def.plan = { hot, t0: g.now };
   }
   /** At the round's end: what the attackers tried, and whether it worked (the next plans learn from it). */
@@ -121,9 +121,9 @@
       else if (keg.dropped) goal = [keg.x, keg.y];
       else if (ai.wp < (ai.way || []).length && !(ai.fake && plan.executed)) { goal = ai.way[ai.wp]; if (dist(goal, [b.x, b.y]) < 1.3) { ai.wp += 1; if (ai.wp === ai.way.length) ai.staged = now; } }
       else {
-        // staged at the way's last corner: wait a little for the others, throw, then go in
-        const staged = g.actors.filter((a) => a.alive && a.team === 'att' && a.ai.staged).length; const alive = g.actors.filter((a) => a.alive && a.team === 'att').length;
-        if (!plan.executed && ai.wait && !ai.fake && staged < Math.min(3, alive) && now - (ai.staged || now) < 7 && now - plan.t0 < 55) { look = site.c; b.crouch = true; }
+        // staged at the way's last corner: wait a little for the others (a man playing counts as ready), throw, then go in
+        const staged = g.actors.filter((a) => a.alive && a.team === 'att' && (!a.isBot || a.ai.staged)).length; const alive = g.actors.filter((a) => a.alive && a.team === 'att').length;
+        if (!plan.executed && ai.wait && !ai.fake && staged < Math.min(3, alive) && now - (ai.staged || now) < 4 && now - plan.t0 < 55) { look = site.c; b.crouch = true; }
         else {
           if (!plan.executed) { plan.executed = true; plan.execAt = now; say(g, b, `Going ${site.name}`); }
           const U = M.UTILITY[site.name]; ai.thrown ||= {}; b.crouch = false;
@@ -149,7 +149,9 @@
       const fallen = (s) => g.actors.some((a) => !a.alive && a.team === b.team && now - (a.diedAt || -99) < 6 && g.zoneAt(a.x, a.y).startsWith(s)); // (a man of ours just fell there)
       ['A', 'B'].forEach((s) => { if (ai.rotator && ai.where !== s && (at(s) >= 2 || fallen(s)) && ai.task !== 'rotate') { ai.task = 'rotate'; ai.to = s; say(g, b, `Rotating ${s}`); } });
       if (ai.task === 'rotate') { const P = M.POSTS[ai.to][b.idx % M.POSTS[ai.to].length]; goal = P[0]; look = P[1]; }
-      else { goal = ai.post; look = ai.look; if (ai.post && dist(ai.post, [b.x, b.y]) < 0.6) { walk = true; b.crouch = ai.crouchHold ??= Math.random() < 0.35; } }
+      else { goal = ai.post; look = ai.look; if (ai.post && dist(ai.post, [b.x, b.y]) < 0.6) { walk = true; b.crouch = ai.crouchHold ??= Math.random() < 0.35;
+        if (ai.base && now > ai.shiftAt && (!ai.lastSeen || now - ai.lastSeen.t > 5)) { ai.shiftAt = now + 3 + Math.random() * 4; ai.post = nearOpen(g, ai.base[0] + (Math.random() - 0.5) * 3, ai.base[1] + (Math.random() - 0.5) * 3); ai.crouchHold = Math.random() < 0.35; } } // (an angle held is changed every few seconds: a step, a crouch)
+        else if (ai.post) ai.shiftAt = Math.max(ai.shiftAt || 0, now + 2); }
       if (ai.heard && now - ai.heard.t < 3 && Math.hypot(ai.heard.x - b.x, ai.heard.y - b.y) < 10) look = [ai.heard.x, ai.heard.y];
       if (ai.lastSeen && now - ai.lastSeen.t < 4) look = [ai.lastSeen.x, ai.lastSeen.y];
     }
