@@ -55,6 +55,19 @@
     glassg: (_x, _y, _z, o) => set(o, 70, 150, 90, 1.2, 60, 0.2),
     clay: (x, y, z, o) => { const b = 0.9 + hash(Math.floor(x * 300), Math.floor(y * 300), Math.floor(z * 300)) * 0.15; set(o, 176 * b, 92 * b, 54 * b, 0.15, 8); },
     quilt: (_x, y, z, o) => { const st = Math.abs((y * 30) % 1) < 0.1 || Math.abs((z * 30 + 50) % 1) < 0.1 ? 0.7 : 1; set(o, 214 * st, 196 * st, 156 * st, 0.08, 6); },
+    tabardDef: (x, y, _z, o) => { const cross = Math.abs(x) < 0.03 || Math.abs(y - 0.28) < 0.03; const w = 0.92 + hash(Math.floor(x * 300), Math.floor(y * 300), 1) * 0.12; if (cross) set(o, 236 * w, 236 * w, 230 * w, 0.1, 6); else set(o, 50 * w, 78 * w, 176 * w, 0.1, 6); }, // (the defenders: a white cross on blue)
+    tabardAtt: (x, y, _z, o) => { const ch = Math.abs(y - 0.2 - (0.12 - Math.abs(x)) * 0.9) < 0.028; const w = 0.92 + hash(Math.floor(x * 300), Math.floor(y * 300), 2) * 0.12; if (ch) set(o, 232 * w, 190 * w, 70 * w, 0.4, 20, 0.4); else set(o, 160 * w, 40 * w, 34 * w, 0.1, 6); }, // (the attackers: a gold chevron on red)
+    hose: (x, y, z, o) => { const w = 0.9 + hash(Math.floor(x * 500), Math.floor(y * 500), Math.floor(z * 500)) * 0.15; set(o, 84 * w, 66 * w, 52 * w, 0.05, 4); },
+    boot: (x, y, z, o) => { const w = 0.9 + hash(Math.floor(x * 600), Math.floor(y * 600), Math.floor(z * 600)) * 0.12; set(o, 52 * w, 38 * w, 28 * w, 0.4, 14); },
+    skin: (_x, _y, _z, o) => set(o, 222, 170, 132, 0.2, 10),
+    staves: (x, y, z, o) => { const a = Math.atan2(z, x); const seam = Math.abs(((a / 6.2832) * 18 + 100) % 1 - 0.5) > 0.44; const w = 0.88 + hash(Math.floor(a * 3), Math.floor(y * 40), 3) * 0.2; set(o, (seam ? 70 : 142) * w, (seam ? 44 : 92) * w, (seam ? 26 : 50) * w, 0.2, 10); },
+    straw: (x, y, z, o) => { const w = 0.75 + hash(Math.floor(x * 120), Math.floor(y * 400), Math.floor(z * 120)) * 0.4; set(o, 222 * w, 188 * w, 96 * w, 0.05, 4); },
+    stone: (x, y, z, o) => { const row = Math.floor(y * 9); const joint = (y * 9) % 1 < 0.12 || ((Math.atan2(z, x) * 2 + row * 0.7 + 50) % 1) < 0.08; const w = 0.85 + hash(row, Math.floor(Math.atan2(z, x) * 2), 4) * 0.25; set(o, (joint ? 90 : 170) * w, (joint ? 86 : 162) * w, (joint ? 80 : 150) * w, 0.1, 6); },
+    leaf: (x, y, z, o) => { const w = 0.6 + hash(Math.floor(x * 30), Math.floor(y * 30), Math.floor(z * 30)) * 0.55; set(o, 58 * w, 116 * w, 46 * w, 0.15, 6); },
+    bark: (x, y, z, o) => { const w = 0.7 + Math.abs(Math.sin(Math.atan2(z, x) * 7 + y * 3)) * 0.35; set(o, 96 * w, 72 * w, 50 * w, 0.05, 4); },
+    shingle: (x, _y, z, o) => { const w = ((Math.floor(z * 14) + Math.floor(x * 14)) % 2 ? 0.85 : 1.05) * (0.9 + hash(Math.floor(x * 14), Math.floor(z * 14), 5) * 0.15); set(o, 132 * w, 70 * w, 50 * w, 0.15, 8); },
+    keg: (x, y, z, o) => { const band = Math.abs(y - 0.06) < 0.012 || Math.abs(y - 0.26) < 0.012; const a = Math.atan2(z, x); const seam = Math.abs(((a / 6.2832) * 14 + 100) % 1 - 0.5) > 0.44; set(o, band ? 60 : seam ? 54 : 104, band ? 60 : seam ? 36 : 66, band ? 66 : seam ? 22 : 38, band ? 0.8 : 0.15, 18, band ? 0.5 : 0); },
+    spark: (_x, _y, _z, o) => { const f = 0.8 + Math.random() * 0.4; set(o, 255 * f, 220 * f, 120 * f, 0, 1, 0, 1); },
     blade: (_x, y, z, o) => { // the knife's finish: u along the blade, v across it (0 at the edge)
       const u = Math.max(0, Math.min(1, (z - 0.05) / bladeL)); const h = bladeH(u) || 0.001; const v = Math.max(0, Math.min(1, (y - bladeCurve(u) + h) / (2 * h)));
       const c = bladeAt(u, v); set(o, c[0], c[1], c[2], 1.3, 70, 0.75);
@@ -299,18 +312,61 @@
   MODELS.tools = () => model((mk) => mk('body', (b) => { b.tube([[0, -0.03, -0.08], [0, 0.0, 0.0], [0, 0.03, 0.05]], 0.005, 6, 'iron'); b.tube([[0, 0.03, -0.08], [0, 0.0, 0.0], [0, -0.025, 0.05]], 0.005, 6, 'iron'); b.cyl([0.0, 0.0, -0.1], [0, 0.0, -0.07], 0.008, 0.008, 6, 'darkwood'); }));
   const cache = {}; const get = (id) => (cache[id] ||= MODELS[id] && MODELS[id]());
 
+  /* ---- the men in the world: jointed low-poly figures (each part built about its own joint: the hips, the
+     waist, the neck, the shoulders carrying the weapon, the knees); metres, feet at the origin, facing +z ---- */
+  const MEN = {};
+  function manModel(team) {
+    if (MEN[team]) return MEN[team];
+    const md = model((mk) => {
+      mk('pelvis', (b) => { b.box([0, 0, 0], [0.32, 0.14, 0.2], 'hose'); b.box([0, 0.07, 0], [0.35, 0.04, 0.22], 'cuff'); b.lathe([[0.16, 0], [0.21, 1]], [0, 0.07, 0], [0, -0.16, 0], 8, 'mail', { open: true }); });
+      mk('torso', (b) => { // about the waist
+        b.extrude([[-0.16, 0], [0.16, 0], [0.21, 0.4], [0.15, 0.48], [-0.15, 0.48], [-0.21, 0.4]], 'z', -0.11, 0.11, team === 'def' ? 'tabardDef' : 'tabardAtt');
+        b.sphere([0.2, 0.42, 0], 0.075, 6, 'mail'); b.sphere([-0.2, 0.42, 0], 0.075, 6, 'mail'); b.cyl([0, 0.46, 0], [0, 0.55, 0], 0.048, 0.048, 6, 'skin');
+      });
+      mk('head', (b) => { // about the neck
+        b.sphere([0, 0.11, 0.01], 0.1, 8, 'skin'); b.box([0.036, 0.125, 0.094], [0.022, 0.014, 0.01], 'black'); b.box([-0.036, 0.125, 0.094], [0.022, 0.014, 0.01], 'black'); b.box([0, 0.075, 0.1], [0.05, 0.012, 0.01], 'boot');
+        if (team === 'def') b.lathe([[0.21, 0], [0.2, 0.06], [0.115, 0.18], [0.115, 0.62], [0.08, 0.88], [0, 1]], [0, 0.13, 0], [0, 0.33, 0], 10, 'steel'); // (a kettle hat)
+        else { b.lathe([[0.125, 0], [0.122, 0.45], [0.09, 0.82], [0, 1]], [0, 0.1, 0], [0, 0.31, 0], 10, 'steel'); b.box([0, 0.3, -0.02], [0.012, 0.05, 0.22], 'brass'); b.box([0, 0.12, -0.12], [0.2, 0.04, 0.08], 'steel'); } // (a morion, its comb)
+      });
+      mk('arms', (b) => { // about the shoulders' line: both reach forward to the weapon
+        b.tube([[0.2, 0, 0], [0.17, -0.2, 0.13], [0.06, -0.12, 0.31]], [0.055, 0.05, 0.043], 6, 'mail'); b.sphere([0.06, -0.12, 0.33], 0.046, 6, 'glove');
+        b.tube([[-0.2, 0, 0], [-0.15, -0.19, 0.19], [-0.03, -0.1, 0.45]], [0.055, 0.05, 0.043], 6, 'mail'); b.sphere([-0.03, -0.1, 0.47], 0.046, 6, 'glove');
+      });
+      mk('thigh', (b) => b.tube([[0, 0, 0], [0, -0.44, 0.02]], [0.075, 0.06], 6, 'hose'));
+      mk('shin', (b) => { b.tube([[0, 0, 0], [0, -0.38, -0.01]], [0.06, 0.048], 6, 'hose'); b.box([0, -0.43, 0.04], [0.1, 0.1, 0.23], 'boot'); });
+    });
+    return (MEN[team] = md);
+  }
+  // where each weapon's right hand is in its model (to put it in a man's)
+  const GRIP = { ak47: [0, -0.085, 0.007], wheellock: [0, -0.05, -0.037], pepperbox: [0, -0.05, -0.037], repeater: [0, -0.015, -0.11], greatbow: [0, -0.015, -0.11] };
+  const gripOf = (id) => GRIP[id] || [0, -0.022, -0.13];
+  /* The props, the keg (its fuse burning down), each in metres. */
+  MODELS.barrel = () => model((mk) => mk('body', (b) => { b.lathe([[0.25, 0], [0.29, 0.5], [0.25, 1]], [0, 0, 0], [0, 0.88, 0], 12, 'staves'); b.cyl([0, 0.879, 0], [0, 0.881, 0], 0.25, 0.25, 12, 'oak'); [0.12, 0.76].forEach((y) => b.lathe([[0.275, 0], [0.276, 1]], [0, y, 0], [0, y + 0.03, 0], 12, 'iron', { open: true })); }));
+  MODELS.hay = () => model((mk) => mk('body', (b) => { b.box([0, 0.3, 0], [0.95, 0.6, 0.55], 'straw'); [-0.25, 0.25].forEach((x) => b.box([x, 0.3, 0], [0.025, 0.62, 0.57], 'cord')); b.box([0.1, 0.75, 0.05], [0.7, 0.3, 0.5], 'straw'); }));
+  MODELS.well = () => model((mk) => mk('body', (b) => { b.lathe([[0.95, 0], [0.95, 1], [0.78, 1], [0.78, 0]], [0, 0, 0], [0, 0.85, 0], 14, 'stone'); b.cyl([0, 0.5, 0], [0, 0.52, 0], 0.78, 0.78, 14, 'black');
+    [-0.85, 0.85].forEach((x) => b.box([x, 1.3, 0], [0.12, 1.1, 0.12], 'oak')); b.cyl([-0.9, 1.75, 0], [0.9, 1.75, 0], 0.06, 0.06, 6, 'oak'); b.cyl([0, 1.75, 0], [0, 1.2, 0], 0.012, 0.012, 4, 'string'); b.lathe([[0.12, 0], [0.15, 1]], [0, 1.0, 0], [0, 1.2, 0], 8, 'oak');
+    b.extrude([[-1.15, 1.85], [1.15, 1.85], [0, 2.5]], 'z', -0.7, 0.7, 'shingle'); }));
+  MODELS.cart = () => model((mk) => mk('body', (b) => { b.box([0, 0.75, 0], [1.1, 0.12, 1.8], 'oak'); [-0.55, 0.55].forEach((x) => b.box([x, 0.98, 0], [0.06, 0.35, 1.8], 'oak')); b.box([0, 0.98, -0.9], [1.1, 0.35, 0.06], 'oak');
+    [-0.62, 0.62].forEach((x) => { b.cyl([x - 0.04, 0.5, 0.2], [x + 0.04, 0.5, 0.2], 0.5, 0.5, 12, 'darkwood'); b.cyl([x - 0.06, 0.5, 0.2], [x + 0.06, 0.5, 0.2], 0.1, 0.1, 6, 'iron'); }); [-0.4, 0.4].forEach((x) => b.cyl([x, 0.7, 0.9], [x * 0.8, 0.45, 2.1], 0.04, 0.035, 5, 'oak')); b.box([0.2, 1.0, -0.3], [0.5, 0.4, 0.5], 'straw'); }));
+  MODELS.tree = () => model((mk) => mk('body', (b) => { b.lathe([[0.32, 0], [0.22, 0.15], [0.18, 0.6], [0.14, 1]], [0, 0, 0], [0, 3.4, 0], 8, 'bark'); b.tube([[0, 2.6, 0], [0.7, 3.4, 0.2]], 0.08, 5, 'bark'); b.tube([[0, 2.9, 0], [-0.6, 3.7, -0.3]], 0.07, 5, 'bark');
+    [[0, 4.4, 0, 1.5], [0.9, 3.9, 0.4, 1.1], [-0.9, 4.1, -0.3, 1.15], [0.2, 3.7, -1.0, 1.0], [-0.3, 3.8, 1.0, 1.0], [0.1, 5.2, 0.1, 0.9]].forEach(([x, y, z, r]) => b.sphere([x, y, z], r, 8, 'leaf')); }));
+  MODELS.keg = () => model((mk) => { mk('body', (b) => { b.lathe([[0.17, 0], [0.2, 0.5], [0.17, 1]], [0, 0, 0], [0, 0.34, 0], 10, 'keg'); b.cyl([0, 0.339, 0], [0, 0.341, 0], 0.17, 0.17, 10, 'darkwood'); b.box([0, 0.2, 0.19], [0.14, 0.1, 0.02], 'quilt'); });
+    mk('fuse', (b) => b.tube([[0, 0, 0], [0.03, 0.08, 0], [0.0, 0.16, 0.03], [-0.03, 0.24, 0]], 0.008, 4, 'cord', { bare: true })); mk('spark', (b) => b.sphere([0, 0, 0], 0.022, 6, 'spark')); });
+
   /* ---- rasterising: a part through matrix m into the target (buf, W, H), into the shared depth buffer ---- */
   const NEAR = 0.1; let ZB = null; const box = [0, 0, 0, 0]; const mo = new Float32Array(7); // (nearer than NEAR is cut: the stock and the sleeves leave the screen as in the old shooters)
   const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v / 16 - 0.47) * 9);
   let light = null; // { amb [r,g,b], key [x,y,z], flash }
   let TID = null; let KA = null; let KB = null; let tris = []; // (the visibility buffer: each pixel's nearest triangle and its weights; shaded once, after)
-  function begin(t) { const n = t.W * t.H; if (!ZB || ZB.length !== n) { ZB = new Float32Array(n); TID = new Int32Array(n); KA = new Float32Array(n); KB = new Float32Array(n); } ZB.fill(1e9); TID.fill(-1); tris = []; box[0] = t.W; box[1] = t.H; box[2] = -1; box[3] = -1; }
+  /** Start drawing into target t (its own buffers; t.keepZ: draw against the depth already in t.ZB, the world's). */
+  function begin(t) { const n = t.W * t.H; if (!t.TID || t.TID.length !== n) { if (!t.keepZ) t.ZB = new Float32Array(n); t.TID = new Int32Array(n); t.KA = new Float32Array(n); t.KB = new Float32Array(n); }
+    ZB = t.ZB; TID = t.TID; KA = t.KA; KB = t.KB; if (!t.keepZ) ZB.fill(1e9); TID.fill(-1); tris = []; box[0] = t.W; box[1] = t.H; box[2] = -1; box[3] = -1; }
   function shade(t, x, y, mat, lx, ly, lz, nx, ny, nz, vx, vy, vz) {
     MATF[mat](lx, ly, lz, mo); let r = mo[0]; let g = mo[1]; let b = mo[2];
     if (!mo[6]) {
       const vl = Math.sqrt(vx * vx + vy * vy + vz * vz) || 1; const dx = vx / vl; const dy = vy / vl; const dz = vz / vl;
       if (nx * dx + ny * dy + nz * dz > 0) { nx = -nx; ny = -ny; nz = -nz; } // (lit from either side: the camera sees the face)
-      const K = light.key; const nd = nx * K[0] + ny * K[1] + nz * K[2]; const dif = Math.max(0, nd * 0.75 + 0.25); // (a wrapped key light)
+      const K = light.key; const nd = nx * K[0] + ny * K[1] + nz * K[2]; const dif = Math.max(0, nd * 0.75 + 0.25) * (light.kk ?? 1); // (a wrapped key light)
       const rim = Math.max(0, nx * 0.55 + ny * 0.25 + nz * 0.8) * 0.35; const A = light.amb;
       const hx = K[0] - dx; const hy = K[1] - dy; const hz = K[2] - dz; const hl = Math.sqrt(hx * hx + hy * hy + hz * hz) || 1; const sp = Math.pow(Math.max(0, (nx * hx + ny * hy + nz * hz) / hl), mo[4]) * mo[3];
       const rdy = dy - 2 * (nx * dx + ny * dy + nz * dz) * ny; const env = rdy > 0 ? 150 + 105 * rdy : 120 + 60 * rdy; // (the sky above, the ground below, in the metals)
@@ -325,7 +381,7 @@
     t.buf[y * t.W + x] = 0xff000000 | (b << 16) | (g << 8) | r;
   }
   function raster(t, A, B, C, mat) { // A, B, C: [X, Y, Z, lx, ly, lz, nx, ny, nz] in the view
-    const W = t.W; const H = t.H; const f = t.f; const cx = W / 2; const cy = H / 2; const orth = t.ortho;
+    const W = t.W; const H = t.H; const f = t.f; const cx = t.cx ?? W / 2; const cy = t.cy ?? H / 2; const orth = t.ortho;
     const pa = orth ? [cx + A[0] * orth, cy - A[1] * orth] : [cx + (f * A[0]) / A[2], cy - (f * A[1]) / A[2]];
     const pb = orth ? [cx + B[0] * orth, cy - B[1] * orth] : [cx + (f * B[0]) / B[2], cy - (f * B[1]) / B[2]];
     const pc = orth ? [cx + C[0] * orth, cy - C[1] * orth] : [cx + (f * C[0]) / C[2], cy - (f * C[1]) / C[2]];
@@ -333,7 +389,7 @@
     const x0 = Math.max(0, Math.floor(Math.min(pa[0], pb[0], pc[0]))); const x1 = Math.min(W - 1, Math.ceil(Math.max(pa[0], pb[0], pc[0])));
     const y0 = Math.max(0, Math.floor(Math.min(pa[1], pb[1], pc[1]))); const y1 = Math.min(H - 1, Math.ceil(Math.max(pa[1], pb[1], pc[1])));
     if (x0 > x1 || y0 > y1) return;
-    const id = tris.length; tris.push([A, B, C, mat]);
+    const id = tris.length; tris.push([A, B, C, mat, light]);
     const ia = orth ? 1 : 1 / A[2]; const ib = orth ? 1 : 1 / B[2]; const ic = orth ? 1 : 1 / C[2];
     // the weights as planes over the screen: wA = a0 + ax x + ay y (and wB), wC = 1 - wA - wB
     const ax = (pb[1] - pc[1]) / area; const ay = (pc[0] - pb[0]) / area; const a0 = ((pb[0] * pc[1]) - (pc[0] * pb[1])) / area;
@@ -354,7 +410,7 @@
   function resolve(t) {
     const W = t.W; const orth = t.ortho;
     for (let y = Math.max(0, box[1]); y <= box[3]; y += 1) for (let x = Math.max(0, box[0]); x <= box[2]; x += 1) {
-      const o = y * W + x; const id = TID[o]; if (id < 0) continue; const T4 = tris[id]; const A = T4[0]; const B = T4[1]; const C = T4[2]; const mat = T4[3]; const ka = KA[o]; const kb = KB[o]; const kc = 1 - ka - kb;
+      const o = y * W + x; const id = TID[o]; if (id < 0) continue; const T4 = tris[id]; const A = T4[0]; const B = T4[1]; const C = T4[2]; const mat = T4[3]; light = T4[4]; const ka = KA[o]; const kb = KB[o]; const kc = 1 - ka - kb;
       let nx = ka * A[6] + kb * B[6] + kc * C[6]; let ny = ka * A[7] + kb * B[7] + kc * C[7]; let nz = ka * A[8] + kb * B[8] + kc * C[8]; const nl = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1; nx /= nl; ny /= nl; nz /= nl;
       shade(t, x, y, mat, ka * A[3] + kb * B[3] + kc * C[3], ka * A[4] + kb * B[4] + kc * C[4], ka * A[5] + kb * B[5] + kc * C[5], nx, ny, nz,
         orth ? 0 : ka * A[0] + kb * B[0] + kc * C[0], orth ? 0 : ka * A[1] + kb * B[1] + kc * C[1], orth ? 1 : ZB[o]);
@@ -532,5 +588,58 @@
     return t;
   }
 
-  window.SIEGE_MODELS = { view, icon, HOLD, knifeModel, mat: { tr, rx, ry, rz, chain } };
+  /* ---- in the world: the men, the props, the keg, weapons lying, things thrown; drawn against the world's
+     depth (t.ZB), shaded once, outlined where they stand against what is behind them ---- */
+  /** The matrix from a thing's model (metres, scale k) at (x, y, z) facing ang, to the camera's view. */
+  function placeIn(cam, x, y, z, ang, k) {
+    const rx2 = -Math.sin(ang); const ry2 = Math.cos(ang); const fx = Math.cos(ang); const fy = Math.sin(ang); const rcx = -cam.dirY; const rcy = cam.dirX; const fcx = cam.dirX; const fcy = cam.dirY; const dx = x - cam.px; const dy = y - cam.py;
+    return [k * (rx2 * rcx + ry2 * rcy), 0, k * (fx * rcx + fy * rcy), dx * rcx + dy * rcy, 0, k, 0, z - cam.eye, k * (rx2 * fcx + ry2 * fcy), 0, k * (fx * fcx + fy * fcy), dx * fcx + dy * fcy];
+  }
+  const UNIT = 0.49; // (metres to the world's units: a man of 1.76 m is 0.86)
+  /** A man's parts and their matrices, posed: walking (by his stride), crouched, in the air, kneeling at the keg, aiming (pitch), fallen. */
+  function manParts(a, M0, now, kn) {
+    const md = manModel(a.team); const out = [];
+    const sp = Math.min(1, Math.hypot(a.vx || 0, a.vy || 0) / 3.4); const ph = a.stride || 0; const air = a.z > (a.ground ?? a.z) + 0.05;
+    let hip = 0.92; let lean = 0; let tL = Math.sin(ph) * 0.62 * sp; let tR = -tL; let sL = Math.max(0, Math.sin(ph - 1.3)) * 1.0 * sp + 0.05; let sR = Math.max(0, Math.sin(ph + Math.PI - 1.3)) * 1.0 * sp + 0.05;
+    let armP = -(a.aimPitch || 0); hip += Math.abs(Math.cos(ph)) * 0.025 * sp;
+    if (a.crouch) { hip = 0.66; tL = -1.25 + tL * 0.3; tR = -1.25 + tR * 0.3; sL = 1.9; sR = 1.9; lean = 0.22; }
+    if (air) { tL = -0.75; tR = -0.45; sL = 1.3; sR = 0.9; }
+    if (a.planting || a.defusing) { hip = 0.5; tR = -1.5; sR = 1.6; tL = -0.25; sL = 1.85; lean = 0.55; armP = 0.95; }
+    let base = M0;
+    if (!a.alive) { const f = ease((now - (a.diedAt || now)) / 0.7); const dir = a.fallDir || 1; base = mul(M0, chain(rx(-dir * f * 1.5), rz(f * 0.25 * dir))); sL += f * 0.8; sR += f * 0.5; armP += f * 0.8; } // (falling about the feet, away from the shot)
+    const kick = now - (a.lastShot || -9) < 0.1 ? 1 - (now - a.lastShot) / 0.1 : 0; const flinch = now - (a.hitAt || -9) < 0.15 ? 0.15 : 0;
+    const pel = mul(base, tr(0, hip, 0)); out.push([md.pelvis, pel]);
+    const tor = mul(base, chain(tr(0, hip + 0.07, 0), rx(lean + flinch))); out.push([md.torso, tor]);
+    out.push([md.head, mul(tor, chain(tr(0, 0.52, 0), rx(armP * 0.4)))]);
+    const arms = mul(tor, chain(tr(0, 0.42, 0), rx(armP - lean), tr(0, 0, -0.03 * kick))); out.push([md.arms, arms]);
+    const wid = a.wid; const hand = [0.06, -0.12, 0.33];
+    if (wid === 'knife' && kn) { const km = knifeModel(kn); const K = mul(arms, chain(tr(...hand), rx(Math.PI / 2 - 0.9))); bladeAt = kn.colour; bladeL = km.info.L; bladeCurve = km.info.curve; bladeH = km.info.half; out.push([km.handle, K], [km.blade, K]); }
+    else if (wid && get(wid)) { const gm = get(wid); const gp = gripOf(wid); const G = mul(arms, tr(hand[0] - gp[0], hand[1] - gp[1], hand[2] - gp[2])); Object.entries(gm).forEach(([k, part]) => { if (part.P && !/hand/.test(k) && k !== 'rod') out.push([part, G]); }); }
+    if (a.hasKeg) { const kg = get('keg'); out.push([kg.body, mul(tor, chain(tr(0, 0.12, -0.24), rx(Math.PI / 2), sc(0.8)))]); }
+    [[0.1, tR, sR], [-0.1, tL, sL]].forEach(([x, t, s2]) => { const th = mul(base, chain(tr(x, hip - 0.02, 0), rx(t))); out.push([md.thigh, th], [md.shin, mul(th, chain(tr(0, -0.44, 0.02), rx(s2)))]); });
+    return out;
+  }
+  /**
+   * Draw the things of the world into t = { buf, W, H, ZB (the world's depth), F, hor }.
+   * items: [{ man: actor (x, y, z, a, team, wid, ...) } | { model: id, x, y, z, a, k, lying } | { keg, x, y, z, burn (0..1) } | { nade: id, x, y, z, spin }], each with light: [r, g, b].
+   */
+  function world(t, cam, items, sunView, now, kn) {
+    t.keepZ = true; t.f = cam.F; t.cx = t.W / 2; t.cy = cam.hor; t.ortho = 0; begin(t); sleeveRGB = [52, 82, 170];
+    items.forEach((it) => {
+      const L = it.light || [1, 1, 1]; const lum = (L[0] + L[1] + L[2]) / 3; light = { amb: L.map((v) => Math.min(1.4, v * 0.62)), key: sunView, kk: Math.max(0.12, Math.min(1, (lum - 0.5) * 1.8)), flash: it.flash || 0 };
+      if (it.man) { const a = it.man; const M0 = placeIn(cam, a.x, a.y, a.z, a.a, UNIT); manParts(a, M0, now, kn).forEach(([part, m]) => drawPart(t, part, m)); return; }
+      if (it.keg) { const kg = get('keg'); const M0 = placeIn(cam, it.x, it.y, it.z, it.a || 0, UNIT); drawPart(t, kg.body, M0); const f = mul(M0, chain(tr(0, 0.34, 0), sc(1, Math.max(0.05, 1 - it.burn), 1))); drawPart(t, kg.fuse, f);
+        if (it.burn < 1) drawPart(t, kg.spark, mul(M0, tr(-0.03 * (1 - it.burn), 0.34 + 0.24 * (1 - it.burn), 0))); return; }
+      const md = get(it.model || it.nade); if (!md) return; let M0 = placeIn(cam, it.x, it.y, it.z, it.a || 0, it.k || UNIT);
+      if (it.lying) M0 = mul(M0, chain(tr(0, 0.025, 0), rz(Math.PI / 2))); if (it.nade) M0 = mul(M0, chain(sc(0.6), rx(it.spin || 0)));
+      Object.entries(md).forEach(([k, part]) => { if (part.P && !/hand/.test(k) && k !== 'rod') drawPart(t, part, M0); });
+    });
+    resolve(t);
+    // the outline: where a figure stands against what is behind it, a dark edge
+    const W = t.W; const H = t.H; const x0 = Math.max(1, box[0] - 1); const y0 = Math.max(1, box[1] - 1); const x1 = Math.min(W - 2, box[2] + 1); const y1 = Math.min(H - 2, box[3] + 1);
+    for (let y = y0; y <= y1; y += 1) for (let x = x0; x <= x1; x += 1) { const o = y * W + x; if (TID[o] >= 0) continue; const z = ZB[o];
+      for (const n of [o - 1, o + 1, o - W, o + W]) if (TID[n] >= 0 && ZB[n] < z - 0.05) { const v = t.buf[o]; t.buf[o] = 0xff000000 | ((((v >> 16) & 255) * 0.35) << 16) | ((((v >> 8) & 255) * 0.35) << 8) | ((v & 255) * 0.35); break; } }
+  }
+
+  window.SIEGE_MODELS = { view, icon, world, HOLD, knifeModel, mat: { tr, rx, ry, rz, chain } };
 }());

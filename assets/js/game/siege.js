@@ -73,73 +73,8 @@
       out.push(d); src = d; w = w2; h = h2; }
     t.m = out; return out;
   }
-  /* ---- the actors' sprites, 24 x 48, painted from parts: a steel helmet, a face (or the back of a head),
-     a tabard of the side's colour with its charge (the defenders a white cross, the attackers a gold
-     chevron), mail sleeves, hose, boots; four walking frames, a pose aiming at you (the muzzle a dark round,
-     its flash), and the fall in three frames (the standing figure turned about its feet). Outlined dark so it
-     reads against the stone. */
-  const sprites = {};
-  function soldier(team, view, pose, frame) {
-    const key = `${team}${view}${pose}${frame}`; if (sprites[key]) return sprites[key];
-    const SW = 24; const SH = 48; const px = new Int32Array(SW * SH); const P = (x, y, c) => { x = Math.round(x); y = Math.round(y); if (x >= 0 && y >= 0 && x < SW && y < SH) px[y * SW + x] = pack(c); };
-    const R = (x, y, w, h, c) => { for (let j2 = 0; j2 < h; j2 += 1) for (let i2 = 0; i2 < w; i2 += 1) P(x + i2, y + j2, c); };
-    const cloth = team === 'def' ? [[70, 110, 230], [44, 72, 170], [28, 46, 120]] : [[224, 64, 50], [160, 36, 32], [104, 22, 22]];
-    const steel = [[214, 220, 230], [150, 158, 172], [90, 96, 112]]; const skin = [[240, 190, 150], [206, 146, 110]]; const hose = [[96, 72, 56], [66, 50, 40]]; const boot = [[46, 36, 30], [26, 20, 18]];
-    if (pose === 'dead') { const st = soldier(team, view, 'idle', 0); const ang = [0.5, 1.1, Math.PI / 2][frame]; const D = 96; const out = { w: D, h: D, px: new Int32Array(D * D) };
-      for (let y = 0; y < D; y += 1) for (let x = 0; x < D; x += 1) { const dx = x - D / 2; const dy = y - (D - 1); const sx = Math.round(dx * Math.cos(ang) + dy * Math.sin(ang) + st.w / 2); const sy = Math.round(-dx * Math.sin(ang) + dy * Math.cos(ang) + st.h - 1); if (sx >= 0 && sy >= 0 && sx < st.w && sy < st.h) out.px[y * D + x] = st.px[sy * st.w + sx]; }
-      return (sprites[key] = out); }
-    const step = pose === 'walk' ? [0, 1, 0, -1][frame] : 0;
-    // legs and boots
-    [[8, step], [13, -step]].forEach(([lx, s2]) => { R(lx + s2, 31, 4, 13, hose[0]); R(lx + 3 + s2, 31, 1, 13, hose[1]); R(lx - 1 + s2 * 1.4, 43 - Math.abs(s2), 5, 5, boot[0]); R(lx - 1 + s2 * 1.4, 47 - Math.abs(s2), 5, 1, boot[1]); });
-    // torso: mail under, tabard over, its charge, the belt
-    R(6, 14, 12, 18, steel[2]); R(7, 15, 10, 17, cloth[0]); R(15, 15, 2, 17, cloth[1]); R(7, 30, 10, 2, cloth[2]);
-    if (view === 'front') { if (team === 'def') { R(11, 16, 2, 12, [240, 240, 240]); R(8, 20, 8, 2, [240, 240, 240]); } else for (let k = 0; k < 5; k += 1) { P(8 + k, 22 - k, [240, 200, 80]); P(15 - k, 22 - k, [240, 200, 80]); P(8 + k, 23 - k, [240, 200, 80]); P(15 - k, 23 - k, [240, 200, 80]); } }
-    R(6, 26, 12, 2, [92, 60, 34]); P(12, 26, [230, 190, 90]);
-    // arms: down at the sides, or raised to aim at you
-    if (pose === 'aim' && view === 'front') { R(3, 15, 4, 7, steel[1]); R(17, 15, 4, 7, steel[1]); R(6, 19, 12, 4, steel[1]); R(9, 18, 6, 6, [110, 76, 44]); R(10, 19, 4, 4, [30, 26, 24]); R(7, 19, 3, 3, skin[0]); R(14, 19, 3, 3, skin[0]); if (frame) { R(8, 16, 8, 8, [255, 220, 120]); R(10, 18, 4, 4, [255, 255, 220]); } }
-    else { const sw = pose === 'walk' ? [0, 1, 0, -1][frame] : 0; R(3, 15 + sw, 3, 13, steel[1]); R(18, 15 - sw, 3, 13, steel[1]); R(3, 28 + sw, 3, 3, skin[1]); R(18, 28 - sw, 3, 3, skin[1]); }
-    // the head: helmet, face or nape
-    R(9, 10, 6, 5, view === 'front' ? skin[0] : [120, 84, 56]); if (view === 'front') { P(10, 11, [30, 24, 30]); P(13, 11, [30, 24, 30]); R(10, 13, 4, 1, skin[1]); }
-    for (let y = 2; y < 11; y += 1) for (let x = 6; x < 18; x += 1) { const d = Math.hypot((x - 11.5) / 6, (y - 9) / 7); if (d < 1 && y < 9 + (view === 'front' ? 0 : 2)) P(x, y, d < 0.45 ? steel[0] : x > 14 ? steel[2] : steel[1]); }
-    R(5, 9, 14, 1, steel[2]); // the brim
-    // outline
-    const out = new Int32Array(px); for (let y = 0; y < SH; y += 1) for (let x = 0; x < SW; x += 1) { if (px[y * SW + x]) continue; if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { const X = x + dx; const Y = y + dy; return X >= 0 && Y >= 0 && X < SW && Y < SH && px[Y * SW + X]; })) out[y * SW + x] = pack([16, 12, 18]); }
-    // twice as fine: each pixel four, shaded by what it is (mail in rings, cloth in folds), lit from the upper left
-    const W2 = SW * 2; const H2 = SH * 2; const fine = new Int32Array(W2 * H2);
-    for (let y = 0; y < H2; y += 1) for (let x = 0; x < W2; x += 1) {
-      const v = out[(y >> 1) * SW + (x >> 1)]; if (!v) continue; const c = unpack(v);
-      const grey = Math.abs(c[0] - c[1]) < 14 && Math.abs(c[1] - c[2]) < 18 && c[0] > 70; const isCloth = c[team === 'def' ? 2 : 0] > 120 && !grey;
-      let k = 1.12 - (x / W2) * 0.22 - (y / H2) * 0.1; // (the light)
-      if (grey) k *= (x + y) % 2 ? 1.08 : 0.9; // (rings of mail, a helmet's sheen)
-      if (isCloth) k *= 0.92 + 0.14 * Math.sin(x * 0.9 + (y >> 3)); // (folds)
-      fine[y * W2 + x] = v === pack([16, 12, 18]) ? v : pack(c.map((q) => q * k));
-    }
-    return (sprites[key] = { w: W2, h: H2, px: fine });
-  }
-  /* The props, painted once: a barrel (staves, two iron hoops), a bale of hay (straw, its twine), the well
-     (a ring of stones, two posts and a beam with its bucket). Twice as fine as drawn, as the men are. */
-  function propSprite(kind) {
-    const key = `prop-${kind}`; if (sprites[key]) return sprites[key];
-    const [SW, SH] = { barrel: [20, 26], hay: [30, 20], well: [32, 36], cart: [44, 28], tree: [64, 88] }[kind]; const px = new Int32Array(SW * SH);
-    const P = (x, y, c) => { if (x >= 0 && y >= 0 && x < SW && y < SH) px[y * SW + x] = pack(c); }; const n = (x, y) => { const v = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453; return v - Math.floor(v); };
-    if (kind === 'barrel') for (let y = 0; y < SH; y += 1) { const bulge = Math.sin((y / (SH - 1)) * Math.PI) * 2; const w = 7 + bulge; for (let x = Math.round(10 - w); x <= Math.round(9 + w); x += 1) { const u = (x - (10 - w)) / (2 * w); const st = Math.floor(u * 7) % 2; const k = 0.62 + Math.sin(u * Math.PI) * 0.5;
-      const hoop = y === 3 || y === 4 || y === SH - 5 || y === SH - 4; P(x, y, hoop ? [70 * k, 70 * k, 78 * k] : y < 2 ? [70, 46, 26] : [(st ? 150 : 132) * k, (st ? 96 : 84) * k, (st ? 52 : 44) * k]); } }
-    if (kind === 'hay') for (let y = 2; y < SH; y += 1) for (let x = 1; x < SW - 1; x += 1) { const k = 0.7 + (1 - y / SH) * 0.4 + (n(x, y) - 0.5) * 0.3; const tw = x === 8 || x === 21; P(x, y, tw ? [120, 90, 50] : [220 * k, 186 * k, 90 * k]); }
-    if (kind === 'well') { for (let y = 20; y < SH; y += 1) for (let x = 2; x < SW - 2; x += 1) { const row = Math.floor((y - 20) / 4); const joint = (y - 20) % 4 === 0 || (x + row * 3) % 7 === 0; const k = 0.8 + (n(x >> 2, row) - 0.5) * 0.3; P(x, y, joint ? [90, 86, 80] : [168 * k, 162 * k, 150 * k]); }
-      for (let y = 2; y < 20; y += 1) { P(4, y, [110, 74, 40]); P(5, y, [90, 60, 32]); P(SW - 5, y, [110, 74, 40]); P(SW - 6, y, [90, 60, 32]); } for (let x = 3; x < SW - 3; x += 1) { P(x, 2, [130, 88, 48]); P(x, 3, [96, 64, 34]); }
-      for (let y = 4; y < 11; y += 1) P(16, y, [200, 190, 160]); for (let y = 11; y < 16; y += 1) for (let x = 13; x < 20; x += 1) P(x, y, y === 11 ? [70, 70, 76] : [120, 82, 46]); }
-    if (kind === 'cart') { for (let y = 6; y < 16; y += 1) for (let x = 2; x < SW - 2; x += 1) P(x, y, (y - 6) % 4 === 0 ? [96, 62, 32] : [150 + (n(x >> 2, y) - 0.5) * 30, 100, 56]); // (its box of planks, two wheels, the shafts)
-      [[11, 20], [33, 20]].forEach(([cx, cy]) => { for (let y = cy - 8; y <= cy + 8; y += 1) for (let x = cx - 8; x <= cx + 8; x += 1) { const d = Math.hypot(x - cx, y - cy); if (d > 8) continue; const spoke = Math.abs(Math.sin(Math.atan2(y - cy, x - cx) * 3)) < 0.2; if (d <= 6.5 && d >= 2 && !spoke) continue; P(x, y, d > 6.5 ? [70, 48, 26] : [110, 76, 40]); } });
-      for (let x = 0; x < 6; x += 1) P(x, 12 + (x >> 1), [120, 80, 44]); }
-    if (kind === 'tree') { for (let y = 40; y < SH; y += 1) for (let x = 28; x < 36; x += 1) P(x + Math.round(Math.sin(y * 0.15)), y, [92 + (x - 28) * 6, 64 + (x - 28) * 3, 40]); // (the trunk; the crown in clumps)
-      for (let k = 0; k < 26; k += 1) { const cx = 32 + Math.cos(k * 2.4) * (6 + (k % 5) * 4); const cy = 26 + Math.sin(k * 2.4) * (5 + (k % 4) * 4); const r = 9 + (k % 3) * 2; for (let y = Math.floor(cy - r); y <= cy + r; y += 1) for (let x = Math.floor(cx - r); x <= cx + r; x += 1) { const d = Math.hypot(x - cx, y - cy); if (d > r || n(x, y) > 0.92) continue; const k2 = 0.7 + (1 - (y - cy + r) / (2 * r)) * 0.45 - d / r * 0.15; P(x, y, [58 * k2, 112 * k2, 44 * k2]); } } }
-    const out = new Int32Array(px); for (let y = 0; y < SH; y += 1) for (let x = 0; x < SW; x += 1) { if (px[y * SW + x]) continue; if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => { const X = x + dx; const Y = y + dy; return X >= 0 && Y >= 0 && X < SW && Y < SH && px[Y * SW + X]; })) out[y * SW + x] = pack([16, 12, 18]); }
-    const W2 = SW * 2; const H2 = SH * 2; const fine = new Int32Array(W2 * H2); for (let y = 0; y < H2; y += 1) for (let x = 0; x < W2; x += 1) fine[y * W2 + x] = out[(y >> 1) * SW + (x >> 1)];
-    return (sprites[key] = { w: W2, h: H2, px: fine });
-  }
   const props = []; // [{ x, y, img, h, wk }], found once
-  function prepProps() { props.length = 0; M.PROPS.forEach(([k, x, y]) => { const d = PROPDEF[k]; props.push({ kind: k, x, y, r: d.r, top: hAt(Math.floor(x), Math.floor(y)) + d.top, z: hAt(Math.floor(x), Math.floor(y)), img: propSprite(k), h: d.h, wk: d.wk }); }); }
-  const KEG = { w: 7, h: 6, px: [0, 3, 3, 3, 3, 3, 0, 3, 2, 2, 2, 2, 2, 3, 3, 1, 1, 1, 1, 1, 3, 3, 2, 2, 2, 2, 2, 3, 3, 1, 1, 1, 1, 1, 3, 0, 3, 3, 3, 3, 3, 0].map((v) => [0, pack([120, 80, 44]), pack([150, 104, 60]), pack([60, 60, 70])][v]) };
+  function prepProps() { props.length = 0; M.PROPS.forEach(([k, x, y]) => { const d = PROPDEF[k]; props.push({ kind: k, x, y, r: d.r, top: hAt(Math.floor(x), Math.floor(y)) + d.top, z: hAt(Math.floor(x), Math.floor(y)), h: d.h, rot: (x * 7.3 + y * 3.1) % 6.2832 }); }); }
 
   /* ---- the visitor's settings: mouse sensitivity (radians a count: 0.0011 is about a tactical shooter's 2.5 at 800 dpi), field of view, inverted look ---- */
   const settings = { sens: 0.0011, fov: 1.6, invert: false, ...(JSON.parse(localStorage.getItem('siege-settings') || '{}') || {}) };
@@ -266,7 +201,7 @@
       a.ground = groundAt(a.x, a.y, Math.max(a.z, a.ground), up);
       if (a.z <= a.ground) { const impact = -a.vz; a.z = a.ground; a.vz = 0; a.landAt = g.now; a.landV = impact; if (impact > 6.4) damage(a, (impact - 6.4) * 30, 1, false, null, 'fall'); if (impact > 2) noise(a, 9); }
     }
-    a.moving = Math.hypot(a.vx, a.vy) > 0.6;
+    a.moving = Math.hypot(a.vx, a.vy) > 0.6; a.stride = ((a.stride || 0) + Math.hypot(a.vx, a.vy) * dt * 2.7) % 6.2832;
     if (a.moving && onGround && !a.crouch && !(a === g.player && keys.has('ShiftLeft'))) { a.stepAt ||= 0; if (g.now > a.stepAt) { a.stepAt = g.now + 0.36; noise(a, 7); if (a !== g.player) sfx('step', a); } }
   }
   function jump(a) { if (a.z <= (a.ground ?? 0) + 1e-3 && a.vz <= 0 && !g.frozen) { a.vz = JUMP_V; a.z += 0.001; noise(a, 6); } }
@@ -303,7 +238,7 @@
     let d = dmg; if (armoured) { const taken = d * pierce; t.armour = Math.max(0, t.armour - (d - taken) * 0.5); d = taken; }
     t.hp -= d; t.hitAt = g.now; if (t === g.player) { g.hurtAt = g.now; g.hurtFrom = by ? Math.atan2(by.y - t.y, by.x - t.x) : null; }
     if (head) sfx(t.helm ? 'tink' : 'thud', t);
-    if (t.hp <= 0) { t.diedAt = g.now;
+    if (t.hp <= 0) { t.diedAt = g.now; t.fallDir = by && Math.cos(t.a) * (by.x - t.x) + Math.sin(t.a) * (by.y - t.y) < 0 ? -1 : 1;
       t.alive = false; t.hp = 0; t.deaths += 1;
       if (by && by.team !== t.team) { by.kills += 1; by.money = Math.min(MAX_MONEY, by.money + (KILL_REWARD[wid] || 300)); }
       g.feed.unshift({ by: by ? by.name : '', byTeam: by ? by.team : '', w: wid, head, who: t.name, team: t.team, t: g.now }); g.feed.length = Math.min(6, g.feed.length);
@@ -563,7 +498,7 @@
   /** Whose eyes: the visitor's, or (fallen) a living one of the side, chosen by clicking. */
   function camActor() { const me = g.player; if (me.alive) return me; const mates = g.actors.filter((a) => a.alive && a.team === me.team); return mates.length ? mates[(g.specIdx || 0) % mates.length] : me; }
   function toScreen(x, y, z) { const c = cam; const rx = x - c.px; const ry = y - c.py; const ty = c.inv * (-c.plY * rx + c.plX * ry); if (ty < 0.05) return null; const tx = c.inv * (c.dirY * rx - c.dirX * ry); return [(W / 2) * (1 + tx / ty), c.hor + (c.eye - z) * c.F / ty, ty, c.F / ty]; }
-  let rowInv = null;
+  let rowInv = null; let worldT = null;
   function render() {
     const me = g.player; const p = camActor(); const self = p === me; // (fallen: the eyes of a living one of your side)
     const eye = (self ? g.eyeH : p.crouch ? 0.45 : 0.62) + p.z; const fov = settings.fov * (self && p.scoped ? 0.25 : 1);
@@ -640,18 +575,19 @@
     }
     // the sprites, far to near, each pixel against the depth
     const spr = []; const now = g.now;
-    g.actors.forEach((a) => {
-      if (a === p) return; const toMe = Math.atan2(p.y - a.y, p.x - a.x); const view = Math.abs(wrap(toMe - a.a)) < Math.PI / 2 ? 'front' : 'back';
-      let img; let h = 0.9; let wk = 0.45;
-      if (!a.alive) { const f = Math.min(2, Math.floor((now - (a.diedAt || 0)) / 0.12)); img = soldier(a.team, view, 'dead', f); h = 0.9; wk = 0.9; }
-      else if (now - a.lastShot < 0.18 && view === 'front' && cur(a) !== 'knife') img = soldier(a.team, view, 'aim', now - a.lastShot < 0.06 ? 1 : 0);
-      else img = soldier(a.team, view, a.moving ? 'walk' : 'idle', a.moving ? Math.floor(now * 8 + a.idx) % 4 : 0);
-      spr.push({ x: a.x, y: a.y, img, h: a.crouch ? h * 0.72 : h, z: a.z, wk, hit: now - (a.hitAt || -9) < 0.1, lit: true, lo: lightAt(a.x, a.y) });
-    });
+    // the men, the props, the keg, things thrown: models, against the depth (those out of sight skipped)
+    const vis = (x, y, z0, z1) => { const rx2 = x - p.x; const ry2 = y - p.y; const fz = rx2 * dirX + ry2 * dirY; if (fz < -0.6) return false; if (Math.abs(rx2 * -dirY + ry2 * dirX) > fz * pl + 1.2) return false;
+      return [z1, (z0 + z1) / 2, z0 + 0.05].some((zz) => clear(p.x, p.y, eye, x, y, zz)) || Math.hypot(rx2, ry2) < 1.5; };
+    const lit = (x, y) => { const o = lightAt(x, y); return [lm[o], lm[o + 1], lm[o + 2]]; };
+    const items = [];
+    g.actors.forEach((a) => { if (a === p || !vis(a.x, a.y, a.z, a.z + STAND)) return; a.wid = a.alive ? cur(a) : null; a.hasKeg = g.keg.carrier === a; items.push({ man: a, light: lit(a.x, a.y), flash: now - (a.hitAt || -9) < 0.08 ? 0.8 : 0 }); });
+    props.forEach((q) => { if (vis(q.x, q.y, q.z, q.z + q.h)) items.push({ model: q.kind, x: q.x, y: q.y, z: q.z, a: q.rot || 0, light: lit(q.x, q.y) }); });
+    if ((g.keg.dropped || g.keg.planted) && vis(g.keg.x, g.keg.y, g.keg.z || 0, (g.keg.z || 0) + 0.3)) items.push({ keg: true, x: g.keg.x, y: g.keg.y, z: g.keg.z || 0, a: g.keg.a || 0, burn: g.keg.planted ? clamp(1 - (g.keg.until - now) / KEG_S, 0, 1) : 0, light: lit(g.keg.x, g.keg.y) });
+    (g.drops || []).forEach((d) => { if (vis(d.x, d.y, d.z, d.z + 0.2)) items.push({ model: d.id, x: d.x, y: d.y, z: d.z, a: d.a, lying: true, light: lit(d.x, d.y) }); });
+    g.nades.forEach((n) => items.push({ nade: { he: 'firepot', smoke: 'incense', flash: 'vial', fire: 'flask' }[n.kind], x: n.x, y: n.y, z: n.z, spin: (now - n.t0) * 14, light: lit(n.x, n.y) }));
+    const sunView = [SUN[0] * -dirY + SUN[1] * dirX, SUN[2], SUN[0] * dirX + SUN[1] * dirY];
+    MODELS.world(worldT, cam, items, sunView, now, g.knife);
     torches.forEach((t) => spr.push({ x: t.x, y: t.y, z: t.z - 0.15, h: 0.32, wk: 0.16, torch: t })); // (the torches: a bracket, a flame)
-    props.forEach((q) => spr.push({ x: q.x, y: q.y, img: q.img, h: q.h, wk: q.wk, z: q.z, lit: true, lo: lightAt(q.x, q.y) }));
-    if (g.keg.dropped || g.keg.planted) spr.push({ x: g.keg.x, y: g.keg.y, img: KEG, h: 0.22, z: g.keg.z || 0, wk: 0.26, glow: g.keg.planted && Math.floor(now * 4) % 2 });
-    g.nades.forEach((n) => spr.push({ x: n.x, y: n.y, z: n.z, h: 0.1, wk: 0.1, dot: n.kind === 'flash' ? [240, 240, 255] : n.kind === 'smoke' ? [150, 150, 150] : [120, 80, 40] }));
     g.smokes.forEach((sm) => { const k = Math.min(1, (now - sm.t0) / 1.5) * Math.min(1, (sm.until - now) / 2); for (let j = 0; j < 22; j += 1) { const q = j * 2.39996 + now * 0.05; const r = Math.sqrt(j / 22) * sm.r * k; spr.push({ x: sm.x + Math.cos(q) * r, y: sm.y + Math.sin(q) * r, z: sm.z - 0.1 + (j % 3) * 0.25, h: 1.5 * k, wk: 1.6 * k, cloud: [182, 184, 190], alpha: 0.9 }); } });
     g.fires.forEach((f) => f.flames.forEach((q) => spr.push({ x: q[0], y: q[1], z: f.z, h: 0.32 + Math.sin(now * 9 + q[2]) * 0.1, wk: 0.3, flame: true })));
     g.fx.forEach((f) => { if (f.kind === 'blast') spr.push({ x: f.x, y: f.y, z: f.z - 0.2, h: f.big ? 3 : 1.5, wk: f.big ? 4 : 1.7, flame: true }); });
@@ -760,7 +696,7 @@
 <div class="sg-slots"></div><div class="sg-ammo"><div class="sg-wname"></div><div class="sg-rounds"><b class="sg-mag"></b><span class="sg-res"></span></div><div class="sg-ticks"></div></div>
 <div class="sg-menu" hidden></div><div class="sg-help">Click: take the mouse · WASD/ZQSD move · Shift walk · Ctrl crouch · Space jump · R reload · 1 2 3 4 weapons · G throw · E plant/defuse · B buy · F inspect · Tab scores · K knife · Esc pause</div></div>`;
     document.body.append(root);
-    cv = root.querySelector('canvas'); ctx = cv.getContext('2d'); img = ctx.createImageData(W, H); buf = new Uint32Array(img.data.buffer); zbuf = new Float32Array(W * H);
+    cv = root.querySelector('canvas'); ctx = cv.getContext('2d'); img = ctx.createImageData(W, H); buf = new Uint32Array(img.data.buffer); zbuf = new Float32Array(W * H); worldT = { buf, W, H, ZB: zbuf };
     const q = (sel) => root.querySelector(sel);
     ui = { radar: q('.sg-radar'), time: q('.sg-time'), round: q('.sg-round'), sides: [...root.querySelectorAll('.sg-side')], cash: q('.sg-cash'), delta: q('.sg-delta'), feed: q('.sg-feed'), msg: q('.sg-msg'), banner: q('.sg-banner'), prog: q('.sg-prog'), spec: q('.sg-spec'),
       hp: q('.sg-hp'), ar: q('.sg-ar'), kegc: q('.sg-kegc'), slots: q('.sg-slots'), ammo: q('.sg-ammo'), wname: q('.sg-wname'), mag: q('.sg-mag'), res: q('.sg-res'), ticks: q('.sg-ticks'), menu: q('.sg-menu'), help: q('.sg-help') };
@@ -863,7 +799,7 @@
       if (act === 'knife') forge();
       if (act === 'sens-' || act === 'sens+') { settings.sens = clamp(settings.sens * (act === 'sens+' ? 1.15 : 1 / 1.15), 0.0002, 0.006); saveSettings(); pauseMenu(); }
       if (act === 'fov-' || act === 'fov+') { settings.fov = clamp(settings.fov + (act === 'fov+' ? 0.08 : -0.08), 1.1, 2); saveSettings(); pauseMenu(); }
-      if (act === 'quality') { settings.quality = ((settings.quality ?? 1) + 1) % QUALITY.length; saveSettings(); [W, H] = QUALITY[settings.quality]; cv.width = W; cv.height = H; img = ctx.createImageData(W, H); buf = new Uint32Array(img.data.buffer); zbuf = new Float32Array(W * H); pauseMenu(); }
+      if (act === 'quality') { settings.quality = ((settings.quality ?? 1) + 1) % QUALITY.length; saveSettings(); [W, H] = QUALITY[settings.quality]; cv.width = W; cv.height = H; img = ctx.createImageData(W, H); buf = new Uint32Array(img.data.buffer); zbuf = new Float32Array(W * H); worldT = { buf, W, H, ZB: zbuf }; skyTex = null; pauseMenu(); }
       if (act === 'invert') { settings.invert = !settings.invert; saveSettings(); pauseMenu(); }
       if (act === 'diff') { g.difficulty = { easy: 'normal', normal: 'hard', hard: 'easy' }[g.difficulty]; store('siege-diff', g.difficulty); pauseMenu(); }
       if (act === 'again') { const o = g.opts; stop(); start(o); }
