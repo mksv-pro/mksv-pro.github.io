@@ -1592,3 +1592,6 @@ canvas.twinkle { display: none; position: absolute; z-index: 1; pointer-events: 
 .siege .sg-menu table { width: 100%; border-collapse: collapse; } .siege .sg-menu td, .siege .sg-menu th { padding: .2rem .5rem; text-align: left; border-bottom: 1px solid #4a3a28; }
 .siege .sg-knife { display: block; width: 320px; height: 180px; image-rendering: pixelated; margin: 0 auto .5rem; border: 1px solid #6a4a2a; }
 .siege .sg-forge > button { display: inline-block; width: auto; }
+
+.siege .sg-set { display: flex; align-items: center; gap: .5rem; margin: .3rem 0; } .siege .sg-set span { flex: 1; }
+.siege .sg-set button { width: 2.2rem !important; text-align: center !important; } .siege .sg-set b { min-width: 3.5rem; text-align: center; }

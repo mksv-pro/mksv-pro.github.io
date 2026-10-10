@@ -85,41 +85,56 @@
     greatbow: { parts: [[[18, 8], [-14, -70], 14, 7, 'wood'], [[-2, -40], [-12, -64], 4, 4, 'brass']], prod: [[-14, -72], 84, 8], hands: [[13, -4, 9], [-6, -48, 7]], muzzle: [-14, -76] },
   };
   function drawHeld(id, kn, put0, Wd, Hd, a) {
-    const S = id === 'knife' ? (a.scale || 1) : 1; const fat = id === 'knife' ? 1 : (a.scale || 1) * 1.1; // (a long arm keeps its length, from the screen's foot to its middle, and grows thick)
-    const ax = Math.round(Wd * 0.6 + (a.bob || 0) * S); const ay = Math.round(Hd + 4 * S + (a.kick || 0) * 7 * S + (a.reload >= 0 ? Math.sin(a.reload * Math.PI) * 40 * S : 0));
-    const put = (x, y, c) => { const X = Math.round(ax + x * S); const Y = Math.round(ay + y * S); for (let j = 0; j < Math.ceil(S); j += 1) for (let i = 0; i < Math.ceil(S); i += 1) put0(X + i, Y + j, c); };
-    /** A tapered piece from p to q, width w0 to w1, coloured by col(u along, v across) or a material, shaded round. */
-    const piece = (p, q, w0, w1, col) => {
-      const L = Math.max(1, Math.hypot(q[0] - p[0], q[1] - p[1])); const nx = -(q[1] - p[1]) / L; const ny = (q[0] - p[0]) / L;
-      for (let s2 = 0; s2 <= L * 1.5; s2 += 1) { const u = s2 / (L * 1.5); const cx = p[0] + (q[0] - p[0]) * u; const cy = p[1] + (q[1] - p[1]) * u; const w = w0 + (w1 - w0) * u;
-        for (let k = -w / 2; k <= w / 2; k += 0.5) { const v = (k + w / 2) / Math.max(1, w); const c = typeof col === 'function' ? col(u, v) : (() => { const m = MAT[col]; const r = Math.sin(v * Math.PI); return v < 0.28 ? m[0] : r > 0.55 ? m[1] : m[2]; })();
-          put(cx + nx * k, cy + ny * k, k < -w / 2 + 0.6 || k > w / 2 - 0.6 ? c.map((q2) => q2 * 0.55) : c); } }
+    // the whole held thing moves as one: walking (bobX, bobY), turning (rot), the shot's kick (back and up), the
+    // reload (down and over, then back), an inspection (turned to show its side), the knife's swing (an arc, blurred)
+    const base = Wd / 320; const knife = id === 'knife'; const S = base * (knife ? 2 : 1); const fat = knife ? 1 : 2.2;
+    const rl = a.reload >= 0 ? a.reload : -1; const down = rl >= 0 ? Math.sin(Math.min(1, rl / 0.35) * Math.PI / 2) * (rl > 0.75 ? 1 - (rl - 0.75) / 0.25 : 1) : 0;
+    const ins = a.inspect >= 0 ? Math.sin(a.inspect * Math.PI) : 0;
+    let rot = (a.rot || 0) - (a.kick || 0) * 0.16 + down * 0.7 + ins * (knife ? 0 : 0.55);
+    let ox = (a.bobX || 0) * base + (a.kick || 0) * 4 * base + ins * 30 * base; let oy = (a.bobY || 0) * base + (a.kick || 0) * 10 * base + down * 70 * base - ins * 8 * base;
+    const ax = Wd * 0.62; const ay = Hd + 6 * base;
+    const make = (rr, xo, yo, alpha) => (x, y, c) => { // local (x, y) in 320-wide units about the anchor, turned by rr, at S times
+      const X = ax + xo + (x * Math.cos(rr) - y * Math.sin(rr)) * S; const Y = ay + yo + (x * Math.sin(rr) + y * Math.cos(rr)) * S;
+      const n = Math.ceil(S) + 1; for (let j2 = 0; j2 < n; j2 += 1) for (let i2 = 0; i2 < n; i2 += 1) put0(Math.round(X + i2 - n / 2), Math.round(Y + j2 - n / 2), c, alpha);
     };
-    const hand = (x, y, r) => { for (let j = -r; j <= r; j += 1) for (let i = -r; i <= r; i += 1) { const d = Math.hypot(i, j * 1.2); if (d > r) continue; put(x + i, y + j, d > r - 1.2 ? [120, 70, 46] : i < -r * 0.3 && j < 0 ? [244, 204, 166] : [216, 156, 116]); }
-      for (let j = 0; j < r * 1.4; j += 1) for (let i = -r; i <= r; i += 1) put(x + i + j * 0.4, y + r + j, j % 4 === 0 ? [120, 30, 30] : [170, 46, 40]); }; // (and the sleeve, red, going off the screen)
-    if (id === 'knife') {
-      const sh = kn.shape; const ins = a.inspect >= 0 ? a.inspect : -1; const sw = a.swing >= 0 ? Math.sin(a.swing * Math.PI) : 0;
-      const turn = ins >= 0 ? Math.sin(ins * Math.PI * 2) : 0; const L = 62 * sh.len; const hx = 22 - sw * 26 + turn * 6; const hy = -16 - sw * 30;
-      const tip = [hx - 34 - turn * 20, hy - L + Math.abs(turn) * 14];
-      const flipK = sh.flip && ins >= 0 ? Math.cos(ins * Math.PI * 4) : 1;
-      piece([hx + 10, hy + 20], [hx, hy], 7, 6, 'dark'); // the grip
-      piece([hx - 8 * flipK, hy - 1], [hx + 8 * flipK, hy + 1], 3, 3, 'brass'); // the guard
-      const steps = 40; let prev = [hx, hy - 2];
-      for (let k = 1; k <= steps; k += 1) { const u = k / steps; const bend = sh.curve * Math.sin(u * Math.PI) * 10; const cur = [hx + (tip[0] - hx) * u + bend, hy - 2 + (tip[1] - hy + 2) * u];
-        const w0 = Math.max(1, sh.blade((k - 1) / steps) * 9 * Math.abs(flipK)); const w1 = Math.max(1, sh.blade(u) * 9 * Math.abs(flipK));
-        piece(prev, cur, w0, w1, (uu, v) => { const c = kn.colour((k - 1 + uu) / steps, v); const edge = v > 0.82 ? 1.3 : v < 0.18 ? 0.7 : 1; return c.map((q2) => Math.min(255, q2 * edge)); }); prev = cur; }
-      if (sh.ring) for (let q = 0; q < 6.28; q += 0.25) put(hx + 14 + Math.cos(q) * 4, hy + 22 + Math.sin(q) * 4, MAT.iron[1]);
-      hand(hx + 6, hy + 8, 9);
+    let put = make(rot, ox, oy, 1);
+    /** A tapered piece from p to q, width w0 to w1, coloured by col(u along, v across) or a material, shaded round. */
+    const piece = (pp, q, w0, w1, col) => {
+      const L = Math.max(1, Math.hypot(q[0] - pp[0], q[1] - pp[1])); const nx = -(q[1] - pp[1]) / L; const ny = (q[0] - pp[0]) / L;
+      for (let s2 = 0; s2 <= L; s2 += 0.7) { const u = s2 / L; const cx = pp[0] + (q[0] - pp[0]) * u; const cy = pp[1] + (q[1] - pp[1]) * u; const w = w0 + (w1 - w0) * u;
+        for (let k = -w / 2; k <= w / 2; k += 0.7) { const v = (k + w / 2) / Math.max(1, w); const c = typeof col === 'function' ? col(u, v) : (() => { const m = MAT[col]; const r = Math.sin(v * Math.PI); return v < 0.25 ? m[0] : r > 0.55 ? m[1] : m[2]; })();
+          put(cx + nx * k, cy + ny * k, k < -w / 2 + 0.8 || k > w / 2 - 0.8 ? c.map((q2) => q2 * 0.5) : c); } }
+    };
+    const hand = (x, y, r) => { for (let j = -r; j <= r; j += 1) for (let i = -r; i <= r; i += 1) { const d = Math.hypot(i, j * 1.15); if (d > r) continue; put(x + i, y + j, d > r - 1.3 ? [110, 64, 42] : i < -r * 0.25 && j < -r * 0.1 ? [246, 206, 168] : [218, 158, 118]); }
+      for (let j = 0; j < r * 2.2; j += 1) for (let i = -r - 1; i <= r + 1; i += 1) put(x + i + j * 0.45, y + r + j, Math.abs(i) > r - 0.5 ? [90, 22, 22] : j % 5 === 0 ? [128, 32, 30] : [176, 48, 42]); }; // (the sleeve, red, off the screen)
+    if (knife) {
+      const sh = kn.shape; const sw = a.swing >= 0 ? a.swing : -1; const flipK = sh.flip && a.inspect >= 0 ? Math.cos(a.inspect * Math.PI * 4) : 1;
+      const turn = a.inspect >= 0 ? Math.sin(a.inspect * Math.PI * 2) * 0.9 : 0; // (inspecting: the blade turned over, then back)
+      const blade = (pr) => { // the knife at its place for this frame
+        put = pr; const L = 50 * sh.len; const hx = 18; const hy = -14; const tip = [hx - 26, hy - L];
+        piece([hx + 9, hy + 20], [hx, hy], 7, 6, 'dark');
+        piece([hx - 8 * flipK, hy - 1], [hx + 8 * flipK, hy + 1], 3, 3, 'brass');
+        const steps = 30; let prev = [hx, hy - 2];
+        for (let k = 1; k <= steps; k += 1) { const u = k / steps; const bend = sh.curve * Math.sin(u * Math.PI) * 9; const cur2 = [hx + (tip[0] - hx) * u + bend, hy - 2 + (tip[1] - hy + 2) * u];
+          const wd = (uu) => Math.max(1, sh.blade(uu) * 8 * Math.max(0.15, Math.abs(Math.cos(turn)) * Math.abs(flipK)));
+          piece(prev, cur2, wd((k - 1) / steps), wd(u), (uu, v) => { const c = kn.colour((k - 1 + uu) / steps, v); const edge = v > 0.8 ? 1.3 : v < 0.2 ? 0.72 : 1; const lit = 0.8 + 0.4 * Math.abs(Math.sin(turn + v)); return c.map((q2) => Math.min(255, q2 * edge * lit)); }); prev = cur2; }
+        if (sh.ring) for (let q = 0; q < 6.28; q += 0.2) put(hx + 13 + Math.cos(q) * 4, hy + 22 + Math.sin(q) * 4, MAT.iron[1]);
+        hand(hx + 5, hy + 8, 9);
+      };
+      if (sw >= 0) { // the swing: from up right across to down left (a light one), or a thrust (the heavy one), with its blur behind
+        const arc = (t2) => (a.heavy ? { r: -0.2, x: -30 * Math.sin(t2 * Math.PI) * base, y: -40 * Math.sin(t2 * Math.PI) * base } : { r: 0.9 - t2 * 2.2, x: (40 - t2 * 110) * base, y: (-30 + Math.sin(t2 * Math.PI) * -20) * base });
+        [0.18, 0.1, 0].forEach((lag, k) => { const t2 = Math.max(0, sw - lag); const p2 = arc(t2); blade(make(rot + p2.r, ox + p2.x, oy + p2.y, k === 2 ? 1 : 0.25 + k * 0.15)); });
+      } else blade(make(rot, ox, oy, 1));
       return;
     }
     const gun = GUNS[id]; if (!gun) return;
-    if (gun.prod) { const [[px, py], span, bend] = gun.prod; // the bow across, its string drawn back to the nut
-      for (let k = -span * fat / 2; k <= span * fat / 2; k += 1) { const y = py + (Math.abs(k) / (span * fat / 2)) ** 2 * bend; put(px + k, y, MAT.iron[0]); put(px + k, y + 1, MAT.iron[1]); put(px + k, y + 2, MAT.iron[2]); }
-      for (let k = -span * fat / 2; k <= span * fat / 2; k += 1) { const t = Math.abs(k) / (span * fat / 2); put(px + k, py + bend + (1 - t) * 14, MAT.string[1]); } }
-    gun.parts.forEach(([p, q, w0, w1, m]) => piece(p, q, w0 * fat, w1 * fat, m));
-    if (ARMS_SCOPE[id]) piece([-4, -46], [-12, -66], 5, 4, 'brass');
-    gun.hands.forEach(([x, y, r]) => hand(x, y, Math.round(r * Math.min(fat, 1.3))));
-    if (a.flash) { const [fx, fy] = gun.muzzle; for (let k = 0; k < 70; k += 1) { const q = Math.random() * 6.28; const r2 = Math.random() * 9; put(fx + Math.cos(q) * r2, fy + Math.sin(q) * r2 * 0.8 - 3, [255, 236 - r2 * 12, 140 - r2 * 12]); } }
+    if (gun.prod) { const [[px, py], span, bend] = gun.prod; const half = span * 0.6; // the bow across, its string drawn back to the nut
+      for (let k = -half; k <= half; k += 0.7) { const y = py + (Math.abs(k) / half) ** 2 * bend; put(px + k, y, MAT.iron[0]); put(px + k, y + 1.2, MAT.iron[1]); put(px + k, y + 2.4, MAT.iron[2]); }
+      for (let k = -half; k <= half; k += 0.7) { const t2 = Math.abs(k) / half; put(px + k, py + bend + (1 - t2) * 14, MAT.string[1]); } }
+    gun.parts.forEach(([p2, q, w0, w1, m]) => piece(p2, q, w0 * fat, w1 * fat, m));
+    if (ARMS_SCOPE[id]) piece([-4, -46], [-12, -66], 5 * fat, 4 * fat, 'brass');
+    gun.hands.forEach(([x, y, r]) => hand(x, y, Math.round(r * 1.3)));
+    if (a.flash) { const [fx, fy] = gun.muzzle; for (let k = 0; k < 90; k += 1) { const q = Math.random() * 6.28; const r2 = Math.random() * 11; put(fx + Math.cos(q) * r2, fy + Math.sin(q) * r2 * 0.8 - 4, [255, 236 - r2 * 10, 150 - r2 * 12]); } }
   }
   const ARMS_SCOPE = { greatbow: true };
 
