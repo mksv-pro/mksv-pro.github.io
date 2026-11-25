@@ -227,7 +227,7 @@
   gate.addEventListener('click', (e) => {
     const a = e.target.closest('.gate-ways a'); if (!a || e.ctrlKey || e.metaKey || e.shiftKey || e.button) return;
     e.preventDefault(); if (leaving) return; leaving = true; gate.classList.add('leaving'); show(nameOf(a)); scrambleOut();
-    let gone = false; const go = () => { if (gone) return; gone = true; try { sessionStorage.setItem('via-gate', COLOUR[nameOf(a)] || '#000000'); } catch (x) {} location.href = a.href; };
+    let gone = false; const go = () => { if (gone) return; gone = true; try { sessionStorage.setItem('via-gate', COLOUR[nameOf(a)] || '#000000'); } catch { /* (no storage: the page opens without its veil) */ } location.href = a.href; };
     if (reduce) { go(); return; }
     const r = a.getBoundingClientRect(); const pointed = e.detail > 0 && e.clientX; // (a click: from the pointer; Enter: from the line's end)
     takeover(nameOf(a), pointed ? e.clientX : r.right, pointed ? e.clientY : r.top + r.height / 2, go);
