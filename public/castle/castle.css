@@ -1,0 +1,1667 @@
+/* Two themes on one layout.
+   terminal (dark): a roguelike TUI lit by a dithered engraving.
+   hours:           a pixel-art book of hours, the landscape as the page (castle/js/hours/hours.js).
+   Palette contrast against --bg and --panel is >= 5:1 for every text token
+   (checked by tools/build/check.py; image colours in tools/assets/make_assets.py must match). */
+
+/* Self-hosted, no third-party requests. Plex has a Reserved Font Name (OFL): shipped whole,
+   only re-encoded. */
+@font-face {
+  font-family: "Departure Mono";
+  src: url("../assets/fonts/DepartureMono-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("../assets/fonts/IBMPlexMono-Regular.woff2") format("woff2");
+  font-weight: 400; font-style: normal; font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("../assets/fonts/IBMPlexMono-Italic.woff2") format("woff2");
+  font-weight: 400; font-style: italic; font-display: swap;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("../assets/fonts/IBMPlexMono-SemiBold.woff2") format("woff2");
+  font-weight: 600; font-style: normal; font-display: swap;
+}
+@font-face { /* the castle's titles and its banner's name (blackletter, OFL) */
+  font-family: "UnifrakturMaguntia";
+  src: url("../assets/fonts/UnifrakturMaguntia-Regular.woff2") format("woff2");
+  font-display: swap;
+}
+@font-face { /* the herald's voice (OFL) */
+  font-family: "EB Garamond";
+  src: url("../assets/fonts/EBGaramond-Italic.woff2") format("woff2");
+  font-weight: 400; font-style: italic; font-display: swap;
+}
+
+/* Fallbacks shaped like the web fonts (Capsize's method: advance or mean width, ascent and descent read
+   from the fonts with fontTools), so nothing moves when the real ones arrive and the terminal's columns
+   stay where they were: size-adjust = web width / local width, the overrides = web metric / size-adjust.
+   The two serifs' widths measured on a line of text (Liberation Serif has Times's metrics). */
+@font-face { font-family: "Departure fb Menlo"; src: local("Menlo"), local("Menlo-Regular"), local("DejaVu Sans Mono"), local("DejaVuSansMono"); size-adjust: 105.70%; ascent-override: 94.61%; descent-override: 25.80%; line-gap-override: 0%; }
+@font-face { font-family: "Departure fb Consolas"; src: local("Consolas"); size-adjust: 115.74%; ascent-override: 86.40%; descent-override: 23.56%; line-gap-override: 0%; }
+@font-face { font-family: "Departure fb Courier"; src: local("Courier New"), local("CourierNewPSMT"), local("Liberation Mono"), local("LiberationMono"); size-adjust: 106.04%; ascent-override: 94.30%; descent-override: 25.72%; line-gap-override: 0%; }
+@font-face { font-family: "Plex fb Menlo"; src: local("Menlo"), local("Menlo-Regular"), local("DejaVu Sans Mono"), local("DejaVuSansMono"); size-adjust: 99.66%; ascent-override: 102.85%; descent-override: 27.59%; line-gap-override: 0%; }
+@font-face { font-family: "Plex fb Consolas"; src: local("Consolas"); size-adjust: 109.13%; ascent-override: 93.92%; descent-override: 25.20%; line-gap-override: 0%; }
+@font-face { font-family: "Plex fb Courier"; src: local("Courier New"), local("CourierNewPSMT"), local("Liberation Mono"), local("LiberationMono"); size-adjust: 99.98%; ascent-override: 102.52%; descent-override: 27.50%; line-gap-override: 0%; }
+@font-face { font-family: "Garamond fb Times"; src: local("Times New Roman Italic"), local("TimesNewRomanPS-ItalicMT"), local("Liberation Serif Italic"), local("LiberationSerif-Italic"); font-style: italic; size-adjust: 89.83%; ascent-override: 112.10%; descent-override: 33.17%; line-gap-override: 0%; }
+@font-face { font-family: "Fraktur fb Times"; src: local("Times New Roman"), local("TimesNewRomanPSMT"), local("Liberation Serif"), local("LiberationSerif"); size-adjust: 97.19%; ascent-override: 80.74%; descent-override: 25.77%; line-gap-override: 0%; }
+
+:root {
+  --bg: #12100c;
+  --panel: #18150f;
+  --rule: #4d4230;
+  --ink: #cdb98f;
+  --hi: #efe3c4;
+  --accent: #e0a23a;
+  --dim: #968768;
+  --red: #e07a5a;
+  --green: #9bb878;
+  --bar: #201c15;
+  --plate: url("../assets/img/flammarion-dark.png");
+
+  --ui: "Departure Mono", "Departure fb Menlo", "Departure fb Consolas", "Departure fb Courier", ui-monospace, monospace;
+  --text: "IBM Plex Mono", "Plex fb Menlo", "Plex fb Consolas", "Plex fb Courier", ui-monospace, monospace;
+  --display: var(--ui);
+  --caption: var(--ui);
+
+  --status-h: 2.25rem;
+  --msg-h: 2.25rem;
+  color-scheme: dark;
+}
+
+/* hours: a book of hours in pixel art. Day = vellum, lapis, vermilion, sinople; night (sun
+   3 deg below the horizon, data-sky set by castle/js/ui) = the bonfire's watch. --gold is
+   decoration only (rules, lettrines), never text. */
+[data-theme="hours"] {
+  --bg: #f2ead8;
+  --panel: #faf5e8;
+  --rule: #b48a2c;
+  --ink: #2b2118;
+  --hi: #140e08;
+  --accent: #1f43a0;
+  --dim: #5a5040;
+  --red: #a3241c;
+  --green: #285f33;
+  --bar: #e6dabd;
+  --gold: #c99a2e;
+  --gold-hi: #f0cf6a;
+  --plate: none;
+  color-scheme: light;
+}
+
+[data-theme="hours"][data-sky="night"] {
+  --bg: #1b1930;
+  --panel: #221f3c;
+  --rule: #8a6f2e;
+  --ink: #d2cbe3;
+  --hi: #f3efff;
+  --accent: #f2894a;
+  --dim: #9d97bd;
+  --red: #f0705a;
+  --green: #8fc29e;
+  --bar: #14122a;
+  --gold: #b8892a;
+  --gold-hi: #f2c94c;
+  color-scheme: dark;
+}
+
+/* ---- base ------------------------------------------------------------ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
+  scroll-behavior: smooth;
+  /* --tabs-h: the sticky tab bar's real height, kept by castle/js/ui (it wraps on narrow screens) */
+  scroll-padding-top: calc(var(--msg-h) + var(--tabs-h, 3rem) + 1rem);
+  scroll-padding-bottom: calc(var(--status-h) + 1rem);
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 0.95rem/1.7 var(--text);
+  padding-bottom: var(--status-h);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+a:hover { color: var(--hi); background: color-mix(in srgb, var(--accent) 22%, transparent); }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+::selection { background: var(--accent); color: var(--bg); }
+
+b, strong { color: var(--hi); font-weight: 600; }
+abbr[title] { text-decoration: underline dotted; cursor: help; }
+.meta, .dim { color: var(--dim); }
+p { margin: 0 0 1em; }
+ul, ol { padding-left: 1.4em; }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+.skip-link {
+  position: absolute; left: 1rem; top: -4rem; z-index: 10;
+  background: var(--accent); color: var(--bg); padding: .5rem 1rem;
+  font-family: var(--ui);
+}
+.skip-link:focus { top: 1rem; }
+
+/* ---- message line (top) ---------------------------------------------- */
+
+.msgline {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 1ch;
+  height: var(--msg-h);
+  margin: 0;
+  padding: 0 1rem;
+  white-space: nowrap;
+  background: var(--bar);
+  font: 1rem/1.4 var(--ui);
+  color: var(--hi);
+  border-bottom: 1px solid var(--rule);
+}
+.msg-text { overflow: hidden; text-overflow: ellipsis; }
+.more {
+  flex: none;
+  white-space: nowrap;
+  padding: 0 .3ch;
+  min-height: 24px; display: inline-flex; align-items: center; /* WCAG 2.5.8: 24 px targets */
+  background: var(--ink);
+  color: var(--bg);
+  text-decoration: none;
+}
+.more:hover { background: var(--accent); color: var(--bg); }
+
+/* ---- layout ---------------------------------------------------------- */
+
+.shell {
+  display: grid;
+  grid-template-columns: minmax(16rem, 38%) minmax(0, 1fr);
+}
+
+.plate {
+  margin: 0;
+  position: sticky;
+  top: var(--msg-h);
+  height: calc(100vh - var(--status-h) - var(--msg-h));
+  height: calc(100dvh - var(--status-h) - var(--msg-h));
+  border-right: 1px solid var(--rule);
+  display: flex;
+  flex-direction: column;
+}
+.plate-img {
+  flex: 1;
+  background: var(--plate) center bottom / cover no-repeat;
+  image-rendering: pixelated;
+}
+.plate-caption {
+  padding: .5rem 1rem .75rem;
+  font: .8rem/1.5 var(--caption);
+  color: var(--dim);
+}
+
+.term {
+  width: 100%;
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 2.5rem clamp(1rem, 4vw, 3rem) 3rem;
+}
+
+/* ---- host header: identity on the left, almanac on the right ---------- */
+
+.host { display: flex; justify-content: space-between; align-items: flex-start; gap: 2rem; }
+.id { display: flex; gap: 1.25rem; align-items: center; }
+.monogram {
+  width: 5.25rem; height: auto;
+  color: var(--accent);
+  border: 3px double var(--accent);
+  padding: 3px;
+  flex: none;
+}
+
+.name {
+  margin: 0;
+  font: 400 2.6rem/1.1 var(--display);
+  color: var(--hi);
+  letter-spacing: .02em;
+}
+.role { margin: .2rem 0 0; font-family: var(--ui); color: var(--accent); }
+.statement { margin: 1.25rem 0 0; max-width: 58ch; color: var(--hi); }
+
+/* the almanac is decoration: right-hand column, hidden where space is short */
+.almanac { display: none; text-align: right; flex: none; }
+.js .almanac { display: block; }
+.clock {
+  font: 3.3rem/1 var(--ui);
+  color: var(--hi);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: .4rem;
+}
+.almanac p { margin: 0; font: .8rem/1.55 var(--ui); }
+.alm-date { color: var(--hi); }
+.alm-hour { color: var(--accent); }
+.alm-moon { color: var(--dim); }
+
+/* ---- tmux tab bar ---------------------------------------------------- */
+
+.tabs {
+  position: sticky;
+  top: var(--msg-h);
+  z-index: 3;
+  margin: 1.5rem 0 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .25rem 1rem;
+  padding: .35rem .6rem;
+  background: var(--bar);
+  border: 1px solid var(--rule);
+  font: .95rem/1.6 var(--ui);
+}
+.tabs-session { color: var(--green); }
+.tabs ul { display: flex; flex-wrap: wrap; gap: 0 .2rem; list-style: none; margin: 0; padding: 0; flex: 1; }
+.tabs a {
+  display: inline-block;
+  min-height: 1.75rem;
+  padding: 0 .45ch;
+  color: var(--ink);
+  text-decoration: none;
+}
+.tabs a .k { color: var(--dim); }
+.tabs a:hover { color: var(--hi); }
+.tabs a[aria-current="page"] { background: var(--accent); color: var(--bg); }
+.tabs a[aria-current="page"] .k { color: var(--bg); }
+.tabs a[aria-current="page"]::after { content: "*"; }
+
+.theme-toggle, .keys-toggle, .copy-bib {
+  font: inherit;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  padding: 0 .3ch;
+  min-height: 1.75rem;
+  cursor: pointer;
+}
+.theme-toggle:hover, .keys-toggle:hover, .copy-bib:hover { color: var(--hi); }
+html:not(.js) .theme-toggle, html:not(.js) .keys-toggle { display: none; }
+
+/* ---- panes ----------------------------------------------------------- */
+
+.pane {
+  position: relative;
+  margin: 0 0 2.75rem;
+  padding: 2rem clamp(1rem, 3vw, 2rem) 1.5rem;
+  background: var(--panel);
+  border: 3px double var(--rule);
+}
+.pane-tab {
+  position: absolute;
+  top: -.8rem;
+  left: 1rem;
+  padding: 0 .5ch;
+  background: var(--bg);
+  color: var(--hi);
+  font: .85rem/1.5 var(--ui);
+  border: 1px solid var(--rule);
+}
+
+.room {
+  margin: 0 0 1.25rem;
+  font: 400 1.4rem/1.3 var(--display);
+  color: var(--accent);
+  text-align: center;
+}
+.lede { color: var(--hi); }
+
+.exits { margin: 1.25rem 0 0; font-family: var(--ui); }
+.exits-label { color: var(--dim); margin-right: 1ch; }
+.exits ul { display: inline; list-style: none; margin: 0; padding: 0; }
+.exits li { display: inline-block; margin-right: 2ch; white-space: nowrap; }
+.exits .dir { color: var(--hi); margin-right: .5ch; }
+
+.sheet { margin: 1.5rem 0; font-family: var(--ui); }
+.sheet div, .kv div { display: grid; grid-template-columns: 9ch 1fr; gap: 1ch; margin-bottom: .35rem; }
+.sheet dd span:not(.meta) { display: block; }
+.flow { list-style: none; margin: 0; padding: 0; }
+.flow li { display: inline; white-space: nowrap; }
+.flow li:not(:last-child)::after { content: "\00a0\00b7"; color: var(--dim); } /* lines break between items, the dot stays at the end */
+.sheet dt, .kv dt { color: var(--dim); }
+.sheet dd, .kv dd { margin: 0; color: var(--hi); }
+
+.links, .actions {
+  display: flex; flex-wrap: wrap; gap: .25rem 1.25rem;
+  list-style: none; padding: 0; margin: 1.25rem 0 0;
+  font-family: var(--ui);
+}
+.links a::before { content: "> "; color: var(--dim); }
+.links a, .actions a { display: inline-block; min-height: 1.75rem; }
+
+/* ---- entries --------------------------------------------------------- */
+
+.log, .pubs, .news { list-style: none; padding: 0; margin: 0; }
+.log:empty, .pubs:empty { display: none; }
+
+.entry, .project { padding: 0 0 1.5rem; margin: 0 0 1.5rem; border-bottom: 1px dashed var(--rule); }
+.entry:last-child, .project:last-child { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
+
+.entry-head {
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline;
+  gap: 0 1rem;
+}
+.entry-head h3 { margin: 0; font: 600 1.05rem/1.4 var(--text); color: var(--hi); }
+.entry-head h3::before { content: "@ "; color: var(--accent); font-weight: 400; }
+.date { font: .85rem/1.6 var(--ui); color: var(--dim); white-space: nowrap; }
+.role-line { font-style: italic; color: var(--dim); margin: .15rem 0 .6rem; }
+.entry ul { margin: 0 0 .5rem; }
+.entry li::marker { content: "- "; color: var(--accent); }
+.see { margin: .5rem 0 0; font-family: var(--ui); }
+
+/* project cards: an illumination beside a short text */
+.project { display: grid; grid-template-columns: 160px 1fr; gap: 1.5rem; align-items: start; }
+.illum { display: block; line-height: 0; }
+.illum img {
+  width: 160px; height: 160px;
+  image-rendering: pixelated;
+  box-shadow: 0 0 0 1px var(--rule);
+}
+a.illum { transition: transform .15s ease-out; }
+a.illum:hover { background: none; transform: translateY(-2px); }
+a.illum:hover img { box-shadow: 0 0 0 2px var(--accent); }
+.project-body .actions { margin-top: .5rem; }
+
+.empty { color: var(--dim); font-style: italic; margin: 0; }
+.empty::before { content: "-- "; font-style: normal; }
+
+.news li { display: grid; grid-template-columns: 9ch 1fr; gap: 1ch; margin-bottom: .5rem; }
+.news time { font-family: var(--ui); color: var(--accent); }
+
+.kv { margin: 0 0 1.25rem; font-family: var(--ui); }
+.colophon { font-size: .8rem; color: var(--dim); margin: 0; }
+
+/* ---- publications ---------------------------------------------------- */
+
+.pub { margin: 0 0 1.25rem; }
+.pub p { margin: 0; }
+.pub-title { color: var(--hi); font-weight: 600; }
+.pub-title a { color: inherit; }
+.pub-authors, .pub-venue { color: var(--dim); }
+.pub .actions { margin-top: .35rem; }
+.entry-head h3 a { color: inherit; text-decoration-color: var(--accent); }
+kbd { font-family: var(--ui); color: var(--hi); border: 1px solid var(--rule); padding: 0 .35ch; }
+
+/* the dialogs' footer buttons */
+.dlg-foot button { font: inherit; color: var(--accent); background: none; border: 0; padding: 0 .3ch; min-height: 1.75rem; cursor: pointer; }
+.dlg-foot button:hover { color: var(--hi); }
+
+/* ---- command line (:), above the status line --------------------------- */
+
+.cmdline {
+  position: fixed;
+  left: 0; right: 0; bottom: var(--status-h);
+  z-index: 5;
+  margin: 0;
+  padding: .35rem 1rem;
+  background: var(--bar);
+  border-top: 1px solid var(--rule);
+  font: .9rem/1.5 var(--ui);
+}
+.cmdline[hidden] { display: none; }
+.cmd-out { margin: 0; color: var(--ink); max-height: 9em; overflow-y: auto; }
+.cmd-out:empty { display: none; }
+.cmd-row { position: relative; display: flex; align-items: center; gap: .5ch; margin: 0; }
+.cmd-ghost { position: absolute; top: 50%; translate: 0 -50%; color: var(--dim); opacity: .7; pointer-events: none; white-space: pre; }
+.cmd-row label { color: var(--accent); }
+.cmd-row input {
+  flex: 1; min-width: 0;
+  font: inherit; color: var(--hi);
+  background: transparent; border: 0; padding: .2rem 0;
+  caret-color: var(--accent);
+}
+.cmd-row input:focus { outline: none; }
+.cmdline:focus-within { box-shadow: inset 0 2px 0 var(--accent); }
+.cmd-hint { color: var(--dim); font-size: .8rem; }
+.cmd-on body { padding-bottom: calc(var(--status-h) + 5rem); }
+.cmd-toggle {
+  font: inherit; color: var(--accent); background: none; border: 0;
+  padding: 0 .3ch; min-height: 1.75rem; cursor: pointer;
+}
+.cmd-toggle:hover { color: var(--hi); }
+html:not(.js) .cmd-toggle { display: none; }
+
+/* ---- dialogs: help and the end screen ----------------------------------- */
+
+dialog.scroll {
+  max-width: min(40rem, calc(100vw - 2rem));
+  max-height: calc(100dvh - 4rem);
+  padding: 1.5rem clamp(1rem, 4vw, 2rem);
+  background: var(--panel);
+  color: var(--ink);
+  border: 3px double var(--rule);
+  font: .9rem/1.6 var(--ui);
+}
+dialog.scroll::backdrop { background: color-mix(in srgb, var(--bg) 80%, transparent); }
+dialog.scroll h2 { margin: 0 0 1rem; font: 400 1rem/1.4 var(--ui); color: var(--hi); }
+dialog.scroll h3 { margin: 1.25rem 0 .5rem; font: 400 .9rem/1.4 var(--ui); color: var(--accent); }
+dialog.scroll .pick { display: grid; gap: .75rem; margin: 1rem 0 0; }
+dialog.scroll .pick button {
+  display: grid; gap: .25rem; padding: .75rem 1rem; text-align: left; cursor: pointer;
+  font: inherit; color: var(--ink); background: transparent; border: 1px solid var(--rule);
+}
+dialog.scroll .pick button:hover, dialog.scroll .pick button:focus-visible { border-color: var(--accent); color: var(--hi); }
+dialog.scroll .pick b { color: var(--accent); font-weight: 400; }
+dialog.scroll .keys { margin: 0; }
+dialog.scroll .keys div { display: grid; grid-template-columns: 14ch 1fr; gap: 1ch; }
+dialog.scroll .keys dt { color: var(--hi); }
+dialog.scroll .keys dd { margin: 0; }
+/* the help (?): its groups side by side where there is room, keys drawn as keys */
+dialog.scroll.is-help { width: min(78rem, 96vw); max-width: none; }
+dialog.scroll .help { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(21rem, 100%), 1fr)); gap: 0 2.2rem; }
+dialog.scroll .help h3 { margin: .6rem 0 .4rem; padding-bottom: .2rem; border-bottom: 1px solid var(--rule); }
+dialog.scroll .help .keys { display: grid; grid-template-columns: fit-content(11rem) 1fr; gap: .15rem 1.4rem; line-height: 1.5; } /* (each group's labels as wide as its longest) */
+dialog.scroll .help .keys div { display: contents; }
+dialog.scroll .help .keys dt { white-space: nowrap; }
+dialog.scroll .help .keys dd { color: var(--ink); }
+dialog.scroll .help p { margin: .4rem 0 0; font-size: .85em; }
+dialog.scroll .help kbd { display: inline-block; min-width: 1.6em; margin-right: .15em; padding: 0 .25em; text-align: center; line-height: 1.25; font-size: .9em; border-radius: 3px; border-bottom-width: 2px; }
+.cmd-out { max-height: min(16em, 45vh); }
+.cmd-out .tunes { margin: .2rem 0 .3rem; }
+.cmd-out .tunes div { display: grid; grid-template-columns: 22ch 1fr; gap: 1ch; margin-bottom: .25rem; }
+.cmd-out .tunes dt { color: var(--accent); }
+.cmd-out .tunes dd { margin: 0; }
+.cmd-out .tunes b { color: var(--hi); display: inline-block; min-width: 2ch; }
+.loot { list-style: none; padding: 0; }
+.loot li::before { content: "- "; color: var(--accent); }
+.dlg-foot { margin: 1rem 0 0; text-align: right; }
+
+/* ---- map (m) and the 404 tombstone ------------------------------------- */
+
+.realm { display: block; width: 100%; max-width: 480px; height: auto; margin: .5rem auto; image-rendering: pixelated; }
+.realm-key { list-style: none; padding: 0; margin: .5rem 0 0; columns: 2; font-size: .85rem; }
+.realm-key li { display: flex; align-items: center; gap: .5rem; margin-bottom: .25rem; break-inside: avoid; }
+.realm-key img { width: 20px; height: auto; image-rendering: pixelated; }
+
+.map, .rip {
+  margin: 0;
+  font: .85rem/1.25 var(--ui);
+  color: var(--ink);
+  overflow-x: auto;
+}
+.map a { color: var(--accent); }
+.rip { color: var(--hi); margin: 0 0 1.5rem; }
+
+/* ---- armillary sphere over the plate ------------------------------------ */
+
+.armillary {
+  position: absolute;
+  top: 1rem; right: 1rem;
+  z-index: 1;
+  padding: 3px;
+  line-height: 0;
+  background: var(--bg);
+  border: 3px double var(--rule);
+  cursor: pointer;
+}
+.armillary canvas { width: 144px; height: 144px; image-rendering: pixelated; }
+.armillary:hover { border-color: var(--accent); }
+html:not(.js) .armillary, html:not(.js) .cap-arm { display: none; }
+
+/* ---- the descent (>) ---------------------------------------------------- */
+
+.dlvl {
+  font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer;
+  min-height: 24px; /* WCAG 2.5.8 */
+}
+.dlvl:hover b { color: var(--accent); }
+html:not(.js) .dlvl { cursor: default; }
+
+dialog.dungeon {
+  width: min(100vw - 1rem, 60rem);
+  max-height: calc(100dvh - 1rem);
+  padding: .75rem;
+  background: var(--bg);
+  color: var(--ink);
+  border: 3px double var(--rule);
+  font: .9rem/1.5 var(--ui);
+}
+dialog.dungeon:focus { outline: none; }
+dialog.dungeon::backdrop { background: color-mix(in srgb, var(--bg) 92%, transparent); }
+dialog.dungeon canvas {
+  display: block; width: 100%; height: auto; aspect-ratio: 320 / 200;
+  image-rendering: pixelated;
+}
+.dg-msg { margin: .5rem 0 0; color: var(--hi); min-height: 1.5em; }
+.dg-hint { margin: 0; color: var(--dim); min-height: 1.5em; }
+.dg-pad { display: flex; flex-wrap: wrap; gap: .25rem .5rem; margin-top: .5rem; }
+.dg-pad button {
+  font: inherit; color: var(--accent); background: var(--bar);
+  border: 1px solid var(--rule); min-width: 2.75rem; min-height: 2.75rem; cursor: pointer;
+}
+.dg-pad button:hover { color: var(--hi); }
+.dg-keys { margin: .5rem 0 0; font-size: .8rem; color: var(--dim); }
+
+/* ---- wizard mode: the engraving turns to its negative ------------------ */
+
+[data-theme="dark"].wizard .plate-img { filter: invert(1); }
+.wizard #st-dlvl, .wizard #st-align { color: var(--red); }
+
+/* ---- between pages: the frame stays, the pane changes (View Transitions; ignored where
+   unsupported). steps() keeps the terminal's jerky redraw. */
+
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+}
+.plate { view-transition-name: plate; }
+.msgline { view-transition-name: msgline; }
+.status { view-transition-name: status; }
+::view-transition-old(root), ::view-transition-new(root) {
+  animation-duration: .18s;
+  animation-timing-function: steps(3, end);
+}
+
+/* ---- one window at a time (JS only; without it the page is one long scroll) */
+
+.windowed main > section.is-off { display: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .windowed main > section.opening { animation: window-in .18s steps(3, end); }
+}
+@keyframes window-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* short laptop screens: tighten the vertical rhythm so the first window still fits */
+@media (min-width: 60.01rem) and (max-height: 52rem) {
+  body { line-height: 1.55; }
+  .windowed .term { padding-top: 1.25rem; }
+  .name { font-size: 2.2rem; }
+  .monogram { width: 4.5rem; }
+  .statement { margin-top: .75rem; }
+  .links { margin-top: .75rem; }
+  .tabs { margin: 1rem 0 .75rem; }
+  .pane { padding-top: 1.25rem; padding-bottom: 1rem; }
+  .room { margin-bottom: .75rem; }
+  .lede { display: none; }
+  .sheet { margin: .75rem 0; }
+  .sheet div { margin-bottom: .15rem; }
+  .exits { margin-top: .75rem; }
+}
+
+/* ---- status line (bottom) -------------------------------------------- */
+
+.status {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 5;
+  height: var(--status-h);
+  display: flex;
+  align-items: center;
+  gap: 2ch;
+  padding: 0 1rem;
+  background: var(--bar);
+  border-top: 1px solid var(--rule);
+  font: .9rem/1 var(--ui);
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.status p { margin: 0; display: flex; align-items: baseline; gap: 2ch; } /* (baseline: Rank is a button, taller, its text centred) */
+.st-name { color: var(--hi); }
+.st-home { color: var(--accent); text-decoration: none; }
+.st-home:hover, .st-home:focus-visible { color: var(--hi); text-decoration: underline; }
+.st-right { margin-left: auto !important; color: var(--ink); }
+#st-hour { color: var(--accent); }
+
+@media (max-width: 90rem) {
+  .st-right #st-moon { display: none; }
+}
+/* a castle just wide enough (75 to 85rem): the band keeps its buttons whole, the humour and the hour go */
+@media (min-width: 75rem) and (max-width: 85rem) {
+  [data-theme="hours"] .status :is(.st-right, .st-left span:has(#st-align)) { display: none !important; }
+}
+
+
+/* ---- hours: the page is the landscape (wide screens only: head script, castle/js/ui) ---------
+   Boxes are drawn on the interface's pixel grid (--upx: half the scene's pixel, set by
+   hours.js), with the 9-slice frame of tools/assets/icons.py. */
+
+[data-theme="hours"] .shell { display: block; }
+[data-theme="hours"] .plate {
+  position: fixed; inset: var(--msg-h) 0 var(--status-h) 0; z-index: 0;
+  height: auto; border: 0;
+}
+[data-theme="hours"] .plate-caption, [data-theme="hours"] .armillary, [data-theme="hours"] .exits { display: none; }
+/* the plate is a live canvas (hours.js); until it draws, an empty sky */
+[data-theme="hours"] .plate-img { position: relative; background: #2c3b58; }
+[data-theme="hours"][data-sky="day"] .plate-img { background: #8cc9f4; }
+html.still[data-theme="hours"] .plate-img { background-image: var(--still); background-size: 100% 100%; background-repeat: no-repeat; image-rendering: pixelated; } /* (the last visit's landscape until the castle draws: head script) */
+.plate-img canvas { display: none; position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+[data-theme="hours"] .plate-img canvas, .banner .plate-img canvas { display: block; }
+.plate-img canvas.room { z-index: 1; } /* (a room: its own canvas over the embrasure, placed by hours.js layoutRoom) */
+.plate-img canvas.room[hidden] { display: none !important; }
+.banner .plate-img { position: relative; } /* (the narrow screens' landscape, over the engraving) */
+.cap-banner { display: none; }
+.banner .cap-banner { display: inline; }
+.banner .cap-dark { display: none; }
+@media (max-width: 36rem) { .banner .plate-img { height: 11rem; } }
+[data-theme="hours"] .term { max-width: none; margin: 0; padding: 0; width: auto; }
+[data-theme="hours"] .msgline, [data-theme="hours"] .status { border-color: var(--gold); }
+
+[data-theme="hours"] .pane,
+[data-theme="hours"] .tabs,
+[data-theme="hours"] dialog.scroll,
+[data-theme="hours"] .card:not([hidden]) {
+  border: calc(4 * var(--upx, 2px)) solid transparent;
+  border-image: url("../assets/img/frame.svg") 4 / calc(4 * var(--upx, 2px)) stretch;
+  background: var(--panel) padding-box;
+  box-shadow: calc(2 * var(--upx, 2px)) calc(2 * var(--upx, 2px)) 0 rgb(0 0 0 / .3);
+}
+[data-theme="hours"] .pane-tab {
+  top: calc(-4 * var(--upx, 2px) - .7rem);
+  background: #d8a838; color: #16121c; border: var(--upx, 2px) solid #16121c;
+}
+[data-theme="hours"] .room { color: var(--red); }
+[data-theme="hours"][data-sky="night"] .room { color: var(--accent); }
+[data-theme="hours"] .entry-head h3::before, [data-theme="hours"] .entry li::marker { color: var(--red); }
+[data-theme="hours"] a:hover { background: color-mix(in srgb, var(--gold) 30%, transparent); }
+
+/* the header floats over the sky: light lettering, a thin dark outline and a drop shadow, a
+   soft dusk behind, fixed colours (the sky changes, the lettering does not) */
+[data-theme="hours"] .host {
+  position: fixed; z-index: 3;
+  top: calc(var(--msg-h) + 1.25rem); left: 1.5rem; right: 1.5rem;
+  pointer-events: none;
+  --ink: #f4ecd8; --hi: #fff8e8; --dim: #ddd4bf; --accent: #f6d77a; --red: #ffb08a;
+  color: var(--ink);
+  text-shadow: 1px 0 #16121c, -1px 0 #16121c, 0 1px #16121c, 0 -1px #16121c,
+    1px 1px #16121c, -1px -1px #16121c, 1px -1px #16121c, -1px 1px #16121c, 2px 2px 0 rgb(10 8 20 / .6);
+}
+[data-theme="hours"] .host::before {
+  content: ""; position: absolute; z-index: -1; inset: -2.5rem -2rem -2.5rem -2.5rem;
+  background:
+    radial-gradient(ellipse 34rem 15rem at 0 0, rgb(14 16 36 / .5), transparent 75%),
+    radial-gradient(ellipse 22rem 10rem at 100% 0, rgb(14 16 36 / .45), transparent 75%);
+}
+[data-theme="hours"] .host .name {
+  white-space: nowrap;
+  text-shadow: var(--upx, 2px) 0 #16121c, calc(-1 * var(--upx, 2px)) 0 #16121c, 0 var(--upx, 2px) #16121c,
+    0 calc(-1 * var(--upx, 2px)) #16121c, calc(2 * var(--upx, 2px)) calc(2 * var(--upx, 2px)) 0 rgb(10 8 20 / .6);
+}
+[data-theme="hours"] .host :is(.role, .alm-hour, .links a) { color: var(--accent); }
+[data-theme="hours"] .host .links a:hover { color: var(--hi); background: none; }
+[data-theme="hours"] .host .monogram { background: #16121c; color: #ffb08a; border-color: #d8a838; }
+[data-theme="hours"] .host :is(a, button) { pointer-events: auto; }
+[data-theme="hours"] .statement { max-width: 44ch; }
+
+/* the menu: a dialogue box held up by the wizard (--wiz-x, --wiz-y from hours.js), opening to
+   his left over the forest edge, its stepped tail towards him */
+[data-theme="hours"] .tabs {
+  --menu-left: max(1rem, calc(var(--wiz-x, 12rem) - 21rem));
+  position: fixed; z-index: 4; display: block;
+  top: auto; left: var(--menu-left); bottom: calc(100dvh - var(--wiz-y, 75dvh) + 1.4rem);
+  width: max-content; margin: 0; padding: .5rem .8rem .55rem 1.4rem;
+}
+[data-theme="hours"] .tabs::after {
+  content: ""; position: absolute;
+  top: calc(100% + 4 * var(--upx, 2px));
+  left: clamp(1rem, calc(var(--wiz-x, 12rem) - var(--menu-left) - 3 * var(--upx, 2px)), calc(100% - 2rem));
+  width: calc(6 * var(--upx, 2px)); height: calc(6 * var(--upx, 2px));
+  background: #d8a838; border: var(--upx, 2px) solid #16121c; border-top: 0;
+  clip-path: polygon(0 0, 100% 0, 100% 33.3%, 66.6% 33.3%, 66.6% 66.6%, 33.3% 66.6%, 33.3% 100%, 0 100%);
+}
+[data-theme="hours"] .tabs-session { display: block; font-size: 0; margin-bottom: .35rem; }
+[data-theme="hours"] .tabs-session::before { content: "Where to, traveller?"; font-size: .85rem; color: var(--red); }
+[data-theme="hours"] .tabs ul { display: grid; grid-template-columns: 1fr 1fr; gap: .1rem 1.1rem; }
+[data-theme="hours"] .tabs a .k { display: none; }
+[data-theme="hours"] .tabs a { display: flex; align-items: center; gap: .45rem; padding: .1rem .3rem; }
+[data-theme="hours"] .tabs a:hover { background: none; color: var(--hi); }
+[data-theme="hours"] .tabs a[aria-current="page"]::after { content: none; }
+[data-theme="hours"] .tabs a[aria-current="page"] { background: none; color: inherit; } /* outside, no room is "current" */
+[data-theme="hours"][data-room] .tabs a[aria-current="page"] { /* the room you are in */
+  background: none; color: var(--accent); text-decoration: underline var(--upx, 2px) solid; text-underline-offset: .3em;
+}
+/* the choice cursor (pointer or arrow keys): a pixel pointer, blinking when the keys hold it */
+[data-theme="hours"] .tabs li { position: relative; }
+[data-theme="hours"] .tabs a:focus-visible { outline: 0; color: var(--hi); }
+[data-theme="hours"] .tabs li:has(a:hover, a:focus-visible)::before {
+  content: ""; position: absolute; left: calc(-6 * var(--upx, 2px)); top: 50%; translate: 0 -50%;
+  width: calc(5 * var(--upx, 2px)); height: calc(7 * var(--upx, 2px));
+  background: url("../assets/img/cursor.svg") center / contain no-repeat; image-rendering: pixelated;
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-theme="hours"] .tabs li:has(a:focus-visible)::before { animation: cursor-blink 1s steps(1) infinite; }
+}
+@keyframes cursor-blink { 50% { opacity: 0; } }
+
+/* pixel icons (tools/assets/icons.py): the menu, the header's links, the pack */
+[data-theme="hours"] :is(.tabs a, .links a, .loot li)::before {
+  content: ""; flex: none; display: inline-block; vertical-align: middle;
+  width: calc(13 * var(--upx, 2px)); height: calc(13 * var(--upx, 2px));
+  background: var(--icon) center / contain no-repeat; image-rendering: pixelated;
+}
+[data-theme="hours"] .links a::before { margin-right: .4rem; }
+[data-theme="hours"] .loot li::before { margin-right: .5rem; }
+[data-theme="hours"] .tabs a[href$="#about"] { --icon: url("../assets/img/icons/candle.svg"); }
+[data-theme="hours"] .tabs a[href$="#experience"] { --icon: url("../assets/img/icons/astrolabe.svg"); }
+[data-theme="hours"] .tabs a[href$="#work"] { --icon: url("../assets/img/icons/anvil.svg"); }
+[data-theme="hours"] .tabs a[href$="#publications"] { --icon: url("../assets/img/icons/book.svg"); }
+[data-theme="hours"] .tabs a[href$="#talks"] { --icon: url("../assets/img/icons/horn.svg"); }
+[data-theme="hours"] .tabs a[href$="#teaching"] { --icon: url("../assets/img/icons/slate.svg"); }
+[data-theme="hours"] .tabs a[href$="#news"] { --icon: url("../assets/img/icons/raven.svg"); }
+[data-theme="hours"] :is(.tabs a[href$="#contact"], .links a[href^="mailto:"]) { --icon: url("../assets/img/icons/letter.svg"); }
+[data-theme="hours"] .tabs a[href$="#cellar"] { --icon: url("../assets/img/icons/cask.svg"); }
+[data-theme="hours"] .links a[href*="github"] { --icon: url("../assets/img/icons/lodestone.svg"); }
+[data-theme="hours"] .links a[href*="CV"] { --icon: url("../assets/img/icons/scroll.svg"); }
+[data-theme="hours"] .links a.to-shinbun { --icon: url("../assets/img/icons/astrolabe.svg"); }
+[data-theme="hours"] .loot li[data-item="about"] { --icon: url("../assets/img/icons/scroll.svg"); }
+[data-theme="hours"] .loot li[data-item="publications"] { --icon: url("../assets/img/icons/scrollbib.svg"); }
+[data-theme="hours"] .loot li[data-item="contact"] { --icon: url("../assets/img/icons/quill.svg"); }
+[data-theme="hours"] .loot li[data-item="work"] { --icon: url("../assets/img/icons/lodestone.svg"); }
+
+/* the arms of each school and lab beside its entry (assets/img/arms/, tools/assets/icons.py) */
+[data-arms="saclay"] { --arms: url("../assets/img/arms/saclay.svg"); }
+[data-arms="sorbonne"] { --arms: url("../assets/img/arms/sorbonne.svg"); }
+[data-arms="dauphine"] { --arms: url("../assets/img/arms/dauphine.svg"); }
+[data-arms="ijclab"] { --arms: url("../assets/img/arms/ijclab.svg"); }
+[data-arms="ceremade"] { --arms: url("../assets/img/arms/ceremade.svg"); }
+[data-arms="sciencespo"] { --arms: url("../assets/img/arms/sciencespo.svg"); }
+[data-theme="hours"] :is(.entry[data-arms] .entry-head h3, .sheet span[data-arms])::before {
+  content: ""; display: inline-block; vertical-align: -.35em; margin-right: .5em;
+  width: calc(13 * var(--upx, 2px) * .8); height: calc(15 * var(--upx, 2px) * .8);
+  background: var(--arms) center / contain no-repeat; image-rendering: pixelated;
+}
+/* the project illuminations, screened like the Vermis plates (tools/assets/trame.py) */
+[data-theme="hours"] .illum { background: center / cover no-repeat; image-rendering: pixelated; box-shadow: 0 0 0 1px var(--rule); }
+[data-theme="hours"] .illum img { opacity: 0; }
+[data-theme="hours"] .illum[data-img="nuclear"] { background-image: url("../assets/img/trame-nuclear.png"); }
+[data-theme="hours"] .illum[data-img="dla"] { background-image: url("../assets/img/trame-dla.png"); }
+[data-theme="hours"] .illum[data-img="nbody"] { background-image: url("../assets/img/trame-nbody.png"); }
+
+/* ---- the castle's rooms (hours.js, castle/js/ui): the landscape is home; a section is a room.
+   Its pieces are things drawn in the room, a button over each opens a card beside it; main
+   stays in the page for readers without the picture, out of sight. */
+[data-theme="hours"]:not([data-room]) main { display: none; }
+[data-theme="hours"][data-room] .host { display: none; }
+/* on the way in or out, the interface waits until the camera has arrived */
+[data-theme="hours"].travelling :is(.tabs, .host) { visibility: hidden; }
+
+/* in a room, the menu is a wooden beam hung from the ceiling on two chains */
+[data-theme="hours"][data-room] .tabs {
+  --ink: #f4e8cc; --hi: #ffffff; --accent: #f6d77a;
+  left: auto; right: 1.5rem; top: calc(var(--msg-h) + 1.25rem); bottom: auto;
+  width: min(46rem, 50vw); padding: .3rem .8rem .3rem 1.4rem;
+  color: var(--ink);
+  border: var(--upx, 2px) solid #16121c; border-image: none;
+  background: repeating-linear-gradient(180deg, #7e5a38 0 calc(3 * var(--upx, 2px)), #6e4e30 0 calc(4 * var(--upx, 2px)));
+  box-shadow: inset 0 var(--upx, 2px) 0 #b0885a, inset 0 calc(-1 * var(--upx, 2px)) 0 #553a24,
+    calc(2 * var(--upx, 2px)) calc(2 * var(--upx, 2px)) 0 rgb(0 0 0 / .35);
+}
+[data-theme="hours"][data-room] .tabs-session { display: none; }
+[data-theme="hours"][data-room] .tabs ul { grid-template-columns: repeat(4, auto); justify-content: space-between; }
+[data-theme="hours"][data-room] .tabs::after { content: none; }
+[data-theme="hours"][data-room] .tabs::before {
+  content: ""; position: absolute; bottom: 100%; left: 12%; right: 12%; height: 1.4rem;
+  background:
+    repeating-linear-gradient(180deg, #5e5c68 0 calc(2 * var(--upx, 2px)), transparent 0 calc(3 * var(--upx, 2px))) left / var(--upx, 2px) 100% no-repeat,
+    repeating-linear-gradient(180deg, #5e5c68 0 calc(2 * var(--upx, 2px)), transparent 0 calc(3 * var(--upx, 2px))) right / var(--upx, 2px) 100% no-repeat;
+}
+.leave { display: none; }
+[data-theme="hours"][data-room] .leave {
+  display: block; position: fixed; z-index: 4;
+  top: calc(var(--msg-h) + 1.25rem + var(--tabs-h, 5rem) + .6rem); right: 1.5rem;
+  font: .85rem/1 var(--ui); color: #f4ecd8; background: #3a2818; cursor: pointer;
+  border: var(--upx, 2px) solid #16121c; padding: .35rem .6rem;
+}
+
+/* the castle's rooms: the text is in the things */
+[data-theme="hours"][data-room] main {
+  position: fixed; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); padding: 0; border: 0;
+}
+.spots, .card[hidden] { display: none; }
+[data-theme="hours"] .spots { display: block; position: fixed; inset: 0; z-index: 3; pointer-events: none; }
+[data-theme="hours"] .spot { position: absolute; pointer-events: auto; cursor: pointer; background: none; border: 0; padding: 0; }
+/* the castle's pointers (tools/assets/icons.py), the hotspot at the fingertip, the key's bit, the lens, the nib */
+:root[data-theme="hours"] {
+  --cur-hand: url("../assets/img/cursor-hand.svg") 5 1, pointer; --cur-key: url("../assets/img/cursor-key.svg") 3 1, pointer;
+  --cur-loupe: url("../assets/img/cursor-loupe.svg") 7 7, zoom-in; --cur-quill: url("../assets/img/cursor-quill.svg") 1 24, text;
+}
+[data-theme="hours"] .spot, [data-theme="hours"] .card a, [data-theme="hours"] .card button { cursor: var(--cur-hand); }
+[data-theme="hours"] .spot[data-kind="door"] { cursor: var(--cur-key); }
+[data-theme="hours"] .spot[data-detail] { cursor: var(--cur-loupe); }
+[data-theme="hours"] .card .card-body { cursor: var(--cur-quill); }
+[data-theme="hours"] .spot:focus-visible { outline: var(--upx, 2px) solid #d8a838; outline-offset: 2px; box-shadow: 0 0 0 calc(2 * var(--upx, 2px)) #2a1d14; } /* (Tab goes from thing to thing: a gilt frame) */
+[data-theme="hours"] .spot::after { /* its name, on a little tag, when pointed at */
+  content: attr(data-label);
+  position: absolute; left: 50%; bottom: calc(100% + .4rem); translate: -50% 0;
+  white-space: nowrap; max-width: 28rem; overflow: hidden; text-overflow: ellipsis;
+  padding: .2rem .5rem; font: .85rem/1.3 var(--ui);
+  color: #2a1d14; background: #efe3c4; border: var(--upx, 2px) solid #9a6a1e; /* a cartouche of parchment, its ends rolled */
+  box-shadow: calc(-2 * var(--upx, 2px)) 0 0 #d8c08e, calc(2 * var(--upx, 2px)) 0 0 #d8c08e, 0 var(--upx, 2px) 0 #2a1d14;
+  opacity: 0; transition: opacity .12s steps(2, end); pointer-events: none;
+}
+[data-theme="hours"] .spot:is(:hover, :focus-visible)::after { opacity: 1; }
+
+/* paper read by candlelight: the day's vellum tokens, at any hour (cards) */
+[data-theme="hours"] :is(.card, [data-room] main) {
+  --bg: #f2ead8; --panel: #efe2c2; --rule: #a8884a; --ink: #2b2118; --hi: #140e08;
+  --accent: #1f43a0; --dim: #554b3a; --red: #9c2219; --green: #285f33; --bar: #e0cfa4;
+  color-scheme: light; color: var(--ink);
+}
+[data-theme="hours"] .card:not([hidden]) {
+  display: block; position: fixed; z-index: 5;
+  width: min(32rem, 42vw); padding: 1rem 1.3rem 1.2rem;
+  filter: drop-shadow(calc(2 * var(--upx, 2px)) calc(3 * var(--upx, 2px)) 0 rgb(10 6 4 / .45));
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-theme="hours"] .card:not([hidden]) { animation: come-in .2s steps(3, end); }
+}
+@keyframes come-in { from { opacity: 0; translate: 0 calc(3 * var(--upx, 2px)); } to { opacity: 1; translate: 0 0; } }
+[data-theme="hours"] .card::before { /* the tail, towards the thing */
+  content: ""; position: absolute; top: calc(var(--tail-y, 2rem) - 9px); width: 12px; height: 18px; background: #d8a838;
+}
+[data-theme="hours"] .card[data-side="left"]::before { right: 100%; clip-path: polygon(100% 0, 33% 33%, 0 50%, 33% 67%, 100% 100%); }
+[data-theme="hours"] .card[data-side="right"]::before { left: 100%; clip-path: polygon(0 0, 67% 33%, 100% 50%, 67% 67%, 0 100%); }
+[data-theme="hours"] .card-body { max-height: calc(100dvh - var(--msg-h) - var(--status-h) - 5rem); overflow: auto; }
+[data-theme="hours"] .card h3 { margin: 0 2rem .5rem 0; font: 600 1.05rem/1.35 var(--text); color: var(--hi); }
+[data-theme="hours"] .card .entry-head { margin-right: 2rem; }
+[data-theme="hours"] .card .entry-head h3::before { content: none; }
+[data-theme="hours"] .card :is(ul, dl, p) { margin-top: 0; }
+[data-theme="hours"] .card .sheet div { grid-template-columns: 8ch 1fr; }
+[data-theme="hours"] .card .illum { float: left; margin: 0 1rem .5rem 0; }
+[data-theme="hours"] .card .illum img { width: 96px; height: 96px; }
+.card-pin, .card-link { display: none; }
+[data-theme="hours"] .card[popover] { inset: auto; margin: 0; overflow: visible; } /* (the popover defaults that would move or clip it: openCard places it, its tail sticks out) */
+[data-theme="hours"] .card-link {
+  display: block; position: absolute; bottom: .35rem; left: .7rem; padding: .1rem .3rem;
+  font: italic .9rem "EB Garamond", "Garamond fb Times", Georgia, serif; color: var(--accent); background: none; border: 0; cursor: var(--cur-hand, pointer);
+}
+/* hints to type (f: ui/11-hands.js), each at its thing (anchor positioning; else placed from its box) */
+.kbd-hints { position: fixed; inset: 0; z-index: 60; pointer-events: none; }
+.kbd-hint { position: fixed; top: anchor(top); left: anchor(left); translate: -25% -40%; padding: 0 .25em; font: 600 .8rem/1.3 var(--ui);
+  color: #1c1208; background: #f6d77a; border: 1px solid #6a4a10; box-shadow: 0 1px 0 #6a4a10; text-transform: uppercase; }
+.kbd-hint.off { opacity: .25; }
+.vim-hit { animation: vim-hit 1.2s steps(6, end); }
+@keyframes vim-hit { from { outline: 2px solid var(--accent); outline-offset: 2px; } to { outline: 2px solid transparent; outline-offset: 2px; } }
+/* more contrast asked for: darker ink on the vellum, a heavier mark on the thing in focus */
+@media (prefers-contrast: more) {
+  [data-theme="hours"] :is(.card, [data-room] main) { --ink: #000; --hi: #000; --dim: #2a2218; --rule: #4a3410; }
+  [data-theme="hours"] .spot:focus-visible { outline: 3px solid #000; outline-offset: 1px; }
+}
+@media (forced-colors: active) {
+  [data-theme="hours"] .card-body { background: Canvas; color: CanvasText; }
+  [data-theme="hours"] .spot:focus-visible { outline: 3px solid Highlight; }
+  .kbd-hint { forced-color-adjust: none; }
+}
+[data-theme="hours"] .card-link:hover, [data-theme="hours"] .card-link:focus-visible { text-decoration: underline; }
+[data-theme="hours"] .card-pin:not([hidden]) {
+  display: block; position: absolute; bottom: .35rem; right: .6rem; padding: .1rem .3rem;
+  font: italic .9rem "EB Garamond", "Garamond fb Times", Georgia, serif; color: var(--red); background: none; border: 0; cursor: var(--cur-hand, pointer);
+}
+[data-theme="hours"] .card-pin:hover, [data-theme="hours"] .card-pin:focus-visible { text-decoration: underline; }
+[data-theme="hours"] .card-close {
+  position: absolute; top: .3rem; right: .4rem; padding: .1rem .4rem;
+  font: 1.3rem/1 var(--ui); color: var(--red); background: none; border: 0; cursor: pointer;
+}
+
+/* ---- the tower (narrow screens, .climb: head script, ui/03-rooms.js towerLayout): every section is
+   on the page, a leaf of vellum in the stone, floor after floor, the roof's view (the landscape)
+   first. Upright, nothing stays on the screen: each floor opens with its room in a frame
+   (.floor-slot); the one live picture sits in the frame most in sight, the others keep a snapshot
+   (--snap) and their room's line. On its side (.side), the picture is a column on the left. The
+   herald speaks under the picture, two lines (a tap: all of it); the status band's buttons go into
+   the menu. Overrides the wide castle's fixed layout above. */
+html.climb[data-theme] { --pic-h: clamp(300px, 80vw, min(60svh, 28rem)); --cap-h: 3.7rem; scroll-padding-top: .5rem; scroll-padding-bottom: .5rem; }
+html.climb[data-theme] body {
+  background: repeating-linear-gradient(0deg, #2b2521 0 1.4rem, #1d1916 1.4rem calc(1.4rem + 2px)), #2b2521;
+}
+html.climb[data-theme] body { padding-bottom: 0; }
+html.climb[data-theme] :is(.status, .almanac) { display: none; }
+html.climb[data-theme] .shell { display: block; }
+.floor-slot, .tower-tools { display: none; }
+html.climb[data-theme] .floor-slot {
+  display: block; position: relative; height: calc(var(--pic-h) + var(--cap-h)); margin: -1.2rem -1rem 1.2rem;
+  background: var(--snap, none) top / 100% var(--pic-h) no-repeat, #16121c; image-rendering: pixelated;
+}
+html.climb[data-theme] .floor-slot.roof {
+  width: min(100% - 2rem, 44rem); height: calc(var(--pic-h) + var(--cap-h) + 8 * var(--upx, 2px)); margin: 1rem auto 0;
+  border: calc(4 * var(--upx, 2px)) solid transparent; border-image: url("../assets/img/frame.svg") 4 / calc(4 * var(--upx, 2px)) stretch;
+  background-origin: padding-box; background-clip: padding-box;
+}
+html.climb[data-theme] .floor-slot::after { /* a frame not live: its room's line under its last picture */
+  content: attr(data-look); position: absolute; left: 0; right: 0; bottom: 0; height: var(--cap-h); overflow: hidden;
+  padding: .45rem .8rem 0 1rem; font: italic 1rem/1.3 "EB Garamond", "Garamond fb Times", Georgia, serif; color: #3a2414;
+  background: linear-gradient(#f4e6c2, #e6d09c); border-top: 2px solid #a8781e;
+}
+html.climb[data-theme] .plate { position: absolute; inset: 0; z-index: 1; height: auto; display: flex; flex-direction: column; border: 0; }
+html.climb[data-theme] .plate-img { flex: none; height: var(--pic-h); }
+html.climb[data-theme] .msgline {
+  position: relative; inset: auto; z-index: 2; flex: none; display: block; height: var(--cap-h); overflow: hidden;
+  padding: .45rem .8rem 0 3.4rem; white-space: normal; font-size: 1rem; line-height: 1.3; cursor: pointer; border-bottom: 0; box-shadow: none;
+}
+html.climb[data-theme] .msgline::before { top: 1.1rem; }
+html.climb[data-theme] .msg-text { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; }
+html.climb[data-theme] .msgline .more { display: none; }
+html.climb[data-theme] .msgline.open { position: absolute; left: 0; right: 0; bottom: 0; height: auto; padding-bottom: .5rem; }
+html.climb[data-theme] .msgline.open .msg-text { display: inline; }
+html.climb[data-theme] .msgline.open .more { display: inline; }
+html.climb[data-theme] .spots { position: absolute; inset: 0; z-index: 1; }
+/* on its side: the picture in a column on the left, the floors read on the right */
+html.climb.side[data-theme] .shell { display: grid; grid-template-columns: minmax(0, 46%) minmax(0, 1fr); }
+html.climb.side[data-theme] .floor-slot:not(.roof) { display: none; }
+html.climb.side[data-theme] .floor-slot.roof { position: sticky; top: 0; align-self: start; width: auto; height: 100dvh; margin: 0; border: 0; }
+html.climb.side[data-theme] .plate-img { height: calc(100dvh - var(--cap-h)); }
+html.climb.side[data-theme] .term { margin: 0; }
+html.climb[data-theme] .term { padding: 1rem 1rem 2rem; max-width: 46rem; margin: 0 auto; }
+html.climb[data-theme] .tower-tools { display: flex; flex-wrap: wrap; gap: .2rem 1rem; margin: .5rem 0 0; padding-top: .4rem; border-top: 1px dashed var(--rule); }
+html.climb[data-theme] .tower-tools button { font: .9rem/1.6 var(--ui); color: var(--accent); background: none; border: 0; padding: 0; min-height: 1.75rem; cursor: pointer; }
+html.climb[data-theme] .host, html.climb[data-theme][data-room] .host { position: static; display: block; pointer-events: auto; padding: .5rem 0 0; }
+html.climb[data-theme] .host::before { content: none; }
+html.climb[data-theme].travelling :is(.tabs, .host) { visibility: visible; }
+html.climb[data-theme] .tabs, html.climb[data-theme][data-room] .tabs {
+  --panel: #efe2c2; --ink: #2b2118; --hi: #140e08; --accent: #1f43a0; --red: #9c2219;
+  position: static; width: auto; margin: 1.5rem 0 2rem; padding: .5rem .8rem .55rem 1.4rem;
+  color: var(--ink); border: calc(4 * var(--upx, 2px)) solid transparent;
+  border-image: url("../assets/img/frame.svg") 4 / calc(4 * var(--upx, 2px)) stretch;
+  background: var(--panel) padding-box; box-shadow: none;
+}
+html.climb[data-theme] .tabs::before, html.climb[data-theme] .tabs::after { content: none; }
+html.climb[data-theme] .tabs-session { display: block; font-size: 0; margin-bottom: .35rem; }
+html.climb[data-theme] .tabs-session::before { content: "The tower's floors, roof to cellar"; font-size: .85rem; color: var(--red); }
+html.climb[data-theme][data-room] .tabs ul { grid-template-columns: 1fr 1fr; justify-content: stretch; }
+html.climb[data-theme] .leave { display: none !important; }
+html.climb[data-theme] .go-down { font: inherit; color: var(--accent); background: none; border: 0; padding: .2rem 0; cursor: pointer; text-decoration: underline; }
+html.climb[data-theme] main, html.climb[data-theme][data-room] main {
+  position: static; display: block; width: auto; height: auto; max-height: none; overflow: visible; clip-path: none;
+  padding: 0; margin: 0; background: none; outline: 0; box-shadow: none; opacity: 1; pointer-events: auto; animation: none;
+  --bg: #f2ead8; --panel: #efe2c2; --rule: #a8884a; --ink: #2b2118; --hi: #140e08;
+  --accent: #1f43a0; --dim: #554b3a; --red: #9c2219; --green: #285f33; --bar: #e0cfa4;
+  color-scheme: light; color: var(--ink);
+}
+html.climb[data-theme] main > section.pane, html.climb[data-theme][data-room] main > section.pane {
+  margin: 0 0 3.2rem; padding: 1.2rem 1rem 1rem;
+  border: calc(4 * var(--upx, 2px)) solid transparent;
+  border-image: url("../assets/img/frame.svg") 4 / calc(4 * var(--upx, 2px)) stretch;
+  background: var(--panel) padding-box; box-shadow: none;
+}
+html.climb[data-theme] main > section.pane + section.pane::before { /* the floor slab between two floors */
+  content: ""; position: absolute; left: -1rem; right: -1rem; top: calc(-3.2rem + .6rem - 4 * var(--upx, 2px)); height: 1.4rem;
+  background: repeating-linear-gradient(90deg, #766858 0 2.2rem, #4a403a 2.2rem calc(2.2rem + 3px)) 0 0 / 100% .7rem repeat-x,
+    repeating-linear-gradient(90deg, #6e6252 0 1.1rem, #4a403a 1.1rem calc(1.1rem + 3px), #6e6252 calc(1.1rem + 3px) 3.3rem) 0 .7rem / 100% .7rem repeat-x;
+  border-block: 2px solid #16121c;
+}
+html.climb[data-theme] main .pane-tab { display: none; }
+html.climb[data-theme] .card:not([hidden]) {
+  left: .5rem !important; right: .5rem; top: auto !important; bottom: .5rem;
+  width: auto; max-height: 62svh; display: flex; flex-direction: column;
+}
+html.climb[data-theme] .card::before { content: none; }
+html.climb[data-theme] .card-body { max-height: none; flex: 1; min-height: 0; }
+html.climb[data-theme] .engine-win { width: 100vw; height: 100dvh; max-width: none; max-height: none; border-radius: 0; }
+
+/* ---- small screens --------------------------------------------------- */
+
+
+@media (max-width: 60rem) {
+  :root { --msg-h: 0px; }
+  .js .almanac { display: none; }
+  .msgline { position: static; height: auto; padding: .4rem 1rem; white-space: normal; display: block; }
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .plate {
+    position: relative;
+    top: 0;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .plate-img { flex: none; height: 15rem; background-position: center 70%; }
+  .armillary { display: none; }
+  .cap-arm { display: none; }
+  .term { padding-top: 2rem; }
+  .st-right #st-moon { display: none; }
+}
+
+/* touch screens have no number keys: without the "1:" prefixes the tabs take two rows, not three */
+@media (pointer: coarse) {
+  .tabs a .k { display: none; }
+}
+
+@media (max-width: 36rem) {
+  body { font-size: .9rem; }
+  .plate-img { height: 8rem; }
+  .id { gap: .9rem; }
+  .monogram { width: 3.5rem; }
+  .role { font-size: .8rem; }
+  .role-sep { display: none; }
+  .role-place { display: block; }
+  /* illumination floats beside the heading; the text then takes the full width */
+  .project { display: flow-root; }
+  .illum { float: left; margin: .2rem 1rem .5rem 0; }
+  .illum img { width: 64px; height: 64px; }
+  .project .role-line { clear: left; }
+  .tabs-session { display: none; }
+  /* all six tabs on two rows rather than a sideways scroll that hides half of them */
+  .tabs { gap: 0 .5rem; padding: .25rem .4rem; }
+  .tabs ul { gap: 0; }
+  .keys-toggle { display: none; }
+  .cmd-hint { display: none; }
+  .dg-keys { display: none; }
+  .map, .rip { font-size: .62rem; }
+  dialog.scroll .keys div { grid-template-columns: 1fr; gap: 0; }
+  dialog.scroll .help .keys { grid-template-columns: fit-content(8rem) 1fr; gap: .1rem 1rem; }
+  dialog.scroll .help .keys dt { white-space: normal; }
+  .cmd-out .tunes div { grid-template-columns: 1fr; gap: 0; }
+  .flow li { display: block; }
+  .flow li:not(:last-child)::after { content: none; }
+  .name { font-size: 2.1rem; }
+  .tabs { margin-top: 2rem; }
+  .exits { grid-template-columns: 1fr; }
+  .news li { grid-template-columns: 1fr; gap: 0; }
+  .sheet div, .kv div { grid-template-columns: 1fr; gap: 0; }
+  .status .st-left span:not(.st-name):not(:nth-child(2)) { display: none; }
+  .st-right { display: none !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
+/* ---- print: the text alone, without the machinery ------------------ */
+
+@media print {
+  :root, [data-theme] { --bg: #fff; --panel: #fff; --ink: #000; --hi: #000; --dim: #444; --accent: #000; --red: #000; --rule: #999; }
+  body { padding: 0; background: #fff; font-size: 10pt; }
+  .msgline, .plate, .tabs, .status, .almanac, .monogram, .skip-link, .illum, .cmdline, .exits, .rip { display: none !important; }
+  main > section:not(#cellar) { display: block !important; }
+  #cellar { display: none !important; } /* (the tower's way down: nothing to print) */
+  .project { display: block; }
+  .shell { display: block; }
+  .term { max-width: none; padding: 0; }
+  .pane { border: 0; padding: 0; margin: 0 0 1.5rem; box-shadow: none !important; break-inside: avoid-page; }
+  .pane-tab { display: none; }
+  .room { text-align: left; }
+  a[href^="http"]::after { content: " <" attr(href) ">"; font-size: 8pt; color: #444; }
+}
+
+/* the curiosity hunt is the castle's: no counter in the terminal */
+[data-theme="dark"] :is(#st-curios, .sound-toggle) { display: none; }
+
+/* the map's places in the landscape */
+.domain button { font: inherit; color: var(--accent); background: none; border: 0; cursor: pointer; padding: 0 .2rem; min-height: 24px; }
+.domain button:hover, .domain button:focus-visible { color: var(--hi); }
+
+/* a figure alive in a card (ui/04-things.js collisionFig) */
+.pub-fig { margin: .8rem 0; } .pub-fig canvas { display: block; width: 100%; max-width: 26rem; height: auto; color: var(--ink); image-rendering: auto; }
+.pub-fig figcaption { font-size: .8rem; opacity: .8; }
+
+/* the village close up (hours.js): the landscape only, and the way back */
+html.village :is(.host, .tabs, .spots) { visibility: hidden; }
+.village-back {
+  position: fixed; z-index: 4; top: calc(var(--msg-h) + 1rem); right: 1.5rem;
+  font: .85rem/1 var(--ui); color: #f4ecd8; background: #3a2818; cursor: pointer;
+  border: var(--upx, 2px) solid #16121c; padding: .35rem .6rem;
+}
+html:not(.village) .village-back { display: none; }
+html.lookout :is(.host, .tabs, .spots) { visibility: hidden; }
+.tower-bar {
+  position: fixed; z-index: 4; bottom: calc(var(--status-h, 2rem) + 1rem); left: 50%; transform: translateX(-50%);
+  display: flex; gap: .6rem; padding: .3rem .5rem; background: #3a2818; border: var(--upx, 2px) solid #16121c;
+}
+.tower-bar button { font: .85rem/1 var(--ui); color: #f4ecd8; background: none; border: 0; cursor: pointer; min-height: 24px; }
+.tower-bar button:hover, .tower-bar button:focus-visible { color: #ffd77a; }
+
+/* photo mode: only the landscape and a small bar to save or leave */
+html.photo :is(.msgline, .host, .tabs, .status, .spots, .card, .leave, main, .cmdline) { visibility: hidden; }
+.photo-bar {
+  position: fixed; z-index: 30; bottom: 1rem; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 1rem; padding: .4rem .8rem; background: var(--panel); border: 1px solid var(--rule);
+}
+.photo-bar[hidden] { display: none; }
+.photo-bar button { font: inherit; color: var(--accent); background: none; border: 0; cursor: pointer; min-height: 24px; }
+.photo-bar button:hover, .photo-bar button:focus-visible { color: var(--hi); }
+
+/* the book of courses: a fold in About (terminal); in the castle it lies open on the library's lectern */
+.ledger { margin: 1.25rem 0 0; }
+.ledger summary { cursor: pointer; color: var(--accent); min-height: 24px; }
+.ledger summary:hover { color: var(--hi); }
+.ledger-year h3, .card .ledger-year h3 { margin: 1rem 0 .2rem; font: inherit; color: var(--hi); }
+.ledger-prog { margin: .5rem 0 .15rem; color: var(--dim); }
+.ledger .flow li, .card .ledger-year .flow li { white-space: normal; } /* long titles wrap on narrow screens */
+[data-theme="hours"] .card[data-kind="ledger"]:not([hidden]) { width: min(46rem, 58vw); }
+
+/* ---- the castle's texts as manuscript (ui/06-cards.js: illuminate, bind) -------------------------
+   Ruled margins, a rubricated title between fleurons over a vine scroll, a blue initial with a
+   red tendril down the margin, lozenge bullets, a tailpiece; ornaments from tools/assets/ornaments.py,
+   drawn at the UI pixel. The books open as a two-page spread with a gutter and folios. */
+[data-theme="hours"] .card {
+  --lapis: #2a4caa; --rubric: #a82c1c; --gilt: #8a621a; --op: var(--upx, 2px);
+  /* the ornaments of this text: castle/js/ui picks a design of each kind per text (these are the fallback) */
+  --orn-band: url("../assets/img/orn/band-vine.svg"); --orn-fleuron: url("../assets/img/orn/fleuron-quatrefoil.svg");
+  --orn-tail: url("../assets/img/orn/tail-triangle.svg"); --orn-tendril: url("../assets/img/orn/tendril-r.svg");
+}
+[data-theme="hours"] .card-body {
+  padding: 1.3rem 2.2rem 1rem 2.7rem; line-height: 1.7;
+  background:
+    linear-gradient(to right, transparent 1.55rem, rgb(168 44 28 / .3) 1.55rem, rgb(168 44 28 / .3) calc(1.55rem + 1px), transparent calc(1.55rem + 1px)),
+    linear-gradient(to left, transparent 1.3rem, rgb(168 44 28 / .3) 1.3rem, rgb(168 44 28 / .3) calc(1.3rem + 1px), transparent calc(1.3rem + 1px));
+}
+/* the vellum lives: its grain (fractal noise, multiplied over it), the title's ink spreading as it is
+   set down, then settling (SVG #ink: dilate and displace, run down to nothing; ui/06-cards.js inkIn) */
+[data-theme="hours"] .card::after {
+  content: ""; position: absolute; inset: 0; z-index: 2; pointer-events: none; mix-blend-mode: multiply; opacity: .2;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 .42 0 0 0 0 .3 0 0 0 0 .16 0 0 0 .6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+}
+.card-title.inking { filter: url(#ink); }
+[data-theme="hours"] .card .card-title {
+  margin: .3rem 1.6rem .1rem; text-align: center; color: var(--rubric);
+  font: 400 1.08rem/1.45 var(--ui); letter-spacing: .05em; text-wrap: balance;
+}
+[data-theme="hours"] .card .card-title::before, [data-theme="hours"] .card .card-title::after {
+  content: ""; display: inline-block; width: calc(9 * var(--op)); height: calc(11 * var(--op)); margin: 0 .7em;
+  vertical-align: -.12em; background: var(--orn-fleuron) center / contain no-repeat; image-rendering: pixelated;
+}
+[data-theme="hours"] .card .entry-head { display: block; text-align: center; }
+[data-theme="hours"] .card .orn-band {
+  height: calc(19 * var(--op)); width: min(85%, calc(256 * var(--op))); margin: .25rem auto .9rem;
+  background: var(--orn-band) center / auto 100% repeat-x; image-rendering: pixelated;
+}
+[data-theme="hours"] .card :is(.date, .role-line, .ledger-prog, .meta) { font-style: italic; color: var(--gilt); }
+[data-theme="hours"] .card .entry-head .date { display: block; text-align: center; margin-top: .15rem; }
+[data-theme="hours"] .card p { margin: 0 0 .8rem; }
+[data-theme="hours"] .card p.opening { position: relative; }
+[data-theme="hours"] .card p.opening::first-letter {
+  float: left; font: 400 3.1em/.84 var(--ui); color: var(--ini, var(--lapis)); margin: .1em .45rem 0 0;
+  text-shadow: var(--op) var(--op) 0 rgb(168 44 28 / .45);
+}
+[data-theme="hours"] .card p.opening::before { /* the pen flourish trailing down the margin */
+  content: ""; position: absolute; left: -2.05rem; top: .2em; bottom: 0; width: calc(9 * var(--op));
+  background: var(--orn-tendril) top / calc(9 * var(--op)) calc(24 * var(--op)) repeat-y; image-rendering: pixelated;
+}
+[data-theme="hours"] .card :is(.flow, .bullets) { list-style: none; padding: 0; margin: 0 0 .7rem; }
+[data-theme="hours"] .card :is(.flow, .bullets) li { display: block; white-space: normal; position: relative; padding-left: 1.2em; }
+[data-theme="hours"] .card .flow li::after { content: none; }
+[data-theme="hours"] .card :is(.flow, .bullets) li::before {
+  content: ""; position: absolute; left: .1em; top: .66em; width: calc(3 * var(--op)); height: calc(3 * var(--op));
+  background: url("../assets/img/orn/diamond-b.svg") center / contain no-repeat; image-rendering: pixelated;
+}
+[data-theme="hours"] .card :is(.flow, .bullets) li:nth-child(even)::before { background-image: url("../assets/img/orn/diamond-r.svg"); }
+[data-theme="hours"] .card .ledger-year h3 { margin: 1.3rem 0 .1rem; color: var(--rubric); letter-spacing: .1em; break-after: avoid; }
+[data-theme="hours"] .card .ledger-year h3::before { content: "\00b6\00a0"; color: var(--lapis); }
+[data-theme="hours"] .card .ledger-year:nth-of-type(even) h3 { color: var(--lapis); }
+[data-theme="hours"] .card .ledger-year:nth-of-type(even) h3::before { color: var(--rubric); }
+[data-theme="hours"] .card .ledger-prog { margin: .55rem 0 .15rem; break-after: avoid; }
+[data-theme="hours"] .card .card-body:not(:has(.spread))::after { /* the tailpiece (the books: on the blank page) */
+  content: ""; display: block; width: calc(33 * var(--op)); height: calc(15 * var(--op)); margin: 1.4rem auto .3rem;
+  background: var(--orn-tail) center / contain no-repeat; image-rendering: pixelated;
+}
+/* the books: a spread of two pages (castle/js/ui paginates), a shadow in the gutter, folios under it */
+[data-theme="hours"] .card.as-book:not([hidden]) { width: min(60rem, 68vw); }
+[data-theme="hours"] .card.as-book .card-body { max-height: none; overflow: visible; padding: 1.2rem 2.2rem .7rem; background: none; }
+[data-theme="hours"] .card .spread {
+  display: grid; grid-template-columns: 1fr 1fr; column-gap: 4.4rem;
+  background: linear-gradient(to right, transparent calc(50% - 2.2rem), rgb(90 60 20 / .07) calc(50% - 1rem), rgb(90 60 20 / .2) 50%, rgb(90 60 20 / .07) calc(50% + 1rem), transparent calc(50% + 2.2rem));
+}
+[data-theme="hours"] .card .page { height: min(62vh, 37rem); overflow: hidden; min-width: 0; }
+[data-theme="hours"] .card .page > div > :first-child { margin-top: 0; }
+[data-theme="hours"] .card .page:last-child:empty::after { /* the blank last page: a tailpiece in its middle */
+  content: ""; display: block; width: calc(33 * var(--op)); height: calc(15 * var(--op)); margin: 30% auto 0;
+  background: var(--orn-tail) center / contain no-repeat; image-rendering: pixelated;
+}
+[data-theme="hours"] .card .pager { display: flex; justify-content: space-between; align-items: center; margin-top: .3rem; font-style: italic; color: var(--gilt); }
+[data-theme="hours"] .card .pager button { font: 400 1.5rem/1 var(--ui); color: var(--rubric); background: none; border: 0; cursor: pointer; min-width: 24px; min-height: 24px; }
+[data-theme="hours"] .card .pager button:disabled { opacity: .25; cursor: default; }
+[data-theme="hours"] .card.as-book.one-leaf:not([hidden]) { width: min(34rem, 44vw); }
+[data-theme="hours"] .card.one-leaf .spread { grid-template-columns: 1fr; background: none; }
+[data-theme="hours"] .card.one-leaf .page { height: auto; }
+[data-theme="hours"] .card.as-book.one-leaf .card-body { max-height: calc(100dvh - var(--msg-h) - var(--status-h) - 5rem); overflow: auto; }
+[data-theme="hours"] .card.one-leaf .page:last-child, [data-theme="hours"] .card.one-leaf .pager { display: none; }
+/* (no padding on the pages) the initial's paragraph makes room for its flourish */
+[data-theme="hours"] .card.as-book .page p.opening { margin-left: 1.5rem; }
+[data-theme="hours"] .card.as-book .page p.opening::before { left: -1.45rem; }
+/* the book of courses: each year opens a page, under its own heading and lozenge rule */
+[data-theme="hours"] .card .ledger-year h3, [data-theme="hours"] .card .page h3:not(.card-title) { margin: .2rem 0 .5rem; text-align: center; font-size: 1.15em; }
+[data-theme="hours"] .card .page h3:not(.card-title) { color: var(--rubric); letter-spacing: .1em; }
+[data-theme="hours"] .card .page h3:not(.card-title)::before { content: "\00b6\00a0"; color: var(--lapis); }
+[data-theme="hours"] .card .page:last-child h3:not(.card-title) { color: var(--lapis); }
+[data-theme="hours"] .card .page:last-child h3:not(.card-title)::before { color: var(--rubric); }
+[data-theme="hours"] .card .page h3:not(.card-title)::after {
+  content: ""; display: block; height: calc(3 * var(--op)); margin: .35rem auto 0; width: 60%;
+  background: url("../assets/img/orn/diamond-r.svg") center / calc(3 * var(--op)) 100% repeat-x;
+  image-rendering: pixelated; opacity: .8;
+}
+[data-theme="hours"] .card .ledger-prog { margin: .9rem 0 .25rem; }
+[data-theme="hours"] .card .entry-head h3.card-title::before { content: ""; } /* the fleuron, not the list's '@' */
+[data-theme="hours"] .card .sheet > div { display: grid; grid-template-columns: 7.5rem 1fr; gap: .2rem 1rem; margin-bottom: .5rem; }
+[data-theme="hours"] .card .sheet dt { color: var(--gilt); font-style: italic; }
+[data-theme="hours"] .card .sheet dd { margin: 0; }
+[data-theme="hours"] .card .year-orn { /* between two years of the book of courses */
+  height: calc(9 * var(--op)); margin: 1.6rem 0 .9rem;
+  background:
+    var(--year-fleuron, var(--orn-fleuron)) center / calc(9 * var(--op)) 100% no-repeat,
+    linear-gradient(rgb(168 44 28 / .45), rgb(168 44 28 / .45)) center / 70% 1px no-repeat;
+  image-rendering: pixelated;
+}
+[data-theme="hours"] .card .page > div > .year-orn:first-child { margin-top: .4rem; }
+/* titles: the fleurons either side, the words wrapping between them (never a fleuron alone) */
+[data-theme="hours"] .card .card-title { display: flex; justify-content: center; align-items: center; gap: .7em; }
+[data-theme="hours"] .card .card-title::before, [data-theme="hours"] .card .card-title::after { flex: none; margin: 0; }
+[data-theme="hours"] .card .card-title a { color: inherit; text-decoration-color: rgb(168 44 28 / .35); }
+[data-theme="hours"] .card .card-title a:hover { text-decoration-color: currentColor; }
+/* a project's illumination stands centred above its title */
+[data-theme="hours"] .card .illum { display: block; float: none; width: fit-content; margin: .2rem auto .5rem; }
+/* drolleries: small creatures in the bottom margin of some texts and some pages of the books */
+[data-theme="hours"] .card .card-body, [data-theme="hours"] .card .page { position: relative; }
+[data-theme="hours"] .card .droll {
+  position: absolute; bottom: .2rem; width: calc(18 * var(--op)); height: calc(12 * var(--op));
+  background: var(--droll) center / contain no-repeat; image-rendering: pixelated; pointer-events: none;
+}
+[data-theme="hours"] .card .droll.at-left { left: .3rem; } [data-theme="hours"] .card .droll.at-right { right: .3rem; }
+[data-theme="hours"] .card .droll.flip { transform: scaleX(-1); }
+[data-theme="hours"] .card .page .droll { bottom: 0; }
+
+/* ?og (the link preview's photograph, tools/assets/og.py): the landscape and the name alone */
+html.og :is(.msgline, .tabs, .status, .spots, .card, .leave, main, .cmdline, .links, .statement, .almanac, .photo-bar, dialog) { visibility: hidden; }
+html.og :is(.msgline, .status) { display: none; }
+html.og { --msg-h: 0px; --status-h: 0px; } /* the scene takes the whole frame */
+/* what each thing is made of (ui/06-cards.js, openCard): a letter's wax seal, a charter's seal hanging
+   on its cord, a scroll's rolled ends; ornaments from tools/assets/ornaments.py */
+[data-theme="hours"] .card .deco { position: absolute; pointer-events: none; image-rendering: pixelated; }
+[data-theme="hours"] .card .wax { right: 1.6rem; bottom: 1.1rem; width: calc(16 * var(--op)); height: calc(16 * var(--op)); background: url("../assets/img/orn/seal.svg") center / contain no-repeat; }
+[data-theme="hours"] .card .hang-seal { left: calc(50% - 8 * var(--op)); bottom: calc(-24 * var(--op)); width: calc(16 * var(--op)); height: calc(30 * var(--op)); background: url("../assets/img/orn/seal-hung.svg") center / contain no-repeat; }
+[data-theme="hours"] .card .roll { left: -.3rem; right: -.3rem; height: calc(9 * var(--op)); background: url("../assets/img/orn/roll.svg") left / auto 100% repeat-x; }
+[data-theme="hours"] .card .roll.at-top { top: calc(-5 * var(--op)); }
+[data-theme="hours"] .card .roll.at-bottom { bottom: calc(-5 * var(--op)); }
+/* a page turning in a book: a leaf of vellum folding over the gutter, shaded, in steps */
+[data-theme="hours"] .card .spread { position: relative; }
+[data-theme="hours"] .card .leaf-turn {
+  position: absolute; top: 0; bottom: 0; width: calc(50% - 2.2rem); pointer-events: none;
+  background: linear-gradient(to right, #e4d6b2, #f2ead8 40%, #d8c69c);
+  animation: leaf-turn .42s steps(6, end) forwards;
+}
+[data-theme="hours"] .card .leaf-turn.to-left { right: 0; transform-origin: left center; }
+[data-theme="hours"] .card .leaf-turn.to-right { left: 0; transform-origin: right center; animation-name: leaf-turn-back; }
+@keyframes leaf-turn { from { transform: translateX(0) scaleX(1); } 50% { transform: translateX(-2.2rem) scaleX(.12); } to { transform: translateX(calc(-100% - 4.4rem)) scaleX(1); opacity: 0; } }
+@keyframes leaf-turn-back { from { transform: translateX(0) scaleX(1); } 50% { transform: translateX(2.2rem) scaleX(.12); } to { transform: translateX(calc(100% + 4.4rem)) scaleX(1); opacity: 0; } }
+/* the volume, beside sound:on (castle theme) */
+.sound-volume { display: none; width: 5rem; min-height: 24px; accent-color: var(--accent); vertical-align: middle; }
+html.sound-on[data-theme="hours"] .sound-volume { display: inline-block; }
+
+/* a real thing's picture in a card (hours.js paints it: a painting, a film's frame...) */
+.real-fig { margin: .6rem 0; text-align: center; }
+.real-fig canvas { width: min(100%, 18rem); height: auto; image-rendering: pixelated; border: 2px solid var(--gold, #d8a838); background: #16121c; }
+.real-fig figcaption { font-size: .9em; margin-top: .3rem; text-align: left; }
+.real-steps { margin: .3rem 0 0; }
+.credits { font-size: .85em; }
+.rose-page { margin: .6rem 0; padding: .5rem .8rem; background: #f3ead6; color: #2a2118; font-family: Georgia, "Times New Roman", serif; font-style: italic; line-height: 1.45; border-left: 3px solid #a02a2a; }
+.rose-page .rubric { color: #a02a2a; font-style: normal; }
+.rose-page .quill { color: #a02a2a; animation: quill-blink 1s steps(2) infinite; }
+@keyframes quill-blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .rose-page .quill { animation: none; } }
+.fare { margin: .3rem 0 0; padding-left: 1.1rem; }
+.fare li { margin: .25rem 0; }
+.fare details { font-size: .9em; margin: .1rem 0 0; }
+.src { font-size: .85em; margin: .8rem 0 .2rem; }
+details.how { font-size: .85em; margin: 0 0 .4rem; }
+details.how summary { cursor: pointer; }
+details.how p { margin: .3rem 0 0; }
+.fare summary { cursor: pointer; color: var(--accent); }
+.astro-fig { margin: .6rem 0; text-align: center; }
+.astro-fig canvas { width: min(100%, 20rem); height: auto; image-rendering: pixelated; border-radius: 50%; }
+.astro-fig figcaption { font-size: .9em; margin-top: .3rem; text-align: left; }
+
+/* ---- the scrying engine: the terminal framed in the castle (ui/05-engine.js: openEngine) ---------- */
+.engine-on .plate-img { overflow: hidden; }
+.engine-on .spots { visibility: hidden; }
+.engine { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; background: rgba(12, 9, 6, .45); }
+.engine-win {
+  display: flex; flex-direction: column; width: min(100rem, 94vw); height: min(66rem, 90vh);
+  background: #12100c; border: 3px solid #c8962e; border-radius: 6px; transform-origin: center;
+  box-shadow: 0 0 0 2px #5a3c14, 0 0 0 6px #8a6420, 0 0 28px 6px rgba(232, 168, 56, .35), 0 18px 60px rgba(0, 0, 0, .6);
+}
+.engine-bar {
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin: 0; padding: .3rem .8rem;
+  background: linear-gradient(#8a6420, #5a3c14); color: #f6e2b0; font-size: .85rem;
+}
+.engine-x { background: none; border: 0; color: #ffd27a; font: inherit; cursor: pointer; }
+.engine-x:hover, .engine-x:focus-visible { color: #fff; text-decoration: underline; }
+.engine iframe { flex: 1; width: 100%; border: 0; border-radius: 0 0 3px 3px; background: #12100c; }
+.framed, .framed body { scrollbar-color: #8a6420 #12100c; }
+/* maximised (z, or the bar's [max]; kept on this device): the screen less a margin, a thinner frame */
+.engine.max .engine-win { width: calc(100vw - 1.5rem); height: calc(100dvh - 1.5rem); border-width: 2px; box-shadow: 0 0 0 1px #5a3c14, 0 0 0 3px #8a6420, 0 18px 60px rgba(0, 0, 0, .6); }
+.engine.max .engine-gear { display: none; }
+.engine-win { transition: width .22s ease-out, height .22s ease-out; }
+@media (prefers-reduced-motion: reduce) { .engine-win { transition: none; } }
+.engine-max { background: none; border: 0; color: #ffd27a; font: inherit; cursor: pointer; margin-left: .6rem; }
+.engine-max:hover, .engine-max:focus-visible { color: #fff; text-decoration: underline; }
+.engine-on :is(.tabs, .leave) { visibility: hidden; } /* (the castle's menu would show behind the window's corner) */
+
+
+/* ---- the castle's chrome: a herald's ribbon on top, a heraldic band below (the terminal keeps
+   its message and status lines; the words swap in castle/js/ui: .lbl[data-castle]) ---------------- */
+[data-theme="hours"] .msgline {
+  padding-left: 3.4rem; color: #3a2414; background: linear-gradient(#f4e6c2, #e6d09c);
+  border-bottom: 2px solid #a8781e; box-shadow: inset 0 -3px 0 #d6bb80, 0 2px 0 #5a3c14;
+  font: italic 1.2rem/1.3 "EB Garamond", "Garamond fb Times", Georgia, serif;
+}
+[data-theme="hours"][data-sky="night"] .msgline { background: linear-gradient(#dccaa0, #c9b281); }
+[data-theme="hours"] .msgline::before { /* the herald's trumpet, its banner hanging from it */
+  content: ""; position: absolute; left: .9rem; top: 50%; width: 32px; height: 20px; transform: translateY(-50%);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 10' shape-rendering='crispEdges'%3E%3Cg fill='%23a8781e'%3E%3Crect x='0' y='3' width='2' height='2'/%3E%3Crect x='2' y='3' width='8' height='1'/%3E%3Crect x='10' y='2' width='2' height='3'/%3E%3Crect x='12' y='1' width='2' height='5'/%3E%3Crect x='14' y='0' width='2' height='7'/%3E%3C/g%3E%3Cg fill='%238a2a1a'%3E%3Crect x='4' y='4' width='6' height='4'/%3E%3Crect x='4' y='8' width='2' height='1'/%3E%3Crect x='8' y='8' width='2' height='1'/%3E%3C/g%3E%3Crect x='6' y='5' width='2' height='2' fill='%23f0c860'/%3E%3C/svg%3E") center / contain no-repeat;
+  image-rendering: pixelated;
+}
+[data-theme="hours"] .more { background: none; color: #8a2a1a; font: italic 1.1rem "EB Garamond", "Garamond fb Times", Georgia, serif; text-decoration: underline dotted; text-underline-offset: 3px; }
+[data-theme="hours"] .more:hover, [data-theme="hours"] .more:focus-visible { background: none; color: #3a2414; text-decoration-style: solid; }
+
+[data-theme="hours"] .status {
+  color: #e9dcb8; border-top: 3px double #c8962e;
+  background:
+    repeating-linear-gradient(45deg, rgb(255 255 255 / .045) 0 7px, transparent 7px 14px),
+    repeating-linear-gradient(-45deg, rgb(255 255 255 / .045) 0 7px, transparent 7px 14px), #1f2a52;
+}
+[data-theme="hours"] .status b, [data-theme="hours"] #st-hour { color: #f0c860; }
+[data-theme="hours"] .st-right { color: #e9dcb8; }
+[data-theme="hours"] .st-name { font: 1.25rem/1 "UnifrakturMaguntia", "Fraktur fb Times", serif; color: #f0c860; }
+[data-theme="hours"] .status button { color: #e9dcb8; }
+[data-theme="hours"] .status button:hover, [data-theme="hours"] .status button:focus-visible { color: #fff; }
+
+/* the castle's titles, illuminated */
+[data-theme="hours"] .name { font-family: "UnifrakturMaguntia", "Fraktur fb Times", serif; letter-spacing: .01em; }
+[data-theme="hours"] .card .card-title, [data-theme="hours"] dialog.scroll h2 { font-family: "UnifrakturMaguntia", "Fraktur fb Times", serif; font-size: 1.5em; letter-spacing: .02em; }
+.status .lbl { font-style: normal; }
+
+
+/* an experience's kind (research, industry, teaching...), before its role */
+.role-line .kind { display: inline-block; margin-right: .5em; padding: 0 .4em; font-size: .78em; line-height: 1.5;
+  border: 1px solid var(--rule); color: var(--accent); text-transform: lowercase; }
+[data-theme="hours"] .role-line .kind { color: var(--red); border-color: currentColor; }
+
+/* the menu's plain words under each name: in the castle's landscape only (the terminal says it already,
+   and in a room the menu must stay small) */
+.tabs .hint { display: none; }
+[data-theme="hours"]:not([data-room]) .tabs a { display: grid; grid-template-columns: auto auto; column-gap: .45rem; justify-content: start; align-items: center; }
+[data-theme="hours"]:not([data-room]) .tabs a::before { grid-row: span 2; }
+[data-theme="hours"]:not([data-room]) .tabs .hint { display: block; grid-column: 2; margin-top: -.15rem; font-size: .66rem; line-height: 1.2; color: var(--dim); }
+
+/* the landscape's opening words, over clouds as often as over sky: a one-pixel dark outline */
+[data-theme="hours"]:not([data-room]) .host :is(.statement, .role, .links a) {
+  text-shadow: 1px 0 0 #0b0a10, -1px 0 0 #0b0a10, 0 1px 0 #0b0a10, 0 -1px 0 #0b0a10, 1px 1px 0 #0b0a10, -1px 1px 0 #0b0a10, 0 0 8px rgba(11, 10, 16, .55);
+}
+
+/* the site in twenty seconds, under the statement (the terminal's header only) */
+.glance { display: grid; grid-template-columns: max-content 1fr; gap: .15rem 1rem; margin: 0 0 1rem; font-size: .85rem; }
+.glance div { display: contents; }
+.glance dt { color: var(--dim); }
+.glance dd { margin: 0; }
+.glance:not(.shown), .exits, #coursework { display: none; } /* (kept in the page for the castle: its doors, the book of courses, the cellar; whoami shows the glance) */
+
+/* studies and posts on one axis of years (About): bars packed in rows, a lane each, the years below */
+.timeline { --rh: 1.35rem; margin: 1.2rem 0 1rem; font-size: .72rem; }
+.tl-bars { position: relative; list-style: none; margin: 0; padding: 0; height: calc((var(--study) + var(--post)) * var(--rh) + .5rem); }
+.tl-bars li { position: absolute; left: calc(var(--a) * 100%); width: calc((var(--b) - var(--a)) * 100%); top: calc(var(--row) * var(--rh));
+  height: calc(var(--rh) - .25rem); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; box-sizing: border-box;
+  padding: 0 .35rem; line-height: calc(var(--rh) - .25rem); border-left: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.tl-bars li.tl-post { top: calc((var(--study) + var(--row)) * var(--rh) + .5rem); min-width: 4.5rem; border-left-color: var(--hi); background: color-mix(in srgb, var(--hi) 12%, transparent); }
+.tl-bars li :is(a, span) { color: inherit; text-decoration: none; }
+.tl-bars li a:hover { text-decoration: underline; }
+.tl-years { position: relative; list-style: none; margin: .2rem 0 0; padding: 0; height: 1rem; border-top: 1px solid var(--rule); color: var(--dim); }
+.tl-years li { position: absolute; left: calc(var(--a) * 100%); translate: -50% 0; }
+.tl-years li:first-child { translate: 0 0; } .tl-years li:last-child { translate: -100% 0; }
+
+/* a work's key figure; what is under way, at the head of the news; a talk's first slide */
+.news li.now { padding: .4rem .6rem; border-left: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.entry .thumb { display: block; margin: .4rem 0; max-width: 160px; height: auto; border: 1px solid var(--rule); }
+
+/* printed: the terminal as a plain CV on paper (every section, no pictures of the castle, links spelled out) */
+@media print {
+  .msgline, .plate, .tabs, .status, .cmdline, .skip-link, .exits, .spots, .engine, dialog, .armillary, canvas { display: none !important; }
+  :root, body { background: #fff !important; color: #000 !important; }
+  .shell { display: block !important; }
+  .term, main { width: auto !important; max-width: none !important; margin: 0 !important; padding: 0 !important; overflow: visible !important; }
+  .pane { display: block !important; position: static !important; border: 0 !important; padding: 0 !important; margin: 0 0 1.2rem !important; break-inside: auto; }
+  .pane[hidden] { display: none !important; }
+  .pane-tab, .tilde { display: none !important; }
+  * { color: #000 !important; background: none !important; box-shadow: none !important; text-shadow: none !important; }
+  a { text-decoration: underline; }
+  main a[href^="http"]::after, main a[href^="mailto"]::after { content: " <" attr(href) ">"; font-size: .8em; word-break: break-all; }
+  .entry, .project, .pub { break-inside: avoid; }
+  details.ledger { display: none !important; }
+  .glance { display: grid !important; }
+}
+
+/* the stair down to the cellar, as one goes down it (stairDown), over the picture */
+canvas.stairdown { position: fixed; z-index: 3; image-rendering: pixelated; pointer-events: none; }
+
+/* a wooden signpost by the pointer, where a way in the landscape leads somewhere (hours.js) */
+.signpost { position: fixed; z-index: 6; pointer-events: none; padding: .15rem .55rem .2rem; font: .8rem/1.3 var(--ui);
+  color: #f4ecd8; background: #6a4028; border: 2px solid #2a1d14; box-shadow: inset 0 2px 0 #8a5a3a, inset 0 -2px 0 #462a1a; }
+.signpost::before { content: "\2192\00a0"; color: #f6d77a; }
+.signpost::after { content: ""; position: absolute; left: .7rem; top: 100%; width: 4px; height: .9rem; background: #462a1a; border: 2px solid #2a1d14; border-top: 0; }
+
+/* the terminal on light paper (`paper`, kept on this device): the same layout, ink on paper, the engraving printed */
+[data-theme="dark"][data-paper] {
+  --bg: #f4efe3; --panel: #faf6ec; --rule: #b7a988; --ink: #2b2620; --hi: #110f0b; --accent: #8a4a10;
+  --dim: #655a46; --red: #9c2a1c; --green: #3b6629; --bar: #e9e2d1; color-scheme: light;
+}
+[data-theme="dark"][data-paper] .plate-img { filter: invert(1) sepia(.35); }
+.history { margin: 0; padding-left: 2.5ch; }
+.glance.shown { display: grid !important; margin: .4rem 0 0; }
+
+/* fig. 0's twinkling stars (ui/03-rooms.js twinkle): the terminal's engraving only, over it in the figure */
+canvas.twinkle { display: none; position: absolute; z-index: 1; pointer-events: none; }
+[data-theme="dark"]:not(.banner) canvas.twinkle { display: block; }
+[data-theme="dark"][data-paper] canvas.twinkle { filter: invert(1) sepia(.35); }
+
+/* the chronicle: what the message line said, newest first (a click on the line) */
+.chronicle { position: fixed; z-index: 7; left: 1rem; width: min(44rem, calc(100vw - 2rem)); max-height: 50vh; overflow: auto;
+  margin: 0; padding: .5rem .9rem; font: .85rem/1.45 var(--ui); color: var(--ink); background: var(--bar); border: 1px solid var(--rule); box-shadow: 0 6px 18px rgb(0 0 0 / .35); }
+.chronicle ol { list-style: none; margin: 0; padding: 0; }
+.chronicle li { padding: .15rem 0; border-bottom: 1px dotted var(--rule); }
+.chronicle li:last-child { border-bottom: 0; }
+.chronicle time { color: var(--dim); margin-right: 1ch; }
+[data-theme="hours"] .chronicle { font: italic 1.05rem/1.4 "EB Garamond", "Garamond fb Times", Georgia, serif; color: #2a1c10; background: #f4ecd8; border: 2px solid var(--gold, #b08a3a); }
+[data-theme="hours"] .chronicle time { font-style: normal; color: #8a2c1c; }
+.msg-text { cursor: pointer; }
+
+/* the status line's counts lead to their rooms; Rooms opens the plan */
+.st-go { color: inherit; text-decoration: none; }
+.st-go:hover, .st-go:focus-visible { text-decoration: underline; }
+#st-explored { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+#st-explored:hover { text-decoration: underline; }
+.plan { display: block; width: 100%; max-width: 34rem; margin: .5rem auto; font: 13px var(--ui); }
+.plan .doors line { stroke: var(--dim); stroke-width: 2; stroke-dasharray: 3 3; }
+.plan rect { fill: var(--panel); stroke: var(--dim); stroke-width: 1.5; } /* (filled: the doors' lines run under the rooms) */
+.plan text { fill: var(--dim); text-anchor: middle; }
+.plan a.seen rect { fill: var(--accent); stroke: var(--accent); }
+.plan a.seen text { fill: var(--panel); }
+.plan a text { text-decoration: none; }
+.plan a.here rect { stroke: var(--hi); stroke-width: 3; }
+.plan a:hover rect, .plan a:focus rect { stroke: var(--hi); stroke-width: 3; }
+
+/* the engine at work: three brass wheels at its corners turn with the keys; a gauge in its bar */
+.engine-win { position: relative; }
+.engine-gear { position: absolute; width: 3.2rem; height: 3.2rem; fill: #b8862a; stroke: #5a3c14; stroke-width: 1; transition: transform .12s steps(3, end); pointer-events: none; }
+.engine-gear circle { fill: #5a3c14; }
+.engine-gear.g1 { left: -1.9rem; bottom: -1.6rem; }
+.engine-gear.g2 { left: .7rem; bottom: -2.3rem; width: 2.2rem; height: 2.2rem; }
+.engine-gear.g3 { right: -1.7rem; top: -1.5rem; width: 2.6rem; height: 2.6rem; }
+.engine-gauge { position: relative; width: 2.6rem; height: 1.3rem; margin-left: auto; border: 2px solid #f6e2b0; border-bottom: 0; border-radius: 1.3rem 1.3rem 0 0; background: #2a1c0c; overflow: hidden; }
+.engine-needle { position: absolute; left: calc(50% - 1px); bottom: 0; width: 2px; height: 1.1rem; background: #ff8a3a; transform-origin: bottom center; transform: rotate(-70deg); transition: transform .5s cubic-bezier(.3, 1.6, .5, 1); }
+@media (prefers-reduced-motion: reduce) { .engine-gear, .engine-needle { transition: none; } }
+.engine-on .plate-img { filter: blur(1.5px) brightness(.85); } /* (the castle behind the glass) */
+
+/* the terminal behind glass (cmdline: glass): phosphor glow, the tube's curve as a shading, a short trail on scrolling */
+/* the phosphor breathes (a registered custom property, so it animates: @property), its colours part a
+   little at the edges as an old tube's guns did, and what the engine prints burns in, then fades to the
+   steady glow (the terminal behind glass, cmdline: glass; not with reduced motion: the head script) */
+@property --glow { syntax: "<length>"; inherits: true; initial-value: .25em; }
+[data-glass][data-theme="dark"] body {
+  text-shadow: 0 0 var(--glow) color-mix(in srgb, currentColor 55%, transparent), -.5px 0 rgb(255 70 70 / .22), .5px 0 rgb(70 170 255 / .22);
+  animation: breathe 3.7s ease-in-out infinite alternate;
+}
+@keyframes breathe { from { --glow: .22em; } to { --glow: .31em; } }
+[data-glass][data-theme="dark"] #cmd-out > * { animation: burn-in .65s ease-out; }
+@keyframes burn-in { from { filter: brightness(1.7); text-shadow: 0 0 .7em currentColor; } to { filter: none; } }
+[data-glass][data-theme="dark"] body::after {
+  content: ""; position: fixed; inset: 0; z-index: 90; pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 62%, rgb(0 0 0 / .38) 100%),
+    repeating-linear-gradient(0deg, rgb(0 0 0 / .12) 0 1px, transparent 1px 3px);
+  box-shadow: inset 0 0 6rem rgb(0 0 0 / .45);
+}
+[data-glass][data-theme="dark"].scrolling body { text-shadow: 0 0 .25em color-mix(in srgb, currentColor 55%, transparent), 0 -.15em .1em color-mix(in srgb, currentColor 30%, transparent); }
+
+/* the textures command: a swatch each */
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); gap: .5rem .8rem; max-height: 60vh; overflow: auto; }
+.swatches figure { margin: 0; }
+.swatches canvas { display: block; width: 96px; height: 64px; image-rendering: pixelated; border: 1px solid var(--rule); }
+.swatches figcaption { font-size: .75rem; }
+
+/* a letter not yet read, folded under its seal (ui/06-cards.js: sealUp) */
+.sealed { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; align-content: center; gap: .8rem; padding: 2rem;
+  background: repeating-linear-gradient(135deg, transparent 0 48%, rgb(120 90 50 / .18) 48% 52%, transparent 52% 100%), #efe2c2; text-align: center; }
+.sealed-to { margin: 0; font: italic 1.1rem "EB Garamond", "Garamond fb Times", Georgia, serif; color: #3a2414; }
+.seal-btn { position: relative; width: 3.4rem; height: 3.4rem; border: 0; border-radius: 50%; cursor: grab; touch-action: none;
+  background: radial-gradient(circle at 38% 35%, #d8543e, #9c2219 60%, #6a140e); box-shadow: 0 2px 0 #4a0e08, inset 0 0 0 4px rgb(0 0 0 / .12); }
+.seal-btn::after { content: "MS"; position: absolute; inset: 0; display: grid; place-items: center; font: 600 1rem "EB Garamond", "Garamond fb Times", Georgia, serif; color: rgb(255 220 200 / .55); }
+.sealed.broken .seal-btn { background: none; box-shadow: none; }
+.sealed.broken .seal-btn::after { content: none; }
+.sealed.broken { animation: unseal .6s ease-in forwards; }
+@keyframes unseal { 60% { opacity: 1; } to { opacity: 0; clip-path: inset(0 0 100% 0); } }
+.wax-bit { position: absolute; left: 45%; top: 45%; width: .55rem; height: .45rem; background: #9c2219; border-radius: 30%; animation: wax-fall .6s ease-in forwards; }
+@keyframes wax-fall { to { transform: translate(var(--dx), var(--dy)) rotate(200deg); opacity: 0; } }
+.sealed-hint { margin: 0; font-size: .8rem; }
+@media (prefers-reduced-motion: reduce) { .sealed.broken, .wax-bit { animation: none; } }
+[data-theme="hours"] .card-close { z-index: 3; } /* (over a sealed letter too) */
+
+/* the weathervane's compass rose (ui/07-dialogs.js showRose) */
+.rose { display: block; width: min(16rem, 70vw); margin: .5rem auto; }
+.rose .r-a { fill: var(--accent); } .rose .r-b { fill: var(--dim); opacity: .6; }
+.rose text { font: 9px var(--ui); fill: var(--ink); text-anchor: middle; }
+.rose .r-wind { stroke: var(--red); stroke-width: 3; } .rose .r-wind-from { fill: var(--red); }
+
+/* things to do in cards (ui/10-play.js): the merels board, the copyist's page */
+.merels { display: block; width: min(15rem, 60vw); margin: .3rem auto; }
+.merels rect, .merels line { fill: none; stroke: currentColor; stroke-width: .8; opacity: .7; }
+.merels circle { cursor: pointer; } .merels .m-pt { fill: currentColor; opacity: .55; }
+.merels .m-you { fill: #f4ecd8; stroke: #3a2414; stroke-width: .8; } .merels .m-house { fill: #9c2219; stroke: #3a0e08; stroke-width: .8; }
+.merels .m-sel { stroke: #e8b840; stroke-width: 2; } .merels circle:focus-visible { outline: none; stroke: #2a4caa; stroke-width: 2; }
+.merels-say { min-height: 1.4em; margin: .2rem 0; font-style: italic; }
+.quill-page { display: block; width: min(24rem, 100%); aspect-ratio: 3 / 2; image-rendering: pixelated; cursor: crosshair; touch-action: none; border: 1px solid #a8884a; margin: .3rem 0; }
+
+/* the chalk taken (hours.js chalkMode): the board takes the pointer, the things wait */
+.chalking .spot:not([data-kind="chalk"]) { pointer-events: none; }
+.chalking .plate-img canvas.room { cursor: crosshair; }
+
+
+/* ---- the terminal, compact and in panes (dark theme): name and role on a line, a small clock, each
+   pane's name in its border as tmux writes it; text kept to 80 columns ---------------------------- */
+[data-theme="dark"] .term { padding-top: 1.5rem; }
+[data-theme="dark"] .monogram { width: 3.6rem; }
+[data-theme="dark"] .id > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 1.25rem; }
+[data-theme="dark"] .name { font-size: 2.2rem; }
+[data-theme="dark"] .role { margin: 0; }
+[data-theme="dark"] .clock { font-size: 2.1rem; margin-bottom: .25rem; }
+[data-theme="dark"] :is(#alm-moon, #alm-weather) { display: none; }
+[data-theme="dark"] .statement { margin-top: .9rem; }
+[data-theme="dark"] .host .links { margin-top: .6rem; }
+[data-theme="dark"] .tabs { margin: 1.1rem 0 1.6rem; }
+[data-theme="dark"] .pane { border: 1px solid var(--rule); padding-top: 1.9rem; }
+[data-theme="dark"] .pane > .room {
+  position: absolute; top: -.8rem; left: 1rem; margin: 0; padding: 0 .4ch;
+  font-size: 1.05rem; line-height: 1.5; text-align: left; background: var(--bg);
+}
+[data-theme="dark"] .pane > .room .tilde { display: none; }
+[data-theme="dark"] .pane > .room::before { content: "\2524 " / ""; color: var(--rule); }
+[data-theme="dark"] .pane > .room::after { content: " \251c" / ""; color: var(--rule); }
+[data-theme="dark"] .pane-tab { left: auto; right: 1rem; color: var(--dim); }
+[data-theme="dark"] .pane :is(p, dd) { max-width: 80ch; }
+
+/* ---- the internship sought: a line under the statement, the quest at the head of About --------- */
+.seeking { margin: .8rem 0 0; font-family: var(--ui); }
+.seeking a { text-decoration: none; color: var(--hi); }
+.seeking a:hover { background: none; }
+.seeking a:hover .seek-tag, .seeking a:focus-visible .seek-tag { background: var(--hi); }
+.seeking .meta span { white-space: nowrap; }
+@media (max-width: 90rem) { .status .st-left span:has(#st-align) { display: none !important; } } /* (the joke goes first, the band keeps its buttons) */
+.seek-tag { padding: 0 .4ch; margin-right: .4ch; background: var(--green); color: var(--bg); }
+[data-theme="hours"] .seeking { display: none; } /* (the castle has it on the desk, and in its band) */
+.quest { margin: 0 0 1.5rem; padding: .9rem 1.1rem .4rem; border: 1px dashed var(--accent); background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.quest-h { margin: 0 0 .5rem; font-family: var(--ui); color: var(--hi); }
+.quest-tag { color: var(--accent); margin-right: .5ch; }
+.quest-tag::after { content: ":"; }
+.quest-open { margin-left: .6ch; padding: 0 .4ch; font-size: .85em; color: var(--bg); background: var(--green); }
+.quest-q { margin: 0 0 .9rem; font-style: italic; color: var(--ink); }
+.quest-post { margin: 0 0 .9rem; }
+.quest-post h3 { margin: 0 0 .35rem; font: 400 .95rem/1.5 var(--ui); }
+.quest-field { color: var(--accent); }
+.quest-field::before { content: "## "; color: var(--dim); }
+.quest-themes { list-style: none; margin: 0 0 .7rem; padding: 0; }
+.quest-themes li { display: grid; grid-template-columns: 4ch 1fr; }
+.quest-themes li .meta { grid-column: 2; }
+.quest-themes li { margin-bottom: .2rem; }
+.quest-themes .box { font-family: var(--ui); color: var(--green); }
+.quest .kv { margin-bottom: .2rem; }
+.quest .links { margin: .5rem 0 .4rem; }
+.st-seek b { color: var(--green); }
+
+/* ---- the terminal's room for text (dark theme, wide): the engraving a narrow strip, the text column
+   wide and centred in what is left; panes as containers, their lists in two columns when they fit, so a
+   section is half as long (1920 px, before: text 832 px of 1920, About 1357 px high) ------------------ */
+@media (min-width: 60.01rem) {
+  [data-theme="dark"]:not(.climb) .shell { grid-template-columns: minmax(14rem, 24%) minmax(0, 1fr); }
+  .framed[data-theme="dark"] .shell { grid-template-columns: minmax(13rem, 22%) minmax(0, 1fr); }
+  [data-theme="dark"]:not(.climb) .term { max-width: 80rem; padding-inline: clamp(1rem, 3vw, 2.5rem); }
+  [data-theme="dark"] .statement { max-width: 76ch; }
+}
+[data-theme="dark"] .pane { container-type: inline-size; margin-bottom: 2rem; }
+[data-theme="dark"] .entry, [data-theme="dark"] .project { padding-bottom: 1.1rem; margin-bottom: 1.1rem; }
+@container (min-width: 50rem) {
+  .quest { display: grid; grid-template-columns: 1fr 1fr; gap: 0 2.5rem; }
+  .quest > :is(.quest-h, .quest-q, .kv, .links) { grid-column: 1 / -1; }
+  .quest-themes li .meta { font-size: .9em; }
+  .log { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6rem 2.5rem; }
+  .log .entry { margin: 0; padding: 0; border: 0; }
+  .works { display: grid; grid-template-columns: 1fr 1fr; gap: 1.6rem 2.5rem; align-items: start; }
+  #work .project { grid-template-columns: 96px 1fr; gap: 1rem; margin: 0; padding: 0; border: 0; }
+  #work .illum img { width: 96px; height: 96px; }
+}
+/* the header as a grid: the almanac beside the name and statement only; [seeking] and the links the
+   whole width under them (else they wrap beside the almanac: three lines at 1366 px) */
+[data-theme="dark"]:not(.climb) .host { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 2rem; }
+[data-theme="dark"]:not(.climb) .host-main { display: contents; }
+[data-theme="dark"]:not(.climb) .host-main > * { grid-column: 1; }
+[data-theme="dark"]:not(.climb) .host-main > :is(.seeking, .links) { grid-column: 1 / -1; }
+[data-theme="dark"]:not(.climb) .almanac { grid-column: 2; grid-row: 1 / span 2; }
+[data-theme="dark"]:not(.climb) .host-main > * { margin-block: 0; }
+[data-theme="dark"]:not(.climb) .host-main > .statement { margin-top: .8rem; }
+[data-theme="dark"]:not(.climb) .host-main > :is(.seeking, .links) { margin-top: .7rem; }
+
+/* ---- the terminal, quieter (dark theme): the engraving dimmed to a backdrop, fewer filled blocks, the
+   quest in a plain rule, descriptions in the body's ink rather than dim, the body a little larger ---- */
+[data-theme="dark"]:not([data-paper]) .plate-img {
+  background: linear-gradient(rgb(18 16 12 / .55), rgb(18 16 12 / .55)), var(--plate) center bottom / cover no-repeat;
+}
+[data-theme="dark"]:not([data-paper]) canvas.twinkle { opacity: .5; }
+@media (min-width: 60.01rem) { [data-theme="dark"] body { font-size: 1rem; } }
+[data-theme="dark"] .role { color: var(--ink); }
+[data-theme="dark"] .seek-tag { padding: 0; background: none; color: var(--green); }
+[data-theme="dark"] .seeking a:hover .seek-tag, [data-theme="dark"] .seeking a:focus-visible .seek-tag { background: none; text-decoration: underline; }
+[data-theme="dark"] .quest { border: 1px solid var(--rule); border-left: 2px solid var(--accent); background: none; }
+[data-theme="dark"] .quest-open { padding: 0; background: none; color: var(--green); }
+[data-theme="dark"] .quest-open::before { content: "(" / ""; } [data-theme="dark"] .quest-open::after { content: ")" / ""; }
+[data-theme="dark"] .quest-q { color: var(--dim); }
+[data-theme="dark"] .quest-themes b { font-weight: 400; color: var(--hi); }
+[data-theme="dark"] .quest-themes .meta { color: var(--ink); }
+[data-theme="dark"] .quest-themes li .meta { font-size: .92em; }
+[data-theme="dark"] .quest-themes .box { color: var(--dim); }
+[data-theme="dark"] .quest-themes li { margin-bottom: .45rem; }

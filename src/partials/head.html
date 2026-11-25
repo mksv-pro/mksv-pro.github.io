@@ -1,0 +1,66 @@
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{title}}</title>
+  <meta name="description" content="{{description}}">
+  <meta name="author" content="Mike Silva">
+  <link rel="canonical" href="{{canonical}}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Mike Silva">
+  <meta property="og:title" content="{{title}}">
+  <meta property="og:description" content="{{description}}">
+  <meta property="og:url" content="{{canonical}}">
+  <meta property="og:locale" content="en_GB">
+  <meta property="og:image" content="{{og_image}}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Mike Silva, over a one-bit dithering of Flammarion's 1888 wood engraving of a pilgrim at the edge of the sky.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#12100c">
+  <link rel="alternate" type="application/atom+xml" title="{{name}}: news" href="{{root}}feed.xml">
+  <link rel="icon" href="{{root}}assets/img/monogram.svg" type="image/svg+xml">
+
+  <script>
+    // Before first paint, so the look never flashes. The castle (hours) is the site; the terminal
+    // is the same page framed in the castle's scrying engine (ui/05-engine.js: openEngine), or the whole
+    // page below 75rem or upright: on a computer always (the castle needs the room), on a touch screen for
+    // who chose it (localStorage entry=engine); a touch screen otherwise gets the castle as a
+    // cut-away tower, a floor per section (.climb). ?theme=dark previews the terminal unframed,
+    // ?touch=1 a touch screen.
+    // data-sky (day|night) picks the hours theme's palette: night once the sun is 3 deg below
+    // Paris's horizon (low-precision solar position, ~0.5 deg; castle/js/ui keeps it current).
+    (function () {
+      var t = null, s = null, r = document.documentElement;
+      try { s = sessionStorage.getItem('sky'); } catch (e) {}
+      var q = location.search; // ?theme= and ?sky= preview a look without storing it
+      s = (/[?&]sky=(\w+)/.exec(q) || [])[1] || s;
+      var framed = window.self !== window.top;
+      var e = null; try { e = localStorage.getItem('entry'); } catch (x) {}
+      var wide = matchMedia('(min-width: 75rem) and (min-aspect-ratio: 1/1)').matches; // (wide, and wider than high: an upright window gets the two columns)
+      var touch = matchMedia('(pointer: coarse)').matches || /[?&]touch=1/.test(q);
+      t = (/[?&]theme=(\w+)/.exec(q) || [])[1] === 'dark' || framed || (!wide && (!touch || e === 'engine')) ? 'dark' : 'hours';
+      if (framed) r.classList.add('framed');
+      try { if (localStorage.getItem('paper')) r.setAttribute('data-paper', ''); } catch (x) {} // the terminal on paper (cmdline: paper)
+      try { if (localStorage.getItem('glass') && !matchMedia('(prefers-reduced-motion: reduce)').matches) r.setAttribute('data-glass', ''); } catch (x) {} // the terminal behind glass (cmdline: glass)
+      if (t === 'hours' && !wide) r.classList.add('climb');
+      var k = Math.PI / 180, d = Date.now() / 864e5 - 10957.5;
+      var g = (357.529 + 0.98560028 * d) * k;
+      var L = (280.459 + 0.98564736 * d + 1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * k;
+      var dec = Math.asin(Math.sin(23.439 * k) * Math.sin(L));
+      var H = (280.46061837 + 360.98564736629 * d + 2.3522) * k - Math.atan2(Math.cos(23.439 * k) * Math.sin(L), Math.cos(L));
+      var alt = Math.asin(Math.sin(48.8566 * k) * Math.sin(dec) + Math.cos(48.8566 * k) * Math.cos(dec) * Math.cos(H)) / k;
+      var night = { night: true, dusk: true, dawn: false, noon: false }[s];
+      r.setAttribute('data-sky', (night === undefined ? alt < -3 : night) ? 'night' : 'day');
+      r.setAttribute('data-theme', t);
+      r.classList.add('js');
+      // the landscape as the last visit left it (ui/02-theme.js keepStill), until the castle draws over it
+      if (t === 'hours' && wide && !framed && window.caches) caches.open('mksv-still').then(function (c) { return c.match('still'); }).then(function (res) {
+        if (!res) return; var h = res.headers, geo = (h.get('x-geo') || '').split(',');
+        if (+geo[3] !== innerWidth || +geo[4] !== innerHeight || h.get('x-sky') !== r.getAttribute('data-sky') || Date.now() - h.get('x-at') > 108e5) return;
+        return res.blob().then(function (b) { r.style.setProperty('--still', 'url(' + URL.createObjectURL(b) + ')'); r.classList.add('still'); });
+      }).catch(function () {});
+    })();
+  </script>
+
+  <link rel="preload" href="{{root}}assets/fonts/DepartureMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="{{root}}assets/fonts/IBMPlexMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{{root}}castle/castle.css?v={{v:castle/castle.css}}">

@@ -1,0 +1,49 @@
+<!--page
+path: about/index.html
+tab: none
+title: Mike Silva · graduate student in physics
+description: Mike Silva, graduate student in physics in Paris: the M2 internship and PhD sought, experience, projects and degrees.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+{{> arrive}}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{title}}</title>
+  <meta name="description" content="{{description}}">
+  <meta name="author" content="{{name}}">
+  <link rel="canonical" href="{{canonical}}">
+  <meta property="og:type" content="profile">
+  <meta property="og:site_name" content="{{name}}">
+  <meta property="og:title" content="{{title}}">
+  <meta property="og:description" content="{{description}}">
+  <meta property="og:url" content="{{canonical}}">
+  <meta property="og:image" content="{{og_image}}">
+  <link rel="icon" href="{{root}}assets/img/monogram.svg" type="image/svg+xml">
+  <link rel="preload" href="{{root}}assets/fonts/Lato-Light.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{{root}}about/about.css?v={{v:about/about.css}}">
+</head>
+<body>
+  <header class="top">
+    <span class="brand">{{name}}</span>
+    <nav aria-label="Site">
+      <a class="home" href="{{home}}">&larr; Home</a>
+      <a href="{{root}}cv/Mike_Silva_CV.pdf?v={{v:cv/Mike_Silva_CV.pdf}}">CV</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </header>
+  <div class="banner">
+    <h1>{{name}}</h1>
+    <p>{{role}}</p>
+{{plain_logos}}
+  </div>
+  <main>
+{{plain_body}}
+  </main>
+  <footer class="foot" id="contact">
+    <p>email: <a href="mailto:{{email}}">{{email}}</a></p>
+    <p>CV: <a href="{{root}}cv/Mike_Silva_CV.pdf?v={{v:cv/Mike_Silva_CV.pdf}}">PDF</a> &middot; code: <a href="{{github}}">GitHub</a> &middot; <a href="{{linkedin}}">LinkedIn</a></p>
+  </footer>
+</body>
+</html>

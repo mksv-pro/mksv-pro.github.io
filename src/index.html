@@ -1,0 +1,58 @@
+<!--page
+path: index.html
+tab: none
+title: Mike Silva
+description: Mike Silva, graduate student in physics in Paris: complex systems, quantum information, stochastic processes and numerical simulation, from nuclear reactions to economies of interacting agents.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{title}}</title>
+  <meta name="description" content="{{description}}">
+  <meta name="author" content="{{name}}">
+  <link rel="canonical" href="{{canonical}}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{name}}">
+  <meta property="og:title" content="{{title}}">
+  <meta property="og:description" content="{{description}}">
+  <meta property="og:url" content="{{canonical}}">
+  <meta property="og:image" content="{{og_image}}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="theme-color" content="#0b0a08">
+  <link rel="icon" href="{{root}}assets/img/monogram.svg" type="image/svg+xml">
+  <link rel="alternate" type="application/atom+xml" title="{{name}}: news" href="{{root}}feed.xml">
+  <script>
+    // Links from before the castle had its own page (a section, a preview): they go on to it.
+    if (location.hash || /[?&](theme|touch|sky|weather|at|season|perf)\b/.test(location.search)) location.replace('castle/' + location.search + location.hash);
+  </script>
+  <link rel="preload" href="{{root}}assets/fonts/IBMPlexMono-Regular.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="{{root}}home/home.css?v={{v:home/home.css}}">
+
+  <script type="application/ld+json">
+{{jsonld}}
+  </script>
+</head>
+<body>
+  <div class="gate" id="gate">
+    <canvas aria-hidden="true"></canvas>
+    <main class="gate-box">
+      <h1 class="gate-ln gate-name" style="--i:0">{{name}}</h1>
+      <p class="gate-ln gate-role" style="--i:1">{{role}} <span class="gate-sep">&middot;</span> {{place}}</p>
+{{hub_seeking}}
+{{hub_links}}
+      <h2 class="gate-ln gate-h" style="--i:5"><span>the site, four ways</span></h2>
+      <ul class="gate-ways">
+        <li class="gate-ln" style="--i:6"><a href="{{root}}about/" data-key="a"><span class="gw-n">about</span><span class="gw-d">the essentials on one page: <em>start here</em></span><kbd>a</kbd></a></li>
+        <li class="gate-ln" style="--i:7"><a href="{{root}}castle/" data-key="c"><span class="gw-n">castle</span><span class="gw-d">the same, as a castle to walk through (or a terminal)</span><kbd>c</kbd></a></li>
+        <li class="gate-ln" style="--i:8"><a href="{{root}}shinbun/" data-key="n"><span class="gw-n">shinbun</span><span class="gw-d">the same, as the front page of a Japanese newspaper</span><kbd>n</kbd></a></li>
+        <li class="gate-ln" style="--i:9"><a href="{{root}}siege/" data-key="s"><span class="gw-n">siege</span><span class="gw-d">a game: five against five in a castle town</span><kbd>s</kbd></a></li>
+      </ul>
+      <p class="gate-ln gate-hint" style="--i:10">press a key, or <kbd>&uarr;</kbd><kbd>&darr;</kbd> then <kbd>Enter</kbd>, or click</p>
+    </main>
+    <p class="gate-bar"><span class="gb-l">[mksv]</span> <span class="gb-on" title="The random-field Ising model at zero temperature: a spin a square, each with its own frozen random field, all in a uniform field H swept slowly up and down. A spin flips when its neighbours and the fields tip it; its flip can tip theirs: an avalanche, each in its own colour (bright up, dark down). Move the pointer to set avalanches off.">behind: random-field Ising model, live</span><span class="gb-r"><span class="gb-moon"></span><span class="gb-time"></span></span></p>
+  </div>
+  <script src="{{root}}home/home.js?v={{v:home/home.js}}"></script>
+</body>
+</html>

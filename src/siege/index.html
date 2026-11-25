@@ -1,0 +1,41 @@
+<!--page
+path: siege/index.html
+tab: none
+title: Siege · Mike Silva
+description: Siege: five against five in a castle town, a powder keg to plant or defuse, bots, rounds and crowns. Drawn by the graphics card, in the browser.
+-->
+<!doctype html>
+<html lang="en">
+<head>
+{{> arrive}}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{title}}</title>
+  <meta name="description" content="{{description}}">
+  <meta name="author" content="{{name}}">
+  <link rel="canonical" href="{{canonical}}">
+  <meta name="theme-color" content="#000000">
+  <link rel="icon" href="{{root}}assets/img/monogram.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="{{root}}siege/siege.css?v={{v:siege/siege.css}}">
+</head>
+<body>
+  <p class="loading" aria-live="polite">Siege is loading&hellip;</p>
+  <noscript><p class="loading">Siege needs JavaScript and a graphics card (WebGL2).</p></noscript>
+
+  <!-- the castle's colours and textures, then the game: its map, arms, models, bots, drawing, engine -->
+  <script src="{{root}}castle/js/hours/palette.js?v={{v:castle/js/hours/palette.js}}"></script>
+  <script src="{{root}}castle/js/hours/textures.js?v={{v:castle/js/hours/textures.js}}"></script>
+  <script src="{{root}}siege/js/map.js?v={{v:siege/js/map.js}}"></script>
+  <script src="{{root}}siege/js/weapons.js?v={{v:siege/js/weapons.js}}"></script>
+  <script src="{{root}}siege/js/models.js?v={{v:siege/js/models.js}}"></script>
+  <script src="{{root}}siege/js/bots.js?v={{v:siege/js/bots.js}}"></script>
+  <script src="{{root}}siege/js/glu.js?v={{v:siege/js/glu.js}}"></script>
+  <script src="{{root}}siege/js/render.js?v={{v:siege/js/render.js}}"></script>
+  <script src="{{root}}siege/js/siege.js?v={{v:siege/js/siege.js}}"></script>
+  <script>
+    // The game, at once; its menu's "leave" goes back to the front page.
+    document.querySelector('.loading').remove();
+    window.Siege.start({ onLeave: () => { location.href = '{{home}}'; } });
+  </script>
+</body>
+</html>

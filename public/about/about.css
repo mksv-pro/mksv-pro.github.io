@@ -1,0 +1,75 @@
+/* The plain page (about/), on the plan of a researcher's basic site: a white bar, a banner of diffuse
+   colour with the name centred and the places worked at as a row of white logos, two columns (what is
+   sought and the interests; the text, justified), a footer band with the contacts. */
+@font-face { font-family: "Lato"; src: url("../assets/fonts/Lato-Light.woff2") format("woff2"); font-weight: 300; font-display: swap; }
+@font-face { font-family: "Lato"; src: url("../assets/fonts/Lato-Regular.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Lato"; src: url("../assets/fonts/Lato-Bold.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+:root { --slate: #2c3a55; --link: #2a4f8f; --ink: #222; --dim: #5f6368; --rule: #e4e6ea; --tint: #f2f4f7;
+  --lato: Lato, Arial, sans-serif; color-scheme: light; }
+* { box-sizing: border-box; }
+html { background: #fff; color: var(--ink); }
+body { margin: 0; font: 14px/1.6 var(--lato); display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; } /* (the footer at the window's foot) */
+p, ul, h1, h2, h3 { margin: 0; }
+ul { padding: 0; list-style: none; }
+a { color: var(--link); text-underline-offset: .12em; }
+:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+
+/* the bar */
+.top { display: flex; align-items: center; justify-content: space-between; height: 3rem; padding: 0 1.5rem;
+  box-shadow: 0 1px 3px rgb(0 0 0 / .1); }
+.brand { font-size: 1.15rem; font-weight: 300; color: #3c4043; }
+.top nav { display: flex; gap: 1.4rem; font-size: .95rem; font-weight: 300; }
+.top nav a { color: var(--dim); text-decoration: none; }
+.top nav a:hover { color: #202124; }
+.top .home { font-weight: 700; color: #202124; }
+
+/* the banner */
+.banner { display: grid; place-content: center; justify-items: center; gap: .2rem; height: 15rem; padding: 0 1rem; text-align: center; color: #fff;
+  background:
+    radial-gradient(45% 90% at 12% 15%, rgb(96 128 190 / .85), transparent 70%),
+    radial-gradient(40% 100% at 88% 85%, rgb(118 98 176 / .7), transparent 70%),
+    radial-gradient(35% 80% at 62% 0%, rgb(64 140 160 / .55), transparent 70%),
+    radial-gradient(30% 70% at 35% 100%, rgb(70 92 150 / .6), transparent 70%),
+    var(--slate); }
+.logos { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: .8rem 2.2rem; margin-top: 1.4rem; }
+.logos img { display: block; height: 1.6rem; max-width: 12rem; object-fit: contain; filter: brightness(0) invert(1); opacity: .8; }
+.banner h1 { font-size: 2.6rem; font-weight: 300; line-height: 1.1; letter-spacing: .02em; }
+.banner > p { font-size: 1.2rem; }
+
+/* two columns, as the photo and the text */
+main { flex: 1 0 auto; align-content: start; width: 100%; display: grid; grid-template-columns: 17rem minmax(0, 1fr); gap: 2.5rem; max-width: 60rem; margin: 0 auto; padding: 1.8rem 1.25rem 2rem; }
+h2 { font-size: 1.05rem; font-weight: 400; color: #202124; margin-bottom: .45rem; }
+
+/* left: what is sought, the interests */
+aside h2 + * { margin-bottom: 1.1rem; }
+aside .posts { margin-bottom: .2rem; }
+.in { margin-bottom: 1.1rem; color: var(--dim); }
+.posts li { display: flex; justify-content: space-between; gap: .6rem; }
+.posts span { color: var(--dim); white-space: nowrap; }
+.interests { padding-left: 1.2rem; list-style: disc; }
+
+/* right: the text, justified */
+.text p { text-align: justify; hyphens: auto; }
+.text section { margin-top: 1.3rem; }
+.entries li + li { margin-top: .55rem; }
+.acts { white-space: nowrap; }
+.courses { margin-top: .6rem; }
+.courses:target { display: block; } /* (without the script: the link still opens it) */
+.courses p { margin-bottom: .15rem; text-align: left; }
+.courses ul { padding-left: 1.2rem; list-style: disc; }
+.courses b { font-weight: 700; }
+
+/* the footer */
+.foot { padding: 1.3rem max(1.25rem, calc(50vw - 28.75rem)); background: var(--slate); color: #fff; font-size: .95rem; }
+.foot p + p { margin-top: .35rem; }
+.foot a { color: #fff; }
+
+@media (max-width: 46rem) {
+  .brand { display: none; }
+  .banner { height: auto; padding: 2rem 1rem 1.6rem; }
+  .logos { gap: .7rem 1.4rem; margin-top: 1rem; }
+  .logos img { height: 1.2rem; }
+  .banner h1 { font-size: 2.1rem; }
+  main { grid-template-columns: 1fr; gap: 1.2rem; padding-top: 1.3rem; }
+  .text p { text-align: left; }
+}

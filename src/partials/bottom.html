@@ -1,0 +1,53 @@
+    </div>
+  </div>
+
+  <form class="cmdline" id="cmdline" hidden autocomplete="off">
+    <p class="cmd-out" id="cmd-out" aria-live="polite"></p>
+    <p class="cmd-row">
+      <label for="cmd-in">:</label>
+      <input id="cmd-in" name="cmd" type="text" spellcheck="false" autocapitalize="off"
+             enterkeyhint="go" aria-describedby="cmd-hint">
+      <span class="cmd-hint" id="cmd-hint">help &middot; Esc to close</span>
+    </p>
+  </form>
+
+  <footer class="status" aria-label="Status line">
+    <p class="st-left">
+      <a class="st-home" href="{{home}}" title="Back to the front page">[home]</a>
+      <span class="st-name">{{name}}</span>
+      <button class="dlvl" id="descend" type="button" title="Current degree. Click to walk the site in first person (&gt;)"><i class="lbl" data-castle="Rank">Dlvl</i>:<b id="st-dlvl">MSc</b></button>
+      <span title="A joke: the bent of the research"><i class="lbl" data-castle="Humour">Align</i>:<b id="st-align">stochastic</b></span>
+{{stats}}
+      <button hidden id="st-explored" type="button" title="Sections visited so far: click for the plan"><i class="lbl" data-castle="Rooms">Explored</i>:<b>0/{{n_rooms}}</b></button>
+      <span hidden id="st-curios" title="Curiosities of the landscape found (click what you see)"><i class="lbl" data-castle="Marvels">Curios</i>:<b>0/12</b></span>
+    </p>
+    <p class="st-right" aria-hidden="true">
+      <span id="st-hour"></span>
+      <span id="st-moon"></span>
+    </p>
+    <button class="cmd-toggle" id="cmd-toggle" type="button" aria-controls="cmdline" aria-expanded="false"
+            title="Command line (:)"><span class="lbl" data-castle="[orders]">[:]</span><span class="sr-only">Command line</span></button>
+    <button class="theme-toggle" id="theme-toggle" type="button">
+      <span class="sr-only">Switch theme to </span><span id="theme-next">[hours]</span>
+    </button>
+    <button class="keys-toggle sound-toggle" id="sound-toggle" type="button" aria-pressed="false"
+            title="Ambient sound of the landscape (castle theme)">sound:<b>off</b></button>
+    <button class="keys-toggle" id="keys-toggle" type="button" aria-pressed="true"
+            title="Single-key shortcuts (1-{{n_tabs}}, :, ?)">keys:<b>on</b></button>
+  </footer>
+
+  <script type="application/json" id="site-data">{{site_json}}</script>
+  <script src="{{root}}castle/js/sky.js?v={{v:castle/js/sky.js}}"></script>
+  <!-- the page's scripts, in this order: one global scope (README, "castle/js/ui") -->
+  <script src="{{root}}castle/js/ui/01-core.js?v={{v:castle/js/ui/01-core.js}}" data-dungeon="{{root}}castle/js/dungeon.js?v={{v:castle/js/dungeon.js}}" data-hours="{{root}}castle/js/hours/hours.js?v={{v:castle/js/hours/hours.js}}" data-arms="{{root}}castle/js/arms.js?v={{v:castle/js/arms.js}}" data-palette="{{root}}castle/js/hours/palette.js?v={{v:castle/js/hours/palette.js}}" data-textures="{{root}}castle/js/hours/textures.js?v={{v:castle/js/hours/textures.js}}" data-art="{{root}}castle/js/hours/art.js?v={{v:castle/js/hours/art.js}}" data-physics="{{root}}castle/js/hours/physics.js?v={{v:castle/js/hours/physics.js}}" data-blue="{{root}}castle/js/hours/bluenoise.js?v={{v:castle/js/hours/bluenoise.js}}" data-glcomp="{{root}}castle/js/hours/glcomp.js?v={{v:castle/js/hours/glcomp.js}}" data-sound="{{root}}castle/js/sound.js?v={{v:castle/js/sound.js}}" data-perf="{{root}}castle/js/perf.js?v={{v:castle/js/perf.js}}"></script>
+  <script src="{{root}}castle/js/ui/02-theme.js?v={{v:castle/js/ui/02-theme.js}}"></script>
+  <script src="{{root}}castle/js/ui/03-rooms.js?v={{v:castle/js/ui/03-rooms.js}}"></script>
+  <script src="{{root}}castle/js/ui/04-things.js?v={{v:castle/js/ui/04-things.js}}"></script>
+  <script src="{{root}}castle/js/ui/05-engine.js?v={{v:castle/js/ui/05-engine.js}}"></script>
+  <script src="{{root}}castle/js/ui/06-cards.js?v={{v:castle/js/ui/06-cards.js}}"></script>
+  <script src="{{root}}castle/js/ui/07-dialogs.js?v={{v:castle/js/ui/07-dialogs.js}}"></script>
+  <script src="{{root}}castle/js/ui/08-almanac.js?v={{v:castle/js/ui/08-almanac.js}}"></script>
+  <script src="{{root}}castle/js/ui/09-cmdline.js?v={{v:castle/js/ui/09-cmdline.js}}"></script>
+  <script src="{{root}}castle/js/ui/10-play.js?v={{v:castle/js/ui/10-play.js}}"></script>
+  <script src="{{root}}castle/js/ui/11-hands.js?v={{v:castle/js/ui/11-hands.js}}"></script>
+  <script src="{{root}}castle/js/armillary.js?v={{v:castle/js/armillary.js}}"></script>

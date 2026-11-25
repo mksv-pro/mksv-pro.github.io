@@ -1,0 +1,72 @@
+/* The front page (index.html): who, what is sought, the ways in; behind, the random-field Ising
+   model's avalanches (home/home.js). Readable without the script: the canvas only adds them. */
+@font-face { font-family: "Departure Mono"; src: url("../assets/fonts/DepartureMono-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("../assets/fonts/IBMPlexMono-Regular.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+:root {
+  --ui: "Departure Mono", ui-monospace, monospace;
+  --text: "IBM Plex Mono", ui-monospace, monospace;
+  --g-bg: #0b0a08; --g-ink: #cfc8b8; --g-dim: #9a9384; --g-faint: #4a463e; --g-acc: #e0a23a;
+  color-scheme: dark;
+}
+html, body { margin: 0; background: var(--g-bg); }
+.gate { position: relative; min-height: 100vh; min-height: 100dvh; display: flex; align-items: center; padding: 2rem 0 3.2rem;
+  box-sizing: border-box; color: var(--g-ink); font: 400 .95rem/1.65 var(--text); }
+.gate canvas { position: fixed; inset: 0; display: block; }
+.gate-box { position: relative; box-sizing: border-box; width: min(50rem, calc(100vw - 2rem)); margin-left: max(1rem, 8vw); padding: 1.8rem 2rem 1.4rem;
+  background: rgb(11 10 8 / .93); box-shadow: 0 0 0 1px var(--g-faint), 0 0 4rem 2rem rgb(11 10 8 / .7); transition: opacity .25s ease; }
+.gate-box p, .gate-box h1, .gate-box h2, .gate-ways { margin: 0; }
+.gate a { color: inherit; }
+
+/* who */
+.gate-name { font: 400 clamp(2rem, 5vw, 3rem)/1.05 var(--ui); color: #fff; letter-spacing: .02em; }
+.gate-role { margin-top: .5rem !important; color: var(--g-acc); }
+.gate-sep { color: var(--g-faint); }
+.hub-seek { margin-top: 1rem !important; }
+.hub-seek a { display: inline-block; padding: .35rem .8rem .35rem .7rem; text-decoration: none; border-left: 2px solid var(--g-acc); background: rgb(224 162 58 / .08); }
+.hub-seek a:hover, .hub-seek a:focus-visible { background: rgb(224 162 58 / .16); outline: none; }
+.hub-tag { font: .8rem var(--ui); color: var(--g-acc); text-transform: uppercase; letter-spacing: .08em; margin-right: .5ch; }
+.hub-dim { color: var(--g-dim); }
+.hub-links { display: flex; flex-wrap: wrap; gap: .2rem 2.4ch; margin: .9rem 0 0 !important; padding: 0; list-style: none; font-size: .85rem; }
+.hub-links a { color: var(--g-acc); text-underline-offset: .2em; }
+.hub-links a:hover { color: #fff; }
+.hub-links .meta { color: var(--g-dim); font-size: .72rem; }
+
+/* the ways in */
+.gate-h { display: flex; align-items: center; gap: 1ch; margin: 1.6rem 0 .4rem !important; font: 400 .75rem var(--ui); color: var(--g-dim); text-transform: uppercase; letter-spacing: .1em; }
+.gate-h::after { content: ""; flex: 1; height: 1px; background: var(--g-faint); }
+.gate-ways { list-style: none; padding: 0; }
+.gate-ways a {
+  display: grid; grid-template-columns: 8ch minmax(0, 1fr) auto; gap: 0 1.5ch; align-items: baseline;
+  padding: .2rem .6ch .2rem 2ch; text-decoration: none; position: relative; transition: background .15s;
+}
+.gate-ways a::before { content: ""; position: absolute; left: .4ch; top: 0; bottom: 0; width: 2px; background: transparent; }
+.gw-n { color: #fff; }
+.gw-d { color: var(--g-dim); font-size: .85rem; }
+.gw-d em { font-style: normal; color: var(--g-acc); }
+.gate kbd { font: .75rem var(--ui); color: var(--g-dim); border: 1px solid var(--g-faint); padding: 0 .45ch; border-radius: 2px; }
+.gate-ways a:is(:hover, :focus-visible, .on) { background: rgb(224 162 58 / .1); outline: none; }
+.gate-ways a:is(:hover, :focus-visible, .on)::before { background: var(--g-acc); }
+.gate-ways a:is(:hover, :focus-visible, .on) .gw-n { color: var(--g-acc); }
+.gate-ways a:is(:hover, :focus-visible, .on) kbd { color: var(--g-ink); border-color: var(--g-dim); }
+.gate-hint { margin-top: .9rem !important; font-size: .75rem; color: var(--g-dim); }
+.gate-hint kbd { margin: 0 .15ch; }
+
+.gate-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1; display: flex; gap: 1ch; margin: 0; padding: 0 1ch;
+  font: .8rem/1.6rem var(--ui); background: #1a1712; color: var(--g-dim); border-top: 1px solid #2a261e; white-space: nowrap; overflow: hidden; }
+.gate-bar .gb-l { color: var(--g-acc); }
+.gate-bar .gb-on { cursor: help; text-overflow: ellipsis; overflow: hidden; }
+.gate-bar .gb-r { margin-left: auto; display: flex; gap: 2ch; }
+
+/* arriving: the lines come in, 35 ms apart (--i, in the page); leaving: the box goes once its letters are noise */
+.gate-ln { animation: gate-in .45s cubic-bezier(.2, .7, .2, 1) both; animation-delay: calc(var(--i, 0) * 35ms); }
+@keyframes gate-in { from { opacity: 0; transform: translateY(.35rem); } }
+.gate.leaving .gate-box { opacity: 0; transition-delay: .3s; }
+
+@media (max-width: 52rem) { .gate-box { margin: 0 auto; } }
+@media (max-width: 40rem) {
+  .gate { align-items: flex-start; padding-top: 1rem; }
+  .gate-box { padding: 1.2rem 1rem 1rem; font-size: .88rem; }
+  .gate-ways a { grid-template-columns: 1fr; padding-top: .35rem; padding-bottom: .35rem; }
+  .gate-ways kbd, .gate-hint, .gate-bar .gb-r { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .gate-ln { animation: none; } .gate-box { transition: none; } }

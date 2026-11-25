@@ -1,0 +1,539 @@
+#:schema ./site.schema.json
+# The site's data: one source for every fact the pages, the scripts and the feed repeat.
+# Text fields are HTML (UTF-8, no entities needed) and may use {{tokens}}: {{url:key}},
+# {{root}}, {{email}}, {{github}}. Dates: "YYYY" or "YYYY-MM". Lists are newest first.
+# Rebuild after any change:  python3 tools/build/build.py && python3 tools/build/check.py
+
+# Tab order (the number keys follow it). An empty section still shows, with a line saying so.
+tabs = ["about", "experience", "work", "publications", "talks", "teaching", "news", "contact"]
+# what each one holds, said plainly (under its name in the castle's menu, for who has not the lore)
+tab_hints = { about = "who I am, CV", experience = "positions held", work = "projects and code", publications = "papers and reports", talks = "talks given", teaching = "courses taught", news = "latest news", contact = "email and links" }
+
+talks = []
+# { title = "…", date = "YYYY-MM", venue = "Event, City", thumb = "assets/img/talks/….png" (the first slide, optional),
+#   actions = [{ label = "slides", href = "…" }] }
+teaching = []
+# { title = "Course name (TD)", date = "YYYY", venue = "University", level = "L2", hours = "24 h",
+#   actions = [{ label = "materials", href = "…" }] }
+
+# what is under way, said in two lines and dated: at the head of News (the raven's newest letter)
+[now]
+date = "2026-10"
+text = """Preparing exams, and my own projects on the side."""
+
+# what is sought (an internship, a PhD): one source for the header's [seeking] line, the quest at the head of About,
+# the status band, `quest` on the command line, the sentence after `now` in News and the JSON-LD.
+# Remove the table once one is found: all of these go with it.
+[internship]
+what = "an M2 research internship, then a PhD"
+domain = "classical and quantum complex systems"   # (said in a sentence; the fields below group the topics)
+short = "M2 + PhD"   # (the status band)
+question = """How can new learning algorithms and computational architectures model, simulate and
+help understand complex interacting systems?"""
+methods = ["deep learning", "generative models", "reinforcement learning", "quantum algorithms",
+  "numerical methods"]
+
+# the posts sought, in order; each open to every field below
+[[internship.posts]]
+kind = "M2 research internship"
+from = "2027-03"
+
+[[internship.posts]]
+kind = "PhD"
+from = "2027-10"
+
+[[internship.fields]]
+field = "complex systems"
+themes = [
+  ["Machine learning for statistical physics", "deep generative models to sample, simulate and coarse-grain many-body systems; phase transitions"],
+  ["Heterogeneous-agent systems", "agent-based and mean-field models (MFG, HANK, Krusell-Smith) learned and simulated with deep learning and multi-agent RL"],
+  ["Generative learning of complex dynamics", "diffusion, flow matching and neural operators as learned simulators; Fokker-Planck solvers, uncertainty quantification"],
+  ["Out-of-equilibrium systems", "active matter, stochastic thermodynamics, large deviations"],
+]
+
+[[internship.fields]]
+field = "quantum information"
+themes = [
+  ["Machine learning for quantum many-body physics", "neural-network quantum states, neural VMC, tensor networks; condensed matter and nuclear structure"],
+  ["Hybrid classical-quantum algorithms", "VQE, Hamiltonian simulation, quantum dynamics and chaos"],
+  ["Algorithm-hardware co-design", "quantum neural networks, quantum reservoir computing, pulse-level control; neuromorphic and photonic computing"],
+]
+
+[site]
+url = "https://mksv-pro.github.io/"
+name = "Mike Silva"
+role = "Graduate student in physics"
+place = "Paris"
+email = "pro.mikesilva@gmail.com"
+github = "https://github.com/mksv-pro"
+linkedin = "https://www.linkedin.com/in/mkesilva/"
+
+[urls]
+report = "https://github.com/mksv-pro/Mike-M1-Internship-IJCLab-2026/blob/main/docs/memoire_M1.pdf"
+report_code = "https://github.com/mksv-pro/Mike-M1-Internship-IJCLab-2026"
+
+# ---- the person (the About sheet and the JSON-LD) -------------------------------------
+
+[person]
+knows_about = ["Computational physics", "Nuclear reactions", "Reduced-order models",
+  "Complex systems", "Stochastic processes", "Mean-field games"]
+# research interests, in order: the CV's line and the plain page's list
+drawn_to = ["Computational nuclear physics", "Quantum many-body dynamics", "Machine learning for physics",
+  "Statistical physics", "Mean-field games &amp; agent-based models", "Macroeconomics", "Algorithm–hardware co-design"]
+alumni_of = ["Université Paris Cité", "Sorbonne Université", "Université Paris 1 Panthéon-Sorbonne"]
+languages = [["French", "native"], ["English", "fluent"], ["Portuguese", "basic"], ["German", "basic"]]
+
+# ---- education, newest first: the CV's list; `now` entries (with their `arms`) are the About
+# sheet's "Studying" and the JSON-LD affiliations. Text fields are HTML, as elsewhere.
+# `href`: the programme's official page, on the whole degree; a degree with more than the programme's
+# name (a year, a grade, two programmes) links the name inline instead.
+
+[[education]]
+school = "Université Paris-Saclay"
+logo = "saclay.png"
+city = "Orsay, France"
+degree = "MSc Physics of Complex Systems"
+href = "https://www.universite-paris-saclay.fr/en/education/masters-degree/physique-fondamentale-et-applications/m2-complex-systems"
+dates = "2026–2027 (expected)"
+coursework = "statistical field theory, stochastic processes, disordered systems, nonequilibrium and active systems, dynamics of quantum systems, random matrix theory, machine learning."
+now = true
+arms = "saclay"
+about = "MSc Physics of Complex Systems, Paris-Saclay"
+
+[[education]]
+school = "Sorbonne Université"
+logo = "sorbonne.png"
+city = "Paris, France"
+degree = "MSc Quantum Information"
+href = "https://sciences.sorbonne-universite.fr/en/study/degree-seeking/masters/master-fundamental-physics-and-applications/m2-quantum-information-iq"
+dates = "2026–2027 (expected)"
+coursework = "quantum information theory, photonic quantum computing, quantum optics, atomic physics for quantum information, advanced quantum algorithms, quantum physics out of equilibrium (ICFP, ENS)."
+now = true
+arms = "sorbonne"
+about = "MSc Quantum Information, Sorbonne Université"
+
+[[education]]
+school = "Université Paris Dauphine-PSL"
+logo = "dauphine.png"
+city = "Paris, France"
+degree = "MSc Economics &amp; Finance"
+href = "https://dauphine.psl.eu/formations/masters/economie-finance"
+dates = "2026–2027 (expected)"
+cv_degree = "<a href=\"https://dauphine.psl.eu/formations/masters/economie-finance\">MSc Economics &amp; Finance</a>; <a href=\"https://dauphine.psl.eu/formations/licences/economie-appliquee/l3-economie-et-ingenierie-financieres\">BSc Economics &amp; Finance</a>, third year (L3, 2025–2026)"
+cv_dates = "2025–2027 (expected)"
+coursework = "derivatives, portfolio management, time-series econometrics, macroeconomics."
+now = true
+arms = "dauphine"
+about = "MSc Economics &amp; Finance, Paris Dauphine-PSL"
+
+[[education]]
+school = "Université Paris Dauphine-PSL"
+logo = "dauphine.png"
+city = "Paris, France"
+degree = "BSc Economics &amp; Finance, third year (L3)"
+href = "https://dauphine.psl.eu/formations/licences/economie-appliquee/l3-economie-et-ingenierie-financieres"
+dates = "2025–2026"
+cv_skip = true
+coursework = "financial products and markets, portfolio management, computing for finance, econometrics, insurance."
+
+[[education]]
+school = "Université Paris Cité"
+logo = "pariscite.png"
+city = "Paris, France"
+degree = "<a href=\"https://odf.u-paris.fr/fr/offre-de-formation/master-XB/sciences-technologies-sante-STS/physique-fondamentale-et-applications-K2VO0C50/master-physique-fondamentale-et-applications-m1-parcours-physique-fondamentale-JS1X77U1.html\">MSc Fundamental Physics</a>, first year, <i>mention Bien</i>"
+dates = "2025–2026"
+coursework = "statistical, high-energy, computational and nonlinear physics, quantum information, condensed matter physics."
+
+[[education]]
+school = "Sorbonne Université"
+logo = "sorbonne.png"
+city = "Paris, France"
+degree = "<a href=\"https://sciences.sorbonne-universite.fr/en/Masters/masters-degree-mathematics-and-applications\">MSc Mathematics</a>, first year; <a href=\"https://sciences.sorbonne-universite.fr/en/node/3647\">BSc Physics and Mathematics (double major)</a>"
+dates = "2021–2025"
+coursework = "probability, stochastic control, jump processes, functional analysis, PDEs, numerical methods, statistical physics."
+
+[[education]]
+school = "Université Paris 1 Panthéon-Sorbonne"
+logo = "paris1.png"
+city = "Paris, France"
+degree = "BA Economics and Political Science"
+href = "https://formations.pantheonsorbonne.fr/fr/catalogue-des-formations/licence-L/licence-economie-KBTDQ2ZO/double-licence-economie-science-politique-KBTDWNWV.html"
+dates = "2022–2025"
+coursework = "econometric methods, macro- and microeconomics, monetary economics, political economy."
+
+# ---- the CV's own lines (tools/build/cv.py renders the PDF from this file; the rest it takes from
+# education, experience, work and person)
+[cv]
+keywords = "computational physics, complex systems, nuclear reactions, reduced-order models, stochastic processes"
+skills = [
+  ["Programming", "Python (NumPy, SciPy, Numba, JAX, PyTorch), R; Git, pytest, CI, LaTeX"],
+  ["Numerics &amp; ML", "PDE solvers, reduced-order models, Monte Carlo, neural networks, reinforcement learning"],
+]
+# referees, one line each: [name(s), where, in what capacity]
+references = [
+  ["Chloé Hebborn and Patrick McGlynn", "FRIB, Michigan State University", "M1 internship supervisors"],
+]
+
+
+# ---- heraldry (hours theme) --------------------------------------------------------------
+# Arms drawn after each institution's emblem (tools/data/arms.txt), not their logos. `own`: the
+# knight's shield. `tapestry`: one wall hanging per institution, in the order first met
+# ([arms, name, what was done there]); the labs hang in the observatory, the schools in the hall.
+[heraldry]
+own = "silva"
+tapestry = [
+  ["sorbonne", "Sorbonne Université", "BSc Physics & Mathematics; MSc Quantum Information"],
+  ["paris1", "Université Paris 1 Panthéon-Sorbonne", "BA Economics & Political Science"],
+  ["sciencespo", "Sciences Po", "Research assistant"],
+  ["ceremade", "CEREMADE", "Visiting research student"],
+  ["pariscite", "Université Paris Cité", "MSc Fundamental Physics"],
+  ["dauphine", "Université Paris Dauphine-PSL", "BSc Economics & Finance (L3); MSc Economics & Finance"],
+  ["ijclab", "IJCLab", "Research intern"],
+  ["saclay", "Université Paris-Saclay", "MSc Physics of Complex Systems"],
+]
+
+# ---- the world: a grid of rooms (column c, row r) and the doors between them ----------
+# Exits are derived from it: a door to the room above is "north", and so on. Map label:
+# `label`; exit text: `exit`, else `label`. Each room is a section of the index.
+
+[world]
+links = [
+  ["experience", "publications"], ["experience", "about"], ["publications", "work"],
+  ["about", "work"], ["about", "contact"], ["work", "news"], ["contact", "news"],
+  ["contact", "talks"], ["news", "teaching"], ["talks", "teaching"],
+]
+
+[world.rooms.experience]
+c = 0
+r = 0
+name = "Experience"
+label = "experience"
+
+[world.rooms.publications]
+c = 1
+r = 0
+name = "Publications"
+label = "publications"
+
+
+[world.rooms.about]
+c = 0
+r = 1
+name = "About"
+label = "about"
+img = "flammarion-dark.png"
+
+[world.rooms.work]
+c = 1
+r = 1
+name = "Work"
+label = "work"
+
+
+[world.rooms.contact]
+c = 0
+r = 2
+name = "Contact"
+label = "contact"
+
+[world.rooms.news]
+c = 1
+r = 2
+name = "News"
+label = "news"
+
+
+[world.rooms.talks]
+c = 0
+r = 3
+name = "Talks"
+label = "talks"
+
+[world.rooms.teaching]
+c = 1
+r = 3
+name = "Teaching"
+label = "teaching"
+
+# `logo` (here and in education): an institution's logo under assets/img/logos/, in the plain page's banner
+# (about/), each once, the experience's first.
+# ---- experience (the quest log): every position, research or not, newest first; `kind` tags it
+# (research, industry, teaching, ...): it shows as a label and picks its look in the castle. Say what
+# was done in a line: the work it led to has the details (link to it), never a second copy of them.
+
+[[experience]]
+org = "IJCLab"
+cv_org = "IJCLab – Irène Joliot-Curie Laboratory (CNRS / Université Paris Cité)"
+city = "Orsay, France"
+cv_role = "Research Intern, supervised by Chloé Hebborn and Patrick McGlynn"
+cv_text = """Emulation of nuclear reaction models for uncertainty quantification on optical potentials.
+Report: <i>Computational Emulation of Nuclear Dynamics</i>, graded 18/20
+(<a href="{{url:report_code}}">report and code</a>)."""
+cv_bullets = [
+  "Developed a coupled-channel scattering solver based on the Direct Boundary Matching Method (DBMM), validated against an independent R-matrix calculation",
+  "Built two emulators (reduced basis method; learning reduced-order model, first coupled-channel extension) matching the solver within 5×10<sup>−3</sup> (median) on four systems with up to 8 coupled channels and 10 parameters",
+  "Benchmarked both against the solver: speed-ups grow with system size, the learning model running 1.3–1.9× faster than the reduced basis method",
+]
+arms = "ijclab"
+logo = "cnrs.png"
+kind = "research"
+from = "2026-06"
+to = "2026-07"
+role = "Research intern · with Chloé Hebborn &amp; Patrick McGlynn"
+text = """Emulators of nuclear reaction models, for uncertainty quantification on optical potentials.
+<a href="#nuclear-emulators">The work →</a>"""
+
+[[experience]]
+org = "CEREMADE"
+cv_org = "CEREMADE, Université Paris Dauphine-PSL"
+city = "Paris, France"
+cv_role = "Visiting Research Student, supervised by Pierre Cardaliaguet"
+cv_text = "Introduction to mean-field games applied to monetary shocks in a general-equilibrium economy with sticky prices."
+arms = "ceremade"
+logo = "dauphine.png"
+kind = "research"
+from = "2024-09"
+to = "2025-01"
+role = "Visiting research student · with Pierre Cardaliaguet"
+text = """Mean-field games applied to economics: how monetary shocks propagate in a
+general-equilibrium economy with sticky prices, through coupled
+Hamilton–Jacobi–Bellman and Fokker–Planck equations."""
+
+[[experience]]
+org = "Sciences Po Paris"
+cv_org = "Sciences Po"
+city = "Paris, France"
+cv_role = "Research Assistant, supervised by Julia Cagé"
+cv_text = "Research assistant for <a href=\"https://www.econstor.eu/bitstream/10419/316855/1/cesifo1_wp11741.pdf\"><i>Hosting Media Bias</i></a> (Cagé et al.): built part of its dataset of French broadcasts."
+arms = "sciencespo"
+logo = "sciencespo.png"
+kind = "research"
+from = "2023-06"
+to = "2023-08"
+role = "Research assistant · with Julia Cagé"
+text = """For <i>Hosting Media Bias: Evidence from the Universe of French Broadcasts, 2002-2020</i>
+(Cagé, Hengel, Hervé &amp; Urvoy), where I am thanked as a research assistant: built part of the
+dataset of French radio and television shows, hosts and guests, used to measure who slants the news."""
+actions = [{ label = "paper", href = "https://www.econstor.eu/bitstream/10419/316855/1/cesifo1_wp11741.pdf" }]
+
+# ---- work (cards in Work: an illumination `img`, a short text, links out): each piece of work once,
+# its outputs as actions; `at`: the experience it was done in (its arms id), if any ---------
+
+[[work]]
+id = "nuclear-emulators"
+img = "illum-nuclear.png"
+at = "ijclab"
+title = "Computational emulation of nuclear dynamics"
+date = "2026"
+role = "M1 internship"
+alt = "Illumination of a plane wave scattering off a nucleus"
+text = """A coupled-channel scattering solver and two emulators (RBM, LROM) that reproduce it
+within 0.5&nbsp;% at the median, at a fraction of its cost, to make uncertainty quantification on
+optical potentials affordable."""
+actions = [
+  { label = 'report <span class="meta">PDF</span>', href = "{{url:report}}" },
+  { label = "code", href = "{{url:report_code}}" },
+]
+
+[[work]]
+id = "urban-morphogenesis"
+img = "illum-dla.png"
+cv_title = "Urban morphogenesis: diffusion-limited aggregation and Schelling's model"
+city = "Paris, France"
+cv_role = "Université Paris Cité, supervised by Raphael Raynaud"
+cv_text = "Agent-based model coupling Schelling segregation with diffusion-limited aggregation: emergent morphologies and fractal dimension; extension with reinforcement learning under way."
+title = "Urban morphogenesis"
+date = "2026-01"
+role = "With Raphael Raynaud · Université Paris Cité"
+alt = "Illumination of a diffusion-limited aggregation cluster in gold on green"
+text = """An agent-based city grown from Schelling segregation and diffusion-limited
+aggregation, and the fractal dimension of what it builds."""
+
+[[work]]
+id = "n-body"
+img = "illum-nbody.png"
+cv_title = "Self-gravitating N-body systems"
+city = "Paris, France"
+cv_role = "Sorbonne Université, supervised by Lionel Foret"
+cv_text = "Direct-integration simulation of gravitational N-body dynamics and long-range collective effects."
+title = "Self-gravitating N-body systems"
+date = "2024-02"
+role = "With Lionel Foret · Sorbonne Université"
+alt = "Illumination of three bodies on the figure-eight orbit among stars"
+text = """Direct-integration simulation of gravitating bodies and of the collective behaviour
+that long-range forces produce."""
+
+# ---- publications & reports (`bib`: a file under assets/bib/, copied by the [bib] link) -
+
+[[publications]]
+title = "Computational Emulation of Nuclear Dynamics"
+href = "{{url:report}}"
+authors = "<b>M. Silva</b> (supervised by C. Hebborn and P. McGlynn)"
+venue = "M1 research internship report, IJCLab &amp; Université Paris Cité (2026)"
+work = "nuclear-emulators"
+bib = "silva2026emulation.bib"
+actions = [
+  { label = "pdf", href = "{{url:report}}" },
+  { label = "code", href = "{{url:report_code}}" },
+]
+
+# ---- coursework: every course followed, by year and school, newest first (no grades); a course is a
+# title, or { title, by } when its teachers are known; `on_about = true` also lists them on the plain page (unused for now). It is
+# "the book of courses": open on a lectern in the scriptorium (About, hours theme), a fold in About (terminal).
+
+[[coursework]]
+years = "2026–2027"
+school = "Université Paris-Saclay"
+programme = "MSc Physics of Complex Systems (M2), in progress"
+courses = [
+  { title = "Stochastic Processes", by = "Christophe Texier" },
+  { title = "Statistical Field Theory", by = "Dominique Mouhanna" },
+  { title = "Computational Science", by = "Jorge Fernández-de-Cossío-Díaz, Fabio Pietrucci" },
+  { title = "Nonlinear Physics and Dynamical Systems", by = "Bruno Andreotti" },
+  { title = "Advanced Nonlinear Physics", by = "Bruno Andreotti" },
+  { title = "Disordered Systems", by = "Valentina Ros" },
+  { title = "Nonequilibrium and Active Systems", by = "Frédéric van Wijland" },
+  { title = "Dynamics of Quantum Systems", by = "Leticia Cugliandolo" },
+  "Out-of-Equilibrium Statistical Physics", "Random Matrix Theory and Applications",
+  "Machine Learning: Inside the Black Boxes", "Econophysics",
+]
+
+[[coursework]]
+years = "2026–2027"
+school = "Sorbonne Université"
+programme = "MSc Quantum Information (M2), in progress"
+courses = ["Quantum Information Theory", "Photonic Quantum Computing", "Quantum Optics",
+           "Atomic Physics for Quantum Information", "Advanced Quantum Algorithms",
+           "Quantum Physics Out of Equilibrium (M2 ICFP, ENS)"]
+
+[[coursework]]
+years = "2026–2027"
+school = "Université Paris Dauphine-PSL"
+programme = "MSc Economics & Finance (M2), in progress"
+courses = ["Derivatives", "Portfolio Management", "Macroeconomics", "Time Series Econometrics", "Business Plans"]
+
+[[coursework]]
+years = "2025–2026"
+school = "Université Paris Cité"
+programme = "MSc Fundamental Physics (M1)"
+courses = ["Statistical Physics I & II", "Quantum Mechanics I & II", "Condensed Matter", "Subatomic Physics",
+  "Computational Physics", "Advanced Quantum Physics", "Particle Physics", "Nonlinear Physics and Dynamical Systems",
+  "Quantum Information", "Advanced Condensed Matter", "Research internship (IJCLab)"]
+
+[[coursework]]
+years = "2025–2026"
+school = "Université Paris Dauphine-PSL"
+programme = "BSc Economics & Finance (L3)"
+courses = ["Financial Products and Markets", "Portfolio Management", "Computing for Finance (Python, VBA)",
+  "Mathematical Tools for Finance", "Mathematics for Economics", "Statistics", "Econometrics", "Microeconomics",
+  "Macroeconomics", "Industrial Economics", "Advanced Accounting", "Insurance", "Technical Analysis", "English"]
+
+[[coursework]]
+years = "2024–2025"
+school = "Sorbonne Université"
+programme = "MSc Mathematics (M1)"
+courses = ["Advanced Probability", "Statistics", "Functional Analysis", "Advanced Functional Analysis",
+  "Martingales and Stochastic Control", "Numerical Probability", "Elliptic PDEs",
+  "Numerical Optimisation and Data Science", "Career development", "English"]
+
+[[coursework]]
+years = "2024–2025"
+school = "Sorbonne Université"
+programme = "MSc Physics (M1, distance learning)"
+courses = ["Quantum Mechanics", "Classical Field Theory", "Computational Physics", "Algorithmic Complexity",
+  "Atomic and Molecular Physics", "Nuclear and Particle Physics", "Project"]
+
+[[coursework]]
+years = "2024–2025"
+school = "Université Paris 1 Panthéon-Sorbonne"
+programme = "Magistère of Economics (L3)"
+courses = ["Probability and Statistics", "Advanced Mathematics", "Microeconomics",
+  "Microeconomics: Organisational Theory and Markets", "Econometric Methods", "Economic Growth",
+  "International Trade", "International Monetary Economics", "Economic Policy",
+  "Economics of Public Policy (ENS)", "History of Economic Thought", "Research dissertation", "English"]
+
+[[coursework]]
+years = "2023–2024"
+school = "Sorbonne Université"
+programme = "BSc Mathematics & Physics (L3)"
+courses = ["Topology and Differential Calculus", "Measure Theory and Probability", "Probability 2",
+  "Functional Analysis", "Numerical Analysis", "Algebra and Arithmetic", "Quantum Physics 1", "Quantum Physics 2",
+  "Thermal and Statistical Physics", "Optics and Electromagnetism", "Experimental and Numerical Physics",
+  "Career development", "English"]
+
+[[coursework]]
+years = "2023–2024"
+school = "Université Paris 1 Panthéon-Sorbonne"
+programme = "BA Economics & Political Science (L2)"
+courses = ["Macroeconomics: Closed Economy", "Macroeconomics: Open Economy",
+  "Microeconomics: Competitive Equilibrium and Market Failures", "Microeconomics: Market Structures and Strategy",
+  "Money, Banking and Finance", "Mathematics: Matrix Calculus and Optimisation", "Statistics",
+  "International Economics: the European Economy", "Introduction to European Politics",
+  "Comparative Political Institutions", "History of Political Ideas", "Sociology of the State",
+  "Sociology of Political Organisations", "Sociology of International Conflicts", "Introduction to Gender Studies",
+  "English"]
+
+[[coursework]]
+years = "2022–2023"
+school = "Sorbonne Université"
+programme = "BSc Mathematics & Physics (L2), with the health option"
+courses = ["Topology and Differential Calculus", "Numerical Series and Series of Functions", "Linear Algebra I",
+  "Linear Algebra II", "Lebesgue Integration", "Probability 1", "Linear Differential Equations",
+  "Mathematical Tools", "Mechanics and Waves", "Advanced Mechanics", "Waves and Electromagnetism",
+  "Experimental Physics", "English", "Biochemistry", "Biophysics", "Biology"]
+
+[[coursework]]
+years = "2022–2023"
+school = "Université Paris 1 Panthéon-Sorbonne"
+programme = "BA Economics & Political Science (L1)"
+courses = ["Introduction to Economics", "Contemporary Economic Problems", "Mathematics for Economics",
+  "Microeconomics", "Macroeconomics", "Statistics", "Introduction to Sociology",
+  "General Sociology and Applied Statistics", "Sociology of Political Behaviour", "History of Political Life",
+  "History of Political Life since 1968", "Constitutional Law 1", "Constitutional Law 2",
+  "Major Contemporary Political Problems", "Institutions: Social Protection", "English"]
+
+[[coursework]]
+years = "2021–2022"
+school = "Sorbonne Université"
+programme = "BSc Sciences (L1), with the health option"
+courses = ["Mathematics 1", "Mathematics 2", "Mathematics 3", "Mechanics and Physics 1", "Mechanics and Physics 2",
+  "Computer Science 1", "Supervised research workshop", "Career development", "English", "Anatomy 1", "Anatomy 2",
+  "Physiology", "Pharmacology"]
+
+# ---- the library (hours theme): each shelf of the two bookcases on the back wall is a subject,
+# left bookcase top to bottom, then the right one; a click shows the shelf's volumes. A volume:
+#   [[library.volumes]]
+#   shelf = "stochastic"        # an id from `shelves`
+#   title = "…"
+#   author = "…"
+#   year = 2024                 # optional, as are `url` (a legal source) and `note`
+# Each one is a gilt spine on its shelf, and can be clicked on its own.
+
+[library]
+shelves = [
+  ["statphys", "Statistical physics"], ["stochastic", "Stochastic processes"],
+  ["complex", "Complex systems"], ["dynamics", "Dynamical systems and chaos"],
+  ["rmt", "Random matrices"], ["quantum", "Quantum mechanics"],
+  ["qinfo", "Quantum information"], ["fields", "Statistical field theory"],
+  ["proba", "Probability"], ["analysis", "Analysis and PDEs"],
+  ["geometry", "Geometry"], ["ml", "Machine learning"],
+  ["mlphys", "Machine learning for physics"], ["mfg", "Mean-field games"],
+  ["econo", "Econophysics and finance"], ["social", "Agent-based and social models"],
+]
+
+# ---- news (the newest one's `msg` is the index's message line; all go to feed.xml) -----
+
+[[news]]
+date = "2026-09"
+msg = "A raven arrives: three master's programmes begin at once."
+text = """Started three master's programmes in parallel: Physics of Complex Systems
+(Paris-Saclay), Quantum Information (Sorbonne Université) and Economics &amp; Finance
+(Paris Dauphine-PSL)."""
+
+[[news]]
+date = "2026-07"
+msg = "A raven arrives: the IJCLab internship report and its code are out."
+text = """Finished the M1 internship at IJCLab and obtained the M1 in Fundamental Physics
+(Université Paris Cité) with honours (<i>mention bien</i>); the internship report was
+graded 18/20. The <a href="{{url:report}}">report</a> and the
+<a href="{{url:report_code}}">code</a> are public."""

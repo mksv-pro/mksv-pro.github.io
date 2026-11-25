@@ -1,0 +1,7 @@
+__pycache__/
+.ruff_cache/
+cv-latex/*
+!cv-latex/cv.tex
+.smoke/
+.cache/
+public/assets/data/local/

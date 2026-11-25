@@ -1,0 +1,3 @@
+  <!-- arriving from the front page: it covered the screen in this page's colour (home/home.js takeover); the page starts under it and lets it go -->
+  <script>try { var via = sessionStorage.getItem('via-gate'); if (via) { sessionStorage.removeItem('via-gate'); document.documentElement.style.setProperty('--via-gate', via); document.documentElement.classList.add('via-gate'); } } catch (e) {}</script>
+  <style>html.via-gate::after { content: ""; position: fixed; inset: 0; z-index: 2147483647; background: var(--via-gate); pointer-events: none; animation: via-gate .6s ease-out .05s both; } @keyframes via-gate { to { opacity: 0; visibility: hidden; } } @media (prefers-reduced-motion: reduce) { html.via-gate::after { animation-duration: .01s; } }</style>

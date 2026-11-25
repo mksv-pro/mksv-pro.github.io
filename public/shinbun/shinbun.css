@@ -1,0 +1,151 @@
+/* The newspaper page (shinbun/): a Japanese front page from a near future, as late-1980s science
+   fiction drew one. From the papers: the reading from the right, the vertical headlines to the right
+   of their text, the main one in a solid bar, the extra (號外) stamped in red, the masthead (題字) and
+   the date in kanji, tiers parted by heavy rules. From the future they imagined: black stock, one
+   signal red, heavy gothic, computed line art for pictures (each the physics of its work; the top
+   one live). On a screen wide and tall enough, the page is exactly one screen.
+   Type: Dela Gothic One and Shippori Mincho B1 (declared in the page, subset by
+   tools/assets/shinbun_fonts.sh), IBM Plex Mono (English). */
+
+@font-face { font-family: "Plex"; src: url("../assets/fonts/IBMPlexMono-Regular.woff2") format("woff2"); font-display: swap; }
+@font-face { font-family: "Plex"; src: url("../assets/fonts/IBMPlexMono-SemiBold.woff2") format("woff2"); font-weight: 600; font-display: swap; }
+
+:root {
+  --bg: #0b0b0b; --paper: #e8e2d6; --dim: #9b968c; --red: #e3241b; --hair: rgb(232 226 214 / .35);
+  --goth: "Gothic", "Hiragino Kaku Gothic StdN", sans-serif;
+  --min: "Mincho", "Hiragino Mincho ProN", serif;
+  --mono: "Plex", ui-monospace, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body { margin: 0; color: var(--paper); font: 14px/1.5 var(--mono); }
+a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: .2em; }
+a:hover, a:focus-visible { color: var(--red); }
+:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+h1, h2, h3, h4, p { margin: 0; font-weight: 400; }
+ul { margin: 0; padding: 0; list-style: none; }
+[lang="ja"] { font-family: var(--goth); word-break: keep-all; }
+.skip { position: absolute; left: -999px; }
+.skip:focus { left: .5rem; top: .5rem; z-index: 9; background: var(--bg); padding: .3rem .6rem; }
+/* a vertical line stays one line: it must not wrap into columns that overlap */
+.kana, .latin, .mast, .daiji, .bar, .sode, .gogai, .midashi { white-space: nowrap; }
+
+/* ---- the sheet: from the right, the name, the masthead, the page -------------------------------- */
+.sheet { display: flex; flex-direction: row-reverse; gap: 1.1rem; max-width: 110rem; margin: 0 auto; padding: 1.4rem 1.6rem; }
+.name { display: flex; flex-direction: row-reverse; gap: .4rem; flex: none; }
+.kana { writing-mode: vertical-rl; color: var(--red); font: 4rem/1 var(--goth); letter-spacing: -.04em; }
+.latin { writing-mode: vertical-rl; font: 600 .9rem/1 var(--mono); letter-spacing: .5em; text-transform: uppercase; padding-top: .2rem; }
+.mast { writing-mode: vertical-rl; display: flex; gap: .4rem; flex: none; font: .95rem/1.2 var(--min); color: var(--dim); border-left: 1px solid var(--hair); padding-left: 1rem; }
+.mast .daiji { font: 1.6rem/1 var(--min); color: var(--paper); border: 1px solid var(--paper); padding: .45rem .25rem; margin-bottom: .2rem; }
+.mast .issue { color: var(--paper); }
+
+.page { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
+.hero { display: flex; flex-direction: column; }
+.field { display: block; width: 100%; height: 22rem; }
+.line { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem 2.5rem; flex-wrap: wrap; padding: .5rem 0 1rem; }
+.statement { font: 1.35rem/1.3 var(--goth); max-width: 50ch; }
+.contact { display: flex; gap: .3rem 1.4rem; flex-wrap: wrap; font-size: .85rem; letter-spacing: .1em; text-transform: uppercase; }
+
+/* ---- the lower tier, from the right: the internships sought, then the works ----------------------- */
+.low { display: flex; flex-direction: row-reverse; border-top: 4px solid var(--paper); padding-top: 1rem; }
+.low > * { padding: 0 1.2rem; min-width: 0; }
+.low > * + * { border-right: 1px solid var(--hair); }
+.low > :first-child { padding-right: 0; }
+.low > :last-child { padding-left: 0; padding-right: 1.2rem; }
+
+.quest { display: flex; flex-direction: row-reverse; gap: 1rem; flex: 2.8 1 0; }
+.low > .works { padding: 0; }
+.quest > .midashi { display: flex; flex-direction: row-reverse; gap: .45rem; align-items: flex-start; flex: none; }
+.bar { writing-mode: vertical-rl; background: var(--red); color: var(--bg); font: 1.5rem/1 var(--goth); padding: .5rem .4rem; }
+.gogai { writing-mode: vertical-rl; color: var(--red); border: 3px solid var(--red); font: 1.2rem/1 var(--goth); padding: .3rem .15rem; transform: rotate(-5deg); }
+.quest > .text { flex: 1 1 0; min-width: 0; }
+.quest h2 { font: 1.3rem/1.1 var(--goth); margin-bottom: .3rem; }
+.sought { margin: 0 0 .6rem; grid-column: 1 / -1; }
+.sode { writing-mode: vertical-rl; font: 1.05rem/1 var(--goth); color: var(--paper); padding-top: .2rem; }
+.posts { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1.2rem; }
+.post { border-top: 1px solid var(--hair); padding-top: .5rem; }
+.post h3 { display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap; }
+.post h3 [lang="ja"] { font-size: 1.45rem; line-height: 1; }
+.post h3 .en { font: 600 .75rem/1 var(--mono); text-transform: uppercase; letter-spacing: .14em; }
+.meta { color: var(--dim); font-size: .78rem; margin-top: .2rem; }
+.post ul { margin-top: .35rem; }
+.post li { font-size: .8rem; line-height: 1.4; }
+.post.interests { grid-column: 1 / -1; }
+.post.interests ul { columns: 2; column-gap: 1.2rem; }
+.post.interests li { break-inside: avoid; }
+.post li::before { content: "\25A0  "; color: var(--red); font-size: .6em; vertical-align: .2em; }
+.write { display: inline-block; margin-top: .7rem; padding: .45rem 1rem; background: var(--paper); color: var(--bg); text-decoration: none; font: .9rem/1 var(--goth); letter-spacing: .06em; }
+.write::after { content: "  \2192"; }
+.write:hover, .write:focus-visible { background: var(--red); color: var(--bg); }
+
+.works { display: flex; direction: rtl; flex: 3 1 0; min-width: 0; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.works::-webkit-scrollbar { display: none; }
+.works > .work { direction: ltr; flex: 0 0 33.333%; min-width: 0; scroll-snap-align: start; padding: 0 1.2rem; }
+.works > .work + .work { border-right: 1px solid var(--hair); }
+.works.rolling > .work:last-child { padding-left: 1.2rem; }
+.work { display: flex; flex-direction: row-reverse; gap: .8rem; }
+.work > .midashi { writing-mode: vertical-rl; font: 1.3rem/1.05 var(--goth); letter-spacing: .04em; flex: none; }
+.work > .text { flex: 1 1 0; min-width: 0; }
+.work img { display: block; width: 100%; height: 11rem; object-fit: contain; object-position: left center; margin-bottom: .5rem; }
+.work h4 { font: .95rem/1.2 var(--goth); overflow-wrap: anywhere; }
+.work .meta a, .work .meta a:hover, .work .meta a:focus-visible { color: var(--paper); }  /* (the works keep their colours when pointed at) */
+
+.away { margin: 0 0 .6rem; font-size: .78rem; }
+.away a { display: inline-block; padding: .1rem .6rem; border: 1px solid currentColor; text-decoration: none; }
+
+/* ---- one screen: the name the full height, the wave taking what the rest leaves ------------------- */
+@media (min-width: 64rem) and (min-height: 36rem) {
+  .sheet { height: 100vh; height: 100dvh; }
+  .kana { font-size: calc((100dvh - 3rem) / 8.3); }
+  .page { min-height: 0; }
+  .hero { flex: 1 1 auto; min-height: 0; }
+  .field { flex: 1 1 auto; min-height: 0; height: auto; }
+  .work img { height: clamp(7rem, 17vh, 12rem); }
+}
+
+/* ---- printing: the name and the bar ink down, the extra is stamped -------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  /* the name forged: each character stamped white-hot, then cooling as a black body does (white,
+     yellow, orange, deep red: Planck's colours from about 4000 K down to 900 K) to the flat red;
+     a character every 100 ms, each its own 1.1 s, so the first cool while the last are struck */
+  .kana > span { display: inline-block; animation: forge 1.1s linear both, strike .14s ease-out both; animation-delay: calc(.15s + var(--i) * .1s); }
+  .bar { animation: ink .7s cubic-bezier(.7, 0, .2, 1) .35s both; }
+  .gogai { animation: stamp .4s cubic-bezier(.3, 1.5, .5, 1) 1.95s both; }  /* (after the name is forged) */
+  .work img { animation: rise .6s ease-out .5s both; }
+}
+@keyframes ink { from { clip-path: inset(0 0 100% 0); } }
+@keyframes forge {
+  0% { opacity: 0; }
+  1% { opacity: 1; color: #fff; text-shadow: 0 0 .06em #fff, 0 0 .18em rgb(255 214 150 / .9); }
+  12% { color: #fff1d6; text-shadow: 0 0 .05em #ffe0a8, 0 0 .14em rgb(255 170 70 / .7); }
+  28% { color: #ffb347; text-shadow: 0 0 .04em rgb(255 150 40 / .8), 0 0 .1em rgb(255 110 20 / .4); }
+  45% { color: #ff7a12; text-shadow: 0 0 .03em rgb(255 100 20 / .5); }
+  62% { color: #e8460f; text-shadow: none; }
+  80% { color: #b81c12; }
+  100% { opacity: 1; color: var(--red); text-shadow: none; }
+}
+@keyframes strike { 0% { transform: scale(1.06) translate(0, -1px); } 35% { transform: translate(1px, 0); } 65% { transform: translate(-1px, 0); } 100% { transform: none; } }
+@keyframes stamp { from { transform: scale(2.4) rotate(-16deg); opacity: 0; } }
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+
+/* ---- narrower or shorter: the page scrolls; on a phone, one column ------------------------------- */
+@media (max-width: 64rem) {
+  .low { flex-wrap: wrap; }
+  .quest { flex-basis: 100%; padding: 0 0 1rem !important; margin-bottom: 1rem; border-bottom: 1px solid var(--hair); }
+  .low > .works { flex-basis: 100%; border-right: 0; }
+}
+@media (max-width: 46rem) {
+  .sheet { display: grid; grid-template-columns: 1fr auto auto; gap: 0 .7rem; padding: 1.2rem 1rem; }
+  .name { grid-column: 3; grid-row: 1; } .mast { grid-column: 2; grid-row: 1; }
+  .page { grid-column: 1 / -1; grid-row: 2; margin-top: 1rem; }
+  .kana { font-size: 2.8rem; }
+  .field { height: 15rem; }
+  .statement { font-size: 1.1rem; }
+  .low { display: block; }
+  .low > * { padding: 0 !important; border-right: 0 !important; }
+  .posts { grid-template-columns: 1fr; gap: .6rem; }
+  .post.interests ul { columns: 1; }
+  .works { display: block; overflow: visible; }
+  .works > .work { padding: 1rem 0 0 !important; margin-top: 1rem; border-top: 1px solid var(--hair); border-right: 0; }
+}

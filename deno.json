@@ -1,0 +1,6 @@
+{
+  "lint": {
+    "include": ["public/sw.js", "public/home/", "public/castle/js/", "public/siege/js/"],
+    "rules": { "exclude": ["no-var", "prefer-const", "no-inner-declarations", "no-window", "no-window-prefix"] }
+  }
+}
